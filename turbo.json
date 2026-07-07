@@ -6,12 +6,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "!**/*.test.*",
-        "!**/*.spec.*",
-        "!**/__tests__/**"
-      ],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.*", "!**/*.spec.*", "!**/__tests__/**"],
       "outputs": ["dist/**", "build/**", ".next/**", "!.next/cache/**"]
     },
     "typecheck": {
@@ -27,22 +22,11 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "vitest.config.ts",
-        "src/**",
-        "tests/**"
-      ],
+      "inputs": ["$TURBO_DEFAULT$", "vitest.config.ts", "src/**", "tests/**"],
       "outputs": ["coverage/**"]
     },
     "lint": {
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "biome.json",
-        "package.json",
-        "src/**",
-        "tests/**"
-      ],
+      "inputs": ["$TURBO_DEFAULT$", "biome.json", "package.json", "src/**", "tests/**"],
       "outputs": []
     },
     "ci": {

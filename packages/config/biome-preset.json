@@ -13,7 +13,8 @@
       "**/build",
       "**/.turbo",
       "**/coverage",
-      "**/.next"
+      "**/.next",
+      "docs/**"
     ]
   },
   "organizeImports": {

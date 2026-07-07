@@ -2,6 +2,7 @@
   "name": "ganaweb",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "GanaWeb — control ganadero bovino (Colombia). Clean/Hexagonal monorepo foundation.",
   "packageManager": "pnpm@9.12.0",
   "engines": {
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@ganaweb/config": "workspace:*",
     "@types/node": "^22.10.5",
     "dependency-cruiser": "^16.10.3",
     "turbo": "^2.3.3",
