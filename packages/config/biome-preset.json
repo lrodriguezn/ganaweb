@@ -31,8 +31,7 @@
       },
       "suspicious": {
         "noExplicitAny": "error",
-        "noConsole": "warn",
-        "noConsoleLog": "warn"
+        "noConsole": "warn"
       },
       "complexity": {
         "noBannedTypes": "error",

@@ -71,6 +71,7 @@ export default {
       path: "node_modules",
     },
     exclude: { path: "^(docs|openspec)/" },
+    tsPreCompilationDeps: true,
     enhancedResolveOptions: {
       exportsFields: ["exports"],
       conditionNames: ["import", "require", "node", "default"],
