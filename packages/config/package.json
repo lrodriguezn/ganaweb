@@ -1,0 +1,24 @@
+{
+  "name": "@ganaweb/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared TypeScript base + React + Biome preset for the ganaweb monorepo.",
+  "type": "module",
+  "files": ["tsconfig.base.json", "tsconfig.react.json", "biome-preset.json"],
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.react.json": "./tsconfig.react.json",
+    "./biome-preset": "./biome-preset.json",
+    "./biome-preset.json": "./biome-preset.json"
+  },
+  "scripts": {
+    "build": "echo \"@ganaweb/config: no build step (config-only package)\"",
+    "typecheck": "find . -maxdepth 2 -name 'tsconfig.json' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no tsconfig to typecheck'",
+    "test": "echo \"@ganaweb/config: no tests\"",
+    "lint": "biome check ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.7.2"
+  }
+}

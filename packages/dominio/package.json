@@ -1,0 +1,24 @@
+{
+  "name": "@ganaweb/dominio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GanaWeb domain layer. Zero runtime deps. Pure entities + business rules (RN/TR/PE). TDD lives here.",
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
+    "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "lint": "biome check ."
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@ganaweb/config": "workspace:*",
+    "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^3.2.6",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.6"
+  }
+}

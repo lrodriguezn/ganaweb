@@ -1,0 +1,76 @@
+schema: spec-driven
+
+context: |
+  Project: GanaWeb — livestock management (control ganadero bovino, Colombia)
+  Stack: TanStack Start (fullstack) · TypeScript strict · Drizzle ORM · PostgreSQL 17 + SQLite WASM (offline)
+  UI: React · Tailwind v4 · shadcn/ui · custom component library (packages/ui)
+  Architecture: Clean/Hexagonal monorepo (pnpm + Turborepo) — dominio | aplicacion | db | sync | ui | config
+  Testing: Vitest (unit/integration) · Playwright (E2E) · TDD mandatory for dominio (>=90% coverage)
+  Lint/Format: Biome · Deploy: Docker multi-stage + Dokploy on VPS
+  Domain language: Spanish (Colombia) — domain names in Spanish, infra in English
+  Offline-first PWA with custom sync protocol (sync_outbox)
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Reference RN/TR/PE rule IDs from arquitectura_funcional.md
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Cite domain rules (RN-xxx, TR-xxx, PE-xxx) when applicable
+  design:
+    - Respect clean architecture dependency rule (dominio has zero deps)
+    - Document architecture decisions with rationale
+    - Consider offline/online symmetry for use cases
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Domain logic goes in packages/dominio, never in routes
+  apply:
+    - Follow existing code patterns in packages/ui for components
+    - Domain names in Spanish (registrarVacuna, categoriaReproductiva)
+    - No hardcoded business thresholds — use config_parametros_finca
+    - No dark: variants — theming via CSS tokens only
+    tdd: true
+    test_command: "pnpm turbo test"
+  verify:
+    test_command: "pnpm turbo test"
+    build_command: "pnpm turbo build"
+    coverage_threshold: 90
+  archive:
+    - Warn before merging destructive deltas
+    - Verify delta specs merge cleanly into main specs
+
+testing:
+  strict_tdd: true
+  runner:
+    unit: vitest
+    e2e: playwright
+  layers:
+    - layer: unit
+      available: false
+      tool: vitest
+      notes: Planned for packages/dominio — runner not yet scaffolded
+    - layer: integration
+      available: false
+      tool: vitest + SQLite in-memory / Postgres Testcontainers
+      notes: Each use case tested against both PG and SQLite drivers
+    - layer: e2e
+      available: false
+      tool: playwright
+      notes: Critical flows against production build + seed demo
+  coverage:
+    available: false
+    command: "pnpm turbo test -- --coverage"
+    threshold: 90
+    scope: packages/dominio
+  quality:
+    - tool: linter
+      available: false
+      command: "biome ci ."
+    - tool: type_checker
+      available: false
+      command: "pnpm turbo typecheck"
+    - tool: formatter
+      available: false
+      command: "biome format ."

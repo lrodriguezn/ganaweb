@@ -1,0 +1,20 @@
+{
+  "name": "@ganaweb/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GanaWeb persistence layer. Drizzle ORM, PostgreSQL 17 (online-first). Implements ports declared by aplicacion.",
+  "type": "module",
+  "scripts": {
+    "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
+    "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
+    "test": "echo \"@ganaweb/db: no tests in PR1 stub\"",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@ganaweb/aplicacion": "workspace:*"
+  },
+  "devDependencies": {
+    "@ganaweb/config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

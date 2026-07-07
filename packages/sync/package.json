@@ -1,0 +1,19 @@
+{
+  "name": "@ganaweb/sync",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GanaWeb sync protocol. PR1 ships interfaces only (push/pull/conflict-resolver ports). No implementation this change.",
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
+    "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
+    "test": "echo \"@ganaweb/sync: no tests in PR1 stub\"",
+    "lint": "biome check ."
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@ganaweb/config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}
