@@ -53,9 +53,9 @@ export default {
       to: { path: "^packages/db" },
     },
   ],
-  // allowed: whitelist of permitted cross-package edges. Dependencies not
-  // matching any rule are reported as `not-in-allowed` (warn by default).
-  // The forbidden rules above are the hard enforcers; allowed scopes the rest.
+  // allowed: whitelist of permitted edges. Dependencies not matching any
+  // rule are reported as `not-in-allowed` (warn by default). The forbidden
+  // rules above are the hard enforcers; allowed scopes the rest.
   allowed: [
     { from: { path: "^apps/web" }, to: { path: "^packages/(aplicacion|ui|db|config)" } },
     { from: { path: "^packages/aplicacion" }, to: { path: "^packages/(dominio|sync|config)" } },
@@ -65,6 +65,16 @@ export default {
     // dominio → config removed: dominio-to-io forbids any import outside
     // packages/dominio or node: builtins, so this edge was dead/contradictory.
     { from: { path: "^packages/config" }, to: { path: "^packages/config" } },
+    // Intra-package edges for dominio: barrel re-exports (src/index.ts →
+    // src/{animal,rn-001}.ts) and test→src imports are legitimate. The
+    // dominio-to-io forbidden rule above still enforces "no external deps",
+    // so the allowed scope here is purely local.
+    { from: { path: "^packages/dominio" }, to: { path: "^packages/dominio" } },
+    // Test runners + vitest config: tooling imports of node_modules are
+    // expected (vitest, @vitest/coverage-v8). The forbidden rules don't
+    // constrain these because they only target production edges.
+    { from: { path: "\\.config\\.ts$" }, to: { path: "^node_modules" } },
+    { from: { path: "/tests/" }, to: { path: "^node_modules" } },
   ],
   options: {
     doNotFollow: {
