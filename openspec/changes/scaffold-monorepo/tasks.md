@@ -19,10 +19,10 @@ PR1 ~250 · PR2 ~200 · PR3 ~300 · PR4 ~700 · PR5 ~250 (max 700/800).
 
 ## PR 2 `packages/dominio`
 
-- [ ] PR2.T1 **[TDD-RED]** Write `tests/rn-001.test.ts` `describe('RN-001: código único por finca')` covering duplicate-same-finca, same-code-different-finca, empty-list, empty/whitespace-codigo. **Commit BEFORE impl.** Confirm RED via `pnpm --filter @ganaweb/dominio test`.
-- [ ] PR2.T2 **[TDD-GREEN]** Create `src/animal.ts` (Sexo/EstadoAnimal/Salud, AnimalResumen) and `src/rn-001.ts` with `ResultadoValidacion` tagged union (D4) + pure `validarCodigoUnicoPorFinca`.
-- [ ] PR2.T3 **[TDD-GREEN]** Add `src/index.ts` barrel; `vitest.config.ts` v8 coverage threshold 90% on `./src`.
-- [ ] PR2.T4 **[TDD-REFACTOR]** Coverage ≥90% lines; add missing edge cases.
+- [x] PR2.T1 **[TDD-RED]** Write `tests/rn-001.test.ts` `describe('RN-001: código único por finca')` covering duplicate-same-finca, same-code-different-finca, empty-list, empty/whitespace-codigo. **Commit BEFORE impl.** Confirm RED via `pnpm --filter @ganaweb/dominio test`.
+- [x] PR2.T2 **[TDD-GREEN]** Create `src/animal.ts` (Sexo/EstadoAnimal/Salud, AnimalResumen) and `src/rn-001.ts` with `ResultadoValidacion` tagged union (D4) + pure `validarCodigoUnicoPorFinca`.
+- [x] PR2.T3 **[TDD-GREEN]** Add `src/index.ts` barrel; `vitest.config.ts` v8 coverage threshold 90% on `./src`.
+- [x] PR2.T4 **[TDD-REFACTOR]** Coverage ≥90% lines; add missing edge cases.
 
 ## PR 3 `packages/db`
 
