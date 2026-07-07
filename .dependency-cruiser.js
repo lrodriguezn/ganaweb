@@ -42,7 +42,7 @@ export default {
       comment:
         "db may import aplicacion ONLY as type-only (no runtime values). Use `import type { ... }`.",
       from: { path: "^packages/db" },
-      to: { path: "^packages/aplicacion", viaNot: ["type-only"] },
+      to: { path: "^packages/aplicacion", dependencyTypesNot: ["type-only"] },
     },
     {
       name: "sync-to-db",
