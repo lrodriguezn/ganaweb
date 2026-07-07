@@ -1,0 +1,28 @@
+{
+  "name": "ganaweb",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GanaWeb — control ganadero bovino (Colombia). Clean/Hexagonal monorepo foundation.",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": "22",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome ci .",
+    "format": "biome format --write .",
+    "ci": "turbo run ci",
+    "depcruise": "dependency-cruiser .",
+    "no-sqlite": "! grep -rE \"wa-sqlite|OPFS|sqlite-wasm|sql\\.js\" packages apps || (echo \"SQLite reference detected\" && exit 1)"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.5",
+    "dependency-cruiser": "^16.10.3",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
