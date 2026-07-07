@@ -11,11 +11,11 @@ PR1 ~250 · PR2 ~200 · PR3 ~300 · PR4 ~700 · PR5 ~250 (max 700/800).
 
 ## PR 1
 
-- [ ] PR1.T1 Create `pnpm-workspace.yaml`, root `package.json` (engines node=22, pnpm≥9; scripts build/test/typecheck/lint/ci), `.nvmrc` (22), `turbo.json` (build^build, typecheck^build, test, lint, ci), `biome.json` extending `@ganaweb/config/biome-preset` (strict, no-any).
-- [ ] PR1.T2 Create `packages/config/{package.json,tsconfig.base.json,tsconfig.react.json,biome-preset.json}` shared strict tsconfig + Biome preset.
-- [ ] PR1.T3 Create empty stubs `packages/{dominio,aplicacion,db,sync,ui}/{package.json,tsconfig.json}` + `apps/web/{package.json,tsconfig.json}` with workspace:* deps per design.
-- [ ] PR1.T4 Create `.dependency-cruiser.js` (D3/D10 rules + no-sqlite regex: ui-to-dominio, web-to-dominio-direct, dominio-to-io, aplicacion-to-db, db-to-aplicacion-runtime type-only, sync-to-db).
-- [ ] PR1.T5 Create `.github/workflows/ci.yml` skeleton (install + biome ci only; full pipeline in PR5).
+- [x] PR1.T1 Create `pnpm-workspace.yaml`, root `package.json` (engines node=22, pnpm≥9; scripts build/test/typecheck/lint/ci), `.nvmrc` (22), `turbo.json` (build^build, typecheck^build, test, lint, ci), `biome.json` extending `@ganaweb/config/biome-preset` (strict, no-any).
+- [x] PR1.T2 Create `packages/config/{package.json,tsconfig.base.json,tsconfig.react.json,biome-preset.json}` shared strict tsconfig + Biome preset.
+- [x] PR1.T3 Create empty stubs `packages/{dominio,aplicacion,db,sync,ui}/{package.json,tsconfig.json}` + `apps/web/{package.json,tsconfig.json}` with workspace:* deps per design.
+- [x] PR1.T4 Create `.dependency-cruiser.js` (D3/D10 rules + no-sqlite regex: ui-to-dominio, web-to-dominio-direct, dominio-to-io, aplicacion-to-db, db-to-aplicacion-runtime type-only, sync-to-db).
+- [x] PR1.T5 Create `.github/workflows/ci.yml` skeleton (install + biome ci only; full pipeline in PR5).
 
 ## PR 2 `packages/dominio`
 
