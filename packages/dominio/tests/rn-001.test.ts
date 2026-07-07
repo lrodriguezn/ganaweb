@@ -80,4 +80,33 @@ describe("RN-001: código único por finca", () => {
       expect(resultado.regla).toBe("RN-001")
     }
   })
+
+  it("detecta el duplicado aunque NO sea el primer elemento de la lista (.some() itera más allá del índice 0)", () => {
+    const animalesExistentes = [
+      { fincaId: "finca-esperanza", codigo: "A001" },
+      { fincaId: "finca-esperanza", codigo: "A002" },
+      { fincaId: "finca-esperanza", codigo: "A003" },
+      { fincaId: "finca-esperanza", codigo: "B007" },
+    ]
+
+    const resultado = validarCodigoUnicoPorFinca("B007", "finca-esperanza", animalesExistentes)
+
+    expect(resultado.valido).toBe(false)
+    if (!resultado.valido) {
+      expect(resultado.regla).toBe("RN-001")
+    }
+  })
+
+  it("ignora animales de otras fincas aunque compartan el código (scope por finca)", () => {
+    const animalesExistentes = [
+      { fincaId: "finca-esperanza", codigo: "A001" },
+      { fincaId: "finca-roble", codigo: "A001" },
+      { fincaId: "finca-pino", codigo: "A001" },
+    ]
+
+    // A001 existe en 3 fincas distintas; validar en una 4ta finca debe ser válido.
+    const resultado = validarCodigoUnicoPorFinca("A001", "finca-cipres", animalesExistentes)
+
+    expect(resultado).toEqual({ valido: true })
+  })
 })
