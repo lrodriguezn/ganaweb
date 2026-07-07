@@ -1,0 +1,27 @@
+{
+  "name": "@ganaweb/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GanaWeb TanStack Start app. Imports aplicacion + ui + db. NOT dominio (dependency-cruiser enforced).",
+  "type": "module",
+  "scripts": {
+    "build": "echo \"@ganaweb/web: TanStack Start build lands in PR5\"",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"@ganaweb/web: no tests in PR1 stub\"",
+    "lint": "biome check .",
+    "ci": "pnpm run typecheck && pnpm run lint && pnpm run test"
+  },
+  "dependencies": {
+    "@ganaweb/aplicacion": "workspace:*",
+    "@ganaweb/db": "workspace:*",
+    "@ganaweb/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@ganaweb/config": "workspace:*",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.2"
+  }
+}

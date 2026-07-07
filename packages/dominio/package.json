@@ -1,0 +1,25 @@
+{
+  "name": "@ganaweb/dominio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GanaWeb domain layer. Zero runtime deps. Pure entities + business rules (RN/TR/PE). TDD lives here.",
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "lint": "biome check .",
+    "ci": "pnpm run typecheck && pnpm run lint && pnpm run test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@ganaweb/config": "workspace:*",
+    "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^2.1.8",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

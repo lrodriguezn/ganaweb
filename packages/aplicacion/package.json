@@ -1,0 +1,23 @@
+{
+  "name": "@ganaweb/aplicacion",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GanaWeb application layer. Use cases + port interfaces. Depends on dominio (for entities) + sync (for outbox shape). NOT db.",
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"@ganaweb/aplicacion: no tests in PR1 stub\"",
+    "lint": "biome check .",
+    "ci": "pnpm run typecheck && pnpm run lint && pnpm run test"
+  },
+  "dependencies": {
+    "@ganaweb/dominio": "workspace:*",
+    "@ganaweb/sync": "workspace:*"
+  },
+  "devDependencies": {
+    "@ganaweb/config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}
