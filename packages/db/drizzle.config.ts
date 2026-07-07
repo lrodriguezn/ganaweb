@@ -1,9 +1,9 @@
 /**
  * Drizzle Kit configuration for `@ganaweb/db`.
  *
- * Online-first scope (D3, Req 1): PostgreSQL only. No SQLite/WASM/OPFS
- * drivers in this package — enforced by the `no-sqlite` guard in CI
- * (grep over `wa-sqlite|OPFS|sqlite-wasm|sql\.js|better-sqlite3|...`).
+ * Online-first scope (D3, Req 1): PostgreSQL only. No non-PG drivers
+ * in this package — enforced by the `no-sqlite` grep guard in CI
+ * (over the canonical list of forbidden local-storage dependency names).
  *
  * Schema files live in `src/schema/*.ts` and are re-exported through
  * `src/schema/index.ts`. Migrations are versioned under `migrations/`

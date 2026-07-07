@@ -95,12 +95,8 @@
           "name": "animales_finca_id_fincas_id_fk",
           "tableFrom": "animales",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

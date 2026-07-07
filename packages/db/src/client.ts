@@ -37,16 +37,16 @@ import postgres from "postgres"
 import * as schema from "./schema/index.js"
 
 export function createClient(url = process.env.DATABASE_URL ?? "") {
-	const queryClient = postgres(url, { max: 10 })
-	return drizzle(queryClient, { schema })
+  const queryClient = postgres(url, { max: 10 })
+  return drizzle(queryClient, { schema })
 }
 
 export type DbClient = ReturnType<typeof createClient>
 
 let _db: DbClient | null = null
 function getDb(): DbClient {
-	_db ??= createClient()
-	return _db
+  _db ??= createClient()
+  return _db
 }
 
 /**
@@ -55,9 +55,9 @@ function getDb(): DbClient {
  * vez y reusa el client en llamadas subsiguientes.
  */
 export const db = new Proxy({} as DbClient, {
-	get(_target, prop, receiver) {
-		const client = getDb()
-		const value = Reflect.get(client, prop, receiver)
-		return typeof value === "function" ? value.bind(client) : value
-	},
+  get(_target, prop, receiver) {
+    const client = getDb()
+    const value = Reflect.get(client, prop, receiver)
+    return typeof value === "function" ? value.bind(client) : value
+  },
 })

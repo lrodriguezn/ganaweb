@@ -25,12 +25,12 @@
 import { integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core"
 
 export const fincas = pgTable("fincas", {
-	id: text("id").primaryKey(),
-	codigo: varchar("codigo", { length: 20 }).notNull(),
-	nombre: varchar("nombre", { length: 100 }).notNull(),
-	activo: integer("activo").default(1).notNull(),
-	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  id: text("id").primaryKey(),
+  codigo: varchar("codigo", { length: 20 }).notNull(),
+  nombre: varchar("nombre", { length: 100 }).notNull(),
+  activo: integer("activo").default(1).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 })
 
 export type Finca = typeof fincas.$inferSelect

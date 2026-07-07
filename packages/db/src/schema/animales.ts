@@ -34,26 +34,26 @@ import { integer, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle
 import { fincas } from "./fincas.js"
 
 export const animales = pgTable(
-	"animales",
-	{
-		id: text("id").primaryKey(),
-		fincaId: text("finca_id")
-			.notNull()
-			.references(() => fincas.id),
-		codigo: varchar("codigo", { length: 20 }).notNull(),
-		nombre: varchar("nombre", { length: 100 }).default(""),
-		sexo: text("sexo").notNull(),
-		estadoAnimal: text("estado_animal").notNull(),
-		activo: integer("activo").default(1).notNull(),
-		created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-		updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-	},
-	(t) => ({
-		// RN-001 enforcement at DB level. El test TS-004 (T4) verifica
-		// que un INSERT duplicado (mismo finca_id, mismo codigo) lanza
-		// el error de unique constraint de Postgres.
-		uqAnimalesFincaCodigo: uniqueIndex("uq_animales_finca_codigo").on(t.fincaId, t.codigo),
-	}),
+  "animales",
+  {
+    id: text("id").primaryKey(),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
+    codigo: varchar("codigo", { length: 20 }).notNull(),
+    nombre: varchar("nombre", { length: 100 }).default(""),
+    sexo: text("sexo").notNull(),
+    estadoAnimal: text("estado_animal").notNull(),
+    activo: integer("activo").default(1).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    // RN-001 enforcement at DB level. El test TS-004 (T4) verifica
+    // que un INSERT duplicado (mismo finca_id, mismo codigo) lanza
+    // el error de unique constraint de Postgres.
+    uqAnimalesFincaCodigo: uniqueIndex("uq_animales_finca_codigo").on(t.fincaId, t.codigo),
+  }),
 )
 
 export type Animal = typeof animales.$inferSelect

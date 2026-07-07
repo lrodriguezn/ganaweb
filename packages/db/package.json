@@ -7,7 +7,10 @@
   "scripts": {
     "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'no source files yet'",
     "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'no source files yet'",
-    "test": "echo \"@ganaweb/db: no tests yet (T4 will add the duplicate-insert test)\"",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:smoke": "DB_SMOKE=true vitest run",
+    "coverage": "vitest run --coverage",
     "lint": "biome check .",
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
@@ -23,8 +26,10 @@
   "devDependencies": {
     "@ganaweb/config": "workspace:*",
     "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^3.2.6",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.6"
   }
 }

@@ -75,6 +75,19 @@ export default {
     // constrain these because they only target production edges.
     { from: { path: "\\.config\\.ts$" }, to: { path: "^node_modules" } },
     { from: { path: "/tests/" }, to: { path: "^node_modules" } },
+    // Intra-package edges for db: barrel re-exports (src/schema/index.ts
+    // → src/schema/{fincas,animales}.ts), client.ts → schema/index.ts,
+    // seed-v3.ts → schema/index.ts + client.ts, test → src. The
+    // port-inversion forbidden rule (db-to-aplicacion-runtime) is
+    // already the hard enforcer for inter-package runtime edges; this
+    // allowed scope keeps intra-db re-exports + tooling imports quiet.
+    { from: { path: "^packages/db" }, to: { path: "^packages/db" } },
+    // db src/ imports its runtime deps (drizzle-orm, postgres, dotenv)
+    // from node_modules. The forbidden rules only target package-to-
+    // package edges, so allowing src → node_modules here is purely
+    // cosmetic (suppresses `not-in-allowed` warnings) without relaxing
+    // any boundary constraint.
+    { from: { path: "^packages/db/src" }, to: { path: "^node_modules" } },
   ],
   options: {
     doNotFollow: {

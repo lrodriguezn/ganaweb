@@ -36,37 +36,45 @@ import { fincas } from "../schema/index.js"
 
 /** Source-of-truth IDs from docs/seed_v3.ts lines 204-217. */
 const FINCAS_INICIALES = [
-	{
-		id: "finca-esperanza",
-		codigo: "GAN001",
-		nombre: "La Esperanza",
-	},
-	{
-		id: "finca-roble",
-		codigo: "GAN002",
-		nombre: "Hacienda El Roble",
-	},
+  {
+    id: "finca-esperanza",
+    codigo: "GAN001",
+    nombre: "La Esperanza",
+  },
+  {
+    id: "finca-roble",
+    codigo: "GAN002",
+    nombre: "Hacienda El Roble",
+  },
 ] as const
 
 async function main() {
-	const databaseUrl = process.env.DATABASE_URL
-	if (!databaseUrl) {
-		throw new Error(
-			"DATABASE_URL is not set. Copy .env.example to .env and set DATABASE_URL, " +
-				"or export it in the shell before running 'pnpm --filter @ganaweb/db seed'.",
-		)
-	}
+  const databaseUrl = process.env.DATABASE_URL
+  if (!databaseUrl) {
+    throw new Error(
+      "DATABASE_URL is not set. Copy .env.example to .env and set DATABASE_URL, " +
+        "or export it in the shell before running 'pnpm --filter @ganaweb/db seed'.",
+    )
+  }
 
-	const db = createClient(databaseUrl)
+  const db = createClient(databaseUrl)
 
-	console.log(`[seed-v3] Inserting ${FINCAS_INICIALES.length} fincas (idempotent: onConflictDoNothing)…`)
-	await db.insert(fincas).values([...FINCAS_INICIALES]).onConflictDoNothing()
+  // biome-ignore lint/suspicious/noConsole: seed CLI script — stdout is the user-facing output channel.
+  console.log(
+    `[seed-v3] Inserting ${FINCAS_INICIALES.length} fincas (idempotent: onConflictDoNothing)…`,
+  )
+  await db
+    .insert(fincas)
+    .values([...FINCAS_INICIALES])
+    .onConflictDoNothing()
 
-	console.log("[seed-v3] Done. Zero animales inserted (D11).")
-	process.exit(0)
+  // biome-ignore lint/suspicious/noConsole: seed CLI script — stdout is the user-facing output channel.
+  console.log("[seed-v3] Done. Zero animales inserted (D11).")
+  process.exit(0)
 }
 
 main().catch((err: unknown) => {
-	console.error("[seed-v3] Failed:", err)
-	process.exit(1)
+  // biome-ignore lint/suspicious/noConsole: seed CLI script — stderr reports the failure to the user.
+  console.error("[seed-v3] Failed:", err)
+  process.exit(1)
 })
