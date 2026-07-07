@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Cancel in-progress runs for the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint (PR1 skeleton)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome CI
+        run: pnpm exec biome ci .
+
+      # NOTE: full pipeline (typecheck → test → build → depcruise → coverage gate
+      # → no-sqlite grep → migrate/seed/health-check) is added in PR5
+      # (apps/web/scripts/health-check.mjs + scripts/check-coverage.mjs).
+      # PR1 skeleton intentionally only verifies install + lint so the workspace
+      # graph is known-good before any domain code lands.
