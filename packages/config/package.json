@@ -15,8 +15,7 @@
     "build": "echo \"@ganaweb/config: no build step (config-only package)\"",
     "typecheck": "find . -maxdepth 2 -name 'tsconfig.json' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no tsconfig to typecheck'",
     "test": "echo \"@ganaweb/config: no tests\"",
-    "lint": "biome check .",
-    "ci": "pnpm run typecheck && pnpm run lint"
+    "lint": "biome check ."
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

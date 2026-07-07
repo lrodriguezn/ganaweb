@@ -11,8 +11,7 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "lint": "biome check .",
-    "ci": "pnpm run typecheck && pnpm run lint && pnpm run test"
+    "lint": "biome check ."
   },
   "dependencies": {},
   "devDependencies": {

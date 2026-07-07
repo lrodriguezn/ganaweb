@@ -9,8 +9,7 @@
     "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
     "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
     "test": "echo \"@ganaweb/aplicacion: no tests in PR1 stub\"",
-    "lint": "biome check .",
-    "ci": "pnpm run typecheck && pnpm run lint && pnpm run test"
+    "lint": "biome check ."
   },
   "dependencies": {
     "@ganaweb/dominio": "workspace:*",

@@ -15,7 +15,7 @@
     "typecheck": "turbo run typecheck",
     "lint": "biome ci .",
     "format": "biome format --write .",
-    "ci": "turbo run ci",
+    "ci": "turbo run build typecheck test lint",
     "depcruise": "dependency-cruiser .",
     "no-sqlite": "! grep -rE \"wa-sqlite|OPFS|sqlite-wasm|sql\\.js|better-sqlite3|@libsql|sqlite3|bun:sqlite\" --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.js\" --include=\"*.json\" --include=\"*.yml\" --exclude-dir=node_modules --exclude-dir=.git --exclude=pnpm-lock.yaml . | grep -v \"^./package.json:.*no-sqlite:\" || (echo \"SQLite reference detected\" && exit 1)"
   },
