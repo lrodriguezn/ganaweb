@@ -11,19 +11,19 @@
  * completarán en PR futuros.
  */
 
-export type Sexo = "macho" | "hembra" | "pajuela";
+export type Sexo = "macho" | "hembra" | "pajuela"
 
-export type EstadoAnimal = "activo" | "vendido" | "muerto";
+export type EstadoAnimal = "activo" | "vendido" | "muerto"
 
-export type Salud = "sano" | "enfermo";
+export type Salud = "sano" | "enfermo"
 
 export interface AnimalResumen {
-  readonly id: string;
-  readonly fincaId: string;
+  readonly id: string
+  readonly fincaId: string
   /** Único dentro de la misma finca (RN-001). */
-  readonly codigo: string;
-  readonly nombreAnimal?: string | null;
-  readonly sexo: Sexo;
-  readonly estadoActual: EstadoAnimal;
-  readonly salud: Salud;
+  readonly codigo: string
+  readonly nombreAnimal?: string | null
+  readonly sexo: Sexo
+  readonly estadoActual: EstadoAnimal
+  readonly salud: Salud
 }

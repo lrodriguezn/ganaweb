@@ -18,17 +18,17 @@
 export type ResultadoValidacion =
   | { readonly valido: true }
   | {
-      readonly valido: false;
+      readonly valido: false
       /** Identifica la regla de negocio violada o la guarda de entrada que rechazó. */
-      readonly regla: "RN-001";
+      readonly regla: "RN-001"
       /** Mensaje legible para el consumidor; no se usa para branching, sólo para mostrar. */
-      readonly detalle: string;
-    };
+      readonly detalle: string
+    }
 
 /** Subconjunto mínimo de `AnimalResumen` que la validación necesita leer. */
 export interface ReferenciaAnimal {
-  readonly fincaId: string;
-  readonly codigo: string;
+  readonly fincaId: string
+  readonly codigo: string
 }
 
 /**
@@ -49,25 +49,25 @@ export function validarCodigoUnicoPorFinca(
   fincaId: string,
   animalesExistentes: ReadonlyArray<ReferenciaAnimal>,
 ): ResultadoValidacion {
-  const codigoNormalizado = codigo.trim();
+  const codigoNormalizado = codigo.trim()
   if (codigoNormalizado.length === 0) {
     return {
       valido: false,
       regla: "RN-001",
       detalle: "El código del animal no puede estar vacío ni contener solo espacios.",
-    };
+    }
   }
 
   const duplicado = animalesExistentes.some(
     (animal) => animal.fincaId === fincaId && animal.codigo === codigoNormalizado,
-  );
+  )
   if (duplicado) {
     return {
       valido: false,
       regla: "RN-001",
       detalle: `El código "${codigoNormalizado}" ya está registrado en la finca ${fincaId}.`,
-    };
+    }
   }
 
-  return { valido: true };
+  return { valido: true }
 }
