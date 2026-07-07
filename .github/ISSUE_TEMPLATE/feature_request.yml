@@ -1,0 +1,79 @@
+name: Feature Request
+description: Suggest a new feature or improvement for ganaweb (livestock management PWA).
+title: "[Feature]: "
+labels: ["enhancement", "status:needs-review"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      content: |
+        Thanks for proposing an enhancement.
+        ganaweb is a livestock management PWA (control ganadero) for cattle farms in Colombia.
+        Please describe the problem first, then the proposed solution.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight Checks
+      description: Please confirm both before continuing.
+      options:
+        - label: I have searched existing issues and confirmed this is not a duplicate.
+          required: true
+        - label: I understand this issue needs the `status:approved` label from a maintainer before a PR can be opened.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: What pain point does this solve? Why does it matter for the daily workflow on a farm?
+      placeholder: |
+        When recording a peso (weight) for an animal, I have to scroll through the full list of animals
+        because the search field is below the form. On a 3" phone screen with gloves on, this is hard.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this work from the user's perspective? Sketch the flow, not the implementation.
+      placeholder: |
+        Move the animal search field to the top of the peso form, sticky, with a barcode/scanner button.
+        Keep typed query and recent selections cached offline.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      description: Which layer or surface of ganaweb does this touch?
+      options:
+        - Dominio
+        - Aplicacion
+        - DB
+        - Sync
+        - UI
+        - Web App
+        - Infra/CI
+        - Documentación
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Other approaches or workarounds you have thought about, and why this proposal is better.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Mockups, reference apps, regulatory notes (e.g. ICA requirements), or links to similar features in other PWA ganaderas.
+    validations:
+      required: false

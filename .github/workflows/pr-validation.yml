@@ -1,0 +1,114 @@
+name: PR Validation
+
+# Enforce the Gentle AI workflow on ganaweb:
+#   1. PR body must contain Closes/Fixes/Resolves #N
+#   2. The linked issue must have the status:approved label
+#   3. The PR must have exactly one type:* label
+#
+# All three checks must pass before a PR is mergeable.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check-issue-reference:
+    name: Check Issue Reference
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      issue-number: ${{ steps.parse.outputs.issue-number }}
+    steps:
+      - name: Extract linked issue number from PR body
+        id: parse
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          BODY="${PR_BODY:-}"
+
+          # Match Closes #N, Fixes #N, Resolves #N (case insensitive)
+          ISSUE=$(printf '%s' "$BODY" \
+            | grep -iEo '(closes|fixes|resolves)\s+#[0-9]+' \
+            | head -n1 \
+            | grep -Eo '[0-9]+' || true)
+
+          if [ -z "$ISSUE" ]; then
+            echo "::error::PR body must contain a linked issue using 'Closes #N', 'Fixes #N', or 'Resolves #N'." >&2
+            exit 1
+          fi
+
+          echo "issue-number=$ISSUE" >> "$GITHUB_OUTPUT"
+          echo "Linked issue: #$ISSUE"
+
+  check-issue-approved:
+    name: Check Issue Has status:approved
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: check-issue-reference
+    steps:
+      - name: Verify linked issue has status:approved label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ needs.check-issue-reference.outputs.issue-number }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ISSUE_NUM:-}" ]; then
+            echo "::error::No issue number was extracted by the previous job." >&2
+            exit 1
+          fi
+
+          LABELS_JSON=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${REPO}/issues/${ISSUE_NUM}" \
+            --jq '.labels[].name')
+
+          echo "Labels on issue #${ISSUE_NUM}:"
+          printf '%s\n' "$LABELS_JSON"
+
+          if printf '%s\n' "$LABELS_JSON" | grep -Fxq "status:approved"; then
+            echo "Issue #${ISSUE_NUM} is approved."
+            exit 0
+          fi
+
+          echo "::error::Issue #${ISSUE_NUM} does not have the 'status:approved' label. Wait for a maintainer to approve the issue before this PR can be merged." >&2
+          exit 1
+
+  check-pr-type-label:
+    name: Check PR Has Exactly One type:* Label
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify PR has exactly one type:* label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          TYPE_LABELS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${REPO}/issues/${PR_NUM}" \
+            --jq '.labels[].name | select(startswith("type:"))')
+
+          if [ -z "$TYPE_LABELS" ]; then
+            echo "::error::This PR has no 'type:*' label. Add exactly one from: type:feature, type:bug, type:docs, type:refactor, type:chore, type:breaking-change." >&2
+            exit 1
+          fi
+
+          COUNT=$(printf '%s\n' "$TYPE_LABELS" | wc -l | tr -d ' ')
+
+          if [ "$COUNT" -ne 1 ]; then
+            echo "::error::This PR has $COUNT 'type:*' labels. Exactly one is required." >&2
+            printf '%s\n' "$TYPE_LABELS"
+            exit 1
+          fi
+
+          echo "PR type label: $TYPE_LABELS"
