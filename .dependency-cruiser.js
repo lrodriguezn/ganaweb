@@ -53,22 +53,24 @@ export default {
       to: { path: "^packages/db" },
     },
   ],
-  // allowed: limits which dependencies dep-cruiser considers scanning. It is a
-  // scope limiter, NOT the enforcer — anything inside the scope that is not
-  // matched by a forbidden rule simply passes.
+  // allowed: whitelist of permitted cross-package edges. Dependencies not
+  // matching any rule are reported as `not-in-allowed` (warn by default).
+  // The forbidden rules above are the hard enforcers; allowed scopes the rest.
   allowed: [
     { from: { path: "^apps/web" }, to: { path: "^packages/(aplicacion|ui|db|config)" } },
     { from: { path: "^packages/aplicacion" }, to: { path: "^packages/(dominio|sync|config)" } },
     { from: { path: "^packages/db" }, to: { path: "^packages/(aplicacion|config)" } }, // D10 edge
     { from: { path: "^packages/sync" }, to: { path: "^packages/config" } },
     { from: { path: "^packages/ui" }, to: { path: "^packages/config" } },
-    { from: { path: "^packages/dominio" }, to: { path: "^packages/config" } },
+    // dominio → config removed: dominio-to-io forbids any import outside
+    // packages/dominio or node: builtins, so this edge was dead/contradictory.
     { from: { path: "^packages/config" }, to: { path: "^packages/config" } },
   ],
   options: {
     doNotFollow: {
       path: "node_modules",
     },
+    exclude: { path: "^(docs|openspec)/" },
     enhancedResolveOptions: {
       exportsFields: ["exports"],
       conditionNames: ["import", "require", "node", "default"],
