@@ -168,8 +168,11 @@ export default {
     // TanStack Router route tree (regenerated on every build).
     // dep-cruiser does not need to scan built JS because the source
     // tree under src/ already encodes the same deps.
+    // The trailing `(?:/|$)` matches either a directory boundary (for
+    // the dir patterns) or end-of-string (for the routeTree.gen.ts file,
+    // which is a file, not a directory).
     exclude: {
-      path: "^(docs|openspec|packages/[^/]+/dist|apps/web/(dist|\\.output)|apps/web/src/routeTree\\.gen\\.ts)/",
+      path: "^(docs|openspec|packages/[^/]+/dist|apps/web/(dist|\\.output)|apps/web/src/routeTree\\.gen\\.ts)(?:/|$)",
     },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {

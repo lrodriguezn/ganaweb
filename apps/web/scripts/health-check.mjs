@@ -95,31 +95,44 @@ async function main() {
   }
 
   console.log("[health-check] === Phase 3/3: dev server + probe ===")
-  const dev = spawn("pnpm", ["--filter", "@ganaweb/web", "dev"], {
+  // Vite does not read the PORT env var — it uses vite.config.ts#server.port
+  // (hardcoded 3000). We pass the port via the CLI arg `--port` so the dev
+  // server actually binds to HEALTH_PORT instead of the config default.
+  const dev = spawn("pnpm", ["--filter", "@ganaweb/web", "dev", "--port", String(PORT)], {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, PORT: String(PORT) },
+    env: { ...process.env },
   })
 
   // Drain stdout/stderr so the child doesn't block on pipe full
   dev.stdout.on("data", (b) => process.stdout.write(`[web] ${b}`))
   dev.stderr.on("data", (b) => process.stderr.write(`[web] ${b}`))
 
+  let exitCode = 0
   try {
     const result = await waitForHealth(`http://localhost:${PORT}/api/health`, TIMEOUT_MS)
     if (!result.ok) {
       console.error(
         `[health-check] /api/health did not return 200/db:ok — status=${result.status} body=${JSON.stringify(result.body)}`,
       )
-      process.exit(1)
+      exitCode = 1
+    } else {
+      console.log(`[health-check] OK: ${JSON.stringify(result.body)}`)
     }
-    console.log(`[health-check] OK: ${JSON.stringify(result.body)}`)
+  } catch (err) {
+    console.error("[health-check] probe threw:", err)
+    exitCode = 1
   } finally {
     dev.kill("SIGTERM")
     // Give the child ~2s to exit cleanly before SIGKILL
     await wait(2000)
-    if (!dev.killed) dev.kill("SIGKILL")
+    // dev.killed is set the moment we call .kill() above, so checking it
+    // would never trigger the SIGKILL fallback. exitCode stays null while
+    // the child is still running, which is the correct "is it dead?" probe.
+    if (dev.exitCode === null) dev.kill("SIGKILL")
   }
+
+  if (exitCode !== 0) process.exit(exitCode)
 }
 
 main().catch((err) => {

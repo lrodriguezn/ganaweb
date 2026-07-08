@@ -9,7 +9,7 @@
  *   - `createFileRoute("/api/health")` (no `createServerFileRoute`, como
  *     decía el design original — la API estable de TanStack Start v1
  *     usa `server.handlers` dentro de `createFileRoute`).
- *   - `db.execute('SELECT 1')` del singleton lazy de `@ganaweb/db`.
+ *   - `db.execute(sql`SELECT 1`)` del singleton lazy de `@ganaweb/db`.
  *     El Proxy lazy garantiza que NO abrimos un pool postgres en
  *     module-load (serverless-friendly); el `execute` falla rápido
  *     si la URL es inalcanzable y la respuesta sale como 503.

@@ -18,7 +18,7 @@ export type { SyncPushPort, ResultadoEntradaPush, EntradaOutbox } from "./push-p
 export type { SyncPullPort, ResultadoPull, CursorPull, FilaCambiada } from "./pull-port.js"
 export type {
   ConflictResolverPort,
-  ResultadoConflito,
+  ResultadoConflicto,
   SnapshotConflicto,
 } from "./conflict-resolver-port.js"
 export type { EstadoVital } from "./estado-vital.js"

@@ -58,8 +58,8 @@ jobs:
       - name: Typecheck (turbo)
         run: pnpm turbo typecheck
 
-      - name: Test (turbo, con coverage en dominio)
-        run: pnpm turbo test --filter='@ganaweb/dominio' -- --coverage && pnpm turbo test --filter='!@ganaweb/dominio'
+      - name: Test (turbo, coverage solo para el gate)
+        run: pnpm turbo test --filter='@ganaweb/dominio' && pnpm turbo test --filter='!@ganaweb/dominio'
 
       - name: Build (turbo)
         run: pnpm turbo build

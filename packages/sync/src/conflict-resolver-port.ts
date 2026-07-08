@@ -29,7 +29,7 @@ export interface SnapshotConflicto<T> {
   readonly timestampEvento: string // ISO 8601
 }
 
-export interface ResultadoConflito<T> {
+export interface ResultadoConflicto<T> {
   /** Quién aporta el estado ganador tras aplicar RN-061. */
   readonly ganador: "local" | "remoto"
   readonly estado: T
@@ -42,5 +42,5 @@ export interface ConflictResolverPort<T> {
    * como tiebreaker). El genérico `T` permite usar la interfaz con
    * cualquier tipo de estado que el agregado defina.
    */
-  resolver(local: SnapshotConflicto<T>, remoto: SnapshotConflicto<T>): ResultadoConflito<T>
+  resolver(local: SnapshotConflicto<T>, remoto: SnapshotConflicto<T>): ResultadoConflicto<T>
 }
