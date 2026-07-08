@@ -35,13 +35,14 @@ import "@tanstack/react-start"
 
 import { db } from "@ganaweb/db/client"
 import { createFileRoute } from "@tanstack/react-router"
+import { sql } from "drizzle-orm"
 
 export const Route = createFileRoute("/api/health")({
   server: {
     handlers: {
       GET: async () => {
         try {
-          await db.execute("SELECT 1")
+          await db.execute(sql`SELECT 1`)
           return Response.json({ status: "ok", db: "ok" }, { status: 200 })
         } catch (_error) {
           // No propagamos el error al cliente: 503 + db:"error" es el

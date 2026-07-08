@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "tsr generate && vite build",
-    "start": "node .output/server/index.mjs",
+    "start": "node scripts/server.mjs",
     "typecheck": "tsr generate && tsc --noEmit",
     "test": "echo \"@ganaweb/web: integration via health-check script (PR5.T5)\"",
     "lint": "biome check .",
@@ -20,6 +20,7 @@
     "@ganaweb/ui": "workspace:*",
     "@tanstack/react-router": "^1.170.17",
     "@tanstack/react-start": "^1.168.27",
+    "drizzle-orm": "^0.45.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

@@ -73,5 +73,5 @@ jobs:
       - name: No-SQLite guard (online-first gate)
         run: pnpm run no-sqlite
 
-      - name: Migrate + seed + health-check (postgres service)
-        run: pnpm --filter @ganaweb/db migrate && pnpm --filter @ganaweb/db seed && pnpm --filter @ganaweb/web health-check
+      - name: Health-check (owns migrate + seed + probe, postgres service)
+        run: pnpm --filter @ganaweb/web health-check

@@ -4,7 +4,7 @@
  * Reglas RN-061 (citadas en el spec `sync-port-stub.md` Req 4):
  *   - Last-Write-Wins (LWW) por `timestampEvento` del cambio remoto/local.
  *   - Si los timestamps empatan, gana el de mayor severidad de ciclo de vida:
- *       MUERTO > VENDIDO > EN_FINCA
+ *       MUERTO (3) > VENDIDO (2) > EN_FINCA (1)
  *
  * Esta interfaz está parametrizada con `T` (el tipo de estado a resolver)
  * para ser reutilizable más allá del agregado Animal. El uso concreto
@@ -13,18 +13,16 @@
  *
  * Interfaces-only (D6): no hay algoritmo aquí; la implementación vive
  * en un PR futuro de sync y debe llegar con sus pruebas unitarias.
+ *
+ * Severidad (referencia, no exportada): la asignación numérica concreta
+ * `{ en_finca: 1, vendido: 2, muerto: 3 }` es un detalle de
+ * implementación y debe vivir en la futura implementación de sync, no
+ * en este paquete interfaces-only.
  */
 
 import type { EstadoVital } from "./estado-vital.js"
 
 export type { EstadoVital }
-
-/** Severidad de ciclo de vida: mayor número = más "terminal" = gana. */
-export const SEVERIDAD_ESTADO_VITAL: Readonly<Record<EstadoVital, number>> = {
-  en_finca: 1,
-  vendido: 2,
-  muerto: 3,
-}
 
 export interface SnapshotConflicto<T> {
   readonly estado: T

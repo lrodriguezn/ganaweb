@@ -78,11 +78,13 @@ export default {
     // guarantees apps/web never depends on the domain layer.
     { from: { path: "^apps/web/src" }, to: { path: "^node_modules" } },
     // apps/web/scripts/ uses node: builtins (node:child_process,
-    // node:timers/promises) for the health-check script (PR5.T5).
+    // node:timers/promises, node:http, node:stream) for the
+    // health-check script (PR5.T5) and the production server
+    // wrapper (PR5.T5.srv).
     {
       from: { path: "^apps/web/scripts" },
       to: {
-        path: "^(node_modules|http|https|url|child_process|timers/promises|child_process|fs|promises)$",
+        path: "^(node_modules|http|https|url|child_process|timers/promises|child_process|fs|promises|stream)$",
       },
     },
     // scripts/ at the repo root uses node: builtins (node:fs/promises,

@@ -22,4 +22,3 @@ export type {
   SnapshotConflicto,
 } from "./conflict-resolver-port.js"
 export type { EstadoVital } from "./estado-vital.js"
-export { SEVERIDAD_ESTADO_VITAL } from "./conflict-resolver-port.js"
