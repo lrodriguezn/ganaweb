@@ -28,7 +28,7 @@ The Drizzle schema MUST define `fincas` and `animales` tables sufficient to repr
 
 ### Requirement 3: Seed script
 
-`packages/db` MUST expose a runnable `seed_v3.ts` script that populates the dev database with at least one finca (zero animales per D11 — RN-001 is verified at the schema level via `uq_animales_finca_codigo`, not via seed data).
+`packages/db` MUST expose a runnable `seed-v3.ts` script that populates the dev database with at least one finca (zero animales per D11 — RN-001 is verified at the schema level via `uq_animales_finca_codigo`, not via seed data).
 
 #### Scenario: Dev database is seedable
 

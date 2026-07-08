@@ -35,11 +35,12 @@
  *   - Step order: pnpm install → biome ci → migrate → seed → test:smoke.
  */
 
+import { eq } from "drizzle-orm"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createClient } from "../src/client.js"
 import { animales, fincas } from "../src/schema/index.js"
 
-// Skip TODO el describe cuando no hay DB_SMOKE. La razón: el test
+// Skip todo el describe cuando no hay DB_SMOKE. La razón: el test
 // requiere una conexión real a Postgres (no podemos mockear el UNIQUE
 // INDEX — eso sería tautológico). En local sin Docker, el dev setea
 // DB_SMOKE=true solo cuando quiere correr el smoke.
@@ -70,18 +71,20 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
   })
 
   afterAll(async () => {
+    // Guard: si beforeAll falló (ej. DATABASE_URL ausente), db es undefined.
+    if (!db) return
+
     // Limpieza: borrar la finca borra los animales asociados por FK
     // (ON DELETE no action → falla si hay animales; limpiamos primero).
-    await db
-      .delete(animales)
-      .where(/* sql */ (await import("drizzle-orm")).eq(animales.fincaId, testFincaId))
-    await db
-      .delete(fincas)
-      .where(/* sql */ (await import("drizzle-orm")).eq(fincas.id, testFincaId))
+    await db.delete(animales).where(eq(animales.fincaId, testFincaId))
+    await db.delete(fincas).where(eq(fincas.id, testFincaId))
+
+    // Cerrar la conexión para no dejar el event loop colgado en CI.
+    await db.$client.end()
   })
 
   it("rechaza un INSERT duplicado de (fincaId, codigo) en la misma finca", async () => {
-    // Primer INSERT:合法, el animal se crea.
+    // Primer INSERT: válido, el animal se crea.
     await db.insert(animales).values({
       id: `animal-test-${crypto.randomUUID()}`,
       fincaId: testFincaId,
@@ -101,11 +104,10 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
       estadoAnimal: "activo",
     })
 
-    await expect(insertDuplicado).rejects.toThrow()
-    // Verificación adicional: el error es de unique constraint, no
-    // otro tipo de fallo (FK, type mismatch, etc).
+    // Un solo await: capturar el error y assertar sus propiedades.
     try {
       await insertDuplicado
+      expect.unreachable("El INSERT duplicado debió fallar con 23505")
     } catch (err) {
       // postgres-js throws errors with a `code` property on
       // PostgresError instances.
@@ -133,12 +135,11 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
         estadoAnimal: "activo",
       })
     } finally {
-      // Limpieza: borrar la otra finca (no tiene animales，因为我们 los borramos arriba
-      // al limpiar testFincaId; este insert es el único animal suyo).
-      await db
-        .delete(animales)
-        .where((await import("drizzle-orm")).eq(animales.fincaId, otraFincaId))
-      await db.delete(fincas).where((await import("drizzle-orm")).eq(fincas.id, otraFincaId))
+      // Limpieza: borrar la otra finca (no tiene animales porque ya
+      // los borramos arriba al limpiar testFincaId; este insert es el
+      // único animal suyo).
+      await db.delete(animales).where(eq(animales.fincaId, otraFincaId))
+      await db.delete(fincas).where(eq(fincas.id, otraFincaId))
     }
   })
 })
