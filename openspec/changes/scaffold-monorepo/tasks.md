@@ -41,11 +41,11 @@ PR1 ~250 · PR2 ~200 · PR3 ~300 · PR4 ~700 · PR5 ~250 (max 700/800).
 
 ## PR 5 `apps/web`
 
-- [ ] PR5.T1 Create `apps/web/{package.json,tsconfig.json,vite.config.ts,app.config.ts}` with @tanstack/start+vinxi; deps aplicacion,ui,db (NOT dominio); routes __root.tsx + index.tsx (AnimalCard/SyncPill/EstadoBadge from @ganaweb/ui).
-- [ ] PR5.T2 Create `src/routes/api/health.ts` (D8): `db.execute('SELECT 1')` → 200/db:"ok" or 503/db:"error". Verify TanStack Start import path.
-- [ ] PR5.T3 Create `packages/sync/src/{index.ts,push-port.ts,pull-port.ts,conflict-resolver-port.ts}` interfaces only (D6); RN-061 LWW + severity in ConflictResolverPort.
-- [ ] PR5.T4 Create `packages/aplicacion/src/{index.ts,puertos/{animal-repository-port,reloj-del-sistema-port,outbox-port}.ts}` (T-003 Spanish); EventoOutbox shape compatible with sync push.
-- [ ] PR5.T5 Create `apps/web/scripts/health-check.mjs` and `scripts/check-coverage.mjs`; activate full CI: install → biome ci → turbo typecheck → turbo test --coverage → turbo build → dependency-cruise → coverage gate → no-sqlite grep → migrate+seed+health-check (postgres:17 service).
+- [x] PR5.T1 Create `apps/web/{package.json,tsconfig.json,vite.config.ts,app.config.ts}` with @tanstack/start+vinxi; deps aplicacion,ui,db (NOT dominio); routes __root.tsx + index.tsx (AnimalCard/SyncPill/EstadoBadge from @ganaweb/ui).
+- [x] PR5.T2 Create `src/routes/api/health.ts` (D8): `db.execute('SELECT 1')` → 200/db:"ok" or 503/db:"error". Verify TanStack Start import path.
+- [x] PR5.T3 Create `packages/sync/src/{index.ts,push-port.ts,pull-port.ts,conflict-resolver-port.ts}` interfaces only (D6); RN-061 LWW + severity in ConflictResolverPort.
+- [x] PR5.T4 Create `packages/aplicacion/src/{index.ts,puertos/{animal-repository-port,reloj-del-sistema-port,outbox-port}.ts}` (T-003 Spanish); EventoOutbox shape compatible with sync push.
+- [x] PR5.T5 Create `apps/web/scripts/health-check.mjs` and `scripts/check-coverage.mjs`; activate full CI: install → biome ci → turbo typecheck → turbo test --coverage → turbo build → dependency-cruise → coverage gate → no-sqlite grep → migrate+seed+health-check (postgres:17 service).
 
 ## Verification
 
