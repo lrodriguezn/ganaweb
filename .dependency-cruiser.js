@@ -59,6 +59,13 @@ export default {
   allowed: [
     { from: { path: "^apps/web" }, to: { path: "^packages/(aplicacion|ui|db|config)" } },
     { from: { path: "^packages/aplicacion" }, to: { path: "^packages/(dominio|sync|config)" } },
+    // Intra-package edges for aplicacion: barrel (src/index.ts →
+    // src/puertos/{animal-repository-port,reloj-del-sistema-port,outbox-port}.ts).
+    // The forbidden rule `aplicacion-to-db` is the hard enforcer for
+    // inter-package boundaries; this allowed scope keeps intra-aplicacion
+    // re-exports quiet. D6 keeps this package interfaces-only — no
+    // use cases, no I/O — so the allowed scope is purely local.
+    { from: { path: "^packages/aplicacion" }, to: { path: "^packages/aplicacion" } },
     { from: { path: "^packages/db" }, to: { path: "^packages/(aplicacion|config)" } }, // D10 edge
     { from: { path: "^packages/sync" }, to: { path: "^packages/config" } },
     { from: { path: "^packages/ui" }, to: { path: "^packages/config" } },

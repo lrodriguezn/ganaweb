@@ -5,6 +5,12 @@
   "description": "GanaWeb domain layer. Zero runtime deps. Pure entities + business rules (RN/TR/PE). TDD lives here.",
   "type": "module",
   "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
   "scripts": {
     "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
     "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",

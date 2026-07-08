@@ -1,7 +1,7 @@
 {
   "extends": "@ganaweb/config/tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": ".",
+    "rootDir": "./src",
     "outDir": "dist",
     "noEmit": true
   },
