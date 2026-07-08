@@ -58,6 +58,17 @@ export default {
   // rules above are the hard enforcers; allowed scopes the rest.
   allowed: [
     { from: { path: "^apps/web" }, to: { path: "^packages/(aplicacion|ui|db|config)" } },
+    // apps/web src/ imports its runtime deps (react, react-dom,
+    // @tanstack/react-router, @tanstack/react-start) from node_modules.
+    // The forbidden rules only target package-to-package edges, so
+    // allowing src → node_modules here is purely cosmetic (suppresses
+    // `not-in-allowed` warnings) without relaxing any boundary
+    // constraint. The `web-to-dominio-direct` rule above still
+    // guarantees apps/web never depends on the domain layer.
+    { from: { path: "^apps/web/src" }, to: { path: "^node_modules" } },
+    // apps/web/scripts/ uses node: builtins (node:http, node:url) and
+    // possibly node_modules for the health-check script (PR5.T5).
+    { from: { path: "^apps/web/scripts" }, to: { path: "^(node_modules|http|https|url)$" } },
     { from: { path: "^packages/aplicacion" }, to: { path: "^packages/(dominio|sync|config)" } },
     // Intra-package edges for aplicacion: barrel (src/index.ts →
     // src/puertos/{animal-repository-port,reloj-del-sistema-port,outbox-port}.ts).
