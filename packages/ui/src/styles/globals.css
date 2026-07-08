@@ -1,0 +1,148 @@
+/* =====================================================================
+   GanaWeb — Tokens del sistema de diseño v1.2 (Tailwind CSS v4)
+   v1.2: muted con contraste AA, selección inequívoca (=primary-soft),
+   --primary-hover separado de --primary-soft-text, semántico "info",
+   dominio manejo con hue propio (azul desaturado).
+   ===================================================================== */
+@import "tailwindcss";
+
+:root {
+  --pasto-600: #2F6B3F;        /* primario */
+  --primary-hover: #245231;    /* v1.2: rol propio (antes pasto-700 doble rol) */
+  --primary-soft-text: #245231;
+  --pasto-100: #E4F0E7;
+  --on-primary: #FFFFFF;
+  --seleccion: #E4F0E7;        /* v1.2: = primary-soft; el borde primario es la señal */
+
+  --tierra-200: #E3DED5;
+  --tierra-400: #7D7466;       /* v1.2: antes #A39A8C (2,8:1) → ahora 4,6:1 AA */
+  --tierra-600: #6B6155;
+  --tierra-900: #2B2620;
+  --crema-50: #FAF8F4;
+  --superficie: #FFFFFF;
+  --muted-bg: #F1EDE6;
+  --overlay: #8A857C;
+  --brand-panel: #2F6B3F;
+
+  --exito-600: #17693F;        /* v1.2: antes #1D7A4A (4,4:1 borde) → seguro sobre exito-100 */
+  --exito-100: #DFF2E7;
+  --alerta-600: #9A6B0C;  --alerta-100: #FBF0D7;
+  --peligro-600: #B3352C; --peligro-100: #FBE5E3;
+  --info-600: #2C6E8F;    --info-100: #E3EFF5;   /* v1.2: NUEVO — notas informativas */
+
+  --dom-repro: #6D5BC7;      --dom-repro-bg: #EFEBFA;
+  --dom-sanidad: #C7643B;    --dom-sanidad-bg: #FAEBE3;
+  --dom-produccion: #1D8F74; --dom-produccion-bg: #E2F2EE;
+  --dom-manejo: #4E7A9B;     --dom-manejo-bg: #E8F0F5;  /* v1.2: hue propio */
+}
+
+.dark {
+  --pasto-600: #4C9D62;
+  --primary-hover: #5BAD70;    /* v1.2: hover que OSCURO no se aclara a pastel */
+  --primary-soft-text: #A5D8B2;
+  --pasto-100: #24352A;
+  --on-primary: #171512;
+  --seleccion: #24352A;
+
+  --tierra-200: #3A362F;
+  --tierra-400: #8C8375;       /* v1.2: antes #7A7266 (3,7:1) → 4,8:1 AA */
+  --tierra-600: #A89F92;
+  --tierra-900: #EDE9E1;
+  --crema-50: #171512;
+  --superficie: #211E1A;
+  --muted-bg: #2C2823;
+  --overlay: #0D0C0A;
+  --brand-panel: #1C3A26;
+
+  --exito-600: #4CC08A;   --exito-100: #1E3328;
+  --alerta-600: #E0A83C;  --alerta-100: #362C17;
+  --peligro-600: #E5695F; --peligro-100: #3B211F;
+  --info-600: #6FB5D6;    --info-100: #16292F;
+
+  --dom-repro: #9A8BE8;      --dom-repro-bg: #2A2540;
+  --dom-sanidad: #E08B63;    --dom-sanidad-bg: #382318;
+  --dom-produccion: #3FBF9E; --dom-produccion-bg: #16302A;
+  --dom-manejo: #7FB0CF;     --dom-manejo-bg: #1C2B36;
+}
+
+@theme inline {
+  --color-pasto-100: var(--pasto-100);
+  --color-pasto-600: var(--pasto-600);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft-text: var(--primary-soft-text);
+  --color-on-primary: var(--on-primary);
+  --color-seleccion: var(--seleccion);
+  --color-tierra-200: var(--tierra-200);
+  --color-tierra-400: var(--tierra-400);
+  --color-tierra-600: var(--tierra-600);
+  --color-tierra-900: var(--tierra-900);
+  --color-crema-50: var(--crema-50);
+  --color-overlay: var(--overlay);
+  --color-brand-panel: var(--brand-panel);
+
+  --color-exito-100: var(--exito-100);
+  --color-exito-600: var(--exito-600);
+  --color-alerta-100: var(--alerta-100);
+  --color-alerta-600: var(--alerta-600);
+  --color-peligro-100: var(--peligro-100);
+  --color-peligro-600: var(--peligro-600);
+  --color-info-100: var(--info-100);
+  --color-info-600: var(--info-600);
+
+  --color-dom-repro: var(--dom-repro);
+  --color-dom-repro-bg: var(--dom-repro-bg);
+  --color-dom-sanidad: var(--dom-sanidad);
+  --color-dom-sanidad-bg: var(--dom-sanidad-bg);
+  --color-dom-produccion: var(--dom-produccion);
+  --color-dom-produccion-bg: var(--dom-produccion-bg);
+  --color-dom-manejo: var(--dom-manejo);
+  --color-dom-manejo-bg: var(--dom-manejo-bg);
+
+  --color-background: var(--crema-50);
+  --color-foreground: var(--tierra-900);
+  --color-card: var(--superficie);
+  --color-card-foreground: var(--tierra-900);
+  --color-popover: var(--superficie);
+  --color-popover-foreground: var(--tierra-900);
+  --color-primary: var(--pasto-600);
+  --color-primary-foreground: var(--on-primary);
+  --color-secondary: var(--muted-bg);
+  --color-secondary-foreground: var(--tierra-900);
+  --color-muted: var(--muted-bg);
+  --color-muted-foreground: var(--tierra-600);
+  --color-accent: var(--pasto-100);
+  --color-accent-foreground: var(--primary-soft-text);
+  --color-destructive: var(--peligro-600);
+  --color-destructive-foreground: var(--on-primary);
+  --color-border: var(--tierra-200);
+  --color-input: var(--tierra-200);
+  --color-ring: var(--pasto-600);
+
+  --radius: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-sheet: 1rem;
+  --h-header: 3.5rem;
+  --h-bottomnav: 4rem;
+  --h-touch: 2.75rem;
+
+  --text-metric: 1.75rem;
+  --text-metric--line-height: 1.1;
+  --text-metric--font-weight: 600;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.3;
+  --text-section: 1rem;
+  --text-section--line-height: 1.4;
+  --text-support: 0.875rem;
+  --text-support--line-height: 1.45;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+.pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

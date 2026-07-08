@@ -17,8 +17,8 @@
   },
   "files": ["dist", "README.md"],
   "scripts": {
-    "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsup || echo '@ganaweb/ui: no source files yet (PR4.T1 stub)'",
-    "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo '@ganaweb/ui: no source files yet (PR4.T1 stub)'",
+    "build": "test -f src/index.ts && tsup || echo '@ganaweb/ui: barrel (src/index.ts) not yet created'",
+    "typecheck": "test -f src/index.ts && tsc --noEmit || echo '@ganaweb/ui: barrel (src/index.ts) not yet created'",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "lint": "biome check ."
