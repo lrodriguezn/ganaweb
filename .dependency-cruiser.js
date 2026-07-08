@@ -88,6 +88,19 @@ export default {
     // cosmetic (suppresses `not-in-allowed` warnings) without relaxing
     // any boundary constraint.
     { from: { path: "^packages/db/src" }, to: { path: "^node_modules" } },
+    // Intra-package edges for ui: barrel (src/index.ts → src/ganado/* +
+    // src/primitives/* + src/lib/utils.ts), components → primitives + utils,
+    // tests → src. The forbidden rule `ui-to-dominio` is the hard enforcer
+    // for inter-package boundaries; this allowed scope keeps intra-ui
+    // re-exports and tooling imports quiet.
+    { from: { path: "^packages/ui" }, to: { path: "^packages/ui" } },
+    // ui src/ imports its runtime deps (@radix-ui/*, cva, clsx, tailwind-merge,
+    // lucide-react, vaul) from node_modules. The forbidden rules only target
+    // package-to-package edges, so allowing src → node_modules here is
+    // purely cosmetic (suppresses `not-in-allowed` warnings) without
+    // relaxing any boundary constraint. The `ui-to-dominio` rule above
+    // still guarantees ui never depends on the domain layer.
+    { from: { path: "^packages/ui/src" }, to: { path: "^node_modules" } },
   ],
   options: {
     doNotFollow: {
