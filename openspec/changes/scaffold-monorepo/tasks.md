@@ -33,11 +33,11 @@ PR1 ~250 · PR2 ~200 · PR3 ~300 · PR4 ~700 · PR5 ~250 (max 700/800).
 
 ## PR 4 `packages/ui`
 
-- [ ] PR4.T1 Create `packages/ui/{package.json,tsconfig.json}` deps cva/clsx/tailwind-merge/lucide-react/@radix-ui/*; peerDeps react/react-dom/tailwindcss; `tsup.config.ts` (format:['esm'], dts:true).
-- [ ] PR4.T2 Migrate `src/styles/globals.css` verbatim (Tailwind v4 @theme inline; .dark block kept; T-004) and `src/lib/utils.ts` (cn()).
-- [ ] PR4.T3 Vendor 8 shadcn primitives into `src/primitives/` (button/input/label/select/drawer/dropdown-menu/alert-dialog/collapsible) per D1.
-- [ ] PR4.T4 Migrate all 13 `ganado/` components (10 top-level + event-drawer/{index,formulario-vacuna} + types.ts); rewrite imports `@/lib/utils`→`../lib/utils`, `@/components/ui/*`→`../primitives/*`.
-- [ ] PR4.T5 Create `src/index.ts` barrel and `tests/tokens.test.ts` asserting --color-primary/--color-background/--color-ring present and dark: count === 0 in src/** (T-004).
+- [x] PR4.T1 Create `packages/ui/{package.json,tsconfig.json}` deps cva/clsx/tailwind-merge/lucide-react/@radix-ui/*; peerDeps react/react-dom/tailwindcss; `tsup.config.ts` (format:['esm'], dts:true).
+- [x] PR4.T2 Migrate `src/styles/globals.css` verbatim (Tailwind v4 @theme inline; .dark block kept; T-004) and `src/lib/utils.ts` (cn()).
+- [x] PR4.T3 Vendor 8 shadcn primitives into `src/primitives/` (button/input/label/select/drawer/dropdown-menu/alert-dialog/collapsible) per D1.
+- [x] PR4.T4 Migrate all 12 `ganado/` components (10 top-level + event-drawer/{index,formulario-vacuna} + types.ts); rewrite imports `@/lib/utils`→`../lib/utils`, `@/components/ui/*`→`../primitives/*`.
+- [x] PR4.T5 Create `src/index.ts` barrel and `tests/tokens.test.ts` asserting --color-primary/--color-background/--color-ring present and dark: count === 0 in src/** (T-004).
 
 ## PR 5 `apps/web`
 
