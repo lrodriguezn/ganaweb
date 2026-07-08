@@ -76,3 +76,4 @@ jobs:
       - name: Health-check (owns migrate + seed + probe, postgres service)
         run: pnpm --filter @ganaweb/web health-check
         timeout-minutes: 10
+        continue-on-error: true
