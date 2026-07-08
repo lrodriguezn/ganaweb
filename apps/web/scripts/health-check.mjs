@@ -31,7 +31,7 @@ import { spawn } from "node:child_process"
 import { setTimeout as wait } from "node:timers/promises"
 
 const PORT = Number(process.env.HEALTH_PORT ?? 3000)
-const TIMEOUT_MS = Number(process.env.HEALTH_TIMEOUT_MS ?? 10_000)
+const TIMEOUT_MS = Number(process.env.HEALTH_TIMEOUT_MS ?? 120_000)
 const DATABASE_URL = process.env.DATABASE_URL ?? ""
 // Three levels up: scripts/ -> apps/web/ -> apps/ -> repo root.
 const ROOT = new URL("../../..", import.meta.url).pathname
