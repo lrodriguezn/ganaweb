@@ -108,6 +108,14 @@ export default {
     // pattern matches the resolved name. Add more names here only if
     // the test starts using new node: builtins.
     { from: { path: "^packages/ui/tests" }, to: { path: "^(fs|path|url)$" } },
+    // Intra-package edges for sync: barrel (src/index.ts →
+    // src/{push-port,pull-port,conflict-resolver-port,estado-vital}.ts)
+    // and conflict-resolver → estado-vital. The forbidden rule
+    // `sync-to-db` is the hard enforcer for inter-package boundaries;
+    // this allowed scope keeps intra-sync re-exports quiet. D6 keeps
+    // this package interfaces-only — no I/O, no network — so the
+    // allowed scope is purely local.
+    { from: { path: "^packages/sync" }, to: { path: "^packages/sync" } },
   ],
   options: {
     doNotFollow: {
