@@ -1,0 +1,172 @@
+/* =====================================================================
+   GanaWeb — Tokens del sistema de diseño v1.2 (Tailwind CSS v4)
+   v1.2: muted con contraste AA, selección inequívoca (=primary-soft),
+   --primary-hover separado de --primary-soft-text, semántico "info",
+   dominio manejo con hue propio (azul desaturado).
+   ===================================================================== */
+@import "tailwindcss";
+
+:root {
+  --pasto-600: #2f6b3f; /* primario */
+  --pasto-700: #1e3f29; /* JD R1: chip text sobre bg-pasto-100, AA sobre crema */
+  --primary-hover: #245231; /* v1.2: rol propio (antes pasto-700 doble rol) */
+  --primary-soft-text: #245231;
+  --pasto-100: #e4f0e7;
+  --on-primary: #ffffff;
+  --seleccion: #e4f0e7; /* v1.2: = primary-soft; el borde primario es la señal */
+
+  --tierra-200: #e3ded5;
+  --tierra-400: #7d7466; /* v1.2: antes #A39A8C (2,8:1) → ahora 4,6:1 AA */
+  --tierra-600: #6b6155;
+  --tierra-900: #2b2620;
+  --crema-50: #faf8f4;
+  --superficie: #ffffff;
+  --muted-bg: #f1ede6;
+  --overlay: #8a857c;
+  --brand-panel: #2f6b3f;
+
+  --exito-600: #17693f; /* v1.2: antes #1D7A4A (4,4:1 borde) → seguro sobre exito-100 */
+  --exito-100: #dff2e7;
+  --alerta-600: #9a6b0c;
+  --alerta-100: #fbf0d7;
+  --peligro-600: #b3352c;
+  --peligro-100: #fbe5e3;
+  --info-600: #2c6e8f;
+  --info-100: #e3eff5; /* v1.2: NUEVO — notas informativas */
+
+  --dom-repro: #6d5bc7;
+  --dom-repro-bg: #efebfa;
+  --dom-sanidad: #c7643b;
+  --dom-sanidad-bg: #faebe3;
+  --dom-produccion: #1d8f74;
+  --dom-produccion-bg: #e2f2ee;
+  --dom-manejo: #4e7a9b;
+  --dom-manejo-bg: #e8f0f5; /* v1.2: hue propio */
+}
+
+.dark {
+  --pasto-600: #4c9d62;
+  --pasto-700: #a5d8b2; /* JD R1: chip text sobre bg-pasto-100 oscuro */
+  --primary-hover: #5bad70; /* v1.2: hover que OSCURO no se aclara a pastel */
+  --primary-soft-text: #a5d8b2;
+  --pasto-100: #24352a;
+  --on-primary: #171512;
+  --seleccion: #24352a;
+
+  --tierra-200: #3a362f;
+  --tierra-400: #8c8375; /* v1.2: antes #7A7266 (3,7:1) → 4,8:1 AA */
+  --tierra-600: #a89f92;
+  --tierra-900: #ede9e1;
+  --crema-50: #171512;
+  --superficie: #211e1a;
+  --muted-bg: #2c2823;
+  --overlay: #0d0c0a;
+  --brand-panel: #1c3a26;
+
+  --exito-600: #4cc08a;
+  --exito-100: #1e3328;
+  --alerta-600: #e0a83c;
+  --alerta-100: #362c17;
+  --peligro-600: #e5695f;
+  --peligro-100: #3b211f;
+  --info-600: #6fb5d6;
+  --info-100: #16292f;
+
+  --dom-repro: #9a8be8;
+  --dom-repro-bg: #2a2540;
+  --dom-sanidad: #e08b63;
+  --dom-sanidad-bg: #382318;
+  --dom-produccion: #3fbf9e;
+  --dom-produccion-bg: #16302a;
+  --dom-manejo: #7fb0cf;
+  --dom-manejo-bg: #1c2b36;
+}
+
+@theme inline {
+  --color-pasto-100: var(--pasto-100);
+  --color-pasto-600: var(--pasto-600);
+  --color-pasto-700: var(--pasto-700);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft-text: var(--primary-soft-text);
+  --color-on-primary: var(--on-primary);
+  --color-seleccion: var(--seleccion);
+  --color-tierra-200: var(--tierra-200);
+  --color-tierra-400: var(--tierra-400);
+  --color-tierra-600: var(--tierra-600);
+  --color-tierra-900: var(--tierra-900);
+  --color-crema-50: var(--crema-50);
+  --color-overlay: var(--overlay);
+  --color-brand-panel: var(--brand-panel);
+
+  --color-exito-100: var(--exito-100);
+  --color-exito-600: var(--exito-600);
+  --color-alerta-100: var(--alerta-100);
+  --color-alerta-600: var(--alerta-600);
+  --color-peligro-100: var(--peligro-100);
+  --color-peligro-600: var(--peligro-600);
+  --color-info-100: var(--info-100);
+  --color-info-600: var(--info-600);
+
+  --color-dom-repro: var(--dom-repro);
+  --color-dom-repro-bg: var(--dom-repro-bg);
+  --color-dom-sanidad: var(--dom-sanidad);
+  --color-dom-sanidad-bg: var(--dom-sanidad-bg);
+  --color-dom-produccion: var(--dom-produccion);
+  --color-dom-produccion-bg: var(--dom-produccion-bg);
+  --color-dom-manejo: var(--dom-manejo);
+  --color-dom-manejo-bg: var(--dom-manejo-bg);
+
+  --color-background: var(--crema-50);
+  --color-foreground: var(--tierra-900);
+  --color-card: var(--superficie);
+  --color-card-foreground: var(--tierra-900);
+  --color-popover: var(--superficie);
+  --color-popover-foreground: var(--tierra-900);
+  --color-primary: var(--pasto-600);
+  --color-primary-foreground: var(--on-primary);
+  --color-secondary: var(--muted-bg);
+  --color-secondary-foreground: var(--tierra-900);
+  --color-muted: var(--muted-bg);
+  --color-muted-foreground: var(--tierra-600);
+  --color-accent: var(--pasto-100);
+  --color-accent-foreground: var(--primary-soft-text);
+  --color-destructive: var(--peligro-600);
+  --color-destructive-foreground: var(--on-primary);
+  --color-border: var(--tierra-200);
+  --color-input: var(--tierra-200);
+  --color-ring: var(--pasto-600);
+
+  --radius: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-sheet: 1rem;
+  --h-header: 3.5rem;
+  --h-bottomnav: 4rem;
+  --h-touch: 2.75rem;
+
+  --text-metric: 1.75rem;
+  --text-metric--line-height: 1.1;
+  --text-metric--font-weight: 600;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.3;
+  --text-section: 1rem;
+  --text-section--line-height: 1.4;
+  --text-support: 0.875rem;
+  --text-support--line-height: 1.45;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
