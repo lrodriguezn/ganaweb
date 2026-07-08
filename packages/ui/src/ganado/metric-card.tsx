@@ -1,4 +1,4 @@
-import { cn } from "../lib/utils";
+import { cn } from "../lib/utils"
 
 /**
  * MetricCard — cifra de dashboard con un solo dato dominante.
@@ -6,14 +6,14 @@ import { cn } from "../lib/utils";
  * botón que lleva a la vista filtrada (los filtros viven en la URL).
  */
 export interface MetricCardProps {
-  label: string;
-  value: string | number;
-  context?: string;
-  contextTone?: "exito" | "alerta" | "peligro" | "info" | "neutral";
-  critical?: boolean;
+  label: string
+  value: string | number
+  context?: string
+  contextTone?: "exito" | "alerta" | "peligro" | "info" | "neutral"
+  critical?: boolean
   /** v1.2: convierte la card en botón (navegar a la vista filtrada) */
-  onPress?: () => void;
-  className?: string;
+  onPress?: () => void
+  className?: string
 }
 
 const CONTEXT_TONE: Record<NonNullable<MetricCardProps["contextTone"]>, string> = {
@@ -22,7 +22,7 @@ const CONTEXT_TONE: Record<NonNullable<MetricCardProps["contextTone"]>, string> 
   peligro: "text-peligro-600",
   info: "text-info-600",
   neutral: "text-muted-foreground",
-};
+}
 
 export function MetricCard({
   label,
@@ -36,12 +36,7 @@ export function MetricCard({
   const contenido = (
     <>
       <p className="text-caption font-medium text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          "text-metric num mt-1",
-          critical ? "text-peligro-600" : "text-foreground",
-        )}
-      >
+      <p className={cn("text-metric num mt-1", critical ? "text-peligro-600" : "text-foreground")}>
         {value}
         {context && (
           <span className={cn("text-support font-normal ms-1.5", CONTEXT_TONE[contextTone])}>
@@ -50,9 +45,9 @@ export function MetricCard({
         )}
       </p>
     </>
-  );
+  )
 
-  const base = "rounded-card border bg-card p-4 text-left w-full";
+  const base = "rounded-card border bg-card p-4 text-left w-full"
 
   if (onPress) {
     return (
@@ -68,9 +63,9 @@ export function MetricCard({
       >
         {contenido}
       </button>
-    );
+    )
   }
-  return <div className={cn(base, className)}>{contenido}</div>;
+  return <div className={cn(base, className)}>{contenido}</div>
 }
 
 export function MetricCardSkeleton({ className }: { className?: string }) {
@@ -79,5 +74,5 @@ export function MetricCardSkeleton({ className }: { className?: string }) {
       <div className="h-3 w-20 rounded bg-muted animate-pulse" />
       <div className="mt-2 h-7 w-16 rounded bg-muted animate-pulse" />
     </div>
-  );
+  )
 }

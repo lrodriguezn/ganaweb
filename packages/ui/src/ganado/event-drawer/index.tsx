@@ -1,15 +1,10 @@
-import { useState } from "react";
-import { Baby, Hand, Heart, Milk, Scale, Syringe } from "lucide-react";
+import { Baby, Hand, Heart, Milk, Scale, Syringe } from "lucide-react"
+import { useState } from "react"
 
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "../../primitives/drawer";
-import { cn } from "../../lib/utils";
-import type { AnimalResumen, TipoEvento } from "../types";
-import { FormularioVacuna } from "./formulario-vacuna";
+import { cn } from "../../lib/utils"
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "../../primitives/drawer"
+import type { AnimalResumen, TipoEvento } from "../types"
+import { FormularioVacuna } from "./formulario-vacuna"
 
 /**
  * EventDrawer — registro rápido de eventos para 1..N animales.
@@ -25,36 +20,46 @@ import { FormularioVacuna } from "./formulario-vacuna";
  */
 
 const TIPOS: Array<{
-  tipo: TipoEvento;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  domClass: string; // color de dominio del ícono
+  tipo: TipoEvento
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  domClass: string // color de dominio del ícono
 }> = [
   { tipo: "peso", label: "Peso", icon: Scale, domClass: "text-dom-manejo bg-dom-manejo-bg" },
-  { tipo: "vacuna", label: "Vacuna", icon: Syringe, domClass: "text-dom-sanidad bg-dom-sanidad-bg" },
+  {
+    tipo: "vacuna",
+    label: "Vacuna",
+    icon: Syringe,
+    domClass: "text-dom-sanidad bg-dom-sanidad-bg",
+  },
   { tipo: "servicio", label: "Servicio", icon: Heart, domClass: "text-dom-repro bg-dom-repro-bg" },
   { tipo: "palpacion", label: "Palpación", icon: Hand, domClass: "text-dom-repro bg-dom-repro-bg" },
   { tipo: "parto", label: "Parto", icon: Baby, domClass: "text-dom-repro bg-dom-repro-bg" },
-  { tipo: "produccion", label: "Producción", icon: Milk, domClass: "text-dom-produccion bg-dom-produccion-bg" },
-];
+  {
+    tipo: "produccion",
+    label: "Producción",
+    icon: Milk,
+    domClass: "text-dom-produccion bg-dom-produccion-bg",
+  },
+]
 
-type Paso = "tipo" | "alcance" | "formulario";
+type Paso = "tipo" | "alcance" | "formulario"
 
 export interface EventDrawerProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
   /** Animales ya elegidos (ficha o selección múltiple): salta al paso 3 */
-  animalesPreseleccionados?: AnimalResumen[];
+  animalesPreseleccionados?: AnimalResumen[]
   /** Tipo ya elegido (ej. desde alerta de refuerzos): salta el paso 1 */
-  tipoPreseleccionado?: TipoEvento;
+  tipoPreseleccionado?: TipoEvento
   /** Callback al confirmar: el padre inserta en la cola local + outbox */
   onGuardar: (payload: {
-    tipo: TipoEvento;
-    animales: AnimalResumen[];
-    datos: Record<string, unknown>;
-  }) => Promise<void>;
+    tipo: TipoEvento
+    animales: AnimalResumen[]
+    datos: Record<string, unknown>
+  }) => Promise<void>
   /** Loader de animales por lote — leído de la réplica del dispositivo, no de red */
-  cargarAnimalesDeLote?: (loteId: string) => Promise<AnimalResumen[]>;
+  cargarAnimalesDeLote?: (loteId: string) => Promise<AnimalResumen[]>
 }
 
 export function EventDrawer({
@@ -64,31 +69,26 @@ export function EventDrawer({
   tipoPreseleccionado,
   onGuardar,
 }: EventDrawerProps) {
-  const preseleccion = Boolean(animalesPreseleccionados?.length);
-  const [tipo, setTipo] = useState<TipoEvento | undefined>(tipoPreseleccionado);
-  const [animales, setAnimales] = useState<AnimalResumen[]>(
-    animalesPreseleccionados ?? [],
-  );
+  const preseleccion = Boolean(animalesPreseleccionados?.length)
+  const [tipo, setTipo] = useState<TipoEvento | undefined>(tipoPreseleccionado)
+  const [animales, setAnimales] = useState<AnimalResumen[]>(animalesPreseleccionados ?? [])
 
-  const paso: Paso = !tipo ? "tipo" : animales.length === 0 ? "alcance" : "formulario";
+  const paso: Paso = !tipo ? "tipo" : animales.length === 0 ? "alcance" : "formulario"
 
   const reset = () => {
-    if (!preseleccion) setAnimales([]);
-    if (!tipoPreseleccionado) setTipo(undefined);
-  };
+    if (!preseleccion) setAnimales([])
+    if (!tipoPreseleccionado) setTipo(undefined)
+  }
 
   const handleOpenChange = (next: boolean) => {
-    if (!next) reset();
-    onOpenChange(next);
-  };
+    if (!next) reset()
+    onOpenChange(next)
+  }
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
       <DrawerContent
-        className={cn(
-          "rounded-t-sheet",
-          paso === "formulario" ? "h-[90vh]" : "h-[50vh]",
-        )}
+        className={cn("rounded-t-sheet", paso === "formulario" ? "h-[90vh]" : "h-[50vh]")}
       >
         {paso === "tipo" && (
           <>
@@ -108,10 +108,7 @@ export function EventDrawer({
                   )}
                 >
                   <span
-                    className={cn(
-                      "size-9 rounded-full flex items-center justify-center",
-                      domClass,
-                    )}
+                    className={cn("size-9 rounded-full flex items-center justify-center", domClass)}
                   >
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
@@ -130,8 +127,8 @@ export function EventDrawer({
           <FormularioVacuna
             animales={animales}
             onGuardar={async (datos) => {
-              await onGuardar({ tipo: "vacuna", animales, datos });
-              handleOpenChange(false);
+              await onGuardar({ tipo: "vacuna", animales, datos })
+              handleOpenChange(false)
             }}
             {...(preseleccion ? {} : { onVolver: () => setAnimales([]) })}
           />
@@ -141,7 +138,7 @@ export function EventDrawer({
             {paso === "formulario" && tipo === "peso" && <FormularioPeso .../>} */}
       </DrawerContent>
     </Drawer>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -150,11 +147,11 @@ export function EventDrawer({
 /* del dispositivo de lotes/animales.                                  */
 /* ------------------------------------------------------------------ */
 function PasoAlcance({
-  onSeleccion,
+  onSeleccion: _onSeleccion,
   onVolver,
 }: {
-  onSeleccion: (animales: AnimalResumen[]) => void;
-  onVolver: () => void;
+  onSeleccion: (animales: AnimalResumen[]) => void
+  onVolver: () => void
 }) {
   return (
     <>
@@ -167,17 +164,13 @@ function PasoAlcance({
             animales, y Command de búsqueda por código para el caso
             individual. Al confirmar: onSeleccion(animalesDelLote). */}
         <p className="text-support text-muted-foreground">
-          Selector de lote/potrero o búsqueda por código — conectar a la
-          réplica del dispositivo (nunca a red).
+          Selector de lote/potrero o búsqueda por código — conectar a la réplica del dispositivo
+          (nunca a red).
         </p>
-        <button
-          type="button"
-          onClick={onVolver}
-          className="text-support text-primary font-medium"
-        >
+        <button type="button" onClick={onVolver} className="text-support text-primary font-medium">
           ‹ Cambiar tipo de evento
         </button>
       </div>
     </>
-  );
+  )
 }

@@ -101,12 +101,22 @@ export default {
     // relaxing any boundary constraint. The `ui-to-dominio` rule above
     // still guarantees ui never depends on the domain layer.
     { from: { path: "^packages/ui/src" }, to: { path: "^node_modules" } },
+    // ui tests/ use node: builtins (node:fs, node:path, node:url) to read
+    // source files for the T-004 token-presence + no-dark-variant guard.
+    // dep-cruiser resolves the protocol-prefixed specifier to its bare
+    // name (resolved: "fs", "path", "url"; protocol: "node:"); the
+    // pattern matches the resolved name. Add more names here only if
+    // the test starts using new node: builtins.
+    { from: { path: "^packages/ui/tests" }, to: { path: "^(fs|path|url)$" } },
   ],
   options: {
     doNotFollow: {
       path: "node_modules",
     },
-    exclude: { path: "^(docs|openspec)/" },
+    // Exclude build outputs (dist/), docs/ (reference code), and openspec/
+    // (change artifacts). dep-cruiser does not need to scan built JS
+    // because the source tree under src/ already encodes the same deps.
+    exclude: { path: "^(docs|openspec|packages/[^/]+/dist)/" },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {
       exportsFields: ["exports"],

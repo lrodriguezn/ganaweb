@@ -1,24 +1,20 @@
-import { useMemo, useState } from "react";
-import { Check, ChevronDown, Square } from "lucide-react";
+import { Check, ChevronDown, Square } from "lucide-react"
+import { useMemo, useState } from "react"
 
-import { Button } from "../../primitives/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "../../primitives/collapsible";
-import { DrawerHeader, DrawerTitle } from "../../primitives/drawer";
-import { Input } from "../../primitives/input";
-import { Label } from "../../primitives/label";
+import { cn } from "../../lib/utils"
+import { Button } from "../../primitives/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../primitives/collapsible"
+import { DrawerHeader, DrawerTitle } from "../../primitives/drawer"
+import { Input } from "../../primitives/input"
+import { Label } from "../../primitives/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../primitives/select";
-import { cn } from "../../lib/utils";
-import type { AnimalResumen } from "../types";
+} from "../../primitives/select"
+import type { AnimalResumen } from "../types"
 
 /**
  * FormularioVacuna — paso 3 del EventDrawer para vacunas/tratamientos.
@@ -34,30 +30,30 @@ import type { AnimalResumen } from "../types";
  */
 
 export interface ProductoSanitario {
-  id: string;
-  descripcion: string;
-  mlPorDosis?: number | null;
-  dosisDisponibles: number;
+  id: string
+  descripcion: string
+  mlPorDosis?: number | null
+  dosisDisponibles: number
 }
 
 const ATAJOS_PROXIMA = [
   { label: "+21 días", dias: 21 },
   { label: "+6 meses", dias: 182 },
   { label: "+1 año", dias: 365 },
-] as const;
+] as const
 
 export interface FormularioVacunaProps {
-  animales: AnimalResumen[];
+  animales: AnimalResumen[]
   /** Catálogo desde la réplica del dispositivo — nunca de red */
-  productos?: ProductoSanitario[];
+  productos?: ProductoSanitario[]
   onGuardar: (datos: {
-    productoId: string;
-    dosis: number;
-    proximaDosis: string | null; // ISO date
-    comentarios?: string;
-    animalesIds: string[];
-  }) => Promise<void>;
-  onVolver?: () => void;
+    productoId: string
+    dosis: number
+    proximaDosis: string | null // ISO date
+    comentarios?: string
+    animalesIds: string[]
+  }) => Promise<void>
+  onVolver?: () => void
 }
 
 export function FormularioVacuna({
@@ -66,44 +62,40 @@ export function FormularioVacuna({
   onGuardar,
   onVolver,
 }: FormularioVacunaProps) {
-  const [productoId, setProductoId] = useState<string | undefined>(undefined);
-  const [dosis, setDosis] = useState("1");
-  const [proximaDias, setProximaDias] = useState<number | null>(182);
-  const [comentarios, setComentarios] = useState("");
-  const [guardando, setGuardando] = useState(false);
-  const [seleccion, setSeleccion] = useState<Set<string>>(
-    () => new Set(animales.map((a) => a.id)),
-  );
+  const [productoId, setProductoId] = useState<string | undefined>(undefined)
+  const [dosis, setDosis] = useState("1")
+  const [proximaDias, setProximaDias] = useState<number | null>(182)
+  const [comentarios, setComentarios] = useState("")
+  const [guardando, setGuardando] = useState(false)
+  const [seleccion, setSeleccion] = useState<Set<string>>(() => new Set(animales.map((a) => a.id)))
 
-  const producto = productos.find((p) => p.id === productoId);
-  const total = seleccion.size;
-  const todosSeleccionados = total === animales.length;
+  const producto = productos.find((p) => p.id === productoId)
+  const total = seleccion.size
+  const todosSeleccionados = total === animales.length
 
   const proximaDosisISO = useMemo(() => {
-    if (proximaDias === null) return null;
-    const fecha = new Date();
-    fecha.setDate(fecha.getDate() + proximaDias);
-    return fecha.toISOString().slice(0, 10);
-  }, [proximaDias]);
+    if (proximaDias === null) return null
+    const fecha = new Date()
+    fecha.setDate(fecha.getDate() + proximaDias)
+    return fecha.toISOString().slice(0, 10)
+  }, [proximaDias])
 
   const toggleAnimal = (id: string) =>
     setSeleccion((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   const toggleTodos = () =>
-    setSeleccion(
-      todosSeleccionados ? new Set() : new Set(animales.map((a) => a.id)),
-    );
+    setSeleccion(todosSeleccionados ? new Set() : new Set(animales.map((a) => a.id)))
 
-  const puedeGuardar = Boolean(productoId) && total > 0 && !guardando;
+  const puedeGuardar = Boolean(productoId) && total > 0 && !guardando
 
   const handleGuardar = async () => {
-    if (!productoId) return;
-    setGuardando(true);
+    if (!productoId) return
+    setGuardando(true)
     try {
       await onGuardar({
         productoId,
@@ -111,11 +103,11 @@ export function FormularioVacuna({
         proximaDosis: proximaDosisISO,
         ...(comentarios ? { comentarios } : {}),
         animalesIds: [...seleccion],
-      });
+      })
     } finally {
-      setGuardando(false);
+      setGuardando(false)
     }
-  };
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -151,15 +143,9 @@ export function FormularioVacuna({
             </SelectTrigger>
             <SelectContent>
               {productos.map((p) => (
-                <SelectItem
-                  key={p.id}
-                  value={p.id}
-                  disabled={p.dosisDisponibles <= 0}
-                >
+                <SelectItem key={p.id} value={p.id} disabled={p.dosisDisponibles <= 0}>
                   {p.descripcion}
-                  {p.dosisDisponibles <= 0
-                    ? " — Agotado"
-                    : ` — ${p.dosisDisponibles} dosis`}
+                  {p.dosisDisponibles <= 0 ? " — Agotado" : ` — ${p.dosisDisponibles} dosis`}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -190,9 +176,7 @@ export function FormularioVacuna({
                 <button
                   key={dias}
                   type="button"
-                  onClick={() =>
-                    setProximaDias(proximaDias === dias ? null : dias)
-                  }
+                  onClick={() => setProximaDias(proximaDias === dias ? null : dias)}
                   aria-pressed={proximaDias === dias}
                   className={cn(
                     "rounded-full px-2.5 py-1.5 text-caption font-medium border",
@@ -230,9 +214,7 @@ export function FormularioVacuna({
         {/* Selección por animal */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-support font-medium">
-              Animales ({animales.length})
-            </span>
+            <span className="text-support font-medium">Animales ({animales.length})</span>
             <button
               type="button"
               onClick={toggleTodos}
@@ -243,7 +225,7 @@ export function FormularioVacuna({
           </div>
           <ul className="space-y-1.5">
             {animales.map((animal) => {
-              const activo = seleccion.has(animal.id);
+              const activo = seleccion.has(animal.id)
               return (
                 <li key={animal.id}>
                   <button
@@ -265,14 +247,11 @@ export function FormularioVacuna({
                     {activo ? (
                       <Check aria-hidden="true" className="size-4 text-pasto-600" />
                     ) : (
-                      <Square
-                        aria-hidden="true"
-                        className="size-4 text-muted-foreground"
-                      />
+                      <Square aria-hidden="true" className="size-4 text-muted-foreground" />
                     )}
                   </button>
                 </li>
-              );
+              )
             })}
           </ul>
         </div>
@@ -285,14 +264,12 @@ export function FormularioVacuna({
           disabled={!puedeGuardar}
           onClick={handleGuardar}
         >
-          {guardando
-            ? "Guardando…"
-            : `Guardar ${total} ${total === 1 ? "registro" : "registros"}`}
+          {guardando ? "Guardando…" : `Guardar ${total} ${total === 1 ? "registro" : "registros"}`}
         </Button>
         <p className="text-center text-caption text-muted-foreground mt-1.5">
           Se sincronizará al recuperar señal
         </p>
       </div>
     </div>
-  );
+  )
 }

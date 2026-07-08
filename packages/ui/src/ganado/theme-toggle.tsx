@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react"
+import { useEffect, useState } from "react"
 
-import { cn } from "../lib/utils";
+import { cn } from "../lib/utils"
 
 /**
  * ThemeToggle — alterna claro/oscuro agregando/quitando `dark` en <html>.
@@ -16,23 +16,21 @@ import { cn } from "../lib/utils";
  *       document.documentElement.classList.add("dark");
  *   </script>
  */
-const STORAGE_KEY = "ganaweb-theme";
+const STORAGE_KEY = "ganaweb-theme"
 
 export function ThemeToggle({ className }: { className?: string }) {
   const [dark, setDark] = useState<boolean>(() =>
-    typeof document !== "undefined"
-      ? document.documentElement.classList.contains("dark")
-      : false,
-  );
+    typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false,
+  )
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
+    document.documentElement.classList.toggle("dark", dark)
     try {
-      localStorage.setItem(STORAGE_KEY, dark ? "dark" : "light");
+      localStorage.setItem(STORAGE_KEY, dark ? "dark" : "light")
     } catch {
       /* almacenamiento no disponible: la preferencia dura la sesión */
     }
-  }, [dark]);
+  }, [dark])
 
   return (
     <button
@@ -52,5 +50,5 @@ export function ThemeToggle({ className }: { className?: string }) {
         <Moon aria-hidden="true" className="size-4" />
       )}
     </button>
-  );
+  )
 }

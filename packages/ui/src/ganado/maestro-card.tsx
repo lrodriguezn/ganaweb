@@ -1,7 +1,7 @@
-import { AlertCircle, ChevronRight } from "lucide-react";
+import { AlertCircle, ChevronRight } from "lucide-react"
 
-import { cn } from "../lib/utils";
-import type { MaestroResumen } from "./types";
+import { cn } from "../lib/utils"
+import type { MaestroResumen } from "./types"
 
 /**
  * MaestroCard / MaestroGrid — índice de Configuración.
@@ -18,12 +18,12 @@ export function MaestroCard({
   onPress,
   className,
 }: {
-  maestro: MaestroResumen;
-  onPress: (m: MaestroResumen) => void;
-  className?: string;
+  maestro: MaestroResumen
+  onPress: (m: MaestroResumen) => void
+  className?: string
 }) {
-  const vacio = maestro.registros === 0;
-  const bloqueante = vacio && Boolean(maestro.requeridoPara);
+  const vacio = maestro.registros === 0
+  const bloqueante = vacio && Boolean(maestro.requeridoPara)
   return (
     <button
       type="button"
@@ -36,9 +36,7 @@ export function MaestroCard({
       )}
     >
       <span className="flex-1 min-w-0">
-        <span className="block text-support font-medium truncate">
-          {maestro.nombre}
-        </span>
+        <span className="block text-support font-medium truncate">{maestro.nombre}</span>
         {bloqueante ? (
           <span className="flex items-center gap-1 text-caption text-peligro-600 mt-0.5">
             <AlertCircle aria-hidden="true" className="size-3" />
@@ -46,34 +44,39 @@ export function MaestroCard({
           </span>
         ) : (
           <span className="block text-caption text-muted-foreground mt-0.5 num">
-            {vacio ? "Vacío" : `${maestro.registros} ${maestro.registros === 1 ? "registro" : "registros"}`}
+            {vacio
+              ? "Vacío"
+              : `${maestro.registros} ${maestro.registros === 1 ? "registro" : "registros"}`}
           </span>
         )}
       </span>
-      <ChevronRight aria-hidden="true" className="size-4 text-muted-foreground shrink-0 md:hidden" />
+      <ChevronRight
+        aria-hidden="true"
+        className="size-4 text-muted-foreground shrink-0 md:hidden"
+      />
     </button>
-  );
+  )
 }
 
 const GRUPO_LABEL: Record<MaestroResumen["grupo"], string> = {
   personas: "Personas",
   ubicacion: "Ubicación",
   clasificacion: "Clasificación y comerciales",
-};
+}
 
 export function MaestroGrid({
   maestros,
   onPress,
 }: {
-  maestros: MaestroResumen[];
-  onPress: (m: MaestroResumen) => void;
+  maestros: MaestroResumen[]
+  onPress: (m: MaestroResumen) => void
 }) {
-  const grupos: MaestroResumen["grupo"][] = ["personas", "ubicacion", "clasificacion"];
+  const grupos: MaestroResumen["grupo"][] = ["personas", "ubicacion", "clasificacion"]
   return (
     <div className="space-y-6">
       {grupos.map((g) => {
-        const items = maestros.filter((m) => m.grupo === g);
-        if (!items.length) return null;
+        const items = maestros.filter((m) => m.grupo === g)
+        if (!items.length) return null
         return (
           <section key={g}>
             <h2 className="text-caption font-semibold text-muted-foreground uppercase tracking-wide mb-2">
@@ -85,21 +88,21 @@ export function MaestroGrid({
               ))}
             </div>
           </section>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 /** Indicador global de preparación: "5 de 8 requeridos completos" */
 export function MaestrosProgreso({ maestros }: { maestros: MaestroResumen[] }) {
-  const conDependencia = maestros.filter((m) => Boolean(m.requeridoPara) || m.registros > 0);
-  const total = conDependencia.length;
-  const completos = conDependencia.filter((m) => m.registros > 0).length;
-  if (completos === total) return null; // al completarse, desaparece
+  const conDependencia = maestros.filter((m) => Boolean(m.requeridoPara) || m.registros > 0)
+  const total = conDependencia.length
+  const completos = conDependencia.filter((m) => m.registros > 0).length
+  if (completos === total) return null // al completarse, desaparece
   return (
     <span className="inline-flex items-center rounded-full bg-alerta-100 text-alerta-600 px-2.5 py-0.5 text-caption font-medium num">
       {completos} de {total} requeridos completos
     </span>
-  );
+  )
 }

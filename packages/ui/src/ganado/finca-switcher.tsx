@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Check, ChevronDown, CloudOff, Plus, Search } from "lucide-react";
+import { Check, ChevronDown, CloudOff, Plus, Search } from "lucide-react"
+import { useState } from "react"
 
+import { cn } from "../lib/utils"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,15 +11,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../primitives/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "../primitives/dropdown-menu";
-import { cn } from "../lib/utils";
-import { EstadoBadge } from "./estado-badge";
-import type { FincaResumen } from "./types";
+} from "../primitives/alert-dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../primitives/dropdown-menu"
+import { EstadoBadge } from "./estado-badge"
+import type { FincaResumen } from "./types"
 
 /**
  * FincaSwitcher — selector multi-finca del shell (header).
@@ -35,72 +31,75 @@ import type { FincaResumen } from "./types";
  */
 
 export interface FincaSwitcherProps {
-  fincas: FincaResumen[];
-  fincaActivaId: string;
+  fincas: FincaResumen[]
+  fincaActivaId: string
   /** true cuando el dispositivo está sin conexión */
-  offline: boolean;
-  puedeCrearFinca?: boolean;
-  onSeleccionar: (finca: FincaResumen) => void;   // navega a /fincas/{id}
-  onCrearFinca?: () => void;
-  className?: string;
+  offline: boolean
+  puedeCrearFinca?: boolean
+  onSeleccionar: (finca: FincaResumen) => void // navega a /fincas/{id}
+  onCrearFinca?: () => void
+  className?: string
 }
 
 export function FincaSwitcher(props: FincaSwitcherProps) {
-  const activa = props.fincas.find((f) => f.id === props.fincaActivaId);
+  const activa = props.fincas.find((f) => f.id === props.fincaActivaId)
   // v1.2: si la finca actual tiene pendientes, informar antes del cambio
   // (los pendientes NO se pierden: quedan en la cola local). Informar, no bloquear.
-  const [destino, setDestino] = useState<FincaResumen | null>(null);
+  const [destino, setDestino] = useState<FincaResumen | null>(null)
 
   const seleccionar = (finca: FincaResumen) => {
-    const hayPendientes = (activa?.pendientes ?? 0) > 0 && activa?.sync === "pendiente";
-    if (hayPendientes && finca.id !== props.fincaActivaId) setDestino(finca);
-    else props.onSeleccionar(finca);
-  };
+    const hayPendientes = (activa?.pendientes ?? 0) > 0 && activa?.sync === "pendiente"
+    if (hayPendientes && finca.id !== props.fincaActivaId) setDestino(finca)
+    else props.onSeleccionar(finca)
+  }
 
   return (
     <>
-    {destino && activa && (
-      <AlertDialog open onOpenChange={(o) => !o && setDestino(null)}>
-        <AlertDialogContent className="rounded-sheet">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-section">
-              Cambiar a {destino.nombre}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-support">
-              Tienes {activa.pendientes} registros de {activa.nombre} sin
-              sincronizar. No se pierden: se subirán al recuperar señal.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-[--h-touch]">Quedarme</AlertDialogCancel>
-            <AlertDialogAction
-              className="min-h-[--h-touch]"
-              onClick={() => { props.onSeleccionar(destino); setDestino(null); }}
-            >
-              Cambiar de finca
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    )}
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(
-          "flex items-center gap-2 rounded-lg bg-muted px-3 h-9",
-          "text-support font-medium text-foreground",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          props.className,
-        )}
-      >
-        {activa ? `Finca ${activa.nombre}` : "Elegir finca"}
-        <ChevronDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[340px] p-0 rounded-card">
-        <FincaList {...props} onSeleccionar={seleccionar} />
-      </DropdownMenuContent>
-    </DropdownMenu>
+      {destino && activa && (
+        <AlertDialog open onOpenChange={(o) => !o && setDestino(null)}>
+          <AlertDialogContent className="rounded-sheet">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-section">
+                Cambiar a {destino.nombre}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-support">
+                Tienes {activa.pendientes} registros de {activa.nombre} sin sincronizar. No se
+                pierden: se subirán al recuperar señal.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="min-h-[--h-touch]">Quedarme</AlertDialogCancel>
+              <AlertDialogAction
+                className="min-h-[--h-touch]"
+                onClick={() => {
+                  props.onSeleccionar(destino)
+                  setDestino(null)
+                }}
+              >
+                Cambiar de finca
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className={cn(
+            "flex items-center gap-2 rounded-lg bg-muted px-3 h-9",
+            "text-support font-medium text-foreground",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            props.className,
+          )}
+        >
+          {activa ? `Finca ${activa.nombre}` : "Elegir finca"}
+          <ChevronDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-[340px] p-0 rounded-card">
+          <FincaList {...props} onSeleccionar={seleccionar} />
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
-  );
+  )
 }
 
 /** Contenido compartido: úsalo también dentro de un Drawer en mobile. */
@@ -112,7 +111,7 @@ export function FincaList({
   onSeleccionar,
   onCrearFinca,
 }: FincaSwitcherProps) {
-  const conBuscador = fincas.length > 5;
+  const conBuscador = fincas.length > 5
   return (
     <div>
       {conBuscador && (
@@ -123,8 +122,8 @@ export function FincaList({
       )}
       <ul>
         {fincas.map((finca) => {
-          const esActiva = finca.id === fincaActivaId;
-          const bloqueada = offline && !finca.tieneDatosLocales;
+          const esActiva = finca.id === fincaActivaId
+          const bloqueada = offline && !finca.tieneDatosLocales
           return (
             <li key={finca.id} className="border-b last:border-b-0">
               <button
@@ -139,9 +138,7 @@ export function FincaList({
                 )}
               >
                 <span className="flex-1 min-w-0">
-                  <span className="block text-support font-medium truncate">
-                    {finca.nombre}
-                  </span>
+                  <span className="block text-support font-medium truncate">{finca.nombre}</span>
                   {bloqueada ? (
                     <span className="block text-caption text-muted-foreground mt-0.5">
                       Requiere conexión · sin datos locales
@@ -165,7 +162,7 @@ export function FincaList({
                 )}
               </button>
             </li>
-          );
+          )
         })}
       </ul>
       {puedeCrearFinca && onCrearFinca && (
@@ -180,17 +177,15 @@ export function FincaList({
         </button>
       )}
     </div>
-  );
+  )
 }
 
 function SyncEstado({ finca }: { finca: FincaResumen }) {
   if (finca.sync === "sincronizado")
-    return <span className="text-caption text-exito-600">● sincronizada</span>;
+    return <span className="text-caption text-exito-600">● sincronizada</span>
   if (finca.sync === "pendiente")
     return (
-      <span className="text-caption text-alerta-600 num">
-        ● {finca.pendientes ?? 0} pendientes
-      </span>
-    );
-  return <span className="text-caption text-muted-foreground">● offline</span>;
+      <span className="text-caption text-alerta-600 num">● {finca.pendientes ?? 0} pendientes</span>
+    )
+  return <span className="text-caption text-muted-foreground">● offline</span>
 }

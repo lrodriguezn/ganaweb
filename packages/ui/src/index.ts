@@ -18,25 +18,25 @@
  */
 
 // Utilities
-export { cn } from "./lib/utils";
+export { cn } from "./lib/utils"
 
 // Domain components
-export { AnimalCard } from "./ganado/animal-card";
-export { EmptyState } from "./ganado/empty-state";
+export { AnimalCard } from "./ganado/animal-card"
+export { EmptyState } from "./ganado/empty-state"
 export {
   CategoriaBadge,
   EstadoAnimalBadge,
   EstadoBadge,
   SaludBadge,
   StockBadge,
-} from "./ganado/estado-badge";
-export { EventDrawer } from "./ganado/event-drawer";
-export { FincaList, FincaSwitcher } from "./ganado/finca-switcher";
-export { MaestroCard, MaestroGrid, MaestrosProgreso } from "./ganado/maestro-card";
-export { MetricCard, MetricCardSkeleton } from "./ganado/metric-card";
-export { SyncPill } from "./ganado/sync-pill";
-export { ThemeToggle } from "./ganado/theme-toggle";
-export { Timeline } from "./ganado/timeline";
+} from "./ganado/estado-badge"
+export { EventDrawer } from "./ganado/event-drawer"
+export { FincaList, FincaSwitcher } from "./ganado/finca-switcher"
+export { MaestroCard, MaestroGrid, MaestrosProgreso } from "./ganado/maestro-card"
+export { MetricCard, MetricCardSkeleton } from "./ganado/metric-card"
+export { SyncPill } from "./ganado/sync-pill"
+export { ThemeToggle } from "./ganado/theme-toggle"
+export { Timeline } from "./ganado/timeline"
 
 // Domain types + permission helpers
 export type {
@@ -54,12 +54,12 @@ export type {
   Salud,
   Sexo,
   TipoEvento,
-} from "./ganado/types";
-export { crearPermisos, tienePermiso } from "./ganado/types";
+} from "./ganado/types"
+export { crearPermisos, tienePermiso } from "./ganado/types"
 
 // Event-drawer sub-API
-export { FormularioVacuna } from "./ganado/event-drawer/formulario-vacuna";
-export type { ProductoSanitario } from "./ganado/event-drawer/formulario-vacuna";
+export { FormularioVacuna } from "./ganado/event-drawer/formulario-vacuna"
+export type { ProductoSanitario } from "./ganado/event-drawer/formulario-vacuna"
 
 // Vendored shadcn primitives (re-exported so consumers can build on them
 // without reaching into the internal primitives/ path).
@@ -73,13 +73,13 @@ export {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "./primitives/alert-dialog";
-export { Button, buttonVariants } from "./primitives/button";
+} from "./primitives/alert-dialog"
+export { Button, buttonVariants } from "./primitives/button"
 export {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "./primitives/collapsible";
+} from "./primitives/collapsible"
 export {
   Drawer,
   DrawerClose,
@@ -91,19 +91,19 @@ export {
   DrawerPortal,
   DrawerTitle,
   DrawerTrigger,
-} from "./primitives/drawer";
+} from "./primitives/drawer"
 export {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./primitives/dropdown-menu";
-export { Input } from "./primitives/input";
-export { Label } from "./primitives/label";
+} from "./primitives/dropdown-menu"
+export { Input } from "./primitives/input"
+export { Label } from "./primitives/label"
 export {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./primitives/select";
+} from "./primitives/select"
