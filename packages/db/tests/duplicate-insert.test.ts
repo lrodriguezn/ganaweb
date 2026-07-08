@@ -51,10 +51,13 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
     .toString()
     .padStart(4, "0")}`
 
-  // Cliente dedicado al test. Usa DATABASE_URL como el seed.
-  const db = createClient(process.env.DATABASE_URL)
+  // Cliente dedicado al test. Creado lazy en beforeAll (no en module
+  // load) para que el describe.skipIf pueda saltarlo cuando no hay
+  // DB_SMOKE sin que `createClient()` lance por DATABASE_URL ausente.
+  let db: ReturnType<typeof createClient>
 
   beforeAll(async () => {
+    db = createClient(process.env.DATABASE_URL)
     // Precondición: la migration DEBE estar aplicada. Si la tabla
     // `fincas` no existe, el insert falla con "relation does not exist"
     // — eso es un fallo de CI legítimo (migrations no aplicadas),

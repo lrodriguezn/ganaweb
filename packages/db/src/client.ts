@@ -37,6 +37,9 @@ import postgres from "postgres"
 import * as schema from "./schema/index.js"
 
 export function createClient(url = process.env.DATABASE_URL ?? "") {
+  if (!url) {
+    throw new Error("DATABASE_URL is not set. Configure it in .env or environment.")
+  }
   const queryClient = postgres(url, { max: 10 })
   return drizzle(queryClient, { schema })
 }
@@ -55,9 +58,9 @@ function getDb(): DbClient {
  * vez y reusa el client en llamadas subsiguientes.
  */
 export const db = new Proxy({} as DbClient, {
-  get(_target, prop, receiver) {
+  get(_target, prop, _receiver) {
     const client = getDb()
-    const value = Reflect.get(client, prop, receiver)
+    const value = Reflect.get(client, prop, client)
     return typeof value === "function" ? value.bind(client) : value
   },
 })

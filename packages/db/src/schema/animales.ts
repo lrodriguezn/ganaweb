@@ -45,8 +45,8 @@ export const animales = pgTable(
     sexo: text("sexo").notNull(),
     estadoAnimal: text("estado_animal").notNull(),
     activo: integer("activo").default(1).notNull(),
-    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
     // RN-001 enforcement at DB level. El test TS-004 (T4) verifica
