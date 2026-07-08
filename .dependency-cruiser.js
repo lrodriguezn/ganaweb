@@ -58,6 +58,14 @@ export default {
   // rules above are the hard enforcers; allowed scopes the rest.
   allowed: [
     { from: { path: "^apps/web" }, to: { path: "^packages/(aplicacion|ui|db|config)" } },
+    // apps/web/src/router.tsx imports the auto-generated `routeTree.gen.ts`
+    // (created by `pnpm tsr generate`). The gen file is not committed
+    // (gitignored) but dep-cruiser still scans it from the node graph.
+    // This allowed rule keeps that edge quiet. The gen file itself
+    // imports each route file (routes/index, routes/api/health, etc.)
+    // to wire them into the router; the next rule covers those.
+    { from: { path: "^apps/web/src/router\\.tsx$" }, to: { path: "^apps/web/src/routeTree\\.gen\\.ts$" } },
+    { from: { path: "^apps/web/src/routeTree\\.gen\\.ts$" }, to: { path: "^apps/web/src" } },
     // apps/web src/ imports its runtime deps (react, react-dom,
     // @tanstack/react-router, @tanstack/react-start) from node_modules.
     // The forbidden rules only target package-to-package edges, so
@@ -139,10 +147,14 @@ export default {
     doNotFollow: {
       path: "node_modules",
     },
-    // Exclude build outputs (dist/), docs/ (reference code), and openspec/
-    // (change artifacts). dep-cruiser does not need to scan built JS
-    // because the source tree under src/ already encodes the same deps.
-    exclude: { path: "^(docs|openspec|packages/[^/]+/dist)/" },
+    // Exclude build outputs (dist/), docs/ (reference code), openspec/
+    // (change artifacts), .output/ (Nitro), and the auto-generated
+    // TanStack Router route tree (regenerated on every build).
+    // dep-cruiser does not need to scan built JS because the source
+    // tree under src/ already encodes the same deps.
+    exclude: {
+      path: "^(docs|openspec|packages/[^/]+/dist|apps/web/(dist|\\.output)|apps/web/src/routeTree\\.gen\\.ts)/",
+    },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {
       exportsFields: ["exports"],
