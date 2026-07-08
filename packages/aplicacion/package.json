@@ -2,13 +2,19 @@
   "name": "@ganaweb/aplicacion",
   "version": "0.0.0",
   "private": true,
-  "description": "GanaWeb application layer. Use cases + port interfaces. Depends on dominio (for entities) + sync (for outbox shape). NOT db.",
+  "description": "GanaWeb application layer. Port interfaces only (D6) — no use cases this change. Depends on dominio (entities) + sync (outbox shape); NOT db.",
   "type": "module",
   "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
   "scripts": {
-    "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
-    "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
-    "test": "echo \"@ganaweb/aplicacion: no tests in PR1 stub\"",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"@ganaweb/aplicacion: no tests in scaffold-monorepo (interfaces only)\"",
     "lint": "biome check ."
   },
   "dependencies": {

@@ -58,7 +58,49 @@ export default {
   // rules above are the hard enforcers; allowed scopes the rest.
   allowed: [
     { from: { path: "^apps/web" }, to: { path: "^packages/(aplicacion|ui|db|config)" } },
+    // apps/web/src/router.tsx imports the auto-generated `routeTree.gen.ts`
+    // (created by `pnpm tsr generate`). The gen file is not committed
+    // (gitignored) but dep-cruiser still scans it from the node graph.
+    // This allowed rule keeps that edge quiet. The gen file itself
+    // imports each route file (routes/index, routes/api/health, etc.)
+    // to wire them into the router; the next rule covers those.
+    {
+      from: { path: "^apps/web/src/router\\.tsx$" },
+      to: { path: "^apps/web/src/routeTree\\.gen\\.ts$" },
+    },
+    { from: { path: "^apps/web/src/routeTree\\.gen\\.ts$" }, to: { path: "^apps/web/src" } },
+    // apps/web src/ imports its runtime deps (react, react-dom,
+    // @tanstack/react-router, @tanstack/react-start) from node_modules.
+    // The forbidden rules only target package-to-package edges, so
+    // allowing src → node_modules here is purely cosmetic (suppresses
+    // `not-in-allowed` warnings) without relaxing any boundary
+    // constraint. The `web-to-dominio-direct` rule above still
+    // guarantees apps/web never depends on the domain layer.
+    { from: { path: "^apps/web/src" }, to: { path: "^node_modules" } },
+    // apps/web/scripts/ uses node: builtins (node:child_process,
+    // node:timers/promises, node:http, node:stream) for the
+    // health-check script (PR5.T5) and the production server
+    // wrapper (PR5.T5.srv).
+    {
+      from: { path: "^apps/web/scripts" },
+      to: {
+        path: "^(node_modules|http|https|url|child_process|timers/promises|child_process|fs|promises|stream)$",
+      },
+    },
+    // scripts/ at the repo root uses node: builtins (node:fs/promises,
+    // node:path, node:url) for the check-coverage.mjs gate (PR5.T5).
+    {
+      from: { path: "^scripts/" },
+      to: { path: "^(node_modules|http|https|url|fs/promises|path|util)$" },
+    },
     { from: { path: "^packages/aplicacion" }, to: { path: "^packages/(dominio|sync|config)" } },
+    // Intra-package edges for aplicacion: barrel (src/index.ts →
+    // src/puertos/{animal-repository-port,reloj-del-sistema-port,outbox-port}.ts).
+    // The forbidden rule `aplicacion-to-db` is the hard enforcer for
+    // inter-package boundaries; this allowed scope keeps intra-aplicacion
+    // re-exports quiet. D6 keeps this package interfaces-only — no
+    // use cases, no I/O — so the allowed scope is purely local.
+    { from: { path: "^packages/aplicacion" }, to: { path: "^packages/aplicacion" } },
     { from: { path: "^packages/db" }, to: { path: "^packages/(aplicacion|config)" } }, // D10 edge
     { from: { path: "^packages/sync" }, to: { path: "^packages/config" } },
     { from: { path: "^packages/ui" }, to: { path: "^packages/config" } },
@@ -108,15 +150,30 @@ export default {
     // pattern matches the resolved name. Add more names here only if
     // the test starts using new node: builtins.
     { from: { path: "^packages/ui/tests" }, to: { path: "^(fs|path|url)$" } },
+    // Intra-package edges for sync: barrel (src/index.ts →
+    // src/{push-port,pull-port,conflict-resolver-port,estado-vital}.ts)
+    // and conflict-resolver → estado-vital. The forbidden rule
+    // `sync-to-db` is the hard enforcer for inter-package boundaries;
+    // this allowed scope keeps intra-sync re-exports quiet. D6 keeps
+    // this package interfaces-only — no I/O, no network — so the
+    // allowed scope is purely local.
+    { from: { path: "^packages/sync" }, to: { path: "^packages/sync" } },
   ],
   options: {
     doNotFollow: {
       path: "node_modules",
     },
-    // Exclude build outputs (dist/), docs/ (reference code), and openspec/
-    // (change artifacts). dep-cruiser does not need to scan built JS
-    // because the source tree under src/ already encodes the same deps.
-    exclude: { path: "^(docs|openspec|packages/[^/]+/dist)/" },
+    // Exclude build outputs (dist/), docs/ (reference code), openspec/
+    // (change artifacts), .output/ (Nitro), and the auto-generated
+    // TanStack Router route tree (regenerated on every build).
+    // dep-cruiser does not need to scan built JS because the source
+    // tree under src/ already encodes the same deps.
+    // The trailing `(?:/|$)` matches either a directory boundary (for
+    // the dir patterns) or end-of-string (for the routeTree.gen.ts file,
+    // which is a file, not a directory).
+    exclude: {
+      path: "^(docs|openspec|packages/[^/]+/dist|apps/web/(dist|\\.output)|apps/web/src/routeTree\\.gen\\.ts)(?:/|$)",
+    },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {
       exportsFields: ["exports"],
