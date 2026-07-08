@@ -62,7 +62,7 @@ export function FormularioVacuna({
   onGuardar,
   onVolver,
 }: FormularioVacunaProps) {
-  const [productoId, setProductoId] = useState<string | undefined>(undefined)
+  const [productoId, setProductoId] = useState<string>("")
   const [dosis, setDosis] = useState("1")
   const [proximaDias, setProximaDias] = useState<number | null>(182)
   const [comentarios, setComentarios] = useState("")
@@ -134,11 +134,8 @@ export function FormularioVacuna({
           <Label htmlFor="producto" className="text-support font-medium">
             Producto
           </Label>
-          <Select
-            {...(productoId !== undefined ? { value: productoId } : {})}
-            onValueChange={setProductoId}
-          >
-            <SelectTrigger id="producto" className="h-12 text-body">
+          <Select value={productoId} onValueChange={setProductoId}>
+            <SelectTrigger id="producto" className="h-12 text-support">
               <SelectValue placeholder="Elegir producto" />
             </SelectTrigger>
             <SelectContent>

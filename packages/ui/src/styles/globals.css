@@ -8,6 +8,7 @@
 
 :root {
   --pasto-600: #2f6b3f; /* primario */
+  --pasto-700: #1e3f29; /* JD R1: chip text sobre bg-pasto-100, AA sobre crema */
   --primary-hover: #245231; /* v1.2: rol propio (antes pasto-700 doble rol) */
   --primary-soft-text: #245231;
   --pasto-100: #e4f0e7;
@@ -45,6 +46,7 @@
 
 .dark {
   --pasto-600: #4c9d62;
+  --pasto-700: #a5d8b2; /* JD R1: chip text sobre bg-pasto-100 oscuro */
   --primary-hover: #5bad70; /* v1.2: hover que OSCURO no se aclara a pastel */
   --primary-soft-text: #a5d8b2;
   --pasto-100: #24352a;
@@ -83,6 +85,7 @@
 @theme inline {
   --color-pasto-100: var(--pasto-100);
   --color-pasto-600: var(--pasto-600);
+  --color-pasto-700: var(--pasto-700);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft-text: var(--primary-soft-text);
   --color-on-primary: var(--on-primary);
