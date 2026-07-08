@@ -7,6 +7,7 @@
     "declaration": true,
     "declarationMap": true,
     "emitDeclarationOnly": false,
+    "incremental": false,
     "rootDir": "src",
     "outDir": "dist"
   },
