@@ -5,16 +5,31 @@
   "description": "GanaWeb persistence layer. Drizzle ORM, PostgreSQL 17 (online-first). Implements ports declared by aplicacion.",
   "type": "module",
   "scripts": {
-    "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
-    "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'PR1 stub: no source files yet'",
-    "test": "echo \"@ganaweb/db: no tests in PR1 stub\"",
-    "lint": "biome check ."
+    "build": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'no source files yet'",
+    "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo 'no source files yet'",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:smoke": "DB_SMOKE=true vitest run",
+    "coverage": "vitest run --coverage",
+    "lint": "biome check .",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "push": "drizzle-kit push",
+    "seed": "tsx src/seed/seed-v3.ts"
   },
   "dependencies": {
-    "@ganaweb/aplicacion": "workspace:*"
+    "@ganaweb/aplicacion": "workspace:*",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@ganaweb/config": "workspace:*",
-    "typescript": "^5.7.2"
+    "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^3.2.6",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.0",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.6"
   }
 }

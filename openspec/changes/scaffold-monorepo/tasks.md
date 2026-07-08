@@ -26,10 +26,10 @@ PR1 ~250 · PR2 ~200 · PR3 ~300 · PR4 ~700 · PR5 ~250 (max 700/800).
 
 ## PR 3 `packages/db`
 
-- [ ] PR3.T1 Create `packages/db/{package.json,tsconfig.json}` deps `drizzle-orm`,`drizzle-kit`,`postgres`,`tsx`,`dotenv`; `drizzle.config.ts` (dialect:'postgresql', DATABASE_URL).
-- [ ] PR3.T2 Create `src/client.ts` (factory + lazy `db` Proxy), `src/schema/fincas.ts`, `src/schema/animales.ts` with `uniqueIndex('uq_animales_finca_codigo').on(t.fincaId, t.codigo)` (D5; sexo/estadoAnimal as text), and `src/schema/index.ts` typed re-exports.
-- [ ] PR3.T3 Create `src/seed/seed-v3.ts` (onConflictDoNothing, inserts ONLY 2 fincas finca-esperanza/GAN001 + finca-roble/GAN002 per D11, zero animales); generate initial migration via `drizzle-kit generate`.
-- [ ] PR3.T4 **[TDD]** Add `tests/duplicate-insert.test.ts` (DB_SMOKE=true): duplicate `(fincaId,codigo)` insert throws (TS-004).
+- [x] PR3.T1 Create `packages/db/{package.json,tsconfig.json}` deps `drizzle-orm`,`drizzle-kit`,`postgres`,`tsx`,`dotenv`; `drizzle.config.ts` (dialect:'postgresql', DATABASE_URL).
+- [x] PR3.T2 Create `src/client.ts` (factory + lazy `db` Proxy), `src/schema/fincas.ts`, `src/schema/animales.ts` with `uniqueIndex('uq_animales_finca_codigo').on(t.fincaId, t.codigo)` (D5; sexo/estadoAnimal as text), and `src/schema/index.ts` typed re-exports.
+- [x] PR3.T3 Create `src/seed/seed-v3.ts` (onConflictDoNothing, inserts ONLY 2 fincas finca-esperanza/GAN001 + finca-roble/GAN002 per D11, zero animales); generate initial migration via `drizzle-kit generate`.
+- [x] PR3.T4 **[TDD]** Add `tests/duplicate-insert.test.ts` (DB_SMOKE=true): duplicate `(fincaId,codigo)` insert throws (TS-004).
 
 ## PR 4 `packages/ui`
 
