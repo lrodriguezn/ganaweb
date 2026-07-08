@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsup"
 
 /**
  * Build configuration for @ganaweb/ui.
@@ -44,4 +44,4 @@ export default defineConfig({
   ],
   splitting: false,
   treeshake: true,
-});
+})
