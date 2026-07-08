@@ -1,4 +1,16 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "extends": ["@ganaweb/config/biome-preset"]
+  "extends": ["@ganaweb/config/biome-preset"],
+  "overrides": [
+    {
+      "include": ["scripts/**/*.mjs", "apps/web/scripts/**/*.mjs"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ]
 }

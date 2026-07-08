@@ -64,7 +64,10 @@ export default {
     // This allowed rule keeps that edge quiet. The gen file itself
     // imports each route file (routes/index, routes/api/health, etc.)
     // to wire them into the router; the next rule covers those.
-    { from: { path: "^apps/web/src/router\\.tsx$" }, to: { path: "^apps/web/src/routeTree\\.gen\\.ts$" } },
+    {
+      from: { path: "^apps/web/src/router\\.tsx$" },
+      to: { path: "^apps/web/src/routeTree\\.gen\\.ts$" },
+    },
     { from: { path: "^apps/web/src/routeTree\\.gen\\.ts$" }, to: { path: "^apps/web/src" } },
     // apps/web src/ imports its runtime deps (react, react-dom,
     // @tanstack/react-router, @tanstack/react-start) from node_modules.
@@ -74,9 +77,20 @@ export default {
     // constraint. The `web-to-dominio-direct` rule above still
     // guarantees apps/web never depends on the domain layer.
     { from: { path: "^apps/web/src" }, to: { path: "^node_modules" } },
-    // apps/web/scripts/ uses node: builtins (node:http, node:url) and
-    // possibly node_modules for the health-check script (PR5.T5).
-    { from: { path: "^apps/web/scripts" }, to: { path: "^(node_modules|http|https|url)$" } },
+    // apps/web/scripts/ uses node: builtins (node:child_process,
+    // node:timers/promises) for the health-check script (PR5.T5).
+    {
+      from: { path: "^apps/web/scripts" },
+      to: {
+        path: "^(node_modules|http|https|url|child_process|timers/promises|child_process|fs|promises)$",
+      },
+    },
+    // scripts/ at the repo root uses node: builtins (node:fs/promises,
+    // node:path, node:url) for the check-coverage.mjs gate (PR5.T5).
+    {
+      from: { path: "^scripts/" },
+      to: { path: "^(node_modules|http|https|url|fs/promises|path|util)$" },
+    },
     { from: { path: "^packages/aplicacion" }, to: { path: "^packages/(dominio|sync|config)" } },
     // Intra-package edges for aplicacion: barrel (src/index.ts →
     // src/puertos/{animal-repository-port,reloj-del-sistema-port,outbox-port}.ts).

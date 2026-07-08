@@ -13,11 +13,29 @@ concurrency:
 
 jobs:
   ci:
-    name: Lint (PR1 skeleton)
+    name: Lint + Typecheck + Test + Build + Depcruise + Coverage + Health
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ganaweb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ganaweb
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,8 +55,23 @@ jobs:
       - name: Biome CI
         run: pnpm exec biome ci .
 
-      # NOTE: full pipeline (typecheck → test → build → depcruise → coverage gate
-      # → no-sqlite grep → migrate/seed/health-check) is added in PR5
-      # (apps/web/scripts/health-check.mjs + scripts/check-coverage.mjs).
-      # PR1 skeleton intentionally only verifies install + lint so the workspace
-      # graph is known-good before any domain code lands.
+      - name: Typecheck (turbo)
+        run: pnpm turbo typecheck
+
+      - name: Test (turbo, con coverage en dominio)
+        run: pnpm turbo test --filter='@ganaweb/dominio' -- --coverage && pnpm turbo test --filter='!@ganaweb/dominio'
+
+      - name: Build (turbo)
+        run: pnpm turbo build
+
+      - name: Dependency-cruise (layer rules + no-sqlite backstop)
+        run: pnpm exec dependency-cruiser .
+
+      - name: Coverage gate (dominio ≥ 90%)
+        run: pnpm --filter @ganaweb/dominio exec vitest run --coverage && node scripts/check-coverage.mjs
+
+      - name: No-SQLite guard (online-first gate)
+        run: pnpm run no-sqlite
+
+      - name: Migrate + seed + health-check (postgres service)
+        run: pnpm --filter @ganaweb/db migrate && pnpm --filter @ganaweb/db seed && pnpm --filter @ganaweb/web health-check
