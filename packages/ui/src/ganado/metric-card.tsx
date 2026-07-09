@@ -56,21 +56,29 @@ export function MetricCard({
         {value}
         {context && (
           <>
-            {/* Inline: mobile por defecto, o cuando contextBelow === false. */}
+            {/* Inline: false → siempre inline; undefined → mobile only; true → oculto. */}
             <span
               className={cn(
                 "text-support font-normal ms-1.5",
-                contextBelow === true ? "hidden" : "inline md:hidden",
+                contextBelow === true
+                  ? "hidden"
+                  : contextBelow === false
+                    ? "inline"
+                    : "inline md:hidden",
                 CONTEXT_TONE[contextTone],
               )}
             >
               · {context}
             </span>
-            {/* Block: desktop por defecto, o cuando contextBelow === true. */}
+            {/* Block: true → siempre block; undefined → desktop only; false → oculto. */}
             <span
               className={cn(
                 "text-support font-normal block",
-                contextBelow === true ? "" : "hidden md:block",
+                contextBelow === false
+                  ? "hidden"
+                  : contextBelow === true
+                    ? "block"
+                    : "hidden md:block",
                 CONTEXT_TONE[contextTone],
               )}
             >
