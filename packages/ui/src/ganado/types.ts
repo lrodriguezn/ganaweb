@@ -1,6 +1,10 @@
+import type { LucideIcon } from "lucide-react"
+
 /**
  * Tipos del dominio ganadero compartidos por los componentes de ganado/.
  * v1.1 — agrega: multi-finca (FincaResumen, RolFinca) y maestros.
+ * v1.2 — agrega: shell (ItemNav) y dashboard (AlertaAccion, DatoProduccion,
+ *        ActividadReciente) para el slice Dashboard / Inicio.
  * Alineados con el esquema de base de datos (v2 + usuarios_fincas).
  */
 
@@ -109,4 +113,53 @@ export function tienePermiso(permisos: PermisosUsuario, modulo: string, accion: 
 /** Construye el set desde las filas de roles_permisos de la finca activa. */
 export function crearPermisos(lista: Permiso[]): PermisosUsuario {
   return new Set(lista.map((p) => `${p.modulo}:${p.accion}`))
+}
+
+/* ---------------- Shell + Dashboard (v1.2 — Dashboard / Inicio) ---------------- */
+
+/**
+ * Item de navegación usado por `Sidebar` y `BottomNav`.
+ * El icono es `LucideIcon` (componente) para evitar reventar la prop con
+ * un ReactNode opaco: el shell necesita pintar el icono a tamaño fijo y
+ * controlar su color por estado (activo/inactivo).
+ */
+export interface ItemNav {
+  id: string
+  label: string
+  icon: LucideIcon
+  href: string
+}
+
+/**
+ * Alerta mostrada en `CardAccion`. `severidad` decide el color del dot:
+ * "alerta" → amber, "peligro" → rojo. `href` es opcional: la card puede
+ * mostrar la fila como link directo a la vista filtrada o como un item
+ * puramente informativo (con chevron pero sin onPress aún cableado).
+ */
+export interface AlertaAccion {
+  id: string
+  texto: string
+  severidad: "alerta" | "peligro"
+  href?: string
+}
+
+/**
+ * Dato diario de producción lechera para `CardProduccion`.
+ * `dia` es la etiqueta corta ya formateada (ej. "Lun", "Mar", …).
+ * `valor` en litros; el componente calcula la altura de la barra como
+ * `(valor / max) * 100%` sobre el array completo.
+ */
+export interface DatoProduccion {
+  dia: string
+  valor: number
+}
+
+/**
+ * Entrada del feed "Actividad reciente" en `CardActividad`.
+ * `tiempo` ya viene formateado del backend (ej. "Hace 2 h", "Ayer").
+ */
+export interface ActividadReciente {
+  id: string
+  descripcion: string
+  tiempo: string
 }
