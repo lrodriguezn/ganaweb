@@ -97,7 +97,7 @@ function AppLayout() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen md:grid md:grid-cols-[240px_1fr] md:h-screen">
+    <div className="min-h-screen md:h-screen md:grid md:grid-cols-[240px_1fr]">
       <Sidebar
         items={ITEMS_SIDEBAR}
         activoId="inicio"
@@ -106,7 +106,7 @@ function AppLayout() {
         onConfigurar={() => navigate({ to: "/configuracion" })}
       />
 
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col min-h-screen md:min-h-0">
         <AppHeader
           fincas={FINCAS_DEMO}
           fincaActivaId="finca-1"
@@ -121,7 +121,7 @@ function AppLayout() {
           }}
         />
 
-        <main className="flex-1 min-h-0 overflow-y-auto pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-0">
+        <main className="flex-1 overflow-y-auto pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-4">
           <Outlet />
         </main>
       </div>
