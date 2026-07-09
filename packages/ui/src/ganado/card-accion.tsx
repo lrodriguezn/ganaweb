@@ -42,15 +42,17 @@ export function CardAccion({ count, alertas, onVerTodas, className }: CardAccion
     >
       <header className="flex items-center justify-between gap-2">
         <h3 className="text-section font-semibold text-foreground">Requiere acción</h3>
-        <span
-          className={cn(
-            "min-w-6 h-6 px-2 inline-flex items-center justify-center rounded-full",
-            "bg-peligro-100 text-peligro-600 text-caption font-semibold num",
-          )}
-          aria-label={`${count} alertas`}
-        >
-          {count}
-        </span>
+        {count > 0 && (
+          <span
+            className={cn(
+              "min-w-6 h-6 px-2 inline-flex items-center justify-center rounded-full",
+              "bg-peligro-100 text-peligro-600 text-caption font-semibold num",
+            )}
+            aria-label={`${count} alertas`}
+          >
+            {count}
+          </span>
+        )}
       </header>
 
       {alertas.length === 0 ? (
