@@ -73,7 +73,7 @@ export function Sidebar({
                     "text-support font-medium transition-colors duration-100",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     activo
-                      ? "bg-seleccion text-pasto-700"
+                      ? "bg-seleccion text-primary-soft-text"
                       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                   )}
                 >

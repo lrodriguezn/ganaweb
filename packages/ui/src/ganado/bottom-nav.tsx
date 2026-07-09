@@ -30,6 +30,11 @@ export interface BottomNavProps {
 }
 
 export function BottomNav({ items, activoId, onNavigate, onFab, className }: BottomNavProps) {
+  if (items.length !== 4) {
+    // dev-only: el shell espera 4 ítems (slots 1, 2, 4, 5; la 3 es la FAB).
+    // biome-ignore lint/suspicious/noConsole: dev warning intentional
+    console.warn(`[BottomNav] expected exactly 4 items, got ${items.length}`)
+  }
   const [a, b, c, d] = items
   return (
     <nav
