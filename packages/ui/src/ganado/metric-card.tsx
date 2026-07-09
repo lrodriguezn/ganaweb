@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+
 import { cn } from "../lib/utils"
 
 /**
@@ -17,9 +19,14 @@ import { cn } from "../lib/utils"
  * La decisión es CSS, no JS — cero riesgo de hydration mismatch entre
  * SSR y cliente. La API existente (sin la prop) sigue funcionando tal
  * cual, así que ningún consumidor de PR1 rompe.
+ *
+ * v1.2 (PR3): `label` acepta `ReactNode` para que el consumidor pueda
+ * renderizar variantes responsivas del label (ej. "<span class=md:hidden>
+ * Activos</span><span class=hidden md:inline>Animales activos</span>").
+ * Backward-compatible: `string` sigue siendo válido.
  */
 export interface MetricCardProps {
-  label: string
+  label: ReactNode
   value: string | number
   context?: string
   contextTone?: "exito" | "alerta" | "peligro" | "info" | "neutral"
