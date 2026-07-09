@@ -4,6 +4,19 @@ import { cn } from "../lib/utils"
  * MetricCard — cifra de dashboard con un solo dato dominante.
  * v1.2: navegable — "Enfermos: 7" exige acción; con onPress la card es un
  * botón que lleva a la vista filtrada (los filtros viven en la URL).
+ *
+ * v1.2 (PR2): layout del contexto responsive por defecto.
+ * - Sin prop `contextBelow`: en mobile (< 768px) el contexto va INLINE
+ *   pegado al valor ("128 · 61%"); en desktop va en una línea ABAJO.
+ * - `contextBelow={true}` fuerza la línea separada en ambos breakpoints
+ *   (útil cuando el contexto es largo y no queremos que compita con la
+ *   cifra por ancho en mobile).
+ * - `contextBelow={false}` fuerza inline siempre (caso de uso raro: el
+ *   contexto es un sufijo estable, ej. "Animales activos 128 · Total 1.842").
+ *
+ * La decisión es CSS, no JS — cero riesgo de hydration mismatch entre
+ * SSR y cliente. La API existente (sin la prop) sigue funcionando tal
+ * cual, así que ningún consumidor de PR1 rompe.
  */
 export interface MetricCardProps {
   label: string
@@ -13,6 +26,8 @@ export interface MetricCardProps {
   critical?: boolean
   /** v1.2: convierte la card en botón (navegar a la vista filtrada) */
   onPress?: () => void
+  /** v1.2 (PR2): fuerza el contexto en su propia línea (ver doc). */
+  contextBelow?: boolean
   className?: string
 }
 
@@ -31,6 +46,7 @@ export function MetricCard({
   contextTone = "neutral",
   critical = false,
   onPress,
+  contextBelow,
   className,
 }: MetricCardProps) {
   const contenido = (
@@ -39,9 +55,28 @@ export function MetricCard({
       <p className={cn("text-metric num mt-1", critical ? "text-peligro-600" : "text-foreground")}>
         {value}
         {context && (
-          <span className={cn("text-support font-normal ms-1.5", CONTEXT_TONE[contextTone])}>
-            {context}
-          </span>
+          <>
+            {/* Inline: mobile por defecto, o cuando contextBelow === false. */}
+            <span
+              className={cn(
+                "text-support font-normal ms-1.5",
+                contextBelow === true ? "hidden" : "inline md:hidden",
+                CONTEXT_TONE[contextTone],
+              )}
+            >
+              · {context}
+            </span>
+            {/* Block: desktop por defecto, o cuando contextBelow === true. */}
+            <span
+              className={cn(
+                "text-support font-normal block",
+                contextBelow === true ? "" : "hidden md:block",
+                CONTEXT_TONE[contextTone],
+              )}
+            >
+              {context}
+            </span>
+          </>
         )}
       </p>
     </>
