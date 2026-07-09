@@ -10,6 +10,7 @@
     "pnpm": ">=9"
   },
   "scripts": {
+    "dev": "pnpm -F @ganaweb/web dev",
     "build": "turbo run build",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
