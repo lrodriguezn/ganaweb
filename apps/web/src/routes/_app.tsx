@@ -35,12 +35,12 @@
 import {
   AppHeader,
   BottomNav,
-  Sidebar,
   type EstadoSync,
   type FincaResumen,
   type ItemNav,
+  Sidebar,
 } from "@ganaweb/ui"
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router"
+import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Calendar, CheckSquare, Home, Menu, PawPrint } from "lucide-react"
 
 export const Route = createFileRoute("/_app")({

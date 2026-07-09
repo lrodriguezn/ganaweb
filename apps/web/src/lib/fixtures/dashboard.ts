@@ -119,10 +119,10 @@ export const MOCK_ALERTAS: readonly AlertaAccion[] = [
 export const MOCK_PRODUCCION: readonly DatoProduccion[] = [
   { dia: "Lun", valor: 1.795 },
   { dia: "Mar", valor: 1.842 },
-  { dia: "Mié", valor: 1.760 },
-  { dia: "Jue", valor: 1.880 },
-  { dia: "Vie", valor: 1.920 },
-  { dia: "Sáb", valor: 1.650 },
+  { dia: "Mié", valor: 1.76 },
+  { dia: "Jue", valor: 1.88 },
+  { dia: "Vie", valor: 1.92 },
+  { dia: "Sáb", valor: 1.65 },
   { dia: "Dom", valor: 1.745 },
 ] as const
 

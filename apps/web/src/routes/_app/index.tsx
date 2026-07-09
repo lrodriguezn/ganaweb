@@ -20,13 +20,7 @@
  * Sin dark:, sin dependencias del dominio (T-004 / D10). i18n es-CO (T-003).
  */
 
-import {
-  Button,
-  CardAccion,
-  CardActividad,
-  CardProduccion,
-  MetricCard,
-} from "@ganaweb/ui"
+import { Button, CardAccion, CardActividad, CardProduccion, MetricCard } from "@ganaweb/ui"
 import { createFileRoute } from "@tanstack/react-router"
 import { Plus } from "lucide-react"
 import type * as React from "react"
@@ -50,9 +44,7 @@ function Dashboard() {
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-title font-semibold text-foreground">Inicio</h1>
-          <p className="text-caption text-muted-foreground mt-0.5">
-            {formatearFechaHoy()}
-          </p>
+          <p className="text-caption text-muted-foreground mt-0.5">{formatearFechaHoy()}</p>
         </div>
         <Button className="shrink-0 min-h-[--h-touch]">
           <Plus aria-hidden="true" />
@@ -88,15 +80,12 @@ function Dashboard() {
           if (m.context !== undefined) props.context = m.context
           if (m.critical) props.critical = true
           if (m.id === "prenadas") props.contextBelow = true
-          return <MetricCard {...props} />
+          return <MetricCard key={m.id} {...props} />
         })}
       </section>
 
       {/* ---- Fila de cards: alertas + producción ---- */}
-      <section
-        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
-        aria-label="Alertas y producción"
-      >
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4" aria-label="Alertas y producción">
         <CardAccion
           count={MOCK_ALERTAS.length}
           alertas={[...MOCK_ALERTAS]}

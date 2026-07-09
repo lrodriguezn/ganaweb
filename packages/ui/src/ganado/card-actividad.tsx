@@ -37,28 +37,29 @@ export interface CardActividadProps {
 }
 
 export function CardActividad({ actividades, accordion = false, className }: CardActividadProps) {
-  const list = actividades.length === 0 ? (
-    <p className="mt-3 text-support text-tierra-400">Sin actividad reciente.</p>
-  ) : (
-    <ul className="mt-2 -mx-1">
-      {actividades.map((act, idx) => {
-        const esUltima = idx === actividades.length - 1
-        return (
-          <li key={act.id} className="px-1">
-            <div className="flex items-center gap-3 py-3 min-w-0">
-              <span className="flex-1 min-w-0 text-support text-foreground truncate">
-                {act.descripcion}
-              </span>
-              <span className="shrink-0 text-caption text-tierra-400 whitespace-nowrap num">
-                {act.tiempo}
-              </span>
-            </div>
-            {!esUltima && <div className="h-px bg-tierra-200" aria-hidden="true" />}
-          </li>
-        )
-      })}
-    </ul>
-  )
+  const list =
+    actividades.length === 0 ? (
+      <p className="mt-3 text-support text-tierra-400">Sin actividad reciente.</p>
+    ) : (
+      <ul className="mt-2 -mx-1">
+        {actividades.map((act, idx) => {
+          const esUltima = idx === actividades.length - 1
+          return (
+            <li key={act.id} className="px-1">
+              <div className="flex items-center gap-3 py-3 min-w-0">
+                <span className="flex-1 min-w-0 text-support text-foreground truncate">
+                  {act.descripcion}
+                </span>
+                <span className="shrink-0 text-caption text-tierra-400 whitespace-nowrap num">
+                  {act.tiempo}
+                </span>
+              </div>
+              {!esUltima && <div className="h-px bg-tierra-200" aria-hidden="true" />}
+            </li>
+          )
+        })}
+      </ul>
+    )
 
   if (!accordion) {
     return (
