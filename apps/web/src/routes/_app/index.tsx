@@ -59,7 +59,6 @@ function Dashboard() {
       >
         {MOCK_METRICS.map((m) => {
           const props: {
-            key: string
             label: React.ReactNode
             value: string
             contextTone: "exito" | "alerta" | "peligro" | "info" | "neutral"
@@ -67,7 +66,6 @@ function Dashboard() {
             contextBelow?: boolean
             context?: string
           } = {
-            key: m.id,
             label: (
               <>
                 <span className="md:hidden">{m.labelMobile}</span>
