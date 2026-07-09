@@ -22,6 +22,8 @@ export { cn } from "./lib/utils"
 
 // Domain components
 export { AnimalCard } from "./ganado/animal-card"
+export { AppHeader } from "./ganado/app-header"
+export { BottomNav } from "./ganado/bottom-nav"
 export { EmptyState } from "./ganado/empty-state"
 export {
   CategoriaBadge,
@@ -31,22 +33,28 @@ export {
   StockBadge,
 } from "./ganado/estado-badge"
 export { EventDrawer } from "./ganado/event-drawer"
+export { Fab } from "./ganado/fab"
 export { FincaList, FincaSwitcher } from "./ganado/finca-switcher"
 export { MaestroCard, MaestroGrid, MaestrosProgreso } from "./ganado/maestro-card"
 export { MetricCard, MetricCardSkeleton } from "./ganado/metric-card"
+export { Sidebar } from "./ganado/sidebar"
 export { SyncPill } from "./ganado/sync-pill"
 export { ThemeToggle } from "./ganado/theme-toggle"
 export { Timeline } from "./ganado/timeline"
 
 // Domain types + permission helpers
 export type {
+  ActividadReciente,
+  AlertaAccion,
   AnimalResumen,
   CategoriaReproductiva,
+  DatoProduccion,
   DominioEvento,
   EstadoAnimal,
   EstadoSync,
   EventoTimeline,
   FincaResumen,
+  ItemNav,
   MaestroResumen,
   Permiso,
   PermisosUsuario,
