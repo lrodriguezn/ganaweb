@@ -97,16 +97,20 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen md:h-screen md:grid" style={{ gridTemplateColumns: "240px 1fr" }}>
-      <Sidebar
-        items={ITEMS_SIDEBAR}
-        activoId="inicio"
-        onNavigate={navegar}
-        puedeConfigurar
-        onConfigurar={() => navigate({ to: "/configuracion" })}
-      />
+    <div className="flex min-h-screen">
+      {/* Sidebar - solo visible en desktop */}
+      <div className="hidden md:block w-[240px] shrink-0">
+        <Sidebar
+          items={ITEMS_SIDEBAR}
+          activoId="inicio"
+          onNavigate={navegar}
+          puedeConfigurar
+          onConfigurar={() => navigate({ to: "/configuracion" })}
+        />
+      </div>
 
-      <div className="flex flex-col min-h-screen md:min-h-0 overflow-hidden">
+      {/* Contenido principal */}
+      <div className="flex-1 flex flex-col min-h-screen">
         <AppHeader
           fincas={FINCAS_DEMO}
           fincaActivaId="finca-1"
