@@ -44,8 +44,19 @@ export function Sidebar({
 }: SidebarProps) {
   return (
     <aside
-      className={cn("hidden md:flex md:w-full shrink-0 flex-col border-r bg-card", className)}
+      className={cn("shrink-0 flex-col border-r bg-card", className)}
+      style={{ display: "none", width: "240px" }}
       aria-label="Navegación principal"
+      ref={(el) => {
+        if (el) {
+          const mq = window.matchMedia("(min-width: 768px)")
+          const update = () => {
+            el.style.display = mq.matches ? "flex" : "none"
+          }
+          update()
+          mq.addEventListener("change", update)
+        }
+      }}
     >
       <div className="flex items-center gap-2.5 px-4 h-14 border-b">
         <span
