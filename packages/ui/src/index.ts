@@ -36,6 +36,8 @@ export {
   StockBadge,
 } from "./ganado/estado-badge"
 export { EventDrawer } from "./ganado/event-drawer"
+export { EstiloSwitcher } from "./ganado/estilo-switcher"
+export type { EstiloSwitcherProps } from "./ganado/estilo-switcher"
 export { Fab } from "./ganado/fab"
 export { FincaList, FincaSwitcher } from "./ganado/finca-switcher"
 export { MaestroCard, MaestroGrid, MaestrosProgreso } from "./ganado/maestro-card"
