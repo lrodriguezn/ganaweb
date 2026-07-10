@@ -48,6 +48,50 @@ function* walk(dir: string, accept: (name: string) => boolean): Generator<string
   }
 }
 
+/**
+ * T-004 invariant check: scan source content for forbidden Tailwind
+ * variant tokens (`dark:`, `theme-b:`), ignoring comments. The rule
+ * is about the className surface, not human prose — JSDoc blocks that
+ * mention "Sin variantes `dark:`" are NOT violations.
+ */
+function findOffenders(content: string, pattern: RegExp): { line: number; text: string }[] {
+  const lines = content.split("\n")
+  const offenders: { line: number; text: string }[] = []
+  let inBlockComment = false
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (typeof line !== "string") continue
+    const trimmed = line.trim()
+    if (inBlockComment) {
+      if (trimmed.includes("*/")) inBlockComment = false
+      continue
+    }
+    if (trimmed.startsWith("/*") || trimmed.startsWith("/**")) {
+      if (!trimmed.includes("*/")) inBlockComment = true
+      continue
+    }
+    if (trimmed.startsWith("//")) continue
+    if (pattern.test(line)) {
+      offenders.push({ line: i + 1, text: trimmed })
+    }
+  }
+  return offenders
+}
+
+function expectNoViolations(
+  file: string,
+  content: string,
+  pattern: RegExp,
+  variantLabel: string,
+): void {
+  const offenders = findOffenders(content, pattern)
+  if (offenders.length > 0) {
+    const formatted = offenders.map((o) => `  ${file}:${o.line}  ${o.text}`).join("\n")
+    throw new Error(`${variantLabel} Tailwind variant detected (T-004 violation):\n${formatted}`)
+  }
+  expect(offenders).toEqual([])
+}
+
 describe("PR4.T5 — design tokens (T-004)", () => {
   const css = readFileSync(GLOBALS_CSS, "utf8")
 
@@ -87,14 +131,18 @@ describe("PR1.T-001.4 — Propuesta B cascade (REQ-CSB-001)", () => {
     // historically broke in Propuesta B (A-dark = #1C3A26 vs B-dark =
     // #064E3B). The B override MUST be present and distinct from A.
     const themeBlock = css.match(/^\.theme-b\s*\{([\s\S]*?)\n\}/m)
-    expect(themeBlock, ".theme-b block not found").not.toBeNull()
-    expect(themeBlock![1]).toMatch(/--brand-panel\s*:/)
+    if (!themeBlock) throw new Error(".theme-b block not found")
+    const body = themeBlock[1]
+    if (typeof body !== "string") throw new Error(".theme-b body missing")
+    expect(body).toMatch(/--brand-panel\s*:/)
   })
 
   it("declares --brand-panel inside .theme-b.dark (B-dark distinct from B-light)", () => {
     const themeBlock = css.match(/^\.theme-b\.dark\s*\{([\s\S]*?)\n\}/m)
-    expect(themeBlock, ".theme-b.dark block not found").not.toBeNull()
-    expect(themeBlock![1]).toMatch(/--brand-panel\s*:/)
+    if (!themeBlock) throw new Error(".theme-b.dark block not found")
+    const body = themeBlock[1]
+    if (typeof body !== "string") throw new Error(".theme-b.dark body missing")
+    expect(body).toMatch(/--brand-panel\s*:/)
   })
 
   it("orders blocks :root → .dark → .theme-b → .theme-b.dark (D1 cascade contract)", () => {
@@ -115,8 +163,9 @@ describe("PR1.T-001.4 — Propuesta B cascade (REQ-CSB-001)", () => {
 
   it("sets B-only depth tokens to real values under .theme-b (REQ-CSB-003)", () => {
     const themeBlock = css.match(/^\.theme-b\s*\{([\s\S]*?)\n\}/m)
-    expect(themeBlock, ".theme-b block not found").not.toBeNull()
-    const body = themeBlock![1]
+    if (!themeBlock) throw new Error(".theme-b block not found")
+    const body = themeBlock[1]
+    if (typeof body !== "string") throw new Error(".theme-b body missing")
     expect(body).toMatch(/--card-shadow\s*:\s*\S/) // not empty / not "none" in B
     expect(body).toMatch(/--primary-gradient\s*:\s*linear-gradient/)
     expect(body).toMatch(/--glass-bg\s*:\s*rgb\(/)
@@ -132,8 +181,9 @@ describe("PR1.T-001.4 — Propuesta B cascade (REQ-CSB-001)", () => {
 
   it("registers B-only tokens in @theme inline (REQ-CSB-005)", () => {
     const themeInline = css.match(/@theme inline\s*\{([\s\S]*?)\n\}/m)
-    expect(themeInline, "@theme inline block not found").not.toBeNull()
-    const body = themeInline![1]
+    if (!themeInline) throw new Error("@theme inline block not found")
+    const body = themeInline[1]
+    if (typeof body !== "string") throw new Error("@theme inline body missing")
     expect(body).toMatch(/--color-primary-gradient\s*:/)
     expect(body).toMatch(/--color-card-shadow\s*:/)
     expect(body).toMatch(/--color-glass-bg\s*:/)
@@ -145,8 +195,11 @@ describe("PR1.T-001.4 — Propuesta B cascade (REQ-CSB-001)", () => {
     // "any .theme-b block redefines the radius", not "the first one".
     // We extract the union of all .theme-b block bodies and check.
     const themeBBlocks = [...css.matchAll(/^\.theme-b\s*\{([\s\S]*?)\n\}/gm)]
-    expect(themeBBlocks.length, "no .theme-b blocks found").toBeGreaterThan(0)
-    const combined = themeBBlocks.map((m) => m[1]).join("\n")
+    if (themeBBlocks.length === 0) throw new Error("no .theme-b blocks found")
+    const combined = themeBBlocks
+      .map((m) => m[1])
+      .filter((s): s is string => typeof s === "string")
+      .join("\n")
     expect(combined).toMatch(/--radius\s*:\s*0\.75rem/)
     expect(combined).toMatch(/--radius-card\s*:\s*1rem/)
     expect(combined).toMatch(/--radius-sheet\s*:\s*1\.5rem/)
@@ -171,6 +224,10 @@ describe("PR4.T5 — no dark: variant in src/** (T-004)", () => {
   // like `bdark:`, `darkmode:` would be false positives — guard with
   // a word boundary on the left.
   const DARK_VARIANT = /(?:^|[^a-zA-Z0-9_-])dark:/
+  // Skip the styles/globals.css file: its `.dark` block is the
+  // CORRECT way to switch themes (T-004). Only forbid the Tailwind
+  // utility variant in TS/TSX (components + barrel).
+  const skip = (file: string) => file.endsWith(".css")
 
   const files: string[] = []
   for (const file of walk(SRC, (name) => /\.(ts|tsx|css)$/.test(name))) {
@@ -182,40 +239,9 @@ describe("PR4.T5 — no dark: variant in src/** (T-004)", () => {
   })
 
   it.each(files)("no dark: in %s", (file) => {
+    if (skip(file)) return
     const content = readFileSync(file, "utf8")
-    // Skip the styles/globals.css file: its `.dark` block is the
-    // CORRECT way to switch themes (T-004). Only forbid the Tailwind
-    // utility variant in TS/TSX (components + barrel).
-    const isCss = file.endsWith(".css")
-    const lines = content.split("\n")
-    const offenders: { line: number; text: string }[] = []
-    let inBlockComment = false
-    lines.forEach((line, i) => {
-      if (isCss) return // CSS .dark is allowed
-      // Track JSDoc / multi-line block-comment state. Lines that
-      // mention `dark:` inside a comment (e.g. "Sin variantes `dark:`"
-      // in a JSDoc block) are NOT code; the rule is about the
-      // className surface, not human prose.
-      const trimmed = line.trim()
-      if (inBlockComment) {
-        if (trimmed.includes("*/")) inBlockComment = false
-        return
-      }
-      if (trimmed.startsWith("/*") || trimmed.startsWith("/**")) {
-        if (!trimmed.includes("*/")) inBlockComment = true
-        return
-      }
-      // Also skip single-line `//` comments.
-      if (trimmed.startsWith("//")) return
-      if (DARK_VARIANT.test(line)) {
-        offenders.push({ line: i + 1, text: line.trim() })
-      }
-    })
-    if (offenders.length > 0) {
-      const formatted = offenders.map((o) => `  ${file}:${o.line}  ${o.text}`).join("\n")
-      throw new Error(`dark: Tailwind variant detected (T-004 violation):\n${formatted}`)
-    }
-    expect(offenders).toEqual([])
+    expectNoViolations(file, content, DARK_VARIANT, "dark:")
   })
 })
 
@@ -241,28 +267,6 @@ describe("PR1.T-001.4 — no theme-b: variant in src/ganado/** (T-004 extended)"
 
   it.each(files)("no theme-b: in %s", (file) => {
     const content = readFileSync(file, "utf8")
-    const lines = content.split("\n")
-    const offenders: { line: number; text: string }[] = []
-    let inBlockComment = false
-    lines.forEach((line, i) => {
-      const trimmed = line.trim()
-      if (inBlockComment) {
-        if (trimmed.includes("*/")) inBlockComment = false
-        return
-      }
-      if (trimmed.startsWith("/*") || trimmed.startsWith("/**")) {
-        if (!trimmed.includes("*/")) inBlockComment = true
-        return
-      }
-      if (trimmed.startsWith("//")) return
-      if (THEME_B_VARIANT.test(line)) {
-        offenders.push({ line: i + 1, text: line.trim() })
-      }
-    })
-    if (offenders.length > 0) {
-      const formatted = offenders.map((o) => `  ${file}:${o.line}  ${o.text}`).join("\n")
-      throw new Error(`theme-b: Tailwind variant detected (T-004 violation):\n${formatted}`)
-    }
-    expect(offenders).toEqual([])
+    expectNoViolations(file, content, THEME_B_VARIANT, "theme-b:")
   })
 })

@@ -4,9 +4,7 @@
   "private": true,
   "description": "GanaWeb component library. Migrated ganado/ components + shadcn primitives. NOT dominio (dependency-cruiser enforced).",
   "type": "module",
-  "sideEffects": [
-    "**/*.css"
-  ],
+  "sideEffects": ["**/*.css"],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,10 +15,7 @@
     },
     "./styles/globals.css": "./src/styles/globals.css"
   },
-  "files": [
-    "dist",
-    "README.md"
-  ],
+  "files": ["dist", "README.md"],
   "scripts": {
     "build": "test -f src/index.ts && tsup || echo '@ganaweb/ui: barrel (src/index.ts) not yet created'",
     "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo '@ganaweb/ui: no source files yet'",

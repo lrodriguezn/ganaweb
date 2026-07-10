@@ -72,7 +72,12 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <head>
         {/* T-001.5: anti-flash script BEFORE <HeadContent />. Raw IIFE
             runs synchronously and adds `theme-b` / `dark` to <html>
-            before the first paint, preventing a flash of A-light. */}
+            before the first paint, preventing a flash of A-light.
+            biome-ignore: this is the canonical TanStack Start way to
+            inject a synchronous raw <script>; React doesn't escape the
+            payload (we own the source string above) and the body never
+            includes user-controlled data. */}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: anti-flash IIFE (T-001.5); the body is a literal compile-time constant, never user input. */}
         <script dangerouslySetInnerHTML={{ __html: ANTI_FLASH_SCRIPT }} />
         <HeadContent />
       </head>

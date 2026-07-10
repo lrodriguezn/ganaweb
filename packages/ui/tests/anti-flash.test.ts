@@ -25,7 +25,7 @@
  * + a documented const in __root.tsx) and accept the duplication.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
  * Canonical anti-flash IIFE body. MUST match ANTI_FLASH_SCRIPT in
@@ -118,11 +118,9 @@ describe("PR1.T-001.6 — anti-flash IIFE (REQ-AFS-002..004)", () => {
     // must catch and leave <html> untouched (A-light default). The
     // first call (ganaweb-estilo) is enough to throw — the catch is
     // expected to swallow the error before the second read.
-    const getItemSpy = vi
-      .spyOn(Storage.prototype, "getItem")
-      .mockImplementation(() => {
-        throw new Error("SecurityError: localStorage blocked")
-      })
+    const getItemSpy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("SecurityError: localStorage blocked")
+    })
 
     expect(() => runAntiFlash()).not.toThrow()
     expect(document.documentElement.classList.contains("theme-b")).toBe(false)
