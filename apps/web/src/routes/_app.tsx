@@ -97,20 +97,16 @@ function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar - solo visible en desktop */}
-      <div className="hidden md:block w-[240px] shrink-0">
-        <Sidebar
-          items={ITEMS_SIDEBAR}
-          activoId="inicio"
-          onNavigate={navegar}
-          puedeConfigurar
-          onConfigurar={() => navigate({ to: "/configuracion" })}
-        />
-      </div>
+    <div className="flex flex-col min-h-screen md:grid md:grid-cols-[240px_1fr] md:h-screen">
+      <Sidebar
+        items={ITEMS_SIDEBAR}
+        activoId="inicio"
+        onNavigate={navegar}
+        puedeConfigurar
+        onConfigurar={() => navigate({ to: "/configuracion" })}
+      />
 
-      {/* Contenido principal */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex flex-col flex-1 min-h-0">
         <AppHeader
           fincas={FINCAS_DEMO}
           fincaActivaId="finca-1"
@@ -125,7 +121,7 @@ function AppLayout() {
           }}
         />
 
-        <main className="flex-1 overflow-y-auto pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-4">
+        <main className="flex-1 min-h-0 overflow-y-auto pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-0">
           <Outlet />
         </main>
       </div>

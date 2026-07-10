@@ -44,7 +44,7 @@ export function Sidebar({
 }: SidebarProps) {
   return (
     <aside
-      className={cn("flex flex-col h-full border-r bg-card", className)}
+      className={cn("hidden md:flex w-[240px] shrink-0 flex-col border-r bg-card", className)}
       aria-label="Navegación principal"
     >
       <div className="flex items-center gap-2.5 px-4 h-14 border-b">

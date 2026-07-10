@@ -6,6 +6,13 @@
    ===================================================================== */
 @import "tailwindcss";
 
+/* Monorepo content scanning: Tailwind v4 auto-detects from the Vite project
+   root (apps/web/), so classes used ONLY in packages/ui component files are
+   never generated. These @source directives bridge the gap — they tell the
+   Tailwind compiler to also scan these directories for class names. */
+@source "../ganado";
+@source "../primitives";
+
 :root {
   --pasto-600: #2f6b3f; /* primario */
   --pasto-700: #1e3f29; /* JD R1: chip text sobre bg-pasto-100, AA sobre crema */
