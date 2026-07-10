@@ -64,10 +64,10 @@ D4; REQ-ES-001..006, REQ-TTC-001, REQ-TTC-002 (TTC partly — ThemeToggle alread
 
 D3 (glass rule, @supports), D11 (badges withDot), D12 (gradient FAB); REQ-BVA-001, REQ-BVA-002, REQ-BVA-004, REQ-BVA-005.
 
-- [ ] T-003.1 — Modify `packages/ui/src/ganado/estado-badge.tsx`: always render `<span class="estado-dot" />`; add `.estado-badge` root class; set `data-with-dot={withDot ? "true" : "false"}`. Convenience wrappers unchanged (they pass no `withDot`).
-- [ ] T-003.2 — Modify `packages/ui/src/ganado/bottom-nav.tsx`: add literal `glass-shell` className to `<nav>` root and `bg-primary-gradient` to the FAB internal button.
-- [ ] T-003.3 — Modify `packages/ui/src/ganado/fab.tsx`: append `bg-primary-gradient` to className.
-- [ ] T-003.4 — **Verify (TDD)**: RED — Vitest asserts (i) `EstadoBadge` always emits `.estado-dot` element; (ii) `withDot=false` keeps dot hidden in A (`display:none`), shown in B (`.theme-b` override); (iii) convenience wrappers (`CategoriaBadge` etc.) carry no `withDot` prop. GREEN — pass.
+- [x] T-003.1 — Modify `packages/ui/src/ganado/estado-badge.tsx`: always render `<span class="estado-dot" />`; add `.estado-badge` root class; set `data-with-dot={withDot ? "true" : "false"}`. Convenience wrappers unchanged (they pass no `withDot`).
+- [x] T-003.2 — Modify `packages/ui/src/ganado/bottom-nav.tsx`: add literal `glass-shell` className to `<nav>` root and `bg-primary-gradient` to the FAB internal button.
+- [x] T-003.3 — Modify `packages/ui/src/ganado/fab.tsx`: append `bg-primary-gradient` to className.
+- [x] T-003.4 — **Verify (TDD)**: RED — Vitest asserts (i) `EstadoBadge` always emits `.estado-dot` element; (ii) `withDot=false` keeps dot hidden in A (`display:none`), shown in B (`.theme-b` override); (iii) convenience wrappers (`CategoriaBadge` etc.) carry no `withDot` prop. GREEN — pass.
 
 **Work-unit commit**: `feat(ui): add glass shell markers, FAB gradient, badge withDot CSS override`. **Rollback**: revert file changes; CSS still cascades to A defaults.
 
