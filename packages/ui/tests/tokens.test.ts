@@ -48,6 +48,13 @@ function* walk(dir: string, accept: (name: string) => boolean): Generator<string
   }
 }
 
+function shouldScanLine(trimmed: string, inBlockComment: boolean): [boolean, boolean] {
+  if (inBlockComment) return [trimmed.includes("*/"), false]
+  if (trimmed.startsWith("/*") || trimmed.startsWith("/**")) return [!trimmed.includes("*/"), false]
+  if (trimmed.startsWith("//")) return [false, false]
+  return [false, true]
+}
+
 /**
  * T-004 invariant check: scan source content for forbidden Tailwind
  * variant tokens (`dark:`, `theme-b:`), ignoring comments. The rule
@@ -62,15 +69,9 @@ function findOffenders(content: string, pattern: RegExp): { line: number; text: 
     const line = lines[i]
     if (typeof line !== "string") continue
     const trimmed = line.trim()
-    if (inBlockComment) {
-      if (trimmed.includes("*/")) inBlockComment = false
-      continue
-    }
-    if (trimmed.startsWith("/*") || trimmed.startsWith("/**")) {
-      if (!trimmed.includes("*/")) inBlockComment = true
-      continue
-    }
-    if (trimmed.startsWith("//")) continue
+    const [nextInBlockComment, shouldScan] = shouldScanLine(trimmed, inBlockComment)
+    inBlockComment = nextInBlockComment
+    if (!shouldScan) continue
     if (pattern.test(line)) {
       offenders.push({ line: i + 1, text: trimmed })
     }
@@ -90,6 +91,142 @@ function expectNoViolations(
     throw new Error(`${variantLabel} Tailwind variant detected (T-004 violation):\n${formatted}`)
   }
   expect(offenders).toEqual([])
+}
+
+type StyleCase = {
+  id: "campo" | "moderna" | "indigo" | "cielo" | "grafito"
+  mode: "claro" | "oscuro"
+  selector: string
+  expected: Record<string, string>
+}
+
+const STYLE_CASES: StyleCase[] = [
+  {
+    id: "campo",
+    mode: "claro",
+    selector: ":root",
+    expected: {
+      "--pasto-600": "#2f6b3f",
+      "--crema-50": "#faf8f4",
+      "--superficie": "#ffffff",
+      "--tierra-900": "#2b2620",
+    },
+  },
+  {
+    id: "campo",
+    mode: "oscuro",
+    selector: ".dark",
+    expected: {
+      "--pasto-600": "#4c9d62",
+      "--crema-50": "#171512",
+      "--superficie": "#211e1a",
+      "--tierra-900": "#ede9e1",
+    },
+  },
+  {
+    id: "moderna",
+    mode: "claro",
+    selector: ".theme-moderna",
+    expected: {
+      "--pasto-600": "#059669",
+      "--crema-50": "#f4f5f7",
+      "--superficie": "#ffffff",
+      "--tierra-900": "#18181b",
+    },
+  },
+  {
+    id: "moderna",
+    mode: "oscuro",
+    selector: ".theme-moderna.dark",
+    expected: {
+      "--pasto-600": "#10b981",
+      "--crema-50": "#09090b",
+      "--superficie": "#18181b",
+      "--tierra-900": "#fafafa",
+    },
+  },
+  {
+    id: "indigo",
+    mode: "claro",
+    selector: ".theme-indigo",
+    expected: {
+      "--pasto-600": "#4f46e5",
+      "--pasto-100": "#e0e7ff",
+      "--primary-soft-text": "#4338ca",
+      "--dom-repro": "#c026d3",
+    },
+  },
+  {
+    id: "indigo",
+    mode: "oscuro",
+    selector: ".theme-indigo.dark",
+    expected: {
+      "--pasto-600": "#818cf8",
+      "--pasto-100": "#312e81",
+      "--primary-soft-text": "#c7d2fe",
+      "--dom-repro": "#e879f9",
+    },
+  },
+  {
+    id: "cielo",
+    mode: "claro",
+    selector: ".theme-cielo",
+    expected: {
+      "--pasto-600": "#0284c7",
+      "--crema-50": "#f3f6f9",
+      "--superficie": "#ffffff",
+      "--tierra-900": "#0f172a",
+    },
+  },
+  {
+    id: "cielo",
+    mode: "oscuro",
+    selector: ".theme-cielo.dark",
+    expected: {
+      "--pasto-600": "#38bdf8",
+      "--crema-50": "#09090b",
+      "--superficie": "#0f172a",
+      "--tierra-900": "#f8fafc",
+    },
+  },
+  {
+    id: "grafito",
+    mode: "claro",
+    selector: ".theme-grafito",
+    expected: {
+      "--pasto-600": "#1c1917",
+      "--crema-50": "#f5f5f4",
+      "--superficie": "#ffffff",
+      "--tierra-900": "#1c1917",
+    },
+  },
+  {
+    id: "grafito",
+    mode: "oscuro",
+    selector: ".theme-grafito.dark",
+    expected: {
+      "--pasto-600": "#e7e5e4",
+      "--crema-50": "#0c0a09",
+      "--superficie": "#1c1917",
+      "--tierra-900": "#fafaf9",
+    },
+  },
+]
+
+function selectorToRegexSource(selector: string): string {
+  return selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\ /g, "\\s+")
+}
+
+function extractBlock(css: string, selector: string): string {
+  const match = css.match(
+    new RegExp(`^${selectorToRegexSource(selector)}\\s*\\{([\\s\\S]*?)\\n\\}`, "m"),
+  )
+  if (!match || typeof match[1] !== "string") throw new Error(`${selector} block not found`)
+  return match[1]
+}
+
+function expectToken(block: string, token: string, value: string): void {
+  expect(block.toLowerCase()).toMatch(new RegExp(`${token}:\\s*${value.toLowerCase()}`))
 }
 
 describe("PR4.T5 — design tokens (T-004)", () => {
@@ -112,6 +249,50 @@ describe("PR4.T5 — design tokens (T-004)", () => {
     // components never branch on it. If this drops, dark mode silently
     // reverts to light tokens — easier to catch here than in production.
     expect(css).toMatch(/^\.dark\s*\{/m)
+  })
+})
+
+describe("cinco-estilos-apariencia — five-style token cascade", () => {
+  const css = readFileSync(GLOBALS_CSS, "utf8")
+
+  it.each(STYLE_CASES)("defines $id $mode tokens in $selector", ({ expected, selector }) => {
+    const block = extractBlock(css, selector)
+    for (const [token, value] of Object.entries(expected)) {
+      expectToken(block, token, value)
+    }
+  })
+
+  it("keeps semantic Tailwind tokens mapped to runtime CSS variables", () => {
+    const themeInline = extractBlock(css, "@theme inline")
+    expect(themeInline).toMatch(/--color-primary\s*:\s*var\(--pasto-600\)/)
+    expect(themeInline).toMatch(/--color-background\s*:\s*var\(--crema-50\)/)
+    expect(themeInline).toMatch(/--color-ring\s*:\s*var\(--pasto-600\)/)
+  })
+
+  it("orders style blocks so each dark style wins after the base dark block", () => {
+    const darkIdx = css.search(/^\.dark\s*\{/m)
+    expect(darkIdx).toBeGreaterThan(-1)
+
+    for (const selector of [
+      ".theme-moderna",
+      ".theme-moderna.dark",
+      ".theme-indigo",
+      ".theme-indigo.dark",
+      ".theme-cielo",
+      ".theme-cielo.dark",
+      ".theme-grafito",
+      ".theme-grafito.dark",
+    ]) {
+      const idx = css.search(new RegExp(`^${selectorToRegexSource(selector)}\\s*\\{`, "m"))
+      expect(idx).toBeGreaterThan(darkIdx)
+    }
+  })
+
+  it("keeps .theme-b and Moderna selectors available for compatibility", () => {
+    expect(css).toMatch(/^\.theme-b\s*\{/m)
+    expect(css).toMatch(/^\.theme-b\.dark\s*\{/m)
+    expect(css).toMatch(/^\.theme-moderna\s*\{/m)
+    expect(css).toMatch(/^\.theme-moderna\.dark\s*\{/m)
   })
 })
 
@@ -271,6 +452,24 @@ describe("PR1.T-001.4 — no theme-b: variant in src/ganado/** (T-004 extended)"
   })
 })
 
+describe("cinco-estilos-apariencia — no component-level style variants", () => {
+  const STYLE_VARIANT = /(?:^|[^a-zA-Z0-9_-])theme-(?:b|moderna|indigo|cielo|grafito):/
+
+  const files: string[] = []
+  for (const file of walk(SRC, (name) => /\.(ts|tsx)$/.test(name))) {
+    files.push(file)
+  }
+
+  it("src/ contains at least one TypeScript source file (sanity)", () => {
+    expect(files.length).toBeGreaterThan(0)
+  })
+
+  it.each(files)("no theme-* Tailwind style variant in %s", (file) => {
+    const content = readFileSync(file, "utf8")
+    expectNoViolations(file, content, STYLE_VARIANT, "theme-*")
+  })
+})
+
 /**
  * PR1 (intensificar-b-visuals) — B visual identity tightening.
  *
@@ -346,35 +545,70 @@ describe("intensificar-b-visuals — B cascade consumption rules", () => {
     expect(css).toMatch(/\.theme-b\s+\.text-metric\s*\{\s*letter-spacing:\s*-0\.025em/)
   })
 
-  it("REQ-BVA-008 — bento hero under .theme-b has min-height 5rem and --radius-card", () => {
-    // Match the .theme-b .dashboard-metric-hero rule (NOT the .m-value sub-rule
-    // and NOT the @media variant) and confirm both declarations live inside.
-    const bentoRule = css.match(/^\.theme-b\s+\.dashboard-metric-hero\s*\{([^}]*)\n\}/m)
-    if (!bentoRule || typeof bentoRule[1] !== "string") {
-      throw new Error(".theme-b .dashboard-metric-hero rule not found")
+  it("REQ-BVA-008 — bento hero under .theme-b is mobile-only (5rem + --radius-card inside @media (max-width: 767px))", () => {
+    // v1.4 extended the bento rule from a single .theme-b selector to
+    // a list of theme-b + 4 modern styles. The bento LAYOUT (full
+    // grid span, 5rem min-height, dramatic --radius-card) is now
+    // mobile-only — it lives inside `@media (max-width: 767px)` so
+    // the desktop dashboard keeps the 4-column grid (the first
+    // MetricCard must NOT span the full row at >= 768px). We
+    // bracket-count the @media body to extract it, then assert the
+    // 5rem + --radius-card + grid-column 1/-1 declarations live
+    // there.
+    const start = css.search(/@media\s*\(max-width:\s*767px\)\s*\{/)
+    expect(start, "@media (max-width: 767px) block must exist").toBeGreaterThan(-1)
+    const openBrace = css.indexOf("{", start)
+    let depth = 1
+    let i = openBrace + 1
+    while (i < css.length && depth > 0) {
+      const ch = css[i]
+      if (ch === "{") depth++
+      else if (ch === "}") depth--
+      i++
     }
-    const body = bentoRule[1]
-    expect(body).toMatch(/grid-column:\s*1\s*\/\s*-1/)
-    expect(body).toMatch(/min-height:\s*5rem/)
-    expect(body).toMatch(/border-radius:\s*var\(--radius-card\)/)
+    const bentoBody = css.slice(openBrace + 1, i - 1)
+    // The bento selector list (theme-b + 4 modern) is preserved.
+    expect(bentoBody).toMatch(/\.theme-b\s+\.dashboard-metric-hero\s*,/)
+    expect(bentoBody).toMatch(/\.theme-moderna\s+\.dashboard-metric-hero\s*,/)
+    expect(bentoBody).toMatch(/\.theme-indigo\s+\.dashboard-metric-hero\s*,/)
+    expect(bentoBody).toMatch(/\.theme-cielo\s+\.dashboard-metric-hero\s*,/)
+    expect(bentoBody).toMatch(/\.theme-grafito\s+\.dashboard-metric-hero\s*\{/)
+    // The bento LAYOUT body declarations.
+    expect(bentoBody).toMatch(/grid-column:\s*1\s*\/\s*-1/)
+    expect(bentoBody).toMatch(/min-height:\s*5rem/)
+    expect(bentoBody).toMatch(/border-radius:\s*var\(--radius-card\)/)
   })
 
-  it("REQ-BVA-008 — bento hero escalates to min-height 7rem at min-width: 768px", () => {
-    // The @media block must contain .theme-b .dashboard-metric-hero with
-    // min-height: 7rem AND .m-value at font-size: 1.75rem. We allow anything
-    // between the @media opening brace and the nested rule.
-    expect(css).toMatch(
-      /@media\s*\(min-width:\s*768px\)\s*\{[\s\S]*?\.theme-b\s+\.dashboard-metric-hero\s*\{[\s\S]*?min-height:\s*7rem/,
-    )
-    expect(css).toMatch(
-      /@media\s*\(min-width:\s*768px\)\s*\{[\s\S]*?\.theme-b\s+\.dashboard-metric-hero\s+\.m-value\s*\{[\s\S]*?font-size:\s*1\.75rem/,
-    )
+  it("REQ-BVA-008 — bento hero has NO desktop override at min-width: 768px (mobile-only bento LAYOUT)", () => {
+    // The previous bento layout had an @media (min-width: 768px) block
+    // that escalated min-height to 7rem and font-size to 1.75rem.
+    // After the bento became mobile-only, that override is dead code
+    // and MUST be removed. The desktop dashboard now shows the hero
+    // as a normal 4-column tile (no full-row span, no dramatic size).
+    // We assert both 7rem and 1.75rem are absent from the file.
+    expect(css).not.toMatch(/min-height\s*:\s*7rem/)
+    expect(css).not.toMatch(/font-size\s*:\s*1\.75rem/)
   })
 
-  it("REQ-BVA-008 — bento hero m-value font-size is 1.5rem on mobile (base rule)", () => {
-    // The base rule (outside @media) must set the mobile font-size for .m-value.
-    expect(css).toMatch(
-      /\.theme-b\s+\.dashboard-metric-hero\s+\.m-value\s*\{[^}]*font-size:\s*1\.5rem/,
+  it("REQ-BVA-008 — bento hero m-value font-size is 1.5rem inside @media (max-width: 767px) (mobile-only)", () => {
+    // The .m-value 1.5rem override is part of the bento LAYOUT — it
+    // makes the hero number feel more prominent when the card spans
+    // the full row. It MUST be inside the mobile @media block; in
+    // desktop the metric uses the standard text-metric size.
+    const start = css.search(/@media\s*\(max-width:\s*767px\)\s*\{/)
+    expect(start, "@media (max-width: 767px) block must exist").toBeGreaterThan(-1)
+    const openBrace = css.indexOf("{", start)
+    let depth = 1
+    let i = openBrace + 1
+    while (i < css.length && depth > 0) {
+      const ch = css[i]
+      if (ch === "{") depth++
+      else if (ch === "}") depth--
+      i++
+    }
+    const bentoBody = css.slice(openBrace + 1, i - 1)
+    expect(bentoBody).toMatch(
+      /\.theme-b\s+\.dashboard-metric-hero\s*,[\s\S]*?\s+\.m-value\s*\{[^}]*font-size:\s*1\.5rem/,
     )
   })
 

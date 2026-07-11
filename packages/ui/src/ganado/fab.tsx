@@ -14,7 +14,7 @@ import { cn } from "../lib/utils"
  *
  * Token: bg-primary + text-primary-foreground (que mapea a `--on-primary`
  * = #FFFFFF light / #171512 dark; el oscuro da contraste sobre el verde
- * más claro del dark mode). Sin variantes `dark:`.
+ * más claro del dark mode). Sin variantes Tailwind de modo oscuro.
  *
  * v1.3 (T-003.3, D12, REQ-BVA-004): la FAB siempre lleva `bg-primary-gradient`
  * además de `bg-primary`. En A --primary-gradient es `none` y solo se ve
