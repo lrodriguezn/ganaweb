@@ -270,3 +270,182 @@ describe("PR1.T-001.4 — no theme-b: variant in src/ganado/** (T-004 extended)"
     expectNoViolations(file, content, THEME_B_VARIANT, "theme-b:")
   })
 })
+
+/**
+ * PR1 (intensificar-b-visuals) — B visual identity tightening.
+ *
+ * The original Propuesta B cascade delivered color tokens, radius, gradient
+ * utility, glass shell, and bento hero — but several of B's depth markers
+ * were *defined as tokens* and never *consumed*. This block verifies the
+ * six new cascade rules (REQ-BVA-006/007/008 + REQ-CSB-008/009/010) plus
+ * the A-untouched guard that proves A's token values are unchanged.
+ *
+ * Spec: openspec/changes/intensificar-b-visuals/specs/{b-visual-adaptations,
+ * css-tokens-b}-delta.md. The structural regexes mirror the existing
+ * PR1.T-001.4 tests above — same source-order / block-extraction pattern,
+ * so future maintainers only need to learn one parsing style.
+ */
+describe("intensificar-b-visuals — B cascade consumption rules", () => {
+  const css = readFileSync(GLOBALS_CSS, "utf8")
+
+  // Extractors reused by multiple tests below. Fail fast with a clear
+  // message if the block we're matching against is missing — a future
+  // refactor that renames .theme-b or :root should not produce a cryptic
+  // "undefined.match" stack.
+  const rootBody = css.match(/^:root\s*\{([\s\S]*?)\n\}/m)?.[1]
+  const darkBody = css.match(/^\.dark\s*\{([\s\S]*?)\n\}/m)?.[1]
+  const themeBBody = css.match(/^\.theme-b\s*\{([\s\S]*?)\n\}/m)?.[1]
+  const themeBDarkBody = css.match(/^\.theme-b\.dark\s*\{([\s\S]*?)\n\}/m)?.[1]
+
+  it("REQ-BVA-006 — .theme-b .rounded-card consumes --card-shadow", () => {
+    // The rule is structural: `.theme-b .rounded-card { box-shadow: var(--card-shadow); }`.
+    // The selector scope is important: NEVER .rounded-md (buttons/inputs) or
+    // .rounded-lg (chips/segments). The regex anchors the brace immediately
+    // after the selector, so the .rounded-card rule is uniquely identified.
+    expect(css).toMatch(/\.theme-b\s+\.rounded-card\s*\{\s*box-shadow:\s*var\(--card-shadow\)/)
+  })
+
+  it("REQ-BVA-006 — selector scope is .rounded-card only (no .rounded-md leak)", () => {
+    // Belt-and-suspenders for the spec's "never .rounded-md" requirement.
+    // .rounded-md must NOT appear as a sibling selector on the card-shadow rule.
+    // We locate the declaration by indexOf (match() returns an array, not a
+    // string, so the "typeof !== 'string'" guard the first draft used was
+    // structurally wrong and always threw on success).
+    const idx = css.indexOf("box-shadow: var(--card-shadow)")
+    if (idx < 0) throw new Error("box-shadow: var(--card-shadow) declaration not found")
+    const preceding = css.slice(Math.max(0, idx - 400), idx)
+    // Selector list ends at the most recent `}` (rule close) or `*/` (comment close).
+    const lastBraceOrComment = Math.max(preceding.lastIndexOf("}"), preceding.lastIndexOf("*/"))
+    const selectorSlice = preceding.slice(lastBraceOrComment + 1)
+    expect(selectorSlice).toContain(".rounded-card")
+    expect(selectorSlice).not.toContain(".rounded-md")
+    expect(selectorSlice).not.toContain(".rounded-lg")
+  })
+
+  it("REQ-BVA-007 — headings and text utility classes get letter-spacing -0.02em", () => {
+    // The selector list (h1, h2, .text-title, .text-section) is grouped;
+    // any one of them on the same rule body as the declaration suffices.
+    const letterSpacingRule = css.match(/\.theme-b\s+h1[\s\S]*?letter-spacing:\s*-0\.02em/)
+    expect(letterSpacingRule).not.toBeNull()
+    // Sanity: the grouped selector list mentions all four required classes.
+    const idx = css.indexOf("letter-spacing: -0.02em")
+    if (idx < 0) throw new Error("letter-spacing: -0.02em not found")
+    const preceding = css.slice(Math.max(0, idx - 400), idx)
+    const lastBraceOrComment = Math.max(preceding.lastIndexOf("}"), preceding.lastIndexOf("*/"))
+    const selectorSlice = preceding.slice(lastBraceOrComment + 1)
+    expect(selectorSlice).toContain("h1")
+    expect(selectorSlice).toContain("h2")
+    expect(selectorSlice).toContain(".text-title")
+    expect(selectorSlice).toContain(".text-section")
+  })
+
+  it("REQ-BVA-007 — .text-metric gets the tighter letter-spacing -0.025em", () => {
+    // .text-metric is on its own rule with the tighter -0.025em (per
+    // design-b typography.extra: 'cifras con letter-spacing -0.02em'
+    // BUT the spec amplifies to -0.025em for numeric figures).
+    expect(css).toMatch(/\.theme-b\s+\.text-metric\s*\{\s*letter-spacing:\s*-0\.025em/)
+  })
+
+  it("REQ-BVA-008 — bento hero under .theme-b has min-height 5rem and --radius-card", () => {
+    // Match the .theme-b .dashboard-metric-hero rule (NOT the .m-value sub-rule
+    // and NOT the @media variant) and confirm both declarations live inside.
+    const bentoRule = css.match(/^\.theme-b\s+\.dashboard-metric-hero\s*\{([^}]*)\n\}/m)
+    if (!bentoRule || typeof bentoRule[1] !== "string") {
+      throw new Error(".theme-b .dashboard-metric-hero rule not found")
+    }
+    const body = bentoRule[1]
+    expect(body).toMatch(/grid-column:\s*1\s*\/\s*-1/)
+    expect(body).toMatch(/min-height:\s*5rem/)
+    expect(body).toMatch(/border-radius:\s*var\(--radius-card\)/)
+  })
+
+  it("REQ-BVA-008 — bento hero escalates to min-height 7rem at min-width: 768px", () => {
+    // The @media block must contain .theme-b .dashboard-metric-hero with
+    // min-height: 7rem AND .m-value at font-size: 1.75rem. We allow anything
+    // between the @media opening brace and the nested rule.
+    expect(css).toMatch(
+      /@media\s*\(min-width:\s*768px\)\s*\{[\s\S]*?\.theme-b\s+\.dashboard-metric-hero\s*\{[\s\S]*?min-height:\s*7rem/,
+    )
+    expect(css).toMatch(
+      /@media\s*\(min-width:\s*768px\)\s*\{[\s\S]*?\.theme-b\s+\.dashboard-metric-hero\s+\.m-value\s*\{[\s\S]*?font-size:\s*1\.75rem/,
+    )
+  })
+
+  it("REQ-BVA-008 — bento hero m-value font-size is 1.5rem on mobile (base rule)", () => {
+    // The base rule (outside @media) must set the mobile font-size for .m-value.
+    expect(css).toMatch(
+      /\.theme-b\s+\.dashboard-metric-hero\s+\.m-value\s*\{[^}]*font-size:\s*1\.5rem/,
+    )
+  })
+
+  it("REQ-CSB-008 — .theme-b --tierra-200 re-tuned to zinc-300 (#d4d4d8)", () => {
+    if (typeof themeBBody !== "string") throw new Error(".theme-b block not found")
+    expect(themeBBody).toMatch(/--tierra-200:\s*#d4d4d8/)
+  })
+
+  it("REQ-CSB-008 — .theme-b.dark --tierra-200 re-tuned to zinc-700 (#3f3f46)", () => {
+    if (typeof themeBDarkBody !== "string") throw new Error(".theme-b.dark block not found")
+    expect(themeBDarkBody).toMatch(/--tierra-200:\s*#3f3f46/)
+  })
+
+  it("REQ-CSB-009 — .theme-b --crema-50 re-tuned to slightly darker (#eef0f3)", () => {
+    if (typeof themeBBody !== "string") throw new Error(".theme-b block not found")
+    expect(themeBBody).toMatch(/--crema-50:\s*#eef0f3/)
+  })
+
+  it("REQ-CSB-009 — .theme-b.dark --crema-50 re-tuned to slightly darker (#0a0a0c)", () => {
+    if (typeof themeBDarkBody !== "string") throw new Error(".theme-b.dark block not found")
+    expect(themeBDarkBody).toMatch(/--crema-50:\s*#0a0a0c/)
+  })
+
+  it("REQ-CSB-010 — .theme-b .glass-shell gets a 1px hairline shadow (light)", () => {
+    // The hairline rule lives OUTSIDE the @supports guard. We assert by
+    // matching the selector+brace+declaration pattern: the @supports version
+    // of .theme-b .glass-shell starts with `-webkit-backdrop-filter`, so the
+    // regex with `box-shadow` immediately after `{` uniquely matches the
+    // standalone rule.
+    expect(css).toMatch(
+      /\.theme-b\s+\.glass-shell\s*\{\s*box-shadow:\s*0 1px 0 0 rgb\(0 0 0 \/ 0\.04\)/,
+    )
+  })
+
+  it("REQ-CSB-010 — .theme-b.dark .glass-shell gets a 1px hairline shadow (dark)", () => {
+    expect(css).toMatch(
+      /\.theme-b\.dark\s+\.glass-shell\s*\{\s*box-shadow:\s*0 1px 0 0 rgb\(255 255 255 \/ 0\.06\)/,
+    )
+  })
+
+  it("REQ-CSB-010 — hairline rule is OUTSIDE the @supports guard (applies unconditionally)", () => {
+    // The standalone hairline rule must come AFTER the @supports block closes
+    // so it always applies, even on browsers without backdrop-filter support.
+    const supportsBlockEnd = css.indexOf("backdrop-filter: blur(12px);")
+    if (supportsBlockEnd < 0) throw new Error("@supports block not found")
+    const hairlineIdx = css.indexOf("box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.04)")
+    expect(hairlineIdx).toBeGreaterThan(supportsBlockEnd)
+  })
+
+  // ---- A-untouched guards --------------------------------------------------
+  // The whole point of scoping every fix under .theme-b / .theme-b.dark is
+  // that A (:root, .dark) MUST be unchanged. These four assertions are the
+  // safety net — if any of them fails, the change is not B-only anymore.
+
+  it("guard — :root --tierra-200 still equals A's warm stone-200 (#e3ded5)", () => {
+    if (typeof rootBody !== "string") throw new Error(":root block not found")
+    expect(rootBody).toMatch(/--tierra-200:\s*#e3ded5/)
+  })
+
+  it("guard — :root --crema-50 still equals A's warm crema-50 (#faf8f4)", () => {
+    if (typeof rootBody !== "string") throw new Error(":root block not found")
+    expect(rootBody).toMatch(/--crema-50:\s*#faf8f4/)
+  })
+
+  it("guard — .dark --tierra-200 still equals A's dark border (#3a362f)", () => {
+    if (typeof darkBody !== "string") throw new Error(".dark block not found")
+    expect(darkBody).toMatch(/--tierra-200:\s*#3a362f/)
+  })
+
+  it("guard — .dark --crema-50 still equals A's dark background (#171512)", () => {
+    if (typeof darkBody !== "string") throw new Error(".dark block not found")
+    expect(darkBody).toMatch(/--crema-50:\s*#171512/)
+  })
+})
