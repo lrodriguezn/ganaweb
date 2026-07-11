@@ -1,11 +1,12 @@
-# GanaWeb Design System — Propuesta A "Campo"
+# GanaWeb Design System — Estilo "Campo" (base)
 
-> ⚑ La aplicación ofrece DOS estilos seleccionables por el usuario: esta
-> Propuesta A (default) y la Propuesta B "Moderna" (`ganaweb-design-b.md`),
+> ⚑ La aplicación ofrece CINCO estilos seleccionables por el usuario
+> (`ganaweb-estilos.md`): este Campo (default) más Moderna, Índigo, Cielo
+> y Grafito,
 > implementadas como 4 temas runtime (A/B × claro/oscuro) vía clases
 > `theme-b` y `dark` en <html>. El usuario elige en la sección "Apariencia"
 > del menú del avatar (desktop) y de "Más" (mobile) — pantallas 16/17 del
-> .op — con `EstiloSwitcher` + `ThemeToggle`. Nunca dentro de Configuración
+> .op — con `EstiloSelector` + `ThemeToggle`. Nunca dentro de Configuración
 > (solo-admin): la apariencia es preferencia personal de todo usuario,
 > persistida por dispositivo.
 
