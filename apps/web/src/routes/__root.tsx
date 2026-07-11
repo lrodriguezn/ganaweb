@@ -51,12 +51,13 @@ export const Route = createRootRoute({
  * way to inject a literal `<script>` in TanStack Start.
  *
  * Behavior (REQ-AFS-002..004):
- *   - ganaweb-estilo === "moderna" → adds "theme-b"
+ *   - ganaweb-estilo === "moderna" or legacy "theme-b" → adds "theme-moderna"
+ *   - ganaweb-estilo in "indigo" | "cielo" | "grafito" → adds "theme-{id}"
  *   - ganaweb-theme  === "dark"    → adds "dark"
- *   - missing / unrecognized values → A-light default (no classes added)
+ *   - missing / unrecognized values → Campo claro default (no style classes added)
  *   - localStorage unavailable (private mode, blocked) → swallowed, A-light default
  */
-const ANTI_FLASH_SCRIPT = `(function(){try{var e=localStorage.getItem("ganaweb-estilo");var t=localStorage.getItem("ganaweb-theme");var h=document.documentElement;if(e==="moderna")h.classList.add("theme-b");if(t==="dark")h.classList.add("dark")}catch(_){}})();`
+const ANTI_FLASH_SCRIPT = `(function(){try{var e=localStorage.getItem("ganaweb-estilo");var t=localStorage.getItem("ganaweb-theme");var h=document.documentElement;var c={"theme-b":"theme-moderna",moderna:"theme-moderna",indigo:"theme-indigo",cielo:"theme-cielo",grafito:"theme-grafito"}[e];if(c)h.classList.add(c);if(t==="dark")h.classList.add("dark")}catch(_){}})();`
 
 function RootComponent() {
   return (
