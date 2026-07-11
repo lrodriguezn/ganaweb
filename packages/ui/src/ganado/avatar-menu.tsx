@@ -56,7 +56,7 @@ export function AvatarMenu({ usuario, onCerrarSesion, className }: AvatarMenuPro
         <span className="sr-only">Menú de usuario: {usuario.nombre}</span>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" sideOffset={8} className="w-72 p-0">
+      <DropdownMenuContent align="end" sideOffset={8} className="w-96 p-0">
         {/* User info header */}
         <div className="px-3 py-2.5">
           <p className="text-[13px] font-medium leading-tight">{usuario.nombre}</p>
@@ -69,9 +69,14 @@ export function AvatarMenu({ usuario, onCerrarSesion, className }: AvatarMenuPro
         <div className="px-3 py-2">
           <DropdownMenuLabel className="px-0 py-1 text-[10px]">APARIENCIA</DropdownMenuLabel>
 
-          {/* Estilo row */}
-          <div className="flex items-center justify-between py-1.5">
-            <span className="text-[12px] text-muted-foreground">Estilo</span>
+          {/* Estilo section */}
+          <div className="space-y-2 py-1.5">
+            <div>
+              <span className="text-[12px] font-medium text-foreground">Estilo visual</span>
+              <p className="text-[10px] text-muted-foreground">
+                Cinco estilos, un mismo flujo de trabajo
+              </p>
+            </div>
             <EstiloSwitcher size="sm" />
           </div>
 
@@ -140,7 +145,7 @@ function ModoIconButtons() {
       <button
         type="button"
         onClick={() => setDark(false)}
-        aria-pressed={dark}
+        aria-pressed={!dark}
         aria-label="Cambiar a modo claro"
         className={cn(
           "size-7 rounded-lg flex items-center justify-center",
@@ -154,7 +159,7 @@ function ModoIconButtons() {
       <button
         type="button"
         onClick={() => setDark(true)}
-        aria-pressed={!dark}
+        aria-pressed={dark}
         aria-label="Cambiar a modo oscuro"
         className={cn(
           "size-7 rounded-lg flex items-center justify-center",

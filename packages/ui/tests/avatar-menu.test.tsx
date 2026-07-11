@@ -26,6 +26,8 @@ const USUARIO: UsuarioResumen = {
   esAdmin: true,
 }
 
+const ESTILO_IDS = ["campo", "moderna", "indigo", "cielo", "grafito"] as const
+
 beforeEach(() => {
   document.documentElement.className = ""
   localStorage.clear()
@@ -112,10 +114,45 @@ describe("PR4.T-004.7 — AvatarMenu (REQ-AM-001..007, D5)", () => {
     const moonButton = screen.getByRole("button", { name: "Cambiar a modo oscuro" })
 
     // Exactly one should be pressed (aria-pressed="true")
-    // Default is light mode, so moon button should be pressed
+    // Default is light mode, so the current light-mode button should be pressed.
+    expect(sunButton).toHaveAttribute("aria-pressed", "true")
+    expect(moonButton).toHaveAttribute("aria-pressed", "false")
+
+    await user.click(moonButton)
     expect(sunButton).toHaveAttribute("aria-pressed", "false")
     expect(moonButton).toHaveAttribute("aria-pressed", "true")
+
+    await user.click(sunButton)
+    expect(sunButton).toHaveAttribute("aria-pressed", "true")
+    expect(moonButton).toHaveAttribute("aria-pressed", "false")
   })
+
+  it.each(ESTILO_IDS)(
+    "keeps stored %s style while toggling claro/oscuro through desktop mode controls",
+    async (estiloId) => {
+      localStorage.setItem("ganaweb-estilo", estiloId)
+      const user = userEvent.setup()
+      render(<AvatarMenu usuario={USUARIO} onCerrarSesion={vi.fn()} />)
+
+      const trigger = screen.getByRole("button", { name: /Yuli Administradora|menu de usuario/i })
+      await user.click(trigger)
+
+      const sunButton = screen.getByRole("button", { name: "Cambiar a modo claro" })
+      const moonButton = screen.getByRole("button", { name: "Cambiar a modo oscuro" })
+
+      await user.click(moonButton)
+      expect(document.documentElement.classList.contains("dark")).toBe(true)
+      expect(localStorage.getItem("ganaweb-theme")).toBe("dark")
+      expect(localStorage.getItem("ganaweb-estilo")).toBe(estiloId)
+      expect(moonButton).toHaveAttribute("aria-pressed", "true")
+
+      await user.click(sunButton)
+      expect(document.documentElement.classList.contains("dark")).toBe(false)
+      expect(localStorage.getItem("ganaweb-theme")).toBe("light")
+      expect(localStorage.getItem("ganaweb-estilo")).toBe(estiloId)
+      expect(sunButton).toHaveAttribute("aria-pressed", "true")
+    },
+  )
 
   it("REQ-AM-003 — APARIENCIA section is present with EstiloSwitcher", async () => {
     const user = userEvent.setup()
@@ -130,6 +167,35 @@ describe("PR4.T-004.7 — AvatarMenu (REQ-AM-001..007, D5)", () => {
 
     // EstiloSwitcher radiogroup present
     expect(screen.getByRole("radiogroup", { name: "Estilo visual" })).toBeInTheDocument()
+  })
+
+  it("renders the same five style cards in the desktop AvatarMenu appearance section", async () => {
+    const user = userEvent.setup()
+    render(<AvatarMenu usuario={USUARIO} onCerrarSesion={vi.fn()} />)
+
+    const trigger = screen.getByRole("button", { name: /Yuli Administradora|menu de usuario/i })
+    await user.click(trigger)
+
+    expect(screen.getByText("Cinco estilos, un mismo flujo de trabajo")).toBeInTheDocument()
+    expect(screen.getAllByRole("radio")).toHaveLength(5)
+    for (const estilo of ["Campo", "Moderna", "Índigo", "Cielo", "Grafito"]) {
+      expect(screen.getByRole("radio", { name: estilo })).toBeInTheDocument()
+    }
+  })
+
+  it("shows stored Grafito as selected in the desktop AvatarMenu without changing dark mode", async () => {
+    localStorage.setItem("ganaweb-estilo", "grafito")
+    localStorage.setItem("ganaweb-theme", "dark")
+    document.documentElement.classList.add("dark")
+    const user = userEvent.setup()
+    render(<AvatarMenu usuario={USUARIO} onCerrarSesion={vi.fn()} />)
+
+    const trigger = screen.getByRole("button", { name: /Yuli Administradora|menu de usuario/i })
+    await user.click(trigger)
+
+    expect(screen.getByRole("radio", { name: "Grafito" })).toBeChecked()
+    expect(localStorage.getItem("ganaweb-theme")).toBe("dark")
+    expect(document.documentElement.classList.contains("dark")).toBe(true)
   })
 
   it("PD-3 — avatar shows iniciales when provided", () => {
@@ -161,10 +227,13 @@ describe("PR4.T-004.7 — AparienciaCard (D6)", () => {
     expect(screen.getByText("APARIENCIA")).toBeInTheDocument()
   })
 
-  it("renders both hint lines", () => {
+  it("renders the five style hint lines", () => {
     render(<AparienciaCard />)
     expect(screen.getByText("Campo: contraste máximo para trabajar al sol")).toBeInTheDocument()
-    expect(screen.getByText("Moderna: estilo actualizado")).toBeInTheDocument()
+    expect(screen.getByText("Moderna: SaaS esmeralda con gradiente")).toBeInTheDocument()
+    expect(screen.getByText("Índigo: SaaS clásico con acento violeta")).toBeInTheDocument()
+    expect(screen.getByText("Cielo: agro-tech azul confianza")).toBeInTheDocument()
+    expect(screen.getByText("Grafito: premium sobrio con acento ámbar")).toBeInTheDocument()
   })
 
   it("renders EstiloSwitcher with sm size", () => {
