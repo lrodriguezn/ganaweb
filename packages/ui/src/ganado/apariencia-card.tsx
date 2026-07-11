@@ -18,6 +18,14 @@ export interface AparienciaCardProps {
   className?: string
 }
 
+const STYLE_HINTS = [
+  "Campo: contraste máximo para trabajar al sol",
+  "Moderna: SaaS esmeralda con gradiente",
+  "Índigo: SaaS clásico con acento violeta",
+  "Cielo: agro-tech azul confianza",
+  "Grafito: premium sobrio con acento ámbar",
+]
+
 export function AparienciaCard({ className }: AparienciaCardProps) {
   return (
     <div className={cn("rounded-card bg-card border p-4 space-y-4", className)}>
@@ -26,9 +34,14 @@ export function AparienciaCard({ className }: AparienciaCardProps) {
         APARIENCIA
       </p>
 
-      {/* Estilo row */}
-      <div className="flex items-center justify-between">
-        <span className="text-[12px] text-muted-foreground">Estilo</span>
+      {/* Estilo section */}
+      <div className="space-y-2">
+        <div>
+          <span className="text-[12px] font-medium text-foreground">Estilo visual</span>
+          <p className="text-[10px] text-muted-foreground">
+            Cinco estilos, un mismo flujo de trabajo
+          </p>
+        </div>
         <EstiloSwitcher size="sm" />
       </div>
 
@@ -40,10 +53,11 @@ export function AparienciaCard({ className }: AparienciaCardProps) {
 
       {/* Hint lines */}
       <div className="space-y-1">
-        <p className="text-[10px] text-muted-foreground">
-          Campo: contraste máximo para trabajar al sol
-        </p>
-        <p className="text-[10px] text-muted-foreground">Moderna: estilo actualizado</p>
+        {STYLE_HINTS.map((hint) => (
+          <p key={hint} className="text-[10px] text-muted-foreground">
+            {hint}
+          </p>
+        ))}
       </div>
     </div>
   )
@@ -72,7 +86,7 @@ function AparienciaModoButtons() {
       <button
         type="button"
         onClick={() => setDark(false)}
-        aria-pressed={dark}
+        aria-pressed={!dark}
         aria-label="Cambiar a modo claro"
         className={cn(
           "size-7 rounded-lg flex items-center justify-center",
@@ -86,7 +100,7 @@ function AparienciaModoButtons() {
       <button
         type="button"
         onClick={() => setDark(true)}
-        aria-pressed={!dark}
+        aria-pressed={dark}
         aria-label="Cambiar a modo oscuro"
         className={cn(
           "size-7 rounded-lg flex items-center justify-center",
