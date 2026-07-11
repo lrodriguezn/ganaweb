@@ -93,8 +93,8 @@ D5, D6, D8, D14; REQ-AM-001..007, REQ-MM-002 (parity), REQ-TTC-003, REQ-TTC-004.
 
 D10, D12 (gradient discipline on dashboard); REQ-BVA-004 (bento hero), MetricCards grid MODIFIED requirement.
 
-- [ ] T-005.1 — Modify `apps/web/src/routes/_app/index.tsx`: add `dashboard-metric-hero` className to the FIRST `MetricCard` rendered from `MOCK_METRICS` (currently "Activos"). Remove `bg-primary-gradient` from the "Registrar evento" `Button` (gradient discipline — hero already owns the gradient).
-- [ ] T-005.2 — **Verify (visual + unit)**: Vitest with jsdom asserts the first MetricCard has `dashboard-metric-hero`; Playwright smoke confirms `.theme-b` shows hero with `bg-primary-gradient` + `hero-shadow` and that the primary CTA renders solid `bg-primary`.
+- [x] T-005.1 — Modify `apps/web/src/routes/_app/index.tsx`: add `dashboard-metric-hero` className to the FIRST `MetricCard` rendered from `MOCK_METRICS` (currently "Activos"). Remove `bg-primary-gradient` from the "Registrar evento" `Button` (gradient discipline — hero already owns the gradient).
+- [x] T-005.2 — **Verify (visual + unit)**: Vitest with jsdom asserts the first MetricCard has `dashboard-metric-hero`; Playwright smoke confirms `.theme-b` shows hero with `bg-primary-gradient` + `hero-shadow` and that the primary CTA renders solid `bg-primary`.
 
 **Work-unit commit**: `feat(web): reorganize dashboard as bento under .theme-b`. **Rollback**: revert route file; CSS rules in PR1 still apply harmlessly.
 
