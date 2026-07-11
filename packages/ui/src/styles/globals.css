@@ -9,7 +9,7 @@
    Specificity: :root (0,1,0) = .theme-b (0,1,0); .dark (0,1,0) = .theme-b (0,1,0);
    .theme-b.dark (0,2,0) always wins. Source order breaks ties
    (later wins): :root → .dark → .theme-b → .theme-b.dark.
-   Components consume `var(--*)` only — no `dark:` or `theme-b:` utilities.
+   Components consume `var(--*)` only — no Tailwind dark or theme-b utilities.
    ===================================================================== */
 @import "tailwindcss";
 
@@ -19,6 +19,24 @@
    Tailwind compiler to also scan these directories for class names. */
 @source "../ganado";
 @source "../primitives";
+
+/* =====================================================================
+   v1.4 — Preflight extension: bare `border` resolves to the design token.
+   Tailwind v4 Preflight sets `border: 0 solid` and a `border-color:
+   currentColor` default. In light mode, `currentColor` inherits from
+   `text-foreground` which is near-black — every bare `border` ends up
+   as a 1px near-black hairline on cards, sidebar, drawer, footer. The
+   fix mirrors Tailwind's own universal selector so the rule has the
+   same specificity as Preflight and loses ties to it by source order.
+   ===================================================================== */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    border-color: var(--color-border);
+  }
+}
 
 :root {
   --pasto-600: #2f6b3f; /* primario */
@@ -126,6 +144,11 @@
   --primary-soft-text: #047857;
   --pasto-100: #d1fae5; /* primary-soft */
   --on-primary: #ffffff;
+  --on-primary-muted: #d1fae5; /* esmeralda-100, AA Large vs #059669 (3.22) */
+  --exito-foreground: #d1fae5; /* mint soft; AA Large vs #059669 (3.22) */
+  --alerta-foreground: #fef3c7; /* amber-100; AA Large vs #059669 (3.52) */
+  --peligro-foreground: #fee2e2; /* red-100; AA Large vs #059669 (3.22) */
+  --info-foreground: #e0f2fe; /* sky-100; AA Large vs #059669 (3.29) */
   --seleccion: #d1fae5;
 
   --tierra-200: #d4d4d8; /* zinc-300 (REQ-CSB-008: one step darker for visible borders) */
@@ -172,6 +195,11 @@
   --primary-soft-text: #6ee7b7;
   --pasto-100: #064e3b; /* primary-soft dark */
   --on-primary: #052e16; /* texto oscuro sobre esmeralda claro */
+  --on-primary-muted: #064e3b; /* emerald-800; AA Large vs #10b981 (3.64) */
+  --exito-foreground: #064e3b; /* emerald-800; AA Large vs #10b981 (3.64) */
+  --alerta-foreground: #78350f; /* amber-900; AA Large vs #10b981 (3.58) */
+  --peligro-foreground: #7f1d1d; /* red-900; AA Large vs #10b981 (3.29) */
+  --info-foreground: #1e3a8a; /* blue-900; AA Large vs #10b981 (4.03) */
   --seleccion: #064e3b;
 
   --tierra-200: #3f3f46; /* zinc-700 (REQ-CSB-008: one step lighter for parallel contrast vs light B) */
@@ -209,6 +237,411 @@
   --primary-gradient: linear-gradient(135deg, #10b981, #34d399);
   --glass-bg: rgb(24 24 27 / 0.8);
   --glass-border: rgb(63 63 70 / 0.6);
+}
+
+/* =====================================================================
+   v1.4 — Five-style catalog tokens.
+   Campo remains the :root/.dark baseline. Moderna gets its own scalable
+   class while .theme-b remains available as the legacy compatibility path.
+   ===================================================================== */
+.theme-moderna {
+  --pasto-600: #059669;
+  --pasto-700: #047857;
+  --primary-hover: #047857;
+  --primary-soft-text: #047857;
+  --pasto-100: #d1fae5;
+  --on-primary: #ffffff;
+  --on-primary-muted: #d1fae5; /* esmeralda-100; AA Large vs #059669 (3.22) */
+  --exito-foreground: #d1fae5; /* mint-100; AA Large (3.22) */
+  --alerta-foreground: #fef3c7; /* amber-100; AA Large (3.52) */
+  --peligro-foreground: #fee2e2; /* red-100; AA Large (3.22) */
+  --info-foreground: #e0f2fe; /* sky-100; AA Large (3.29) */
+  --seleccion: #d1fae5;
+
+  --tierra-200: #e4e4e7;
+  --tierra-400: #71717a;
+  --tierra-600: #52525b;
+  --tierra-900: #18181b;
+  --crema-50: #f4f5f7;
+  --superficie: #ffffff;
+  --muted-bg: #f4f4f5;
+  --overlay: #52525b;
+  --brand-panel: #047857;
+
+  --exito-600: #16a34a;
+  --exito-100: #dcfce7;
+  --alerta-600: #d97706;
+  --alerta-100: #fef3c7;
+  --peligro-600: #dc2626;
+  --peligro-100: #fee2e2;
+  --info-600: #0284c7;
+  --info-100: #e0f2fe;
+
+  --dom-repro: #7c3aed;
+  --dom-repro-bg: #f3e8ff;
+  --dom-sanidad: #ea580c;
+  --dom-sanidad-bg: #fff7ed;
+  --dom-produccion: #0d9488;
+  --dom-produccion-bg: #ccfbf1;
+  --dom-manejo: #2563eb;
+  --dom-manejo-bg: #dbeafe;
+
+  --card-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
+  --hero-shadow: 0 8px 20px -8px rgb(16 185 129 / 0.45);
+  --float-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.18);
+  --primary-gradient: linear-gradient(135deg, #059669, #10b981);
+  --glass-bg: rgb(255 255 255 / 0.75);
+  --glass-border: rgb(255 255 255 / 0.6);
+}
+
+.theme-moderna.dark {
+  --pasto-600: #10b981;
+  --pasto-700: #34d399;
+  --primary-hover: #34d399;
+  --primary-soft-text: #6ee7b7;
+  --pasto-100: #064e3b;
+  --on-primary: #052e16;
+  --on-primary-muted: #064e3b; /* emerald-800; AA Large (3.64) */
+  --exito-foreground: #064e3b; /* emerald-800; AA Large (3.64) */
+  --alerta-foreground: #78350f; /* amber-900; AA Large (3.58) */
+  --peligro-foreground: #7f1d1d; /* red-900; AA Large (3.29) */
+  --info-foreground: #1e3a8a; /* blue-900; AA Large (4.03) */
+  --seleccion: #064e3b;
+
+  --tierra-200: #27272a;
+  --tierra-400: #71717a;
+  --tierra-600: #a1a1aa;
+  --tierra-900: #fafafa;
+  --crema-50: #09090b;
+  --superficie: #18181b;
+  --muted-bg: #18181b;
+  --overlay: #000000;
+  --brand-panel: #064e3b;
+
+  --exito-600: #4ade80;
+  --exito-100: #14532d;
+  --alerta-600: #fbbf24;
+  --alerta-100: #451a03;
+  --peligro-600: #f87171;
+  --peligro-100: #450a0a;
+  --info-600: #38bdf8;
+  --info-100: #082f49;
+
+  --dom-repro: #a78bfa;
+  --dom-repro-bg: #2e1065;
+  --dom-sanidad: #fb923c;
+  --dom-sanidad-bg: #431407;
+  --dom-produccion: #2dd4bf;
+  --dom-produccion-bg: #042f2e;
+  --dom-manejo: #60a5fa;
+  --dom-manejo-bg: #172554;
+
+  --card-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+  --hero-shadow: 0 8px 20px -8px rgb(16 185 129 / 0.3);
+  --float-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.4);
+  --primary-gradient: linear-gradient(135deg, #10b981, #34d399);
+  --glass-bg: rgb(24 24 27 / 0.8);
+  --glass-border: rgb(63 63 70 / 0.6);
+}
+
+.theme-indigo {
+  --pasto-600: #4f46e5;
+  --pasto-700: #4338ca;
+  --primary-hover: #4338ca;
+  --primary-soft-text: #4338ca;
+  --pasto-100: #e0e7ff;
+  --on-primary: #ffffff;
+  --on-primary-muted: #e0e7ff; /* indigo-100; AA Large vs #4f46e5 (4.62) */
+  --exito-foreground: #d1fae5; /* mint-100; AA Large (3.40) */
+  --alerta-foreground: #fef3c7; /* amber-100; AA Large (3.71) */
+  --peligro-foreground: #fee2e2; /* red-100; AA Large (3.40) */
+  --info-foreground: #e0e7ff; /* indigo-100; AA Large (4.62) */
+  --seleccion: #e0e7ff;
+
+  --tierra-200: #e4e4e7;
+  --tierra-400: #71717a;
+  --tierra-600: #52525b;
+  --tierra-900: #18181b;
+  --crema-50: #f5f5fa;
+  --superficie: #ffffff;
+  --muted-bg: #f4f4f5;
+  --overlay: #52525b;
+  --brand-panel: #4338ca;
+
+  --exito-600: #16a34a;
+  --exito-100: #dcfce7;
+  --alerta-600: #d97706;
+  --alerta-100: #fef3c7;
+  --peligro-600: #dc2626;
+  --peligro-100: #fee2e2;
+  --info-600: #4f46e5;
+  --info-100: #e0e7ff;
+
+  --dom-repro: #c026d3;
+  --dom-repro-bg: #fae8ff;
+  --dom-sanidad: #ea580c;
+  --dom-sanidad-bg: #fff7ed;
+  --dom-produccion: #0d9488;
+  --dom-produccion-bg: #ccfbf1;
+  --dom-manejo: #0891b2;
+  --dom-manejo-bg: #cffafe;
+
+  --card-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
+  --hero-shadow: 0 8px 20px -8px rgb(79 70 229 / 0.4);
+  --float-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.18);
+  --primary-gradient: linear-gradient(135deg, #4f46e5, #7c3aed);
+  --glass-bg: rgb(255 255 255 / 0.75);
+  --glass-border: rgb(255 255 255 / 0.6);
+}
+
+.theme-indigo.dark {
+  --pasto-600: #818cf8;
+  --pasto-700: #a78bfa;
+  --primary-hover: #a78bfa;
+  --primary-soft-text: #c7d2fe;
+  --pasto-100: #312e81;
+  --on-primary: #1e1b4b;
+  --on-primary-muted: #312e81; /* indigo-900; AA Large vs #818cf8 (4.41) */
+  --exito-foreground: #064e3b; /* emerald-800; AA Large (3.69) */
+  --alerta-foreground: #78350f; /* amber-900; AA Large (3.64) */
+  --peligro-foreground: #7f1d1d; /* red-900; AA Large (3.34) */
+  --info-foreground: #1e1b4b; /* indigo-950; AA Large (4.51) */
+  --seleccion: #312e81;
+
+  --tierra-200: #27272a;
+  --tierra-400: #71717a;
+  --tierra-600: #a1a1aa;
+  --tierra-900: #fafafa;
+  --crema-50: #09090b;
+  --superficie: #18181b;
+  --muted-bg: #18181b;
+  --overlay: #000000;
+  --brand-panel: #312e81;
+
+  --exito-600: #4ade80;
+  --exito-100: #14532d;
+  --alerta-600: #fbbf24;
+  --alerta-100: #451a03;
+  --peligro-600: #f87171;
+  --peligro-100: #450a0a;
+  --info-600: #818cf8;
+  --info-100: #312e81;
+
+  --dom-repro: #e879f9;
+  --dom-repro-bg: #4a044e;
+  --dom-sanidad: #fb923c;
+  --dom-sanidad-bg: #431407;
+  --dom-produccion: #2dd4bf;
+  --dom-produccion-bg: #042f2e;
+  --dom-manejo: #22d3ee;
+  --dom-manejo-bg: #083344;
+
+  --card-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+  --hero-shadow: 0 8px 20px -8px rgb(129 140 248 / 0.3);
+  --float-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.4);
+  --primary-gradient: linear-gradient(135deg, #818cf8, #a78bfa);
+  --glass-bg: rgb(24 24 27 / 0.8);
+  --glass-border: rgb(63 63 70 / 0.6);
+}
+
+.theme-cielo {
+  --pasto-600: #0284c7;
+  --pasto-700: #0369a1;
+  --primary-hover: #0369a1;
+  --primary-soft-text: #0369a1;
+  --pasto-100: #e0f2fe;
+  --on-primary: #ffffff;
+  --on-primary-muted: #e0f2fe; /* sky-100; AA Large vs #0284c7 (3.96) */
+  --exito-foreground: #d1fae5; /* mint-100; AA Large (3.46) */
+  --alerta-foreground: #fef3c7; /* amber-100; AA Large (3.78) */
+  --peligro-foreground: #fee2e2; /* red-100; AA Large (3.46) */
+  --info-foreground: #e0e7ff; /* indigo-100; AA Large (3.42) */
+  --seleccion: #e0f2fe;
+
+  --tierra-200: #e2e8f0;
+  --tierra-400: #64748b;
+  --tierra-600: #475569;
+  --tierra-900: #0f172a;
+  --crema-50: #f3f6f9;
+  --superficie: #ffffff;
+  --muted-bg: #f1f5f9;
+  --overlay: #475569;
+  --brand-panel: #0369a1;
+
+  --exito-600: #16a34a;
+  --exito-100: #dcfce7;
+  --alerta-600: #d97706;
+  --alerta-100: #fef3c7;
+  --peligro-600: #dc2626;
+  --peligro-100: #fee2e2;
+  --info-600: #6366f1;
+  --info-100: #e0e7ff;
+
+  --dom-repro: #7c3aed;
+  --dom-repro-bg: #f3e8ff;
+  --dom-sanidad: #ea580c;
+  --dom-sanidad-bg: #fff7ed;
+  --dom-produccion: #0d9488;
+  --dom-produccion-bg: #ccfbf1;
+  --dom-manejo: #0891b2;
+  --dom-manejo-bg: #cffafe;
+
+  --card-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
+  --hero-shadow: 0 8px 20px -8px rgb(2 132 199 / 0.4);
+  --float-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.18);
+  --primary-gradient: linear-gradient(135deg, #0284c7, #06b6d4);
+  --glass-bg: rgb(255 255 255 / 0.75);
+  --glass-border: rgb(255 255 255 / 0.6);
+}
+
+.theme-cielo.dark {
+  --pasto-600: #38bdf8;
+  --pasto-700: #7dd3fc;
+  --primary-hover: #7dd3fc;
+  --primary-soft-text: #bae6fd;
+  --pasto-100: #0c4a6e;
+  --on-primary: #082f49;
+  --on-primary-muted: #0c4a6e; /* sky-900; AA Large vs #38bdf8 (4.83) */
+  --exito-foreground: #064e3b; /* emerald-800; AA Large (4.04) */
+  --alerta-foreground: #78350f; /* amber-900; AA Large (3.98) */
+  --peligro-foreground: #7f1d1d; /* red-900; AA Large (3.65) */
+  --info-foreground: #1e3a8a; /* blue-900; AA Large (4.49) */
+  --seleccion: #0c4a6e;
+
+  --tierra-200: #1e293b;
+  --tierra-400: #64748b;
+  --tierra-600: #94a3b8;
+  --tierra-900: #f8fafc;
+  --crema-50: #09090b;
+  --superficie: #0f172a;
+  --muted-bg: #1e293b;
+  --overlay: #000000;
+  --brand-panel: #0c4a6e;
+
+  --exito-600: #4ade80;
+  --exito-100: #14532d;
+  --alerta-600: #fbbf24;
+  --alerta-100: #451a03;
+  --peligro-600: #f87171;
+  --peligro-100: #450a0a;
+  --info-600: #818cf8;
+  --info-100: #312e81;
+
+  --dom-repro: #a78bfa;
+  --dom-repro-bg: #2e1065;
+  --dom-sanidad: #fb923c;
+  --dom-sanidad-bg: #431407;
+  --dom-produccion: #2dd4bf;
+  --dom-produccion-bg: #042f2e;
+  --dom-manejo: #22d3ee;
+  --dom-manejo-bg: #083344;
+
+  --card-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+  --hero-shadow: 0 8px 20px -8px rgb(56 189 248 / 0.3);
+  --float-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.4);
+  --primary-gradient: linear-gradient(135deg, #38bdf8, #7dd3fc);
+  --glass-bg: rgb(15 23 42 / 0.8);
+  --glass-border: rgb(30 41 59 / 0.6);
+}
+
+.theme-grafito {
+  --pasto-600: #1c1917;
+  --pasto-700: #44403c;
+  --primary-hover: #44403c;
+  --primary-soft-text: #292524;
+  --pasto-100: #edebe9;
+  --on-primary: #ffffff;
+  --on-primary-muted: #e7e5e4; /* stone-200; AA Large vs #1c1917 (15.4) */
+  --exito-foreground: #bbf7d0; /* green-200; AA Large (15.0) */
+  --alerta-foreground: #fde68a; /* amber-200; AA Large (15.0) */
+  --peligro-foreground: #fecaca; /* red-200; AA Large (12.7) */
+  --info-foreground: #bae6fd; /* sky-200; AA Large (14.5) */
+  --seleccion: #edebe9;
+
+  --tierra-200: #e7e5e4;
+  --tierra-400: #78716c;
+  --tierra-600: #57534e;
+  --tierra-900: #1c1917;
+  --crema-50: #f5f5f4;
+  --superficie: #ffffff;
+  --muted-bg: #f5f5f4;
+  --overlay: #57534e;
+  --brand-panel: #292524;
+
+  --exito-600: #16a34a;
+  --exito-100: #dcfce7;
+  --alerta-600: #f59e0b;
+  --alerta-100: #fef3c7;
+  --peligro-600: #dc2626;
+  --peligro-100: #fee2e2;
+  --info-600: #6366f1;
+  --info-100: #e0e7ff;
+
+  --dom-repro: #7c3aed;
+  --dom-repro-bg: #f3e8ff;
+  --dom-sanidad: #ea580c;
+  --dom-sanidad-bg: #fff7ed;
+  --dom-produccion: #0d9488;
+  --dom-produccion-bg: #ccfbf1;
+  --dom-manejo: #2563eb;
+  --dom-manejo-bg: #dbeafe;
+
+  --card-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
+  --hero-shadow: 0 8px 20px -8px rgb(245 158 11 / 0.35);
+  --float-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.18);
+  --primary-gradient: linear-gradient(135deg, #1c1917, #44403c);
+  --glass-bg: rgb(255 255 255 / 0.75);
+  --glass-border: rgb(255 255 255 / 0.6);
+}
+
+.theme-grafito.dark {
+  --pasto-600: #e7e5e4;
+  --pasto-700: #d6d3d1;
+  --primary-hover: #d6d3d1;
+  --primary-soft-text: #d6d3d1;
+  --pasto-100: #292524;
+  --on-primary: #0c0a09;
+  --on-primary-muted: #44403c; /* stone-700; AA Large vs #e7e5e4 (9.07) */
+  --exito-foreground: #14532d; /* green-900; AA Large (8.65) */
+  --alerta-foreground: #78350f; /* amber-900; AA Large (7.34) */
+  --peligro-foreground: #7f1d1d; /* red-900; AA Large (6.49) */
+  --info-foreground: #1e3a8a; /* blue-900; AA Large (8.51) */
+  --seleccion: #292524;
+
+  --tierra-200: #292524;
+  --tierra-400: #78716c;
+  --tierra-600: #a8a29e;
+  --tierra-900: #fafaf9;
+  --crema-50: #0c0a09;
+  --superficie: #1c1917;
+  --muted-bg: #292524;
+  --overlay: #000000;
+  --brand-panel: #292524;
+
+  --exito-600: #4ade80;
+  --exito-100: #14532d;
+  --alerta-600: #f59e0b;
+  --alerta-100: #451a03;
+  --peligro-600: #f87171;
+  --peligro-100: #450a0a;
+  --info-600: #818cf8;
+  --info-100: #312e81;
+
+  --dom-repro: #a78bfa;
+  --dom-repro-bg: #2e1065;
+  --dom-sanidad: #fb923c;
+  --dom-sanidad-bg: #431407;
+  --dom-produccion: #2dd4bf;
+  --dom-produccion-bg: #042f2e;
+  --dom-manejo: #60a5fa;
+  --dom-manejo-bg: #172554;
+
+  --card-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+  --hero-shadow: 0 8px 20px -8px rgb(245 158 11 / 0.25);
+  --float-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.4);
+  --primary-gradient: linear-gradient(135deg, #e7e5e4, #d6d3d1);
+  --glass-bg: rgb(28 25 23 / 0.8);
+  --glass-border: rgb(41 37 36 / 0.6);
 }
 
 @theme inline {
@@ -253,6 +686,8 @@
   --color-popover-foreground: var(--tierra-900);
   --color-primary: var(--pasto-600);
   --color-primary-foreground: var(--on-primary);
+  --color-on-primary: var(--on-primary);
+  --color-on-primary-muted: var(--on-primary-muted);
   --color-secondary: var(--muted-bg);
   --color-secondary-foreground: var(--tierra-900);
   --color-muted: var(--muted-bg);
@@ -264,6 +699,16 @@
   --color-border: var(--tierra-200);
   --color-input: var(--tierra-200);
   --color-ring: var(--pasto-600);
+
+  /* v1.4 — tone-foreground variants (MetricCard hero contrast).
+     These are the tone-colored text values that pass AA Large against
+     each per-style hero background. The raw --{tone}-foreground tokens
+     are defined in each .theme-* block; here we only re-mirror them
+     so `text-exito-foreground` / `text-alerta-foreground` etc. resolve. */
+  --color-exito-foreground: var(--exito-foreground);
+  --color-alerta-foreground: var(--alerta-foreground);
+  --color-peligro-foreground: var(--peligro-foreground);
+  --color-info-foreground: var(--info-foreground);
 
   --radius: 0.5rem;
   --radius-card: 0.75rem;
@@ -312,7 +757,7 @@
 
 /* =====================================================================
    v1.3 — Propuesta B utility classes (T-001.3)
-   Marker classes consumed by components. ZERO `dark:` or `theme-b:`
+   Marker classes consumed by components. ZERO Tailwind dark or theme-b
    in JSX: components add these classNames unconditionally, the cascade
    inverts visual style per theme.
    ===================================================================== */
@@ -381,48 +826,96 @@
 
 /* T-001.3 (D10): bento dashboard hero metric. The first MetricCard on the
    dashboard always carries this marker. A renders it as a normal card
-   (no visual difference). B elevates it with the gradient + glow +
-   full-width grid span — the "bento" hero treatment from the design. */
+   (no visual difference). The four modern styles (Moderna, Índigo,
+   Cielo, Grafito) plus the legacy .theme-b selector all elevate it
+   with the gradient + glow + full-width grid span — the "bento" hero
+   treatment from the design. */
 .dashboard-metric-hero {
   background-color: var(--pasto-600);
   background-image: var(--primary-gradient);
   color: var(--on-primary);
   box-shadow: var(--hero-shadow);
 }
-/* REQ-BVA-008: bento hero prominence in B.
-   Spans the full grid width, then amplifies height (5rem mobile, 7rem
-   desktop), tightens the metric value (1.5rem mobile, 1.75rem desktop),
-   and consumes B's larger --radius-card (1rem) for the dramatic bento
-   treatment. A's hero keeps its current implicit height, default font
-   size, and 0.75rem radius — no new cascade rule applies outside .theme-b. */
-.theme-b .dashboard-metric-hero {
-  grid-column: 1 / -1;
-  min-height: 5rem;
-  border-radius: var(--radius-card);
-}
-.theme-b .dashboard-metric-hero .m-value {
-  font-size: 1.5rem;
-}
-@media (min-width: 768px) {
-  .theme-b .dashboard-metric-hero {
-    min-height: 7rem;
+/* REQ-BVA-008 + v1.4 five-style: bento hero prominence in B-family.
+   The bento LAYOUT (full grid span, amplified height, dramatic
+   --radius-card, larger m-value) is MOBILE-ONLY — it matches the
+   OpenPencil design where the gradient + glow + full-row treatment
+   only appears on the mobile dashboard. In desktop (>= 768px) the
+   hero MetricCard sits in one of the 4 normal grid columns with the
+   default card radius and the standard text-metric font size.
+
+   The colored background (--pasto-600 + --primary-gradient +
+   --hero-shadow + on-primary text) and the on-primary text-color
+   remap inside .dashboard-metric-hero are NOT the bento LAYOUT —
+   they live at the top level above and apply in every viewport.
+
+   Mobile breakpoint mirrors the project's Tailwind `md:` convention
+   (768px) used everywhere in apps/web/src and components. The
+   `(max-width: 767px)` form is the standard negation of `(min-width:
+   768px)`; using the explicit `767` keeps the cascade semantically
+   aligned with the breakpoint. */
+@media (max-width: 767px) {
+  .theme-b .dashboard-metric-hero,
+  .theme-moderna .dashboard-metric-hero,
+  .theme-indigo .dashboard-metric-hero,
+  .theme-cielo .dashboard-metric-hero,
+  .theme-grafito .dashboard-metric-hero {
+    grid-column: 1 / -1;
+    min-height: 5rem;
+    border-radius: var(--radius-card);
   }
-  .theme-b .dashboard-metric-hero .m-value {
-    font-size: 1.75rem;
+  .theme-b .dashboard-metric-hero .m-value,
+  .theme-moderna .dashboard-metric-hero .m-value,
+  .theme-indigo .dashboard-metric-hero .m-value,
+  .theme-cielo .dashboard-metric-hero .m-value,
+  .theme-grafito .dashboard-metric-hero .m-value {
+    font-size: 1.5rem;
   }
 }
 
+/* v1.4 — hero text-color remap. The MetricCard's child spans carry the
+   semantic Tailwind classes (text-foreground / text-muted-foreground
+   for value + label, text-{exito,alerta,peligro,info}-600 for context).
+   When the card is the colored hero, those classes inherit light/dark
+   text colors that have NO contrast against the hero background. The
+   override below remaps each role to the design system's on-primary
+   companion tokens (--on-primary / --on-primary-muted / --{tone}-foreground)
+   which are tuned per (style, mode) for AA Large contrast. */
+.dashboard-metric-hero .text-foreground {
+  color: var(--on-primary);
+}
+.dashboard-metric-hero .text-muted-foreground {
+  color: var(--on-primary-muted);
+}
+.dashboard-metric-hero .text-exito-600 {
+  color: var(--exito-foreground);
+}
+.dashboard-metric-hero .text-alerta-600 {
+  color: var(--alerta-foreground);
+}
+.dashboard-metric-hero .text-peligro-600 {
+  color: var(--peligro-foreground);
+}
+.dashboard-metric-hero .text-info-600 {
+  color: var(--info-foreground);
+}
+
 /* T-001.3 (D11): estado badge dot — hidden by default, shown when
-   data-with-dot="true", and ALWAYS shown in .theme-b (B rule 5:
+   data-with-dot="true", and ALWAYS shown in the B-family (B rule 5:
    "Badges con punto (withDot) por defecto en B"). The dot element is
-   always rendered; CSS alone decides visibility. */
+   always rendered; CSS alone decides visibility. v1.4 expands the
+   B selector to include the four modern style classes. */
 .estado-badge .estado-dot {
   display: none;
 }
 .estado-badge[data-with-dot="true"] .estado-dot {
   display: inline-block;
 }
-.theme-b .estado-badge .estado-dot {
+.theme-b .estado-badge .estado-dot,
+.theme-moderna .estado-badge .estado-dot,
+.theme-indigo .estado-badge .estado-dot,
+.theme-cielo .estado-badge .estado-dot,
+.theme-grafito .estado-badge .estado-dot {
   display: inline-block;
 }
 
