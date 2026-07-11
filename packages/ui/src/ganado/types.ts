@@ -115,6 +115,21 @@ export function crearPermisos(lista: Permiso[]): PermisosUsuario {
   return new Set(lista.map((p) => `${p.modulo}:${p.accion}`))
 }
 
+/* ---------------- Usuario (v1.3 — PR4 appearance-controls) ---------------- */
+
+/**
+ * Resumen del usuario logueado para AvatarMenu y AparienciaCard.
+ * Cuando exista una sesión server-function real, reemplazar
+ * USUARIO_DEMO en _app.tsx por el loader result — el contrato de
+ * props es estable.
+ */
+export interface UsuarioResumen {
+  nombre: string
+  email: string
+  iniciales: string
+  esAdmin: boolean
+}
+
 /* ---------------- Shell + Dashboard (v1.2 — Dashboard / Inicio) ---------------- */
 
 /**

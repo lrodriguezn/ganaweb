@@ -1,6 +1,7 @@
 import { Search } from "lucide-react"
 
 import { cn } from "../lib/utils"
+import { AvatarMenu } from "./avatar-menu"
 import { FincaSwitcher } from "./finca-switcher"
 import { SyncPill } from "./sync-pill"
 import { ThemeToggle } from "./theme-toggle"
@@ -9,9 +10,10 @@ import type { EstadoSync, FincaResumen } from "./types"
 /**
  * AppHeader — barra superior de 56px del shell, responsive.
  * Spec: `specs/app-shell.md` §AppHeader + `ganaweb-design.md` v1.1 §Header.
+ * Design: §D8 (avatar replaces standalone ThemeToggle when user props present).
  *
  * Desktop (≥ 768px) — 3 regiones:
- *   [ FincaSwitcher ]          [ SearchTrigger ]          [ SyncPill · ThemeToggle ]
+ *   [ FincaSwitcher ]          [ SearchTrigger ]          [ SyncPill · AvatarMenu|ThemeToggle ]
  *
  * Mobile (< 768px) — versión simplificada:
  *   [ Finca · Subtítulo de sync ]
@@ -20,11 +22,14 @@ import type { EstadoSync, FincaResumen } from "./types"
  *
  * Reglas encapsuladas:
  * - Reutiliza `FincaSwitcher`, `SyncPill` y `ThemeToggle` existentes.
+ * - Cuando se proveen props de usuario (nombreUsuario, etc.), reemplaza
+ *   `ThemeToggle` standalone por `AvatarMenu` (D8).
  * - El SearchTrigger es un BOTÓN (no un input real) que dispara
  *   `onBuscar` — la paleta de comandos es trabajo del route, no del shell.
  * - Subtítulo de sync en mobile: "Sincronizado" / "N pendientes" / "Offline"
  *   en `text-caption text-muted-foreground` (10px / 12px en realidad;
  *   design.md v1.2 marca el caption como 12px / 500).
+ * - Añade `glass-shell` al `<header>` (D8).
  */
 export interface AppHeaderProps {
   fincas: FincaResumen[]
@@ -36,6 +41,11 @@ export interface AppHeaderProps {
   onSync: () => void
   onCambiarFinca: (finca: FincaResumen) => void
   className?: string
+  /** Props de usuario para AvatarMenu (D8). Ausentes = sin avatar (backward compat). */
+  nombreUsuario?: string
+  emailUsuario?: string
+  inicialesUsuario?: string
+  onCerrarSesion?: () => void
 }
 
 export function AppHeader({
@@ -48,13 +58,18 @@ export function AppHeader({
   onSync,
   onCambiarFinca,
   className,
+  nombreUsuario,
+  emailUsuario,
+  inicialesUsuario,
+  onCerrarSesion,
 }: AppHeaderProps) {
   const activa = fincas.find((f) => f.id === fincaActivaId)
+  const hasUser = Boolean(nombreUsuario && onCerrarSesion)
 
   return (
     <header
       className={cn(
-        "h-14 border-b bg-card flex items-center px-3 md:px-4 gap-2 md:gap-4",
+        "h-14 border-b bg-card flex items-center px-3 md:px-4 gap-2 md:gap-4 glass-shell",
         className,
       )}
     >
@@ -98,10 +113,22 @@ export function AppHeader({
         </kbd>
       </button>
 
-      {/* ---- Desktop (md+): SyncPill + ThemeToggle (right) ---- */}
+      {/* ---- Desktop (md+): SyncPill + AvatarMenu|ThemeToggle (right) ---- */}
       <div className="hidden md:flex items-center gap-1 ml-auto shrink-0">
         <SyncPill estado={estadoSync} pendientes={pendientes} onClick={onSync} />
-        <ThemeToggle />
+        {hasUser ? (
+          <AvatarMenu
+            usuario={{
+              nombre: nombreUsuario ?? "",
+              email: emailUsuario ?? "",
+              iniciales: inicialesUsuario ?? "",
+              esAdmin: false,
+            }}
+            onCerrarSesion={onCerrarSesion ?? (() => {})}
+          />
+        ) : (
+          <ThemeToggle />
+        )}
       </div>
     </header>
   )

@@ -19,6 +19,16 @@ import type { ItemNav } from "./types"
  * La FAB se renderiza con `rounded-full` y queda elevada `-mt-3.5` para
  * sobresalir del borde superior del bottom nav (48px de diámetro, ver
  * también `Fab` standalone en T-004).
+ *
+ * v1.3 (T-003.2, D3, D12, REQ-BVA-001 / REQ-BVA-004):
+ * - El `<nav>` lleva la clase literal `glass-shell` para que en B
+ *   aplique el backdrop blur + fondo semi-transparente (la CSS rule
+ *   dentro de @supports hace el override; en A y en navegadores sin
+ *   soporte el color de superficie opaco se mantiene).
+ * - El botón interno de la FAB lleva `bg-primary-gradient` además de
+ *   `bg-primary`: en A --primary-gradient es `none` y solo se ve el
+ *   color sólido; en B la capa del gradiente (definida en T-001.2) se
+ *   pinta sobre el mismo primary.
  */
 export interface BottomNavProps {
   /** 4 ítems: posiciones 1, 2, 4 y 5 (la 3 es la FAB, no viene en el array) */
@@ -41,6 +51,7 @@ export function BottomNav({ items, activoId, onNavigate, onFab, className }: Bot
       className={cn(
         "flex md:hidden fixed bottom-0 inset-x-0 z-30",
         "h-[--h-bottomnav] bg-card border-t pb-safe",
+        "glass-shell",
         className,
       )}
       aria-label="Navegación inferior"
@@ -60,6 +71,7 @@ export function BottomNav({ items, activoId, onNavigate, onFab, className }: Bot
             aria-label="Registrar evento"
             className={cn(
               "size-12 rounded-full bg-primary text-primary-foreground",
+              "bg-primary-gradient",
               "grid place-items-center shrink-0",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             )}

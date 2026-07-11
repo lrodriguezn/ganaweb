@@ -128,11 +128,11 @@
   --on-primary: #ffffff;
   --seleccion: #d1fae5;
 
-  --tierra-200: #e4e4e7; /* zinc-200 */
+  --tierra-200: #d4d4d8; /* zinc-300 (REQ-CSB-008: one step darker for visible borders) */
   --tierra-400: #71717a;
   --tierra-600: #52525b; /* text-secondary */
   --tierra-900: #18181b; /* text */
-  --crema-50: #f4f5f7; /* background */
+  --crema-50: #eef0f3; /* background (REQ-CSB-009: slightly darker for card lift) */
   --superficie: #ffffff; /* surface */
   --muted-bg: #f4f4f5;
   --overlay: #52525b;
@@ -174,11 +174,11 @@
   --on-primary: #052e16; /* texto oscuro sobre esmeralda claro */
   --seleccion: #064e3b;
 
-  --tierra-200: #27272a; /* zinc-800 */
+  --tierra-200: #3f3f46; /* zinc-700 (REQ-CSB-008: one step lighter for parallel contrast vs light B) */
   --tierra-400: #71717a; /* text-muted (same in B light/dark) */
   --tierra-600: #a1a1aa; /* text-secondary */
   --tierra-900: #fafafa; /* text */
-  --crema-50: #09090b; /* background */
+  --crema-50: #0a0a0c; /* background (REQ-CSB-009: slight darkening for depth) */
   --superficie: #18181b;
   --muted-bg: #18181b;
   --overlay: #000000;
@@ -325,6 +325,29 @@
   background-image: var(--primary-gradient);
 }
 
+/* REQ-BVA-006: card shadow consumption in B.
+   Shadow replaces border as the primary separator in B (design-b rule 1).
+   Scoped to .rounded-card ONLY — never .rounded-md (buttons/inputs) or
+   .rounded-lg (chips/segments). A stays flat because --card-shadow
+   resolves to none outside .theme-b. */
+.theme-b .rounded-card {
+  box-shadow: var(--card-shadow);
+}
+
+/* REQ-BVA-007: title letter-spacing in B.
+   Tighter letter-spacing on headings and section labels (-0.02em), even
+   tighter on numeric metric figures (-0.025em) for the contemporary look
+   (design-b typography.extra). A keeps the browser default (normal). */
+.theme-b h1,
+.theme-b h2,
+.theme-b .text-title,
+.theme-b .text-section {
+  letter-spacing: -0.02em;
+}
+.theme-b .text-metric {
+  letter-spacing: -0.025em;
+}
+
 /* T-001.3 (D3): glass shell — scoped to AppHeader + BottomNav only.
    Default keeps opaque card surface (A + @supports negation). The
    .theme-b .glass-shell block (specificity 0,2,0) overrides only when
@@ -343,6 +366,19 @@
   }
 }
 
+/* REQ-CSB-010: glass shell hairline shadow in B.
+   1px hairline at the bottom edge makes the translucency perceptible
+   against the content below. Lives OUTSIDE the @supports guard so it
+   applies even on browsers without backdrop-filter (where the glass
+   is just a solid surface — the hairline still helps separate it).
+   Scoped to .glass-shell only — never .card / .rounded-card. */
+.theme-b .glass-shell {
+  box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.04);
+}
+.theme-b.dark .glass-shell {
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.06);
+}
+
 /* T-001.3 (D10): bento dashboard hero metric. The first MetricCard on the
    dashboard always carries this marker. A renders it as a normal card
    (no visual difference). B elevates it with the gradient + glow +
@@ -353,8 +389,27 @@
   color: var(--on-primary);
   box-shadow: var(--hero-shadow);
 }
+/* REQ-BVA-008: bento hero prominence in B.
+   Spans the full grid width, then amplifies height (5rem mobile, 7rem
+   desktop), tightens the metric value (1.5rem mobile, 1.75rem desktop),
+   and consumes B's larger --radius-card (1rem) for the dramatic bento
+   treatment. A's hero keeps its current implicit height, default font
+   size, and 0.75rem radius — no new cascade rule applies outside .theme-b. */
 .theme-b .dashboard-metric-hero {
   grid-column: 1 / -1;
+  min-height: 5rem;
+  border-radius: var(--radius-card);
+}
+.theme-b .dashboard-metric-hero .m-value {
+  font-size: 1.5rem;
+}
+@media (min-width: 768px) {
+  .theme-b .dashboard-metric-hero {
+    min-height: 7rem;
+  }
+  .theme-b .dashboard-metric-hero .m-value {
+    font-size: 1.75rem;
+  }
 }
 
 /* T-001.3 (D11): estado badge dot — hidden by default, shown when
