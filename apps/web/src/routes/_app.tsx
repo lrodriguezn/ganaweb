@@ -60,12 +60,7 @@ import {
   type ItemNav,
   Sidebar,
 } from "@ganaweb/ui"
-import {
-  Outlet,
-  createFileRoute,
-  useNavigate,
-  useRouterState,
-} from "@tanstack/react-router"
+import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
 import { Calendar, CheckSquare, Home, Menu, PawPrint } from "lucide-react"
 
 export const Route = createFileRoute("/_app")({
@@ -136,8 +131,7 @@ export const USUARIO_DEMO = {
  * `/_app/mas` siguen funcionando sin cambios.
  */
 const onCerrarSesion = () => {
-  // biome-ignore lint/suspicious/noConsole: stub — server function
-  // de sesión es trabajo de un PR futuro (D14).
+  // biome-ignore lint/suspicious/noConsole: stub — server function de sesión es trabajo de un PR futuro (D14).
   console.warn("[auth] logout no implementado")
 }
 

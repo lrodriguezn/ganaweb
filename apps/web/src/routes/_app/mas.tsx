@@ -29,12 +29,7 @@
  * "Mi cuenta", "Preferencias de notificación", "Próximamente".
  */
 
-import {
-  AparienciaCard,
-  type PermisosUsuario,
-  crearPermisos,
-  tienePermiso,
-} from "@ganaweb/ui"
+import { AparienciaCard, type PermisosUsuario, crearPermisos, tienePermiso } from "@ganaweb/ui"
 import { createFileRoute } from "@tanstack/react-router"
 import { LogOut, Settings, User } from "lucide-react"
 
@@ -64,8 +59,7 @@ const PERMISOS_DEMO: PermisosUsuario = crearPermisos(
 )
 
 const onCerrarSesion = () => {
-  // biome-ignore lint/suspicious/noConsole: stub — server function de
-  // sesión es trabajo de un PR futuro (D14 + design.md §Open Questions).
+  // biome-ignore lint/suspicious/noConsole: stub — server function de sesión es trabajo de un PR futuro (D14).
   console.warn("[auth] logout no implementado")
 }
 
@@ -83,10 +77,7 @@ function Mas() {
       <AparienciaCard />
 
       {/* ---- User info card (REQ-MM-003) ---- */}
-      <section
-        className="rounded-card bg-card border p-4"
-        aria-label="Información del usuario"
-      >
+      <section className="rounded-card bg-card border p-4" aria-label="Información del usuario">
         <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
@@ -95,9 +86,7 @@ function Mas() {
             {USUARIO_DEMO.iniciales || <User className="size-4" />}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium leading-tight truncate">
-              {USUARIO_DEMO.nombre}
-            </p>
+            <p className="text-[14px] font-medium leading-tight truncate">{USUARIO_DEMO.nombre}</p>
             <p className="text-[12px] text-muted-foreground leading-tight truncate">
               {USUARIO_DEMO.email}
             </p>
