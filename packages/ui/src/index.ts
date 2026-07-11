@@ -23,6 +23,8 @@ export { cn } from "./lib/utils"
 // Domain components
 export { AnimalCard } from "./ganado/animal-card"
 export { AppHeader } from "./ganado/app-header"
+export { AparienciaCard } from "./ganado/apariencia-card"
+export { AvatarMenu } from "./ganado/avatar-menu"
 export { BottomNav } from "./ganado/bottom-nav"
 export { CardAccion } from "./ganado/card-accion"
 export { CardActividad } from "./ganado/card-actividad"
@@ -36,6 +38,8 @@ export {
   StockBadge,
 } from "./ganado/estado-badge"
 export { EventDrawer } from "./ganado/event-drawer"
+export { EstiloSwitcher } from "./ganado/estilo-switcher"
+export type { EstiloSwitcherProps } from "./ganado/estilo-switcher"
 export { Fab } from "./ganado/fab"
 export { FincaList, FincaSwitcher } from "./ganado/finca-switcher"
 export { MaestroCard, MaestroGrid, MaestrosProgreso } from "./ganado/maestro-card"
@@ -65,6 +69,7 @@ export type {
   Salud,
   Sexo,
   TipoEvento,
+  UsuarioResumen,
 } from "./ganado/types"
 export { crearPermisos, tienePermiso } from "./ganado/types"
 

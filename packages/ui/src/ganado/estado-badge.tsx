@@ -9,9 +9,22 @@ import type { CategoriaReproductiva, EstadoAnimal, Salud } from "./types"
  * Spec: especificaciones_diseno_css.md §6.2
  * Regla: el color comunica ESTADO (nunca categoría de evento) y el texto
  * es siempre la palabra del dominio ganadero.
+ *
+ * v1.3 (T-003.1, D11, REQ-BVA-005): el badge SIEMPRE renderiza un
+ * `<span class="estado-dot" />`. La visibilidad la decide CSS, no el
+ * componente:
+ *
+ *   .estado-badge .estado-dot { display: none; }                                 (A default)
+ *   .estado-badge[data-with-dot="true"] .estado-dot { display: inline-block; }   (explicit opt-in)
+ *   .theme-b .estado-badge .estado-dot { display: inline-block; }                (B override)
+ *
+ * El root lleva `estado-badge` (marker D11) + `data-with-dot` (atributo
+ * que el selector CSS usa para aplicar el override explícito). Los
+ * convenience wrappers (CategoriaBadge, etc.) NO pasan `withDot`; la
+ * cascade los hace funcionar automáticamente en B sin tocarlos.
  */
 const estadoBadgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-full font-medium whitespace-nowrap",
+  "estado-badge inline-flex items-center gap-1 rounded-full font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
@@ -48,8 +61,13 @@ export function EstadoBadge({
   ...props
 }: EstadoBadgeProps) {
   return (
-    <span className={cn(estadoBadgeVariants({ variant, size }), className)} {...props}>
-      {withDot && <span aria-hidden="true" className="size-1.5 rounded-full bg-current shrink-0" />}
+    <span
+      className={cn(estadoBadgeVariants({ variant, size }), className)}
+      data-with-dot={withDot ? "true" : "false"}
+      {...props}
+    >
+      {/* v1.3 (D11): el dot se renderiza SIEMPRE; la cascade CSS decide cuándo mostrarlo (A: oculto salvo opt-in; B: siempre visible). */}
+      <span aria-hidden="true" className="estado-dot size-1.5 rounded-full bg-current shrink-0" />
       {icon}
       {children}
     </span>

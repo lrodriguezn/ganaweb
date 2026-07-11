@@ -15,6 +15,14 @@ import { cn } from "../lib/utils"
  * Token: bg-primary + text-primary-foreground (que mapea a `--on-primary`
  * = #FFFFFF light / #171512 dark; el oscuro da contraste sobre el verde
  * más claro del dark mode). Sin variantes `dark:`.
+ *
+ * v1.3 (T-003.3, D12, REQ-BVA-004): la FAB siempre lleva `bg-primary-gradient`
+ * además de `bg-primary`. En A --primary-gradient es `none` y solo se ve
+ * el color sólido; en B la capa del gradiente (definida en T-001.2) se
+ * pinta sobre el mismo primary. La disciplina de gradiente (REQ-BVA-004)
+ * dice que solo la FAB + el hero metric + el CTA primario fuera del
+ * dashboard pueden tener este marker — la FAB de este componente y la
+ * FAB interna de BottomNav lo cumplen.
  */
 export interface FabProps {
   onClick?: () => void
@@ -31,6 +39,7 @@ export function Fab({ onClick, ariaLabel, className }: FabProps) {
       aria-label={ariaLabel}
       className={cn(
         "size-12 rounded-full bg-primary text-primary-foreground",
+        "bg-primary-gradient",
         "grid place-items-center shrink-0",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         className,
