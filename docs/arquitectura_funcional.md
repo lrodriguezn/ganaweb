@@ -29,7 +29,10 @@
 
 ### 1.2 Catálogo de módulos y acciones (semilla)
 
-Acciones estándar: `ver`, `crear`, `editar`, `anular`, `inactivar`, `exportar`.
+Acciones estándar: `ver`, `crear`, `editar`, `anular`, `inactivar`,
+`exportar`, y `eliminar` (borrado FÍSICO — existe solo donde el dominio lo
+permite; hoy únicamente `animales:eliminar`, ver especificación CRUD
+Animales CA-DEL-001..009: procede solo sin eventos, con auditoría).
 
 | Módulo | Notas |
 |---|---|
@@ -48,6 +51,7 @@ Acciones estándar: `ver`, `crear`, `editar`, `anular`, `inactivar`, `exportar`.
 | Permiso → / Rol ↓ | Administrador | Mayordomo | Veterinario | Solo lectura |
 |---|---|---|---|---|
 | animales: ver/crear/editar | ✓ | ✓ | ver | ver |
+| animales: eliminar (físico, CA-DEL) | ✓ | autoservicio 24h (CA-DEL-008) | — | — |
 | eventos_reproductivos: * | ✓ | crear/ver | ✓ | ver |
 | eventos_productivos: * | ✓ | ✓ | ver | ver |
 | sanidad: * | ✓ | crear/ver | ✓ | ver |
