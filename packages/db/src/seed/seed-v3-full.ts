@@ -1,7 +1,10 @@
 /**
  * GanaWeb — Seed completo v3 (SQL directo)
- * Ejecuta el seed completo de docs/seed_v3.ts contra PostgreSQL
- * sin depender del schema Drizzle completo.
+ * Reconstruido a partir de seed_v3.ts y ejecutado contra PostgreSQL
+ * mediante SQL directo, sin depender del schema Drizzle completo.
+ *
+ * Incluye los cambios recientes de RBAC, entre ellos el permiso
+ * animales:eliminar, reservado al rol Administrador.
  *
  * Uso: DATABASE_URL=postgresql://... tsx packages/db/src/seed/seed-v3-full.ts
  */
@@ -57,7 +60,8 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
 
   // Catálogo de permisos
   const MODULOS: Record<string, string[]> = {
-    animales:               ['ver', 'crear', 'editar', 'inactivar'],
+    // eliminar = borrado físico; solo el Administrador lo recibe en la matriz
+    animales:               ['ver', 'crear', 'editar', 'inactivar', 'eliminar'],
     eventos_reproductivos:  ['ver', 'crear', 'editar', 'anular'],
     eventos_productivos:    ['ver', 'crear', 'editar', 'anular'],
     sanidad:                ['ver', 'crear', 'editar', 'anular'],
@@ -92,8 +96,10 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
 
   // Matriz rol → permisos
   const MATRIZ: Record<string, string[]> = {
+    // Administrador: todos los permisos, incluido animales:eliminar.
     'rol-admin': todosPermisos.map((p) => p.id),
     'rol-mayordomo': [
+      // No recibe animales:eliminar; conserva ver, crear y editar.
       ...['ver', 'crear', 'editar'].map((a) => permisoId('animales', a)),
       ...['ver', 'crear'].map((a) => permisoId('eventos_reproductivos', a)),
       ...['ver', 'crear', 'editar', 'anular'].map((a) => permisoId('eventos_productivos', a)),
