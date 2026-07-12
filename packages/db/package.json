@@ -9,6 +9,10 @@
       "types": "./src/schema/index.ts",
       "import": "./src/schema/index.ts"
     },
+    "./auth-repository": {
+      "types": "./src/auth-repository.ts",
+      "import": "./src/auth-repository.ts"
+    },
     "./client": {
       "types": "./src/client.ts",
       "import": "./src/client.ts"

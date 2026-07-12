@@ -21,3 +21,6 @@
 export type { AnimalRepositoryPort, AnimalResumen } from "./puertos/animal-repository-port.js"
 export type { RelojDelSistemaPort } from "./puertos/reloj-del-sistema-port.js"
 export type { OutboxPort, EventoOutbox, EntradaOutbox } from "./puertos/outbox-port.js"
+export * from "./casos-uso/auth/index.js"
+export type * from "./puertos/auth-repository-port.js"
+export type { DecisionAutorizacion, PermisoUsuario, SesionAutorizada } from "@ganaweb/dominio"

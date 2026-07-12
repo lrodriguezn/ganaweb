@@ -14,3 +14,11 @@ export type {
 } from "./animal.js"
 export type { ReferenciaAnimal, ResultadoValidacion } from "./rn-001.js"
 export { validarCodigoUnicoPorFinca } from "./rn-001.js"
+export type {
+  DecisionAutorizacion,
+  EstadoAutorizacion,
+  FincaUsuarioResumen,
+  PermisoUsuario,
+  SesionAutorizada,
+  Usuario,
+} from "./usuario.js"
