@@ -4,7 +4,7 @@
  * Spec: `openspec/changes/selector-estilo-apariencia/specs/mas-mobile.md`
  *       §REQ-MM-001..005 (header "Más", AparienciaCard, user info,
  *       Configuración gated by permission, placeholders, Cerrar sesión).
- * Design: `design.md` §D7 (route composition) + §D14 (demo user data).
+ * Design: `design.md` §D7 (route composition) + session-derived user data.
  *
  * Es la pantalla mobile de "Más" — el BottomNav ya tenía el slot
  * "Más" apuntando a `/mas` desde PR3 (T-003.2), pero el destino era
@@ -14,13 +14,9 @@
  * el usuario activo tiene `configuracion:ver` (los admins de la finca
  * activa). Usamos `tienePermiso(perms, "configuracion", "ver")` del
  * helper exportado por `@ganaweb/ui`. Los permisos se derivan en este
- * archivo desde `USUARIO_DEMO.esAdmin` (mismo set demo que llega al
- * AppHeader vía _app.tsx, D14: "misma fuente demo, dos consumidores").
+ * archivo desde la sesión autorizada que llega al AppHeader vía _app.tsx.
  *
- * **Cerrar sesión (PD-8)**: el handler es el mismo stub que recibe
- * `AppHeader` desde _app.tsx — `() => console.warn("[auth] logout no
- * implementado")`. Cuando exista un server function real, se cambia
- * UN solo punto y se propaga a ambas superficies.
+ * **Cerrar sesión (PD-8)**: llama el server function real y vuelve a `/login`.
  *
  * **Sin dark:, sin theme-b: (T-004)**: ningún variant condicional.
  * Los tokens hacen todo el trabajo via `<html class="dark|theme-b">`.
@@ -33,38 +29,25 @@ import { AparienciaCard, type PermisosUsuario, crearPermisos, tienePermiso } fro
 import { createFileRoute } from "@tanstack/react-router"
 import { LogOut, Settings, User } from "lucide-react"
 
-import { USUARIO_DEMO } from "../_app"
+import { initials, logoutAction } from "../../server/auth.js"
+import { Route as AppRoute } from "../_app"
 
 export const Route = createFileRoute("/_app/mas")({
   component: Mas,
 })
 
 /**
- * Permisos demo del usuario activo (D14). Derivados desde
- * `USUARIO_DEMO.esAdmin` para mantener UNA sola fuente de verdad:
- * cambiar el flag del usuario cambia automáticamente lo que ve esta
- * página y lo que ve el sidebar en desktop.
- *
- * Producción: cuando exista un loader server-function, este `Set` se
- * construye con `crearPermisos(rows)` a partir de `usuarios_permisos`
- * y `usuarios_roles` (definido en D14, contrato de props estable).
+ * Permisos del usuario activo derivados desde la sesión autorizada.
  */
-const PERMISOS_DEMO: PermisosUsuario = crearPermisos(
-  USUARIO_DEMO.esAdmin
-    ? [
-        { modulo: "configuracion", accion: "ver" },
-        { modulo: "configuracion", accion: "editar" },
-      ]
-    : [],
-)
-
-const onCerrarSesion = () => {
-  // biome-ignore lint/suspicious/noConsole: stub — server function de sesión es trabajo de un PR futuro (D14).
-  console.warn("[auth] logout no implementado")
-}
-
 function Mas() {
-  const puedeConfigurar = tienePermiso(PERMISOS_DEMO, "configuracion", "ver")
+  const { sesion } = AppRoute.useRouteContext()
+  const permisosUsuario: PermisosUsuario = crearPermisos([...sesion.permisos])
+  const puedeConfigurar = tienePermiso(permisosUsuario, "configuracion", "ver")
+
+  async function onCerrarSesion() {
+    await logoutAction()
+    window.location.assign("/login")
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
@@ -83,12 +66,12 @@ function Mas() {
             aria-hidden="true"
             className="size-10 rounded-full bg-muted text-primary font-semibold text-[14px] grid place-items-center shrink-0"
           >
-            {USUARIO_DEMO.iniciales || <User className="size-4" />}
+            {initials(sesion.nombre) || <User className="size-4" />}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium leading-tight truncate">{USUARIO_DEMO.nombre}</p>
+            <p className="text-[14px] font-medium leading-tight truncate">{sesion.nombre}</p>
             <p className="text-[12px] text-muted-foreground leading-tight truncate">
-              {USUARIO_DEMO.email}
+              {sesion.email}
             </p>
           </div>
         </div>

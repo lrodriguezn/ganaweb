@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"@ganaweb/aplicacion: no tests in scaffold-monorepo (interfaces only)\"",
+    "test": "vitest run",
     "lint": "biome check ."
   },
   "dependencies": {
@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@ganaweb/config": "workspace:*",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.6"
   }
 }

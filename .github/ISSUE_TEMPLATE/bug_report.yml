@@ -1,117 +1,130 @@
 name: Bug Report
-description: Report something that is broken or behaving incorrectly in ganaweb.
-title: "[Bug]: "
+description: Reportar un bug en GanaWeb
 labels: ["bug", "status:needs-review"]
-assignees: []
+
 body:
   - type: markdown
     attributes:
-      content: |
-        Thanks for taking the time to file a bug report.
-        Please fill out every section below — incomplete reports will be asked to revise before approval.
+      value: |
+        ## 📋 Cómo funciona
+
+        1. **Envía** este reporte → se etiqueta automáticamente como `status:needs-review`
+        2. Un **mantenedor revisa** y agrega `status:approved` (o lo cierra como inválido/duplicado)
+        3. **Solo entonces** se debe abrir un PR para corregirlo
+
+        Los PRs que corrijan issues sin `status:approved` serán rechazados automáticamente.
 
   - type: checkboxes
     id: preflight
     attributes:
-      label: Pre-flight Checks
-      description: Please confirm both before continuing.
+      label: Pre-flight Checklist
       options:
-        - label: I have searched existing issues and confirmed this is not a duplicate.
+        - label: Busqué en [issues existentes](https://github.com/lrodriguezn/ganaweb/issues) y esto no es un duplicado
           required: true
-        - label: I understand this issue needs the `status:approved` label from a maintainer before a PR can be opened.
+        - label: Entiendo que los PRs serán rechazados si el issue vinculado no tiene `status:approved`
           required: true
 
   - type: textarea
-    id: bug-description
+    id: description
     attributes:
-      label: Bug Description
-      description: A clear and concise description of what the bug is.
-      placeholder: "The animal list fails to load when offline and I have more than 50 records synced."
+      label: 📝 Descripción del Bug
+      description: Descripción clara y concisa del bug.
+      placeholder: Describe el bug...
     validations:
       required: true
 
   - type: textarea
     id: steps
     attributes:
-      label: Steps to Reproduce
-      description: Numbered steps that reliably reproduce the bug.
-      placeholder: |
-        1. Go to the main screen
-        2. Toggle airplane mode on
-        3. Open "Animals" with 50+ records
-        4. See error
+      label: 🔄 Pasos para Reproducir
+      description: Pasos para reproducir el comportamiento.
+      value: |
+        1.
+        2.
+        3.
     validations:
       required: true
 
   - type: textarea
     id: expected
     attributes:
-      label: Expected Behavior
-      description: What you expected to happen.
+      label: ✅ Comportamiento Esperado
+      description: ¿Qué esperabas que ocurriera?
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: Actual Behavior
-      description: What actually happened. Include any error messages, stack traces, or screenshots.
+      label: ❌ Comportamiento Actual
+      description: ¿Qué ocurrió realmente?
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## 🖥️ Entorno
 
   - type: dropdown
     id: os
     attributes:
-      label: Operating System
-      description: The OS on which the bug was reproduced.
+      label: Sistema Operativo
       options:
         - macOS
-        - Linux
+        - Linux (Ubuntu/Debian)
+        - Linux (Arch/Manjaro)
+        - Linux (Fedora/RHEL)
+        - Linux (Other)
         - Windows
-        - Android
-        - iOS
-        - Other
+        - Windows (WSL)
     validations:
       required: true
 
   - type: dropdown
     id: browser
     attributes:
-      label: Browser
-      description: The browser or webview in which the bug was reproduced.
+      label: Navegador
       options:
         - Chrome
         - Firefox
         - Safari
         - Edge
-        - Samsung Internet
-        - Other
+        - Otro
     validations:
       required: true
 
   - type: dropdown
-    id: device
+    id: area
     attributes:
-      label: Device Type
-      description: The form factor where you saw the bug.
+      label: 📋 Área Afectada
       options:
-        - Desktop
-        - Tablet
-        - Mobile
+        - Web App
+        - API
+        - Base de Datos
+        - Autenticación
+        - Reportes
+        - UI/UX
+        - Documentación
+        - Infraestructura
+        - Otro
     validations:
       required: true
 
   - type: textarea
     id: logs
     attributes:
-      label: Relevant Logs
-      description: Paste any console output, network responses, or server logs. Skip if not applicable.
+      label: 💡 Logs / Mensajes de Error
+      description: Pega cualquier log relevante. Se formateará como código.
       render: shell
+    validations:
+      required: false
 
   - type: textarea
     id: context
     attributes:
-      label: Additional Context
-      description: "Anything else that may help: PWA install state, sync state, offline/online, screenshots, links, workarounds."
+      label: Contexto Adicional
+      description: Pantallazos, configuraciones, etc.
     validations:
       required: false

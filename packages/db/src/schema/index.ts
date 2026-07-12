@@ -17,4 +17,5 @@
  */
 
 export { animales, type Animal, type NuevoAnimal } from "./animales.js"
+export * from "./auth.js"
 export { fincas, type Finca, type NuevaFinca } from "./fincas.js"
