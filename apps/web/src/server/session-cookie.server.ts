@@ -1,6 +1,7 @@
 import { getRequestHeader, setResponseHeader } from "@tanstack/react-start/server"
 
-const SESSION_COOKIE = "__Host-ganaweb-session"
+const SESSION_COOKIE =
+  process.env.NODE_ENV === "production" ? "__Host-ganaweb-session" : "ganaweb-session"
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 
 export function setSessionCookie(token: string) {

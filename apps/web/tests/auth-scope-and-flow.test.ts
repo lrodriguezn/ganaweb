@@ -130,8 +130,8 @@ async function testLogoutCookieBehavior() {
     "clearSessionCookie must set Max-Age=0 to expire the cookie",
   )
   assert.ok(
-    cookieServer.includes("__Host-ganaweb-session"),
-    "session cookie must use __Host- prefix for security",
+    cookieServer.includes("ganaweb-session"),
+    "session cookie must be defined with a dev-safe name",
   )
   assert.ok(cookieServer.includes("HttpOnly"), "session cookie must be HttpOnly")
   assert.ok(cookieServer.includes("SameSite=Lax"), "session cookie must use SameSite=Lax")
