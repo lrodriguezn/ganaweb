@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Preguntas & Discusiones
+    url: https://github.com/lrodriguezn/ganaweb/discussions
+    about: Usa Discussions para preguntas, no issues

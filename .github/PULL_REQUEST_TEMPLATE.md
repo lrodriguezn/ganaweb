@@ -1,61 +1,70 @@
-# Pull Request
+<!-- ⚠️ LÉE ANTES DE ENVIAR
+  Todo PR debe estar vinculado a un issue con la etiqueta "status:approved".
+  Los PRs sin un issue aprobado vinculado serán rechazados automáticamente por CI.
+-->
 
-## Linked Issue (REQUIRED)
+## 🔗 Linked Issue
 
-> Every PR MUST link an approved issue. PRs without a linked issue that has the `status:approved` label will be blocked by the CI validation workflow.
+Closes #
 
-- Closes #
+---
 
-> The linked issue MUST have the `status:approved` label assigned by a maintainer. If your issue is still `status:needs-review`, wait for approval before opening this PR.
+## 🏷️ PR Type
 
-## PR Type (REQUIRED)
+¿Qué tipo de cambio introduce este PR?
 
-> Check exactly ONE box. The PR must also carry exactly one matching `type:*` label — the validation workflow checks for this.
+- [ ] `type:bug` — Corrección de bug
+- [ ] `type:feature` — Nueva funcionalidad
+- [ ] `type:docs` — Solo documentación
+- [ ] `type:refactor` — Refactorización (sin cambios funcionales)
+- [ ] `type:chore` — Build, CI, o herramientas
+- [ ] `type:breaking-change` — Cambio rompedor
 
-- [ ] Bug fix (`type:bug`)
-- [ ] New feature (`type:feature`)
-- [ ] Documentation only (`type:docs`)
-- [ ] Code refactoring (`type:refactor`)
-- [ ] Maintenance / tooling (`type:chore`)
-- [ ] Breaking change (`type:breaking-change`)
+---
 
-## Summary
+## 📝 Resumen
 
-<!-- 1-3 bullet points describing what this PR does and why. -->
+<!-- Descripción clara y concisa de qué hace este PR y por qué. -->
 
--
--
--
+---
 
-## Changes
+## 📂 Cambios
 
-<!-- Group changes by package. Add or remove rows as needed. -->
+| Archivo / Área | Qué cambió |
+|----------------|------------|
+| `ruta/al/archivo` | Breve descripción |
 
-| File | Change |
-|------|--------|
-| `path/to/file` | What changed and why |
+---
 
-## Test Plan
+## 🧪 Plan de Pruebas
 
-<!-- Tick all that apply. For ganaweb, the expected quality gate is: typecheck, unit tests, build, lint, dep-cruise, and a manual smoke test. -->
+```bash
+pnpm test
+pnpm typecheck
+pnpm lint
+```
 
-- [ ] `pnpm turbo test` passes locally
-- [ ] `pnpm turbo build` passes locally
-- [ ] `pnpm exec biome ci .` passes locally
-- [ ] `pnpm exec depcruise apps/web/src --config .dependency-cruiser.cjs` passes locally (when applicable)
-- [ ] Manually tested the affected flow in the dev server
-- [ ] Manually tested the affected flow on a mobile viewport (PWA)
-- [ ] Coverage gate is met (when adding or changing production code)
-- [ ] Updated relevant docs / openspec deltas (if behavior changed)
+- [ ] Pruebas unitarias pasan (`pnpm test`)
+- [ ] Typecheck pasa (`pnpm typecheck`)
+- [ ] Linter pasa (`pnpm lint`)
+- [ ] Probado manualmente localmente
 
-## Contributor Checklist
+---
 
-<!-- All boxes must be checked before requesting review. -->
+## ✅ Contributor Checklist
 
-- [ ] I linked an **approved** issue (it has the `status:approved` label)
-- [ ] I added **exactly one** `type:*` label to this PR
-- [ ] My commit messages follow the Conventional Commits format (`type(scope): description`)
-- [ ] I did **not** add any `Co-Authored-By:` or AI attribution trailers to commits
-- [ ] I followed TDD where applicable (failing test → production code → refactor)
-- [ ] I updated documentation / openspec deltas when behavior changed
-- [ ] I ran the full local quality gate (`pnpm turbo test build && pnpm exec biome ci .`) before pushing
+- [ ] PR vinculado a un issue con `status:approved`
+- [ ] PR dentro de 400 líneas cambiadas, o tengo `size:exception` solicitado
+- [ ] Etiqueta `type:*` agregada al PR
+- [ ] `pnpm test` pasa
+- [ ] `pnpm typecheck` pasa
+- [ ] `pnpm lint` pasa
+- [ ] Documentación actualizada si es necesario
+- [ ] Commits siguen [Conventional Commits](https://www.conventionalcommits.org/)
+- [ ] Commits NO incluyen "Co-Authored-By"
+
+---
+
+## 💬 Notas para Revisores
+
+<!-- Opcional: algo en lo que los revisores deban poner atención especial. -->

@@ -1,79 +1,85 @@
 name: Feature Request
-description: Suggest a new feature or improvement for ganaweb (livestock management PWA).
-title: "[Feature]: "
+description: Sugerir una nueva funcionalidad o mejora para GanaWeb
 labels: ["enhancement", "status:needs-review"]
-assignees: []
+
 body:
   - type: markdown
     attributes:
-      content: |
-        Thanks for proposing an enhancement.
-        ganaweb is a livestock management PWA (control ganadero) for cattle farms in Colombia.
-        Please describe the problem first, then the proposed solution.
+      value: |
+        ## 📋 Cómo funciona
+
+        1. **Envía** esta solicitud → se etiqueta automáticamente como `status:needs-review`
+        2. Un **mantenedor revisa** y agrega `status:approved` (o la cierra como fuera-de-alcance/duplicado)
+        3. **Solo entonces** se debe abrir un PR para implementarla
+
+        Los PRs que implementen features sin `status:approved` en el issue vinculado serán rechazados automáticamente.
 
   - type: checkboxes
     id: preflight
     attributes:
-      label: Pre-flight Checks
-      description: Please confirm both before continuing.
+      label: Pre-flight Checklist
       options:
-        - label: I have searched existing issues and confirmed this is not a duplicate.
+        - label: Busqué en [issues existentes](https://github.com/lrodriguezn/ganaweb/issues) y esto no es un duplicado
           required: true
-        - label: I understand this issue needs the `status:approved` label from a maintainer before a PR can be opened.
+        - label: Entiendo que los PRs serán rechazados si el issue vinculado no tiene `status:approved`
           required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 🔍 Área Afectada
+      description: ¿Qué área de GanaWeb afectaría esta feature?
+      options:
+        - Web App
+        - API
+        - Base de Datos
+        - Autenticación
+        - Reportes
+        - UI/UX
+        - Documentación
+        - Infraestructura
+        - Otro
+    validations:
+      required: true
 
   - type: textarea
     id: problem
     attributes:
-      label: Problem Description
-      description: What pain point does this solve? Why does it matter for the daily workflow on a farm?
+      label: 💡 Planteamiento del Problema
+      description: ¿Tu solicitud está relacionada con un problema? Descríbelo claramente.
       placeholder: |
-        When recording a peso (weight) for an animal, I have to scroll through the full list of animals
-        because the search field is below the form. On a 3" phone screen with gloves on, this is hard.
+        Me frustra que...
+        Actualmente no es posible...
+        Cada vez que necesito X, tengo que hacer manualmente...
     validations:
       required: true
 
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Solution
-      description: How should this work from the user's perspective? Sketch the flow, not the implementation.
+      label: 📦 Solución Propuesta
+      description: Describe la solución que te gustaría. Sé lo más específico posible.
       placeholder: |
-        Move the animal search field to the top of the peso form, sticky, with a barcode/scanner button.
-        Keep typed query and recent selections cached offline.
-    validations:
-      required: true
+        Ejemplo de uso:
+          ...
 
-  - type: dropdown
-    id: area
-    attributes:
-      label: Affected Area
-      description: Which layer or surface of ganaweb does this touch?
-      options:
-        - Dominio
-        - Aplicacion
-        - DB
-        - Sync
-        - UI
-        - Web App
-        - Infra/CI
-        - Documentación
-        - Otro
+        Comportamiento esperado:
+          ...
     validations:
       required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives Considered
-      description: Other approaches or workarounds you have thought about, and why this proposal is better.
+      label: 🔄 Alternativas Consideradas
+      description: Describe soluciones alternativas que hayas considerado.
     validations:
       required: false
 
   - type: textarea
     id: context
     attributes:
-      label: Additional Context
-      description: Mockups, reference apps, regulatory notes (e.g. ICA requirements), or links to similar features in other PWA ganaderas.
+      label: 📎 Contexto Adicional
+      description: Pantallazos, ejemplos, etc.
     validations:
       required: false
