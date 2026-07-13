@@ -1,0 +1,40 @@
+{
+  "schema": "gentle-ai.review-receipt/v1",
+  "lineage_id": "add-animals-crud-flow",
+  "mode": "ordinary_4r",
+  "generation": 1,
+  "base_tree": "d5a566113af9c67b27bcd3ff32212fa7ca546c5d",
+  "initial_review_tree": "43983374abc76e0c61ab21ddd6624ac9bf8c0c8f",
+  "final_candidate_tree": "43983374abc76e0c61ab21ddd6624ac9bf8c0c8f",
+  "paths_digest": "sha256:869520a0f89200aacc33669036f9873861d3ee4ae297bb407f904def4cfe106c",
+  "fix_delta_hash": "sha256:2f4e79a250176c16d05cb9f2077bc0b68d0be872ab5be88998a87300042388e9",
+  "policy_hash": "sha256:ad685a0453960796335d41fa4b51ec2bcd4e40004e7e43b1713e3e105b4e7799",
+  "ledger_hash": "sha256:e191d5d2e70523d4c907a1511ab861d5662ecd1f42db9f54a3fae5fbc0006418",
+  "evidence_hash": "",
+  "counters": {
+    "full_reviews": 1,
+    "refuter_batches": 0,
+    "fix_batches": 1,
+    "scoped_fix_validations": 1,
+    "final_verifications": 0,
+    "fix_rounds": 0,
+    "scoped_rejudgments": 0,
+    "judge_executions": 0
+  },
+  "state": "ready_final_verification",
+  "store_revision": "sha256:037ac750cf6f3f448dc4db45ab7478f56fd8e75fb2d8b83a79b234c1d998fc90",
+  "genesis_revision": "sha256:4b44219e75d2352f14be58fc8e26ca395f9f8f2442550f548c9af0e34cf685f1",
+  "chain_identity": "sha256:cf8e4141f05971eb140661439ff51a863011772ec6fd92c66fc1ac835eba2cae",
+  "bundle_digest": "sha256:c666c201496c9f71235896a867dcb1e9a652d87fc5dd22df7951f110ca4e25d3",
+  "original_criteria": {
+    "evidence_hash": "sha256:cd3e7bfeb5bfc25cb6ec5578888fef4853a67a16e7c7b9f56c3bf8859361a253",
+    "fix_delta_hash": "sha256:2f4e79a250176c16d05cb9f2077bc0b68d0be872ab5be88998a87300042388e9",
+    "passed": true
+  },
+  "correction_regression": {
+    "evidence_hash": "sha256:cd3e7bfeb5bfc25cb6ec5578888fef4853a67a16e7c7b9f56c3bf8859361a253",
+    "fix_delta_hash": "sha256:2f4e79a250176c16d05cb9f2077bc0b68d0be872ab5be88998a87300042388e9",
+    "passed": true
+  },
+  "blocker": ""
+}

@@ -1,0 +1,41 @@
+{
+  "validation": {
+    "result": "approved",
+    "ledger_ids": [
+      "R2-001",
+      "R2-002",
+      "R2-003",
+      "R4-003",
+      "R4-004",
+      "RELIABILITY-001",
+      "RELIABILITY-002",
+      "RELIABILITY-003",
+      "RISK-001"
+    ],
+    "original_criteria": {
+      "passed": true,
+      "evidence_hash": "sha256:cd3e7bfeb5bfc25cb6ec5578888fef4853a67a16e7c7b9f56c3bf8859361a253",
+      "fix_delta_hash": "sha256:2f4e79a250176c16d05cb9f2077bc0b68d0be872ab5be88998a87300042388e9"
+    },
+    "correction_regression": {
+      "passed": true,
+      "evidence_hash": "sha256:cd3e7bfeb5bfc25cb6ec5578888fef4853a67a16e7c7b9f56c3bf8859361a253",
+      "fix_delta_hash": "sha256:2f4e79a250176c16d05cb9f2077bc0b68d0be872ab5be88998a87300042388e9"
+    },
+    "fix_caused_findings": [],
+    "follow_ups": [
+    {
+      "id": "INFO-001",
+      "severity": "SUGGESTION",
+      "observation": "E2E fixture env flag risk is now guarded and informational only.",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:544"]
+    },
+    {
+      "id": "INFO-002",
+      "severity": "SUGGESTION",
+      "observation": "Static-source tests, duplicate types, and stale comments remain non-blocking informational notes.",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:535"]
+    }
+    ]
+  }
+}

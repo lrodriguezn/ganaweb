@@ -22,3 +22,11 @@ export type {
   SnapshotConflicto,
 } from "./conflict-resolver-port.js"
 export type { EstadoVital } from "./estado-vital.js"
+export type { AnimalSyncEnvelope, AnimalSyncOperation } from "./animal-sync.js"
+export {
+  aplicarTombstoneAnimal,
+  crearEnvelopeAnimal,
+  resolverConflictoCodigoAnimal,
+  resolverConflictoVersionAnimal,
+  resolverEstadoColaBinaria,
+} from "./animal-sync.js"

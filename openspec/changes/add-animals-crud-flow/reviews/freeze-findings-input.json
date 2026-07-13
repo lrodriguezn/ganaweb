@@ -1,0 +1,87 @@
+{
+  "ledger_hash": "sha256:e191d5d2e70523d4c907a1511ab861d5662ecd1f42db9f54a3fae5fbc0006418",
+  "ledger_findings_hash": "sha256:e191d5d2e70523d4c907a1511ab861d5662ecd1f42db9f54a3fae5fbc0006418",
+  "findings": [
+    {
+      "id": "RISK-001",
+      "lens": "risk",
+      "location": "apps/web/src/routes/_app/fincas/$fincaId/animales/$animalId.tsx",
+      "severity": "BLOCKER",
+      "neutral_claim": "GET-triggered delete/inactivate mutation path existed and was removed.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:510", "openspec/changes/add-animals-crud-flow/apply-progress.md:539"]
+    },
+    {
+      "id": "RELIABILITY-001",
+      "lens": "reliability",
+      "location": "apps/web/src/server/animal-actions.server.ts",
+      "severity": "BLOCKER",
+      "neutral_claim": "Production animal runtime boundary could appear configured by fixture fallback; it now fails fast unless real adapters are configured.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:515", "openspec/changes/add-animals-crud-flow/apply-progress.md:540"]
+    },
+    {
+      "id": "RELIABILITY-002",
+      "lens": "reliability",
+      "location": "packages/aplicacion/src/casos-uso/animales/index.ts",
+      "severity": "BLOCKER",
+      "neutral_claim": "Server/application image validation allowed invalid MIME or over-limit image operations; validation now rejects unsupported MIME types and more than five active images.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:513", "openspec/changes/add-animals-crud-flow/apply-progress.md:541"]
+    },
+    {
+      "id": "RELIABILITY-003",
+      "lens": "reliability",
+      "location": "packages/aplicacion/src/casos-uso/animales/index.ts",
+      "severity": "BLOCKER",
+      "neutral_claim": "Physical delete lacked one transactional audit/tombstone/outbox unit; delete and inactivate effects now run transactionally with immutable audit and tombstone/outbox records.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:514", "openspec/changes/add-animals-crud-flow/apply-progress.md:542"]
+    },
+    {
+      "id": "R4-003",
+      "lens": "resilience",
+      "location": "packages/db/migrations/0001_animal_sync_audit.sql",
+      "severity": "BLOCKER",
+      "neutral_claim": "Animal sync/audit schema changes were embedded in the initial migration; they are now additive in 0001_animal_sync_audit.sql.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:516", "openspec/changes/add-animals-crud-flow/apply-progress.md:543"]
+    },
+    {
+      "id": "R4-004",
+      "lens": "resilience",
+      "location": "apps/web/src/server/e2e-animals-fixture.server.ts",
+      "severity": "BLOCKER",
+      "neutral_claim": "E2E fixture mode could be enabled too broadly; fixture mode is now guarded to safe local/test runtime markers and blocked for production.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:515", "openspec/changes/add-animals-crud-flow/apply-progress.md:544"]
+    },
+    {
+      "id": "R2-001",
+      "lens": "readability",
+      "location": "apps/web/src/routes/_app/fincas/$fincaId/animales/nuevo.tsx",
+      "severity": "BLOCKER",
+      "neutral_claim": "Nuevo Animal could double-submit through route-level click interception plus component submit ownership; AnimalFormScreen is now the sole native form submit owner and scoped validation approved it.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:567", "openspec/changes/add-animals-crud-flow/apply-progress.md:590"]
+    },
+    {
+      "id": "R2-002",
+      "lens": "readability",
+      "location": "apps/web/src/routes/_app/fincas/$fincaId/animales/$animalId.tsx",
+      "severity": "BLOCKER",
+      "neutral_claim": "Overlapping delete triggers existed and were removed so delete/inactivate goes through one non-GET server-action submission path.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:510", "openspec/changes/add-animals-crud-flow/apply-progress.md:546"]
+    },
+    {
+      "id": "R2-003",
+      "lens": "readability",
+      "location": "apps/web/src/routes/_app/fincas/$fincaId/animales/$animalId/imagenes.tsx",
+      "severity": "BLOCKER",
+      "neutral_claim": "Image gallery mark-principal/unlink controls were no-op callbacks; controls are now omitted until real contracts exist.",
+      "evidence_class": "concrete",
+      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:512", "openspec/changes/add-animals-crud-flow/apply-progress.md:547"]
+    }
+  ]
+}

@@ -30,16 +30,16 @@ import { describe, expect, it } from "vitest"
  *   (1) /mas route exists at the correct TanStack file path and
  *       composes the right blocks (AparienciaCard, user info,
  *       Configuración gated by `tienePermiso`, placeholders, logout).
- *   (2) `_app.tsx` exports `USUARIO_DEMO` and wires the user props
- *       into `AppHeader` so the desktop avatar shows up.
+ *   (2) `_app.tsx` derives user props from the authorized session and
+ *       wires them into `AppHeader` so the desktop avatar shows up.
  *   (3) `_app.tsx` derives `activoId` from the current pathname via
  *       `useRouterState` and threads it into both `Sidebar` and
  *       `BottomNav` (D9, S2 gate review).
  *   (4) The BottomNav "Más" item already points to `/mas` (the
  *       destination this PR finally creates; closes the 404 gap
  *       that existed since PR3).
- *   (5) `_app.tsx` defines a `onCerrarSesion` stub that calls
- *       `console.warn` (REQ-MM-005 + PD-8).
+ *   (5) `_app.tsx` defines a functional `onCerrarSesion` handler that
+ *       calls the real logout server function and returns to `/login`.
  *   (6) No `dark:` / `theme-b:` Tailwind variants leaked into the
  *       new files (T-004 guard — same rule tokens.test.ts enforces
  *       for the rest of `packages/ui/src/ganado/**`).
@@ -86,16 +86,17 @@ describe("PR6.T-006.4 — /mas route (REQ-MM-001..005)", () => {
     )
   })
 
-  it("REQ-MM-003 — shows the current user info (nombre + email) from USUARIO_DEMO", () => {
-    // The user-info card MUST read from `USUARIO_DEMO` (exported by
-    // _app.tsx — single source of truth for the demo user) and
-    // surface both `nombre` and `email`.
-    expect(source).toMatch(/USUARIO_DEMO\.nombre/)
-    expect(source).toMatch(/USUARIO_DEMO\.email/)
+  it("REQ-MM-003 — shows the current user info (nombre + email) from the authorized session", () => {
+    // The user-info card MUST read from the authorized route session and
+    // surface both `nombre` and `email`. The legacy `USUARIO_DEMO` source
+    // was removed when the app shell moved to real session data.
+    expect(source).toMatch(/const\s+\{\s*sesion\s*\}\s*=\s*AppRoute\.useRouteContext\(\)/)
+    expect(source).toMatch(/sesion\.nombre/)
+    expect(source).toMatch(/sesion\.email/)
     // The two field references MUST live in JSX expressions (not be
     // shadowed by a local re-declaration).
-    expect(source).toMatch(/\{USUARIO_DEMO\.nombre\}/)
-    expect(source).toMatch(/\{USUARIO_DEMO\.email\}/)
+    expect(source).toMatch(/\{sesion\.nombre\}/)
+    expect(source).toMatch(/\{sesion\.email\}/)
   })
 
   it("REQ-MM-004 — Configuración is gated by `tienePermiso(..., 'configuracion', 'ver')`", () => {
@@ -146,16 +147,13 @@ describe("PR6.T-006.4 — /mas route (REQ-MM-001..005)", () => {
 describe("PR6.T-006.4 — _app.tsx shell wiring (D7, D9, D14)", () => {
   const source = readFileSync(APP_SHELL, "utf8")
 
-  it("D14 — exports `USUARIO_DEMO` with the canonical demo identity (single source of truth)", () => {
-    // The shell MUST export `USUARIO_DEMO` so /mas can import it
-    // and stay in sync (D14: "demo data mirrors FINCAS_DEMO").
-    expect(source).toMatch(/export\s+const\s+USUARIO_DEMO\b/)
-    // Canonical demo identity (T-006.2) — name + email + iniciales
-    // + esAdmin. The exact string values are part of the contract.
-    expect(source).toMatch(/Yuli Administradora/)
-    expect(source).toMatch(/admin@ganaweb\.demo/)
-    expect(source).toMatch(/iniciales:\s*["']YA["']/)
-    expect(source).toMatch(/esAdmin:\s*true/)
+  it("D14 — obtains the canonical user identity from the authorized session", () => {
+    // The shell MUST use the real auth session as the identity source.
+    // Stale demo constants must not come back because they diverge from
+    // server authorization and break app-shell/user-info coherence.
+    expect(source).toMatch(/getCurrentSession\(\)/)
+    expect(source).toMatch(/return\s+\{\s*sesion:\s*decision\.sesion\s*\}/)
+    expect(source).not.toMatch(/export\s+const\s+USUARIO_DEMO\b/)
   })
 
   it("D8 — passes user props (nombre/email/iniciales + onCerrarSesion) to AppHeader", () => {
@@ -165,19 +163,20 @@ describe("PR6.T-006.4 — _app.tsx shell wiring (D7, D9, D14)", () => {
     // design §D8).
     expect(source).toMatch(/<AppHeader[\s\S]*?\/>/)
     const appHeaderBlock = source.match(/<AppHeader[\s\S]*?\/>/)?.[0] ?? ""
-    expect(appHeaderBlock).toMatch(/nombreUsuario=\{USUARIO_DEMO\.nombre\}/)
-    expect(appHeaderBlock).toMatch(/emailUsuario=\{USUARIO_DEMO\.email\}/)
-    expect(appHeaderBlock).toMatch(/inicialesUsuario=\{USUARIO_DEMO\.iniciales\}/)
+    expect(appHeaderBlock).toMatch(/nombreUsuario=\{sesion\.nombre\}/)
+    expect(appHeaderBlock).toMatch(/emailUsuario=\{sesion\.email\}/)
+    expect(appHeaderBlock).toMatch(/inicialesUsuario=\{initials\(sesion\.nombre\)\}/)
     expect(appHeaderBlock).toMatch(/onCerrarSesion=\{onCerrarSesion\}/)
   })
 
-  it("D14 + PD-8 — `onCerrarSesion` is a stub that calls `console.warn` with the documented message", () => {
-    // The handler MUST exist in the shell and route through
-    // `console.warn` (not `console.log`) — PD-8 marks the gap as
-    // expected, and `warn` signals "not yet implemented" in dev tools.
+  it("D14 + PD-8 — `onCerrarSesion` calls the real logout action and returns to login", () => {
+    // Logout is no longer a demo stub. The handler must call the server
+    // function and then send the browser back to /login.
     expect(source).toMatch(
-      /const\s+onCerrarSesion\s*=\s*\(\s*\)\s*=>\s*\{[\s\S]*?console\.warn\(\s*["']\[auth\] logout no implementado["']/,
+      /const\s+onCerrarSesion\s*=\s*async\s*\(\s*\)\s*=>\s*\{[\s\S]*?await\s+logoutAction\(\)/,
     )
+    expect(source).toMatch(/window\.location\.assign\(\s*["']\/login["']\s*\)/)
+    expect(source).not.toMatch(/\[auth\] logout no implementado/)
   })
 
   it("D9 + S2 — `activoId` is derived from the current route via `useRouterState`", () => {

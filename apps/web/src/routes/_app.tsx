@@ -103,6 +103,11 @@ const onCerrarSesion = async () => {
   window.location.assign("/login")
 }
 
+const logPendingNavigation = (target: string) => {
+  // biome-ignore lint/suspicious/noConsole: placeholder navigation until route exists
+  console.warn(`[shell] ruta pendiente: ${target}`)
+}
+
 /**
  * deriveActivoId — mapea el pathname actual al `id` del item de
  * navegación correspondiente. Reglas:
@@ -116,6 +121,7 @@ const onCerrarSesion = async () => {
  */
 function deriveActivoId(pathname: string): string {
   if (pathname === "/" || pathname === "") return "inicio"
+  if (pathname.includes("/animales")) return "animales"
   const segment = pathname.split("/")[1] ?? ""
   return segment || "inicio"
 }
@@ -140,6 +146,12 @@ function AppLayout() {
     sync: "sincronizado",
     tieneDatosLocales: true,
   }
+  const itemsSidebar = ITEMS_SIDEBAR.map((item) =>
+    item.id === "animales" ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` } : item,
+  )
+  const itemsBottom = ITEMS_BOTTOM.map((item) =>
+    item.id === "animales" ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` } : item,
+  )
 
   const navegar = (item: ItemNav) => {
     // biome-ignore lint/suspicious/noConsole: pendiente de cablear a router real
@@ -150,11 +162,11 @@ function AppLayout() {
   return (
     <div className="flex flex-col min-h-screen md:grid md:grid-cols-[240px_1fr] md:h-screen">
       <Sidebar
-        items={ITEMS_SIDEBAR}
+        items={itemsSidebar}
         activoId={activoId}
         onNavigate={navegar}
         puedeConfigurar
-        onConfigurar={() => navigate({ to: "/configuracion" })}
+        onConfigurar={() => logPendingNavigation("/configuracion")}
       />
 
       <div className="flex flex-col flex-1 min-h-0">
@@ -167,12 +179,12 @@ function AppLayout() {
           emailUsuario={sesion.email}
           inicialesUsuario={initials(sesion.nombre)}
           onCerrarSesion={onCerrarSesion}
-          onBuscar={() => navigate({ to: "/buscar" })}
-          onSync={() => navigate({ to: "/sync" })}
-          onCambiarFinca={(f) => {
+          onBuscar={() => logPendingNavigation("/buscar")}
+          onSync={() => logPendingNavigation("/sync")}
+          onCambiarFinca={(f: FincaResumen) => {
             // biome-ignore lint/suspicious/noConsole: pendiente de cablear a server fn
             console.log("[shell] cambiar finca:", f.id)
-            void navigate({ to: "/", search: { finca: f.id } })
+            void navigate({ to: "/" })
           }}
         />
 
@@ -182,10 +194,10 @@ function AppLayout() {
       </div>
 
       <BottomNav
-        items={ITEMS_BOTTOM}
+        items={itemsBottom}
         activoId={activoId}
         onNavigate={navegar}
-        onFab={() => navigate({ to: "/eventos/nuevo" })}
+        onFab={() => logPendingNavigation("/eventos/nuevo")}
       />
     </div>
   )

@@ -18,9 +18,22 @@
  *     `ahora`, `append`, `EventoOutbox`.
  */
 
-export type { AnimalRepositoryPort, AnimalResumen } from "./puertos/animal-repository-port.js"
+export type {
+  AnimalRegistro,
+  AnimalRepositoryPort,
+  AnimalResumen,
+} from "./puertos/animal-repository-port.js"
+export type { AnimalReferenceCheckerPort } from "./puertos/animal-reference-checker-port.js"
+export type {
+  ArchivoAnimalPort,
+  ColaBinariosPort,
+  ImagenAnimalDto,
+} from "./puertos/animal-media-port.js"
+export type { TimelineAnimalPort, TimelineItemAnimalDto } from "./puertos/animal-timeline-port.js"
 export type { RelojDelSistemaPort } from "./puertos/reloj-del-sistema-port.js"
 export type { OutboxPort, EventoOutbox, EntradaOutbox } from "./puertos/outbox-port.js"
+export type { TransaccionPort } from "./puertos/transaccion-port.js"
+export * from "./casos-uso/animales/index.js"
 export * from "./casos-uso/auth/index.js"
 export type * from "./puertos/auth-repository-port.js"
 export type { DecisionAutorizacion, PermisoUsuario, SesionAutorizada } from "@ganaweb/dominio"

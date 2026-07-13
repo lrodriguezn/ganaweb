@@ -1,59 +1,69 @@
-/**
- * Tabla `animales` — subset mínimo del schema v3 (D5, scaffold-monorepo).
- *
- * Esta tabla es el corazón de RN-001 (código único por finca). El
- * unique index `uq_animales_finca_codigo` es la ÚNICA fuente de verdad
- * del invariante a nivel de base de datos — el dominio
- * (`packages/dominio/validarCodigoUnicoPorFinca`) lo duplica en JS
- * para poder validar ANTES del round-trip, pero la base de datos es
- * quien lo enforza definitivamente.
- *
- * Simplificación deliberada D5:
- *   - `sexo` y `estado_animal` se modelan como `text` (no como
- *     `integer` FK a una lookup `sexo_enum` / `estado_animal_enum`).
- *     El SQL fuente v3 usa `sexo_key integer` y `estado_animal_key
- *     integer`, pero la generación completa del schema se difiere.
- *     `text` permite escribir fixtures de test directos sin tablas
- *     lookup. Migración a integer+FK en un PR posterior.
- *   - NO se incluyen columnas pesadas del v3 (fecha_nacimiento,
- *     madre_id, codigo_madre, raza, potrero_id, etc.) — solo lo
- *     necesario para el unique constraint y el FK a `fincas`.
- *
- * Decisión de tipos (consistencia con `packages/dominio/src/animal.ts`):
- *   - `Sexo = "macho" | "hembra" | "pajuela"`
- *   - `EstadoAnimal = "activo" | "vendido" | "muerto"`
- *   Persistimos el literal del union tal cual; en runtime aceptamos
- *   cualquier string y la validación semántica la hace la capa de
- *   aplicación al construir `AnimalResumen`.
- *
- * Nombres en español (T-003): tabla `animales`, columnas
- * `finca_id`/`estado_animal` en snake_case (consistente con el SQL v3).
- */
-
-import { integer, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
+import { boolean, foreignKey, index, integer, pgTable, real, smallint, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
 import { fincas } from "./fincas.js"
+import { configCalidadAnimal, configRazas, configTiposExplotacion } from "./config.js"
+import { grupos, hierros, lotes, potreros, propietarios, sectores } from "./maestros.js"
+import { usuarios } from "./auth.js"
 
 export const animales = pgTable(
   "animales",
   {
     id: text("id").primaryKey(),
-    fincaId: text("finca_id")
-      .notNull()
-      .references(() => fincas.id),
+    fincaId: text("finca_id").notNull().references(() => fincas.id),
     codigo: varchar("codigo", { length: 20 }).notNull(),
     nombre: varchar("nombre", { length: 100 }).default(""),
-    sexo: text("sexo").notNull(),
-    estadoAnimal: text("estado_animal").notNull(),
+    fechaNacimiento: integer("fecha_nacimiento"),
+    fechaCompra: integer("fecha_compra"),
+    sexoKey: integer("sexo_key").default(0),
+    tipoIngresoId: integer("tipo_ingreso_id").default(0),
+    madreId: text("madre_id"),
+    codigoMadre: text("codigo_madre").default(""),
+    indTransferenciaEmbriones: integer("ind_transferencia_embriones").default(0),
+    codigoDonadora: text("codigo_donadora").default(""),
+    tipoPadreKey: integer("tipo_padre_key").default(0),
+    padreId: text("padre_id"),
+    codigoPadre: text("codigo_padre").default(""),
+    codigoPajuela: text("codigo_pajuela").default(""),
+    configRazasId: text("config_razas_id").references(() => configRazas.id),
+    potreroId: text("potrero_id").references(() => potreros.id),
+    sectorId: text("sector_id").references(() => sectores.id),
+    loteId: text("lote_id").references(() => lotes.id),
+    grupoId: text("grupo_id").references(() => grupos.id),
+    hierroId: text("hierro_id").references(() => hierros.id),
+    propietarioId: text("propietario_id").references(() => propietarios.id),
+    calidadAnimalId: text("calidad_animal_id").references(() => configCalidadAnimal.id),
+    precioCompra: real("precio_compra").default(0),
+    pesoCompra: real("peso_compra").default(0),
+    codigoRfid: text("codigo_rfid").default(""),
+    codigoArete: text("codigo_arete").default(""),
+    codigoQr: text("codigo_qr").default(""),
+    saludAnimalKey: integer("salud_animal_key").default(0),
+    estadoAnimalKey: integer("estado_animal_key").default(0),
+    indDescartado: integer("ind_descartado").default(0),
+    tipoExplotacionId: text("tipo_explotacion_id").references(() => configTiposExplotacion.id),
+    transferenciaEmbrion: boolean("transferencia_embrion").default(false).notNull(),
+    donadoraId: text("donadora_id"),
+    tipoConcepcionPadre: text("tipo_concepcion_padre"),
+    categoriaReproductiva: text("categoria_reproductiva"),
+    tatuado: boolean("tatuado").default(false).notNull(),
+    herrado: boolean("herrado").default(false).notNull(),
+    descornado: boolean("descornado").default(false).notNull(),
+    numeroPezones: smallint("numero_pezones"),
+    comentarios: text("comentarios"),
     activo: integer("activo").default(1).notNull(),
+    usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    version: integer("version").default(1).notNull(),
   },
-  (t) => ({
-    // RN-001 enforcement at DB level. El test TS-004 (T4) verifica
-    // que un INSERT duplicado (mismo finca_id, mismo codigo) lanza
-    // el error de unique constraint de Postgres.
-    uqAnimalesFincaCodigo: uniqueIndex("uq_animales_finca_codigo").on(t.fincaId, t.codigo),
-  }),
+  (t) => [
+    foreignKey({ columns: [t.madreId], foreignColumns: [t.id] }),
+    foreignKey({ columns: [t.padreId], foreignColumns: [t.id] }),
+    foreignKey({ columns: [t.donadoraId], foreignColumns: [t.id] }),
+    uniqueIndex("uq_animales_finca_codigo").on(t.fincaId, t.codigo),
+    index("idx_animales_finca_activo").on(t.fincaId, t.activo),
+    index("idx_animales_madre").on(t.madreId),
+    index("idx_animales_padre").on(t.padreId),
+  ],
 )
 
 export type Animal = typeof animales.$inferSelect

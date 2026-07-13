@@ -64,6 +64,11 @@ export async function approvePendingUserForDecision(
 
 export const getCurrentSession = createServerFn({ method: "GET" }).handler(async () => {
   try {
+    const { getAnimalE2eSession, isAnimalE2eEnabled } = await import(
+      "./e2e-animals-fixture.server.js"
+    )
+    if (isAnimalE2eEnabled()) return { tipo: "autorizado" as const, sesion: getAnimalE2eSession() }
+
     const { getAuthDeps } = await import("./auth-deps.server.js")
     const { readSessionToken } = await import("./session-cookie.server.js")
     const deps = getAuthDeps()

@@ -8,9 +8,37 @@
 
 export type {
   AnimalResumen,
+  AnimalValidado,
+  DatosCreacionAnimal,
+  DecisionEditabilidadCodigoAnimal,
+  DatosReactivacionAnimal,
+  DecisionEliminarAnimal,
+  ErrorValidacionAnimal,
+  EstadoBannerFichaAnimal,
   EstadoAnimal,
+  ImagenAnimalLink,
+  ReglaAnimal,
+  ResultadoAnimal,
+  ResumenReferenciasAnimal,
   Salud,
   Sexo,
+  SexoKey,
+  TipoMimeImagenAnimal,
+} from "./animal.js"
+export {
+  calcularDecisionEliminarAnimal,
+  calcularEditabilidadCodigoAnimal,
+  crearEstadoBannerFichaAnimal,
+  marcarImagenPrincipal,
+  seleccionarCandidatoPrincipalImagenAnimalAlDesvincular,
+  validarActualizacionAnimal,
+  validarCreacionAnimal,
+  validarFichaTimeline,
+  validarPurgadoImagenAnimal,
+  validarPrincipalImagenAnimal,
+  validarReactivacionAnimal,
+  validarTipoArchivoImagenAnimal,
+  validarLimiteImagenesAnimal,
 } from "./animal.js"
 export type { ReferenciaAnimal, ResultadoValidacion } from "./rn-001.js"
 export { validarCodigoUnicoPorFinca } from "./rn-001.js"
