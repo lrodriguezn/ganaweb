@@ -45,3 +45,5 @@ pnpm-debug.log*
 # Playwright output (generated on every e2e run, not source)
 test-results/
 
+# CodeGraph local index
+.codegraph/ 
