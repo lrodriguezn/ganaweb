@@ -55,3 +55,19 @@ The root `turbo.json` MUST define `build`, `test`, `typecheck`, and `lint` pipel
 - GIVEN a PR is opened against `main`
 - WHEN the CI workflow completes
 - THEN all five steps pass before merge is allowed.
+
+### Requirement 6: TypeScript Node types major-version parity
+
+Every `package.json` in the monorepo that declares `@types/node` MUST pin it to the same major version as the declared Node runtime. A `@types/node ^22.x` (or any non-24 major) range paired with `engines.node: 24` is drift and MUST be detected before merge by an explicit parity check.
+
+#### Scenario: All type packages match the runtime major
+
+- GIVEN the root `engines.node` declares a 24.x version
+- WHEN every `package.json` in the repo is inspected by the parity check
+- THEN every `@types/node` range starts with `^24` and `pnpm install` emits zero `Unsupported engine` warnings.
+
+#### Scenario: Drift is caught before merge
+
+- GIVEN a `package.json` declares `"@types/node": "^22.x"` while root `engines.node` is `24`
+- WHEN the parity check runs during apply or in CI
+- THEN the check fails with a message naming the offending file and the major mismatch, and the build does not proceed to merge.
