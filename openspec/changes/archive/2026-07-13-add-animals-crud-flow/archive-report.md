@@ -8,6 +8,8 @@ Manual OpenSpec archive path (not native archive).
 
 Manual re-verification passed with warnings. The native Gentle AI review/provenance gate remains intentionally paused/deferred by maintainer decision, so this report preserves review artifacts for audit and does not delete or mutate them.
 
+PR #39 has been merged to `master` with merge commit `6e6c748d1ccf69a0cbfc516a0af0bb56d639a628`; issue #38 is closed.
+
 ## Verified Status
 
 - Tasks: 15/15 complete.
@@ -40,4 +42,4 @@ Recorded `gentle-ai sdd-status add-animals-crud-flow --cwd /home/lrodriguezn/gan
 - `remediationState.required`: `false`
 - Blocker: failed evidence revision mismatch (`sha256:8b36abc3d4f6e0aafdaa8dd683938398d1b3f7f1f12d8a6bb6fd48bc58c481e0` vs `manual-reverify-2026-07-13`)
 
-This confirms the manual archive report is complete, but native archive remains intentionally deferred.
+This confirms the manual archive report is complete, but native archive remains intentionally deferred. The change folder was moved to `openspec/changes/archive/2026-07-13-add-animals-crud-flow/` after PR #39 merged.
