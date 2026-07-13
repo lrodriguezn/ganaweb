@@ -8,7 +8,7 @@ Defines the root workspace, tooling, and package graph so that every downstream 
 
 ### Requirement 1: Workspace definition
 
-The repository MUST declare `apps/*` and `packages/*` as pnpm workspaces via `pnpm-workspace.yaml` and a root `package.json` with Node 22 and pnpm ≥9 engines.
+The repository MUST declare `apps/*` and `packages/*` as pnpm workspaces via `pnpm-workspace.yaml` and a root `package.json` with Node 24 LTS and pnpm ≥9 engines.
 
 #### Scenario: Clean clone boots
 

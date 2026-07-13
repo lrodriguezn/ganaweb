@@ -8,7 +8,7 @@ Sistema web para administrar fincas, animales y eventos productivos, diseñado p
 
 ## Camino rápido para empezar
 
-1. **Requisitos**: Node 22, pnpm ≥ 9 y PostgreSQL 17 corriendo.
+1. **Requisitos**: Node 24, pnpm ≥ 9 y PostgreSQL 17 corriendo.
 2. **Instalar dependencias**:
    ```bash
    pnpm install
@@ -38,7 +38,7 @@ Sistema web para administrar fincas, animales y eventos productivos, diseñado p
 
 ## Despliegue
 
-> **Nota**: aún no hay Dockerfile ni GitHub Actions. El despliegue actual es manual sobre Node 22 + PostgreSQL 17.
+> **Nota**: aún no hay Dockerfile ni GitHub Actions. El despliegue actual es manual sobre Node 24 + PostgreSQL 17.
 
 ### Variables de entorno
 
@@ -83,7 +83,7 @@ Sistema web para administrar fincas, animales y eventos productivos, diseñado p
 
 | Capa | Tecnología |
 |------|------------|
-| Runtime | Node 22 |
+| Runtime | Node 24 |
 | Package manager | pnpm workspaces |
 | Build | Turborepo |
 | Framework | TanStack Start (React 19 + Vite 7 + Nitro) |

@@ -42,3 +42,6 @@ pnpm-debug.log*
 # Tooling caches
 .atl/
 
+# Playwright output (generated on every e2e run, not source)
+test-results/
+

@@ -33,7 +33,7 @@ la arquitectura funcional, se crea `apps/api` (Hono) en el monorepo
 consumiendo `packages/dominio` y `packages/aplicacion`. La regla de capas
 (§3) garantiza que esto no exige reescritura.
 
-Versiones base: Node 22 LTS · pnpm ≥ 9 · TypeScript `strict: true` ·
+Versiones base: Node 24 LTS · pnpm ≥ 9 · TypeScript `strict: true` ·
 PostgreSQL 17 · Playwright y Vitest últimas estables. Renovate bot activo.
 
 ---
