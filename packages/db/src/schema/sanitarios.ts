@@ -1,15 +1,26 @@
-import { index, integer, numeric, pgTable, text, timestamp, uniqueIndex, date } from "drizzle-orm/pg-core"
-import { fincas } from "./fincas.js"
+import {
+  date,
+  index,
+  integer,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core"
 import { animales } from "./animales.js"
+import { usuarios } from "./auth.js"
+import { fincas } from "./fincas.js"
 import { diagnosticosVeterinarios, veterinarios } from "./maestros.js"
 import { registrosGrupales } from "./registros-grupales.js"
-import { usuarios } from "./auth.js"
 
 export const productosSanitarios = pgTable(
   "productos_sanitarios",
   {
     id: text("id").primaryKey(),
-    fincaId: text("finca_id").notNull().references(() => fincas.id),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
     codigo: text("codigo").notNull(),
     descripcion: text("descripcion").notNull(),
     mlMgPorDosis: numeric("ml_mg_por_dosis", { precision: 10, scale: 2 }),
@@ -25,7 +36,9 @@ export const productosSanitarios = pgTable(
 
 export const almacenEntradas = pgTable("almacen_entradas", {
   id: text("id").primaryKey(),
-  productoId: text("producto_id").notNull().references(() => productosSanitarios.id),
+  productoId: text("producto_id")
+    .notNull()
+    .references(() => productosSanitarios.id),
   fecha: date("fecha").notNull(),
   dosis: integer("dosis").notNull(),
   precioPorDosis: numeric("precio_por_dosis", { precision: 14, scale: 2 }),
@@ -39,9 +52,13 @@ export const aplicacionesSanitarias = pgTable(
   "aplicaciones_sanitarias",
   {
     id: text("id").primaryKey(),
-    animalId: text("animal_id").notNull().references(() => animales.id),
+    animalId: text("animal_id")
+      .notNull()
+      .references(() => animales.id),
     registroGrupalId: text("registro_grupal_id").references(() => registrosGrupales.id),
-    productoId: text("producto_id").notNull().references(() => productosSanitarios.id),
+    productoId: text("producto_id")
+      .notNull()
+      .references(() => productosSanitarios.id),
     fecha: date("fecha").notNull(),
     dosis: numeric("dosis", { precision: 10, scale: 2 }).default("1").notNull(),
     precioDosis: numeric("precio_dosis", { precision: 14, scale: 2 }),
@@ -61,7 +78,9 @@ export const revisionesVeterinarias = pgTable(
   "revisiones_veterinarias",
   {
     id: text("id").primaryKey(),
-    animalId: text("animal_id").notNull().references(() => animales.id),
+    animalId: text("animal_id")
+      .notNull()
+      .references(() => animales.id),
     registroGrupalId: text("registro_grupal_id").references(() => registrosGrupales.id),
     fecha: date("fecha").notNull(),
     diagnosticoId: text("diagnostico_id").references(() => diagnosticosVeterinarios.id),

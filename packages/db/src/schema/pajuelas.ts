@@ -1,12 +1,16 @@
-import { integer, numeric, pgTable, text, timestamp, date } from "drizzle-orm/pg-core"
-import { fincas } from "./fincas.js"
-import { usuarios } from "./auth.js"
+import { date, integer, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { animales } from "./animales.js"
+import { usuarios } from "./auth.js"
+import { fincas } from "./fincas.js"
 
 export const pajuelasInventario = pgTable("pajuelas_inventario", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
-  animalPajuelaId: text("animal_pajuela_id").notNull().references(() => animales.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
+  animalPajuelaId: text("animal_pajuela_id")
+    .notNull()
+    .references(() => animales.id),
   toroOrigenId: text("toro_origen_id").references(() => animales.id),
   fechaIngreso: date("fecha_ingreso").notNull(),
   dosisIngresadas: integer("dosis_ingresadas").notNull(),

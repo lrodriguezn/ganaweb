@@ -24,18 +24,18 @@
     },
     "fix_caused_findings": [],
     "follow_ups": [
-    {
-      "id": "INFO-001",
-      "severity": "SUGGESTION",
-      "observation": "E2E fixture env flag risk is now guarded and informational only.",
-      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:544"]
-    },
-    {
-      "id": "INFO-002",
-      "severity": "SUGGESTION",
-      "observation": "Static-source tests, duplicate types, and stale comments remain non-blocking informational notes.",
-      "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:535"]
-    }
+      {
+        "id": "INFO-001",
+        "severity": "SUGGESTION",
+        "observation": "E2E fixture env flag risk is now guarded and informational only.",
+        "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:544"]
+      },
+      {
+        "id": "INFO-002",
+        "severity": "SUGGESTION",
+        "observation": "Static-source tests, duplicate types, and stale comments remain non-blocking informational notes.",
+        "proof_refs": ["openspec/changes/add-animals-crud-flow/apply-progress.md:535"]
+      }
     ]
   }
 }

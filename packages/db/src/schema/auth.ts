@@ -21,7 +21,9 @@ export const usuariosContrasena = pgTable(
   "usuarios_contrasena",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
     contrasenaHash: text("contrasena_hash").notNull(),
     activo: integer("activo").default(1).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -32,7 +34,9 @@ export const usuariosContrasena = pgTable(
 
 export const usuariosHistorialContrasenas = pgTable("usuarios_historial_contrasenas", {
   id: text("id").primaryKey(),
-  usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
+  usuarioId: text("usuario_id")
+    .notNull()
+    .references(() => usuarios.id),
   contrasenaHash: text("contrasena_hash").notNull(),
   activo: integer("activo").default(1).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -42,7 +46,9 @@ export const usuariosLogin = pgTable(
   "usuarios_login",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
     exitoso: integer("exitoso").default(0),
     ip: varchar("ip", { length: 45 }),
     userAgent: text("user_agent"),
@@ -55,7 +61,9 @@ export const usuariosSesiones = pgTable(
   "usuarios_sesiones",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
     refreshTokenHash: text("refresh_token_hash").notNull(),
     dispositivoId: varchar("dispositivo_id", { length: 100 }),
     ip: varchar("ip", { length: 45 }),
@@ -96,8 +104,12 @@ export const rolesPermisos = pgTable(
   "roles_permisos",
   {
     id: text("id").primaryKey(),
-    rolId: text("rol_id").notNull().references(() => usuariosRoles.id),
-    permisoId: text("permiso_id").notNull().references(() => usuariosPermisos.id),
+    rolId: text("rol_id")
+      .notNull()
+      .references(() => usuariosRoles.id),
+    permisoId: text("permiso_id")
+      .notNull()
+      .references(() => usuariosPermisos.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     activo: integer("activo").default(1).notNull(),
   },
@@ -108,8 +120,12 @@ export const usuariosFincas = pgTable(
   "usuarios_fincas",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
-    fincaId: text("finca_id").notNull().references(() => fincas.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
     activo: integer("activo").default(1).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -120,8 +136,12 @@ export const usuariosRolesAsignacion = pgTable(
   "usuarios_roles_asignacion",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
-    rolId: text("rol_id").notNull().references(() => usuariosRoles.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
+    rolId: text("rol_id")
+      .notNull()
+      .references(() => usuariosRoles.id),
     fincaId: text("finca_id").references(() => fincas.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     activo: integer("activo").default(1).notNull(),
@@ -133,7 +153,9 @@ export const usuariosRecuperacionContrasena = pgTable(
   "usuarios_recuperacion_contrasena",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
     tokenHash: text("token_hash").notNull(),
     fechaExpiracion: timestamp("fecha_expiracion", { withTimezone: true }).notNull(),
     usadoEn: timestamp("usado_en", { withTimezone: true }),
@@ -146,7 +168,9 @@ export const usuariosAutenticacionDosFactores = pgTable(
   "usuarios_autenticacion_dos_factores",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
     metodo: varchar("metodo", { length: 20 }).default("email").notNull(),
     codigoHash: text("codigo_hash"),
     fechaExpiracion: timestamp("fecha_expiracion", { withTimezone: true }),
@@ -156,7 +180,9 @@ export const usuariosAutenticacionDosFactores = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     activo: integer("activo").default(1).notNull(),
   },
-  (table) => [uniqueIndex("usuarios_autenticacion_dos_factores_usuario_id_unique").on(table.usuarioId)],
+  (table) => [
+    uniqueIndex("usuarios_autenticacion_dos_factores_usuario_id_unique").on(table.usuarioId),
+  ],
 )
 
 export type UsuarioDb = typeof usuarios.$inferSelect

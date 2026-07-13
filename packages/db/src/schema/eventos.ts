@@ -1,14 +1,26 @@
-import { index, integer, numeric, pgTable, smallint, text, timestamp, uniqueIndex, date } from "drizzle-orm/pg-core"
+import {
+  date,
+  index,
+  integer,
+  numeric,
+  pgTable,
+  smallint,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core"
 import { animales } from "./animales.js"
+import { usuarios } from "./auth.js"
 import { diagnosticosVeterinarios, veterinarios } from "./maestros.js"
 import { registrosGrupales } from "./registros-grupales.js"
-import { usuarios } from "./auth.js"
 
 export const servicios = pgTable(
   "servicios",
   {
     id: text("id").primaryKey(),
-    animalId: text("animal_id").notNull().references(() => animales.id),
+    animalId: text("animal_id")
+      .notNull()
+      .references(() => animales.id),
     registroGrupalId: text("registro_grupal_id").references(() => registrosGrupales.id),
     fecha: date("fecha").notNull(),
     tipo: text("tipo").notNull(),
@@ -31,7 +43,9 @@ export const palpaciones = pgTable(
   "palpaciones",
   {
     id: text("id").primaryKey(),
-    animalId: text("animal_id").notNull().references(() => animales.id),
+    animalId: text("animal_id")
+      .notNull()
+      .references(() => animales.id),
     registroGrupalId: text("registro_grupal_id").references(() => registrosGrupales.id),
     servicioId: text("servicio_id").references(() => servicios.id),
     fecha: date("fecha").notNull(),
@@ -50,7 +64,9 @@ export const partos = pgTable(
   "partos",
   {
     id: text("id").primaryKey(),
-    animalId: text("animal_id").notNull().references(() => animales.id),
+    animalId: text("animal_id")
+      .notNull()
+      .references(() => animales.id),
     registroGrupalId: text("registro_grupal_id").references(() => registrosGrupales.id),
     servicioId: text("servicio_id").references(() => servicios.id),
     fecha: date("fecha").notNull(),
@@ -70,8 +86,12 @@ export const partosCrias = pgTable(
   "partos_crias",
   {
     id: text("id").primaryKey(),
-    partoId: text("parto_id").notNull().references(() => partos.id),
-    criaId: text("cria_id").notNull().references(() => animales.id),
+    partoId: text("parto_id")
+      .notNull()
+      .references(() => partos.id),
+    criaId: text("cria_id")
+      .notNull()
+      .references(() => animales.id),
   },
   (t) => [uniqueIndex("uq_partos_crias").on(t.partoId, t.criaId)],
 )

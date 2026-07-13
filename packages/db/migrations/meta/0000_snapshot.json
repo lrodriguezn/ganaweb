@@ -71,12 +71,8 @@
           "name": "almacen_entradas_producto_id_productos_sanitarios_id_fk",
           "tableFrom": "almacen_entradas",
           "tableTo": "productos_sanitarios",
-          "columnsFrom": [
-            "producto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["producto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -84,12 +80,8 @@
           "name": "almacen_entradas_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "almacen_entradas",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -491,12 +483,8 @@
           "name": "animales_finca_id_fincas_id_fk",
           "tableFrom": "animales",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -504,12 +492,8 @@
           "name": "animales_config_razas_id_config_razas_id_fk",
           "tableFrom": "animales",
           "tableTo": "config_razas",
-          "columnsFrom": [
-            "config_razas_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["config_razas_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -517,12 +501,8 @@
           "name": "animales_potrero_id_potreros_id_fk",
           "tableFrom": "animales",
           "tableTo": "potreros",
-          "columnsFrom": [
-            "potrero_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["potrero_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -530,12 +510,8 @@
           "name": "animales_sector_id_sectores_id_fk",
           "tableFrom": "animales",
           "tableTo": "sectores",
-          "columnsFrom": [
-            "sector_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sector_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -543,12 +519,8 @@
           "name": "animales_lote_id_lotes_id_fk",
           "tableFrom": "animales",
           "tableTo": "lotes",
-          "columnsFrom": [
-            "lote_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["lote_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -556,12 +528,8 @@
           "name": "animales_grupo_id_grupos_id_fk",
           "tableFrom": "animales",
           "tableTo": "grupos",
-          "columnsFrom": [
-            "grupo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["grupo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -569,12 +537,8 @@
           "name": "animales_hierro_id_hierros_id_fk",
           "tableFrom": "animales",
           "tableTo": "hierros",
-          "columnsFrom": [
-            "hierro_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hierro_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -582,12 +546,8 @@
           "name": "animales_propietario_id_propietarios_id_fk",
           "tableFrom": "animales",
           "tableTo": "propietarios",
-          "columnsFrom": [
-            "propietario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propietario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -595,12 +555,8 @@
           "name": "animales_calidad_animal_id_config_calidad_animal_id_fk",
           "tableFrom": "animales",
           "tableTo": "config_calidad_animal",
-          "columnsFrom": [
-            "calidad_animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["calidad_animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -608,12 +564,8 @@
           "name": "animales_tipo_explotacion_id_config_tipos_explotacion_id_fk",
           "tableFrom": "animales",
           "tableTo": "config_tipos_explotacion",
-          "columnsFrom": [
-            "tipo_explotacion_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tipo_explotacion_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -621,12 +573,8 @@
           "name": "animales_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "animales",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -634,12 +582,8 @@
           "name": "animales_madre_id_animales_id_fk",
           "tableFrom": "animales",
           "tableTo": "animales",
-          "columnsFrom": [
-            "madre_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["madre_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -647,12 +591,8 @@
           "name": "animales_padre_id_animales_id_fk",
           "tableFrom": "animales",
           "tableTo": "animales",
-          "columnsFrom": [
-            "padre_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["padre_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -660,12 +600,8 @@
           "name": "animales_donadora_id_animales_id_fk",
           "tableFrom": "animales",
           "tableTo": "animales",
-          "columnsFrom": [
-            "donadora_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["donadora_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -723,12 +659,8 @@
           "name": "animales_condicion_corporal_animal_id_animales_id_fk",
           "tableFrom": "animales_condicion_corporal",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -736,12 +668,8 @@
           "name": "animales_condicion_corporal_condicion_id_config_condiciones_corporales_id_fk",
           "tableFrom": "animales_condicion_corporal",
           "tableTo": "config_condiciones_corporales",
-          "columnsFrom": [
-            "condicion_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["condicion_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -749,12 +677,8 @@
           "name": "animales_condicion_corporal_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "animales_condicion_corporal",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -837,12 +761,8 @@
           "name": "animales_imagenes_animal_id_animales_id_fk",
           "tableFrom": "animales_imagenes",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -850,12 +770,8 @@
           "name": "animales_imagenes_imagen_id_imagenes_id_fk",
           "tableFrom": "animales_imagenes",
           "tableTo": "imagenes",
-          "columnsFrom": [
-            "imagen_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["imagen_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -960,12 +876,8 @@
           "name": "animales_ubicacion_historico_animal_id_animales_id_fk",
           "tableFrom": "animales_ubicacion_historico",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -973,12 +885,8 @@
           "name": "animales_ubicacion_historico_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "animales_ubicacion_historico",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -986,12 +894,8 @@
           "name": "animales_ubicacion_historico_potrero_id_potreros_id_fk",
           "tableFrom": "animales_ubicacion_historico",
           "tableTo": "potreros",
-          "columnsFrom": [
-            "potrero_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["potrero_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -999,12 +903,8 @@
           "name": "animales_ubicacion_historico_sector_id_sectores_id_fk",
           "tableFrom": "animales_ubicacion_historico",
           "tableTo": "sectores",
-          "columnsFrom": [
-            "sector_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sector_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1012,12 +912,8 @@
           "name": "animales_ubicacion_historico_lote_id_lotes_id_fk",
           "tableFrom": "animales_ubicacion_historico",
           "tableTo": "lotes",
-          "columnsFrom": [
-            "lote_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["lote_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1025,12 +921,8 @@
           "name": "animales_ubicacion_historico_grupo_id_grupos_id_fk",
           "tableFrom": "animales_ubicacion_historico",
           "tableTo": "grupos",
-          "columnsFrom": [
-            "grupo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["grupo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1038,12 +930,8 @@
           "name": "animales_ubicacion_historico_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "animales_ubicacion_historico",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1183,12 +1071,8 @@
           "name": "aplicaciones_sanitarias_animal_id_animales_id_fk",
           "tableFrom": "aplicaciones_sanitarias",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1196,12 +1080,8 @@
           "name": "aplicaciones_sanitarias_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "aplicaciones_sanitarias",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1209,12 +1089,8 @@
           "name": "aplicaciones_sanitarias_producto_id_productos_sanitarios_id_fk",
           "tableFrom": "aplicaciones_sanitarias",
           "tableTo": "productos_sanitarios",
-          "columnsFrom": [
-            "producto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["producto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1222,12 +1098,8 @@
           "name": "aplicaciones_sanitarias_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "aplicaciones_sanitarias",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1305,12 +1177,8 @@
           "name": "auditoria_eliminaciones_finca_id_fincas_id_fk",
           "tableFrom": "auditoria_eliminaciones",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1318,12 +1186,8 @@
           "name": "auditoria_eliminaciones_usuario_id_usuarios_id_fk",
           "tableFrom": "auditoria_eliminaciones",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1390,12 +1254,8 @@
           "name": "causas_muerte_finca_id_fincas_id_fk",
           "tableFrom": "causas_muerte",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1746,12 +1606,8 @@
           "name": "config_parametros_finca_finca_id_fincas_id_fk",
           "tableFrom": "config_parametros_finca",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2011,12 +1867,8 @@
           "name": "diagnosticos_veterinarios_finca_id_fincas_id_fk",
           "tableFrom": "diagnosticos_veterinarios",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2115,12 +1967,8 @@
           "name": "fincas_tipo_explotacion_id_config_tipos_explotacion_id_fk",
           "tableFrom": "fincas",
           "tableTo": "config_tipos_explotacion",
-          "columnsFrom": [
-            "tipo_explotacion_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tipo_explotacion_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2187,12 +2035,8 @@
           "name": "grupos_finca_id_fincas_id_fk",
           "tableFrom": "grupos",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2259,12 +2103,8 @@
           "name": "hierros_finca_id_fincas_id_fk",
           "tableFrom": "hierros",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2348,12 +2188,8 @@
           "name": "imagenes_finca_id_fincas_id_fk",
           "tableFrom": "imagenes",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2361,12 +2197,8 @@
           "name": "imagenes_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "imagenes",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2440,12 +2272,8 @@
           "name": "lotes_finca_id_fincas_id_fk",
           "tableFrom": "lotes",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2530,12 +2358,8 @@
           "name": "lugares_compras_finca_id_fincas_id_fk",
           "tableFrom": "lugares_compras",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2620,12 +2444,8 @@
           "name": "lugares_ventas_finca_id_fincas_id_fk",
           "tableFrom": "lugares_ventas",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2692,12 +2512,8 @@
           "name": "motivos_ventas_finca_id_fincas_id_fk",
           "tableFrom": "motivos_ventas",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2762,12 +2578,8 @@
           "name": "muertes_animal_id_animales_id_fk",
           "tableFrom": "muertes",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2775,12 +2587,8 @@
           "name": "muertes_causa_muerte_id_causas_muerte_id_fk",
           "tableFrom": "muertes",
           "tableTo": "causas_muerte",
-          "columnsFrom": [
-            "causa_muerte_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["causa_muerte_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2788,12 +2596,8 @@
           "name": "muertes_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "muertes",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2933,12 +2737,8 @@
           "name": "notificaciones_finca_id_fincas_id_fk",
           "tableFrom": "notificaciones",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2946,12 +2746,8 @@
           "name": "notificaciones_usuario_id_usuarios_id_fk",
           "tableFrom": "notificaciones",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3048,12 +2844,8 @@
           "name": "notificaciones_preferencias_usuario_id_usuarios_id_fk",
           "tableFrom": "notificaciones_preferencias",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3135,12 +2927,8 @@
           "name": "notificaciones_push_tokens_usuario_id_usuarios_id_fk",
           "tableFrom": "notificaciones_push_tokens",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3236,12 +3024,8 @@
           "name": "pajuelas_inventario_finca_id_fincas_id_fk",
           "tableFrom": "pajuelas_inventario",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3249,12 +3033,8 @@
           "name": "pajuelas_inventario_animal_pajuela_id_animales_id_fk",
           "tableFrom": "pajuelas_inventario",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_pajuela_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_pajuela_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3262,12 +3042,8 @@
           "name": "pajuelas_inventario_toro_origen_id_animales_id_fk",
           "tableFrom": "pajuelas_inventario",
           "tableTo": "animales",
-          "columnsFrom": [
-            "toro_origen_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["toro_origen_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3275,12 +3051,8 @@
           "name": "pajuelas_inventario_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "pajuelas_inventario",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3398,12 +3170,8 @@
           "name": "palpaciones_animal_id_animales_id_fk",
           "tableFrom": "palpaciones",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3411,12 +3179,8 @@
           "name": "palpaciones_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "palpaciones",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3424,12 +3188,8 @@
           "name": "palpaciones_servicio_id_servicios_id_fk",
           "tableFrom": "palpaciones",
           "tableTo": "servicios",
-          "columnsFrom": [
-            "servicio_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["servicio_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3437,12 +3197,8 @@
           "name": "palpaciones_diagnostico_id_diagnosticos_veterinarios_id_fk",
           "tableFrom": "palpaciones",
           "tableTo": "diagnosticos_veterinarios",
-          "columnsFrom": [
-            "diagnostico_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["diagnostico_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3450,12 +3206,8 @@
           "name": "palpaciones_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "palpaciones",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3583,12 +3335,8 @@
           "name": "partos_animal_id_animales_id_fk",
           "tableFrom": "partos",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3596,12 +3344,8 @@
           "name": "partos_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "partos",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3609,12 +3353,8 @@
           "name": "partos_servicio_id_servicios_id_fk",
           "tableFrom": "partos",
           "tableTo": "servicios",
-          "columnsFrom": [
-            "servicio_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["servicio_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3622,12 +3362,8 @@
           "name": "partos_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "partos",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3689,12 +3425,8 @@
           "name": "partos_crias_parto_id_partos_id_fk",
           "tableFrom": "partos_crias",
           "tableTo": "partos",
-          "columnsFrom": [
-            "parto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3702,12 +3434,8 @@
           "name": "partos_crias_cria_id_animales_id_fk",
           "tableFrom": "partos_crias",
           "tableTo": "animales",
-          "columnsFrom": [
-            "cria_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["cria_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3807,12 +3535,8 @@
           "name": "pesos_animal_id_animales_id_fk",
           "tableFrom": "pesos",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3820,12 +3544,8 @@
           "name": "pesos_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "pesos",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3833,12 +3553,8 @@
           "name": "pesos_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "pesos",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3954,12 +3670,8 @@
           "name": "potreros_finca_id_fincas_id_fk",
           "tableFrom": "potreros",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4099,12 +3811,8 @@
           "name": "producciones_lacteas_animal_id_animales_id_fk",
           "tableFrom": "producciones_lacteas",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4112,12 +3820,8 @@
           "name": "producciones_lacteas_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "producciones_lacteas",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4125,12 +3829,8 @@
           "name": "producciones_lacteas_potrero_id_potreros_id_fk",
           "tableFrom": "producciones_lacteas",
           "tableTo": "potreros",
-          "columnsFrom": [
-            "potrero_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["potrero_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4138,12 +3838,8 @@
           "name": "producciones_lacteas_sector_id_sectores_id_fk",
           "tableFrom": "producciones_lacteas",
           "tableTo": "sectores",
-          "columnsFrom": [
-            "sector_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sector_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4151,12 +3847,8 @@
           "name": "producciones_lacteas_lote_id_lotes_id_fk",
           "tableFrom": "producciones_lacteas",
           "tableTo": "lotes",
-          "columnsFrom": [
-            "lote_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["lote_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4164,12 +3856,8 @@
           "name": "producciones_lacteas_grupo_id_grupos_id_fk",
           "tableFrom": "producciones_lacteas",
           "tableTo": "grupos",
-          "columnsFrom": [
-            "grupo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["grupo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4177,12 +3865,8 @@
           "name": "producciones_lacteas_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "producciones_lacteas",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4296,12 +3980,8 @@
           "name": "productos_sanitarios_finca_id_fincas_id_fk",
           "tableFrom": "productos_sanitarios",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4392,12 +4072,8 @@
           "name": "propietarios_finca_id_fincas_id_fk",
           "tableFrom": "propietarios",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4516,12 +4192,8 @@
           "name": "registros_grupales_finca_id_fincas_id_fk",
           "tableFrom": "registros_grupales",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4529,12 +4201,8 @@
           "name": "registros_grupales_lote_id_lotes_id_fk",
           "tableFrom": "registros_grupales",
           "tableTo": "lotes",
-          "columnsFrom": [
-            "lote_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["lote_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4542,12 +4210,8 @@
           "name": "registros_grupales_potrero_id_potreros_id_fk",
           "tableFrom": "registros_grupales",
           "tableTo": "potreros",
-          "columnsFrom": [
-            "potrero_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["potrero_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4555,12 +4219,8 @@
           "name": "registros_grupales_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "registros_grupales",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4680,12 +4340,8 @@
           "name": "revisiones_veterinarias_animal_id_animales_id_fk",
           "tableFrom": "revisiones_veterinarias",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4693,12 +4349,8 @@
           "name": "revisiones_veterinarias_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "revisiones_veterinarias",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4706,12 +4358,8 @@
           "name": "revisiones_veterinarias_diagnostico_id_diagnosticos_veterinarios_id_fk",
           "tableFrom": "revisiones_veterinarias",
           "tableTo": "diagnosticos_veterinarios",
-          "columnsFrom": [
-            "diagnostico_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["diagnostico_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4719,12 +4367,8 @@
           "name": "revisiones_veterinarias_veterinario_id_veterinarios_id_fk",
           "tableFrom": "revisiones_veterinarias",
           "tableTo": "veterinarios",
-          "columnsFrom": [
-            "veterinario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["veterinario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4732,12 +4376,8 @@
           "name": "revisiones_veterinarias_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "revisiones_veterinarias",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4813,12 +4453,8 @@
           "name": "roles_permisos_rol_id_usuarios_roles_id_fk",
           "tableFrom": "roles_permisos",
           "tableTo": "usuarios_roles",
-          "columnsFrom": [
-            "rol_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["rol_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4826,12 +4462,8 @@
           "name": "roles_permisos_permiso_id_usuarios_permisos_id_fk",
           "tableFrom": "roles_permisos",
           "tableTo": "usuarios_permisos",
-          "columnsFrom": [
-            "permiso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["permiso_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4947,12 +4579,8 @@
           "name": "sectores_finca_id_fincas_id_fk",
           "tableFrom": "sectores",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5095,12 +4723,8 @@
           "name": "servicios_animal_id_animales_id_fk",
           "tableFrom": "servicios",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5108,12 +4732,8 @@
           "name": "servicios_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "servicios",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5121,12 +4741,8 @@
           "name": "servicios_padre_id_animales_id_fk",
           "tableFrom": "servicios",
           "tableTo": "animales",
-          "columnsFrom": [
-            "padre_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["padre_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5134,12 +4750,8 @@
           "name": "servicios_pajuela_id_animales_id_fk",
           "tableFrom": "servicios",
           "tableTo": "animales",
-          "columnsFrom": [
-            "pajuela_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pajuela_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5147,12 +4759,8 @@
           "name": "servicios_inseminador_id_veterinarios_id_fk",
           "tableFrom": "servicios",
           "tableTo": "veterinarios",
-          "columnsFrom": [
-            "inseminador_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["inseminador_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5160,12 +4768,8 @@
           "name": "servicios_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "servicios",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5243,12 +4847,8 @@
           "name": "sync_outbox_finca_id_fincas_id_fk",
           "tableFrom": "sync_outbox",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5440,12 +5040,8 @@
           "name": "usuarios_autenticacion_dos_factores_usuario_id_usuarios_id_fk",
           "tableFrom": "usuarios_autenticacion_dos_factores",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5522,12 +5118,8 @@
           "name": "usuarios_contrasena_usuario_id_usuarios_id_fk",
           "tableFrom": "usuarios_contrasena",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5603,12 +5195,8 @@
           "name": "usuarios_fincas_usuario_id_usuarios_id_fk",
           "tableFrom": "usuarios_fincas",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5616,12 +5204,8 @@
           "name": "usuarios_fincas_finca_id_fincas_id_fk",
           "tableFrom": "usuarios_fincas",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5675,12 +5259,8 @@
           "name": "usuarios_historial_contrasenas_usuario_id_usuarios_id_fk",
           "tableFrom": "usuarios_historial_contrasenas",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5762,12 +5342,8 @@
           "name": "usuarios_login_usuario_id_usuarios_id_fk",
           "tableFrom": "usuarios_login",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5915,12 +5491,8 @@
           "name": "usuarios_recuperacion_contrasena_usuario_id_usuarios_id_fk",
           "tableFrom": "usuarios_recuperacion_contrasena",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6060,12 +5632,8 @@
           "name": "usuarios_roles_asignacion_usuario_id_usuarios_id_fk",
           "tableFrom": "usuarios_roles_asignacion",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6073,12 +5641,8 @@
           "name": "usuarios_roles_asignacion_rol_id_usuarios_roles_id_fk",
           "tableFrom": "usuarios_roles_asignacion",
           "tableTo": "usuarios_roles",
-          "columnsFrom": [
-            "rol_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["rol_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6086,12 +5650,8 @@
           "name": "usuarios_roles_asignacion_finca_id_fincas_id_fk",
           "tableFrom": "usuarios_roles_asignacion",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6205,12 +5765,8 @@
           "name": "usuarios_sesiones_usuario_id_usuarios_id_fk",
           "tableFrom": "usuarios_sesiones",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6327,12 +5883,8 @@
           "name": "ventas_animal_id_animales_id_fk",
           "tableFrom": "ventas",
           "tableTo": "animales",
-          "columnsFrom": [
-            "animal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["animal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6340,12 +5892,8 @@
           "name": "ventas_registro_grupal_id_registros_grupales_id_fk",
           "tableFrom": "ventas",
           "tableTo": "registros_grupales",
-          "columnsFrom": [
-            "registro_grupal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["registro_grupal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6353,12 +5901,8 @@
           "name": "ventas_motivo_venta_id_motivos_ventas_id_fk",
           "tableFrom": "ventas",
           "tableTo": "motivos_ventas",
-          "columnsFrom": [
-            "motivo_venta_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["motivo_venta_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6366,12 +5910,8 @@
           "name": "ventas_lugar_venta_id_lugares_ventas_id_fk",
           "tableFrom": "ventas",
           "tableTo": "lugares_ventas",
-          "columnsFrom": [
-            "lugar_venta_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["lugar_venta_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6379,12 +5919,8 @@
           "name": "ventas_usuario_creado_por_usuarios_id_fk",
           "tableFrom": "ventas",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6475,12 +6011,8 @@
           "name": "veterinarios_finca_id_fincas_id_fk",
           "tableFrom": "veterinarios",
           "tableTo": "fincas",
-          "columnsFrom": [
-            "finca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["finca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

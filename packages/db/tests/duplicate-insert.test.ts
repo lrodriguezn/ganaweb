@@ -112,7 +112,8 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
       // drizzle-orm wraps the original PostgresError in a higher-level
       // error. The actual PostgresError with code/constraint_name is
       // at `err.cause` (postgres.js v3.x uses constraint_name not constraint).
-      const pgError = (err as { cause?: { code?: number | string; constraint_name?: string } }).cause
+      const pgError = (err as { cause?: { code?: number | string; constraint_name?: string } })
+        .cause
       expect(pgError?.code).toBe("23505")
       expect(pgError?.constraint_name).toBe("uq_animales_finca_codigo")
     }

@@ -5,7 +5,9 @@ export const potreros = pgTable(
   "potreros",
   {
     id: text("id").primaryKey(),
-    fincaId: text("finca_id").notNull().references(() => fincas.id),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
     codigo: varchar("codigo", { length: 20 }).notNull(),
     nombre: varchar("nombre", { length: 100 }).notNull(),
     areaHectareas: real("area_hectareas").default(0),
@@ -23,7 +25,9 @@ export const sectores = pgTable(
   "sectores",
   {
     id: text("id").primaryKey(),
-    fincaId: text("finca_id").notNull().references(() => fincas.id),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
     codigo: varchar("codigo", { length: 20 }).notNull(),
     nombre: varchar("nombre", { length: 100 }).notNull(),
     areaHectareas: real("area_hectareas").default(0),
@@ -39,7 +43,9 @@ export const sectores = pgTable(
 
 export const lotes = pgTable("lotes", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   descripcion: text("descripcion"),
   tipo: varchar("tipo", { length: 50 }).default("producción"),
@@ -50,7 +56,9 @@ export const lotes = pgTable("lotes", {
 
 export const grupos = pgTable("grupos", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   descripcion: text("descripcion"),
   activo: integer("activo").default(1).notNull(),
@@ -60,7 +68,9 @@ export const grupos = pgTable("grupos", {
 
 export const hierros = pgTable("hierros", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   descripcion: text("descripcion"),
   activo: integer("activo").default(1).notNull(),
@@ -70,7 +80,9 @@ export const hierros = pgTable("hierros", {
 
 export const propietarios = pgTable("propietarios", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   tipoDocumento: varchar("tipo_documento", { length: 20 }),
   numeroDocumento: varchar("numero_documento", { length: 50 }),
@@ -84,7 +96,9 @@ export const propietarios = pgTable("propietarios", {
 
 export const veterinarios = pgTable("veterinarios", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   telefono: varchar("telefono", { length: 20 }),
   email: varchar("email", { length: 100 }),
@@ -98,7 +112,9 @@ export const veterinarios = pgTable("veterinarios", {
 
 export const diagnosticosVeterinarios = pgTable("diagnosticos_veterinarios", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   descripcion: text("descripcion"),
   categoria: varchar("categoria", { length: 50 }),
@@ -109,7 +125,9 @@ export const diagnosticosVeterinarios = pgTable("diagnosticos_veterinarios", {
 
 export const causasMuerte = pgTable("causas_muerte", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   descripcion: text("descripcion"),
   activo: integer("activo").default(1).notNull(),
@@ -119,7 +137,9 @@ export const causasMuerte = pgTable("causas_muerte", {
 
 export const motivosVentas = pgTable("motivos_ventas", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   descripcion: text("descripcion"),
   activo: integer("activo").default(1).notNull(),
@@ -129,7 +149,9 @@ export const motivosVentas = pgTable("motivos_ventas", {
 
 export const lugaresCompras = pgTable("lugares_compras", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   tipo: varchar("tipo", { length: 50 }),
   ubicacion: text("ubicacion"),
@@ -142,7 +164,9 @@ export const lugaresCompras = pgTable("lugares_compras", {
 
 export const lugaresVentas = pgTable("lugares_ventas", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   tipo: varchar("tipo", { length: 50 }),
   ubicacion: text("ubicacion"),

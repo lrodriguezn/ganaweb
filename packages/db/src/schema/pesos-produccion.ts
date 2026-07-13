@@ -1,14 +1,16 @@
-import { index, numeric, pgTable, text, timestamp, uniqueIndex, date } from "drizzle-orm/pg-core"
+import { date, index, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core"
 import { animales } from "./animales.js"
+import { usuarios } from "./auth.js"
 import { grupos, lotes, potreros, sectores } from "./maestros.js"
 import { registrosGrupales } from "./registros-grupales.js"
-import { usuarios } from "./auth.js"
 
 export const pesos = pgTable(
   "pesos",
   {
     id: text("id").primaryKey(),
-    animalId: text("animal_id").notNull().references(() => animales.id),
+    animalId: text("animal_id")
+      .notNull()
+      .references(() => animales.id),
     registroGrupalId: text("registro_grupal_id").references(() => registrosGrupales.id),
     fecha: date("fecha").notNull(),
     pesoKg: numeric("peso_kg", { precision: 10, scale: 2 }).notNull(),
@@ -24,7 +26,9 @@ export const produccionesLacteas = pgTable(
   "producciones_lacteas",
   {
     id: text("id").primaryKey(),
-    animalId: text("animal_id").notNull().references(() => animales.id),
+    animalId: text("animal_id")
+      .notNull()
+      .references(() => animales.id),
     registroGrupalId: text("registro_grupal_id").references(() => registrosGrupales.id),
     fecha: date("fecha").notNull(),
     cantidadAm: numeric("cantidad_am", { precision: 10, scale: 2 }).default("0").notNull(),

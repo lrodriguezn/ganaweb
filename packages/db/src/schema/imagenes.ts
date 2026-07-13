@@ -1,10 +1,12 @@
 import { integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core"
-import { fincas } from "./fincas.js"
 import { usuarios } from "./auth.js"
+import { fincas } from "./fincas.js"
 
 export const imagenes = pgTable("imagenes", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   ruta: text("ruta").notNull(),
   nombreOriginal: varchar("nombre_original", { length: 255 }),
   mimeType: varchar("mime_type", { length: 50 }),

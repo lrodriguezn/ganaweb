@@ -1,13 +1,15 @@
 import { index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { usuarios } from "./auth.js"
 import { fincas } from "./fincas.js"
 import { lotes, potreros } from "./maestros.js"
-import { usuarios } from "./auth.js"
 
 export const registrosGrupales = pgTable(
   "registros_grupales",
   {
     id: text("id").primaryKey(),
-    fincaId: text("finca_id").notNull().references(() => fincas.id),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
     tipoEvento: text("tipo_evento").notNull(),
     descripcion: text("descripcion"),
     loteId: text("lote_id").references(() => lotes.id),

@@ -1,12 +1,14 @@
 import { index, integer, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
-import { fincas } from "./fincas.js"
 import { usuarios } from "./auth.js"
+import { fincas } from "./fincas.js"
 
 export const notificaciones = pgTable(
   "notificaciones",
   {
     id: text("id").primaryKey(),
-    fincaId: text("finca_id").notNull().references(() => fincas.id),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
     usuarioId: text("usuario_id").references(() => usuarios.id),
     tipo: varchar("tipo", { length: 50 }).notNull(),
     titulo: varchar("titulo", { length: 200 }).notNull(),
@@ -28,7 +30,9 @@ export const notificacionesPreferencias = pgTable(
   "notificaciones_preferencias",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
     tipo: varchar("tipo", { length: 50 }).notNull(),
     canalInapp: integer("canal_inapp").default(1),
     canalEmail: integer("canal_email").default(1),
@@ -43,7 +47,9 @@ export const notificacionesPushTokens = pgTable(
   "notificaciones_push_tokens",
   {
     id: text("id").primaryKey(),
-    usuarioId: text("usuario_id").notNull().references(() => usuarios.id),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
     token: varchar("token", { length: 500 }).notNull(),
     plataforma: varchar("plataforma", { length: 20 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

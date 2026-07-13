@@ -20,7 +20,9 @@ export const configParametrosFinca = pgTable(
   "config_parametros_finca",
   {
     id: text("id").primaryKey(),
-    fincaId: text("finca_id").notNull().references(() => fincas.id),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
     codigo: varchar("codigo", { length: 50 }).notNull(),
     valor: text("valor"),
     descripcion: text("descripcion"),

@@ -1,14 +1,28 @@
-import { boolean, foreignKey, index, integer, pgTable, real, smallint, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
-import { fincas } from "./fincas.js"
-import { configCalidadAnimal, configRazas, configTiposExplotacion } from "./config.js"
-import { grupos, hierros, lotes, potreros, propietarios, sectores } from "./maestros.js"
+import {
+  boolean,
+  foreignKey,
+  index,
+  integer,
+  pgTable,
+  real,
+  smallint,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core"
 import { usuarios } from "./auth.js"
+import { configCalidadAnimal, configRazas, configTiposExplotacion } from "./config.js"
+import { fincas } from "./fincas.js"
+import { grupos, hierros, lotes, potreros, propietarios, sectores } from "./maestros.js"
 
 export const animales = pgTable(
   "animales",
   {
     id: text("id").primaryKey(),
-    fincaId: text("finca_id").notNull().references(() => fincas.id),
+    fincaId: text("finca_id")
+      .notNull()
+      .references(() => fincas.id),
     codigo: varchar("codigo", { length: 20 }).notNull(),
     nombre: varchar("nombre", { length: 100 }).default(""),
     fechaNacimiento: integer("fecha_nacimiento"),

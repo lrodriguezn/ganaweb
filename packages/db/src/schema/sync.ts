@@ -3,7 +3,9 @@ import { fincas } from "./fincas.js"
 
 export const syncOutbox = pgTable("sync_outbox", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   dispositivoId: text("dispositivo_id").notNull(),
   tablaDestino: text("tabla_destino").notNull(),
   operacion: text("operacion").notNull(),
@@ -15,7 +17,9 @@ export const syncOutbox = pgTable("sync_outbox", {
 
 export const syncTombstones = pgTable("sync_tombstones", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   tablaDestino: text("tabla_destino").notNull(),
   entidadId: text("entidad_id").notNull(),
   payload: jsonb("payload").notNull(),
@@ -24,7 +28,9 @@ export const syncTombstones = pgTable("sync_tombstones", {
 
 export const syncColaBinaria = pgTable("sync_cola_binaria", {
   id: text("id").primaryKey(),
-  fincaId: text("finca_id").notNull().references(() => fincas.id),
+  fincaId: text("finca_id")
+    .notNull()
+    .references(() => fincas.id),
   entidad: text("entidad").notNull(),
   entidadId: text("entidad_id").notNull(),
   blobId: text("blob_id").notNull(),

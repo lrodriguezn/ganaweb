@@ -1,9 +1,21 @@
 {
   "evidence": [
     { "finding_id": "RISK-001", "class": "deterministic", "proof": "apply-progress.md:510,539" },
-    { "finding_id": "RELIABILITY-001", "class": "deterministic", "proof": "apply-progress.md:515,540" },
-    { "finding_id": "RELIABILITY-002", "class": "deterministic", "proof": "apply-progress.md:513,541" },
-    { "finding_id": "RELIABILITY-003", "class": "deterministic", "proof": "apply-progress.md:514,542" },
+    {
+      "finding_id": "RELIABILITY-001",
+      "class": "deterministic",
+      "proof": "apply-progress.md:515,540"
+    },
+    {
+      "finding_id": "RELIABILITY-002",
+      "class": "deterministic",
+      "proof": "apply-progress.md:513,541"
+    },
+    {
+      "finding_id": "RELIABILITY-003",
+      "class": "deterministic",
+      "proof": "apply-progress.md:514,542"
+    },
     { "finding_id": "R4-003", "class": "deterministic", "proof": "apply-progress.md:516,543" },
     { "finding_id": "R4-004", "class": "deterministic", "proof": "apply-progress.md:515,544" },
     { "finding_id": "R2-001", "class": "deterministic", "proof": "apply-progress.md:567,590" },
