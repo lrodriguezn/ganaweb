@@ -64,6 +64,9 @@ jobs:
       - name: Test (turbo, coverage solo para el gate)
         run: pnpm turbo test --filter='@ganaweb/dominio' && pnpm turbo test --filter='!@ganaweb/dominio'
 
+      - name: DB smoke (postgres migrations + constraints)
+        run: pnpm --filter @ganaweb/db migrate && pnpm --filter @ganaweb/db test:smoke
+
       - name: Build (turbo)
         run: pnpm turbo build
 
