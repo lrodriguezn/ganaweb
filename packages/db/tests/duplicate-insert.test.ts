@@ -89,8 +89,8 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
       id: `animal-test-${crypto.randomUUID()}`,
       fincaId: testFincaId,
       codigo: testCodigo,
-      sexo: "hembra",
-      estadoAnimal: "activo",
+      sexoKey: 1,
+      estadoAnimalKey: 1,
     })
 
     // Segundo INSERT: mismo (fincaId, codigo) → DEBE fallar.
@@ -100,8 +100,8 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
       id: `animal-test-${crypto.randomUUID()}`,
       fincaId: testFincaId,
       codigo: testCodigo, // mismo codigo que el primero
-      sexo: "macho",
-      estadoAnimal: "activo",
+      sexoKey: 2,
+      estadoAnimalKey: 1,
     })
 
     // Un solo await: capturar el error y assertar sus propiedades.
@@ -109,11 +109,13 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
       await insertDuplicado
       expect.unreachable("El INSERT duplicado debió fallar con 23505")
     } catch (err) {
-      // postgres-js throws errors with a `code` property on
-      // PostgresError instances.
-      const pgError = err as { code?: string; constraint?: string; message?: string }
-      expect(pgError.code).toBe("23505")
-      expect(pgError.constraint).toBe("uq_animales_finca_codigo")
+      // drizzle-orm wraps the original PostgresError in a higher-level
+      // error. The actual PostgresError with code/constraint_name is
+      // at `err.cause` (postgres.js v3.x uses constraint_name not constraint).
+      const pgError = (err as { cause?: { code?: number | string; constraint_name?: string } })
+        .cause
+      expect(pgError?.code).toBe("23505")
+      expect(pgError?.constraint_name).toBe("uq_animales_finca_codigo")
     }
   })
 
@@ -131,8 +133,8 @@ describe.skipIf(!dbSmoke)("TS-004: unique index uq_animales_finca_codigo", () =>
         id: `animal-test-${crypto.randomUUID()}`,
         fincaId: otraFincaId,
         codigo: testCodigo,
-        sexo: "hembra",
-        estadoAnimal: "activo",
+        sexoKey: 1,
+        estadoAnimalKey: 1,
       })
     } finally {
       // Limpieza: borrar la otra finca (no tiene animales porque ya

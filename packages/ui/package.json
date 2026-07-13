@@ -19,7 +19,7 @@
   "scripts": {
     "build": "test -f src/index.ts && tsup || echo '@ganaweb/ui: barrel (src/index.ts) not yet created'",
     "typecheck": "find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -q . && tsc --noEmit || echo '@ganaweb/ui: no source files yet'",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run --passWithNoTests --allowOnly=false",
     "test:watch": "vitest",
     "lint": "biome check ."
   },

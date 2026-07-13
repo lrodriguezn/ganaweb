@@ -1,0 +1,18 @@
+{
+  "schema": "gentle-ai.review-state-mirror/v1",
+  "lineage_id": "add-animals-crud-flow",
+  "store_revision": "sha256:037ac750cf6f3f448dc4db45ab7478f56fd8e75fb2d8b83a79b234c1d998fc90",
+  "genesis_revision": "sha256:4b44219e75d2352f14be58fc8e26ca395f9f8f2442550f548c9af0e34cf685f1",
+  "chain_identity": "sha256:cf8e4141f05971eb140661439ff51a863011772ec6fd92c66fc1ac835eba2cae",
+  "bundle_digest": "sha256:c666c201496c9f71235896a867dcb1e9a652d87fc5dd22df7951f110ca4e25d3",
+  "state": "ready_final_verification",
+  "sdd_next_recommended": "verify",
+  "verify_ready": true,
+  "migration": {
+    "type": "maintainer-approved-content-addressed-store-migration",
+    "previous_erroneous_head": "sha256:3b4877c32583863d7ea5679e6a81650b59ff2da70db6187299ca1ee41e2d0631",
+    "corrected_head": "sha256:037ac750cf6f3f448dc4db45ab7478f56fd8e75fb2d8b83a79b234c1d998fc90",
+    "corrected_from_predecessor": "sha256:847a1be8a18d3f22d3f7f32f841a393064032ee4ee1732e4ac9633d4544d4f3d",
+    "reason": "Previous validate-fix payload omitted explicit passed=true for original_criteria and correction_regression; official review-step was rerun from the valid fix_validating predecessor with the same evidence and explicit pass flags."
+  }
+}

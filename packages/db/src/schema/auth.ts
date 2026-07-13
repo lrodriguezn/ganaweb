@@ -32,6 +32,16 @@ export const usuariosContrasena = pgTable(
   (table) => [uniqueIndex("usuarios_contrasena_usuario_id_unique").on(table.usuarioId)],
 )
 
+export const usuariosHistorialContrasenas = pgTable("usuarios_historial_contrasenas", {
+  id: text("id").primaryKey(),
+  usuarioId: text("usuario_id")
+    .notNull()
+    .references(() => usuarios.id),
+  contrasenaHash: text("contrasena_hash").notNull(),
+  activo: integer("activo").default(1).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
 export const usuariosLogin = pgTable(
   "usuarios_login",
   {
@@ -137,6 +147,42 @@ export const usuariosRolesAsignacion = pgTable(
     activo: integer("activo").default(1).notNull(),
   },
   (table) => [uniqueIndex("uq_usuarios_roles").on(table.usuarioId, table.rolId, table.fincaId)],
+)
+
+export const usuariosRecuperacionContrasena = pgTable(
+  "usuarios_recuperacion_contrasena",
+  {
+    id: text("id").primaryKey(),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
+    tokenHash: text("token_hash").notNull(),
+    fechaExpiracion: timestamp("fecha_expiracion", { withTimezone: true }).notNull(),
+    usadoEn: timestamp("usado_en", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("uq_recuperacion_token").on(table.tokenHash)],
+)
+
+export const usuariosAutenticacionDosFactores = pgTable(
+  "usuarios_autenticacion_dos_factores",
+  {
+    id: text("id").primaryKey(),
+    usuarioId: text("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
+    metodo: varchar("metodo", { length: 20 }).default("email").notNull(),
+    codigoHash: text("codigo_hash"),
+    fechaExpiracion: timestamp("fecha_expiracion", { withTimezone: true }),
+    intentosFallidos: integer("intentos_fallidos").default(0),
+    habilitado: integer("habilitado").default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    activo: integer("activo").default(1).notNull(),
+  },
+  (table) => [
+    uniqueIndex("usuarios_autenticacion_dos_factores_usuario_id_unique").on(table.usuarioId),
+  ],
 )
 
 export type UsuarioDb = typeof usuarios.$inferSelect

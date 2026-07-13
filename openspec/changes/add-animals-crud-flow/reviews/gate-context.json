@@ -1,0 +1,20 @@
+{
+  "schema": "gentle-ai.review-gate-context/v1",
+  "lineage_id": "add-animals-crud-flow",
+  "result": "allow",
+  "state": "ready_final_verification",
+  "reason": "Native review transaction is ready_final_verification after maintainer-approved content-addressed store migration; all severe findings are fixed and scoped validation passed.",
+  "store_revision": "sha256:037ac750cf6f3f448dc4db45ab7478f56fd8e75fb2d8b83a79b234c1d998fc90",
+  "genesis_revision": "sha256:4b44219e75d2352f14be58fc8e26ca395f9f8f2442550f548c9af0e34cf685f1",
+  "chain_identity": "sha256:cf8e4141f05971eb140661439ff51a863011772ec6fd92c66fc1ac835eba2cae",
+  "bundle_digest": "sha256:c666c201496c9f71235896a867dcb1e9a652d87fc5dd22df7951f110ca4e25d3",
+  "backups": {
+    "native_store_tarball": "/tmp/opencode/add-animals-crud-flow-native-review-store-pre-migration.tgz",
+    "native_store_tarball_sha256": "d953fb2d89e285da10a05274da27dd136a66042b13de9d30e6506d5947e0fb51",
+    "pre_migration_bundle": "/tmp/opencode/add-animals-crud-flow-review-backup-pre-migration.json",
+    "pre_migration_bundle_file_sha256": "71b5d16126af6b9274b53579e33e05720414fb22fed2dcf05719e13da4cbf145",
+    "pre_migration_bundle_digest": "sha256:40976c3caa1892e0ddef3ea53b240830a4fe76768614db58c7c9ae80bf63ad95",
+    "post_migration_bundle": "/tmp/opencode/add-animals-crud-flow-review-corrected-post-migration.json",
+    "post_migration_bundle_digest": "sha256:c666c201496c9f71235896a867dcb1e9a652d87fc5dd22df7951f110ca4e25d3"
+  }
+}

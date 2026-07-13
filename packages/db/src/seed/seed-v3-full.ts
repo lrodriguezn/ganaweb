@@ -8,37 +8,51 @@
  *
  * Uso: DATABASE_URL=postgresql://... tsx packages/db/src/seed/seed-v3-full.ts
  */
-import 'dotenv/config'
-import postgres from 'postgres'
+import "dotenv/config"
+import postgres from "postgres"
 
 // Argon2id hashes pre-generados (la app usa argon2id via auth-deps.server.ts)
 // Si cambias las contraseñas, regenerar con: tsx --import argon2/argon2.cjs -e "..."
-const HASH_ADMIN = '$argon2id$v=19$m=65536,t=3,p=4$HSoVPNg1NssYFciCaPQAFg$zSI02hnj77+Mwaxfc+DNSX5JFN6G+Gr0L+3yIFY0SJY'
-const HASH_MAYORDOMO = '$argon2id$v=19$m=65536,t=3,p=4$OmLrMwlx1Mlreja/oT16CA$p8npKdACvDT0Z5TXXXLjG4bhtWY4nFmIJFlX0VfURes'
-const HASH_TEST = '$argon2id$v=19$m=65536,t=3,p=4$VQSQcgmcbaFwlPB9c1HrYA$RXsbuhKsqFr8JBO6jnNB4EueQSbwF61d8RoNd8eYQ3Y'
+const HASH_ADMIN =
+  "$argon2id$v=19$m=65536,t=3,p=4$HSoVPNg1NssYFciCaPQAFg$zSI02hnj77+Mwaxfc+DNSX5JFN6G+Gr0L+3yIFY0SJY"
+const HASH_MAYORDOMO =
+  "$argon2id$v=19$m=65536,t=3,p=4$OmLrMwlx1Mlreja/oT16CA$p8npKdACvDT0Z5TXXXLjG4bhtWY4nFmIJFlX0VfURes"
+const HASH_TEST =
+  "$argon2id$v=19$m=65536,t=3,p=4$VQSQcgmcbaFwlPB9c1HrYA$RXsbuhKsqFr8JBO6jnNB4EueQSbwF61d8RoNd8eYQ3Y"
 
-const DEMO = process.env.SEED_DEMO === 'true'
+const DEMO = process.env.SEED_DEMO === "true"
+
+function log(message: string) {
+  process.stdout.write(`${message}\n`)
+}
+
+function logError(error: unknown) {
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error)
+  process.stderr.write(`${message}\n`)
+}
 
 async function seed() {
   const url = process.env.DATABASE_URL
   if (!url) {
-    throw new Error('DATABASE_URL no está configurada')
+    throw new Error("DATABASE_URL no está configurada")
   }
 
   const sql = postgres(url, { max: 10 })
 
-  console.log('🌱 Seeding GanaWeb v3 — nivel SISTEMA...')
+  log("🌱 Seeding GanaWeb v3 — nivel SISTEMA...")
   await seedSistema(sql)
 
   if (DEMO) {
-    console.log('📦 SEED_DEMO=true — nivel DEMO...')
+    log("📦 SEED_DEMO=true — nivel DEMO...")
     await seedDemo(sql)
   }
 
-  console.log('✅ Seed completado.')
-  console.log(DEMO
-    ? 'Demo: admin@ganaweb.demo / Admin123! (Administradora en La Esperanza, Solo lectura en El Roble)'
-    : 'Solo datos de sistema. Para datos de demostración: SEED_DEMO=true')
+  log("✅ Seed completado.")
+  log(
+    DEMO
+      ? "Demo: admin@ganaweb.demo / Admin123! (Administradora en La Esperanza, Solo lectura en El Roble)"
+      : "Solo datos de sistema. Para datos de demostración: SEED_DEMO=true",
+  )
 
   await sql.end()
 }
@@ -61,15 +75,15 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
   // Catálogo de permisos
   const MODULOS: Record<string, string[]> = {
     // eliminar = borrado físico; solo el Administrador lo recibe en la matriz
-    animales:               ['ver', 'crear', 'editar', 'inactivar', 'eliminar'],
-    eventos_reproductivos:  ['ver', 'crear', 'editar', 'anular'],
-    eventos_productivos:    ['ver', 'crear', 'editar', 'anular'],
-    sanidad:                ['ver', 'crear', 'editar', 'anular'],
-    movimientos:            ['ver', 'crear', 'anular'],
-    reportes:               ['ver', 'exportar'],
-    configuracion:          ['ver', 'crear', 'editar', 'inactivar'],
-    fincas:                 ['crear', 'editar', 'invitar'],
-    usuarios:               ['ver', 'administrar'],
+    animales: ["ver", "crear", "editar", "inactivar", "eliminar"],
+    eventos_reproductivos: ["ver", "crear", "editar", "anular"],
+    eventos_productivos: ["ver", "crear", "editar", "anular"],
+    sanidad: ["ver", "crear", "editar", "anular"],
+    movimientos: ["ver", "crear", "anular"],
+    reportes: ["ver", "exportar"],
+    configuracion: ["ver", "crear", "editar", "inactivar"],
+    fincas: ["crear", "editar", "invitar"],
+    usuarios: ["ver", "administrar"],
   }
 
   const permisoId = (m: string, a: string) => `perm-${m}-${a}`
@@ -81,7 +95,7 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
         id: permisoId(modulo, accion),
         modulo,
         accion,
-        nombre: `${accion} ${modulo.replace(/_/g, ' ')}`,
+        nombre: `${accion} ${modulo.replace(/_/g, " ")}`,
       })
     }
   }
@@ -97,24 +111,24 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
   // Matriz rol → permisos
   const MATRIZ: Record<string, string[]> = {
     // Administrador: todos los permisos, incluido animales:eliminar.
-    'rol-admin': todosPermisos.map((p) => p.id),
-    'rol-mayordomo': [
+    "rol-admin": todosPermisos.map((p) => p.id),
+    "rol-mayordomo": [
       // No recibe animales:eliminar; conserva ver, crear y editar.
-      ...['ver', 'crear', 'editar'].map((a) => permisoId('animales', a)),
-      ...['ver', 'crear'].map((a) => permisoId('eventos_reproductivos', a)),
-      ...['ver', 'crear', 'editar', 'anular'].map((a) => permisoId('eventos_productivos', a)),
-      ...['ver', 'crear'].map((a) => permisoId('sanidad', a)),
-      ...['ver', 'crear'].map((a) => permisoId('movimientos', a)),
-      permisoId('reportes', 'ver'),
+      ...["ver", "crear", "editar"].map((a) => permisoId("animales", a)),
+      ...["ver", "crear"].map((a) => permisoId("eventos_reproductivos", a)),
+      ...["ver", "crear", "editar", "anular"].map((a) => permisoId("eventos_productivos", a)),
+      ...["ver", "crear"].map((a) => permisoId("sanidad", a)),
+      ...["ver", "crear"].map((a) => permisoId("movimientos", a)),
+      permisoId("reportes", "ver"),
     ],
-    'rol-veterinario': [
-      permisoId('animales', 'ver'),
-      ...['ver', 'crear', 'editar', 'anular'].map((a) => permisoId('eventos_reproductivos', a)),
-      ...['ver'].map((a) => permisoId('eventos_productivos', a)),
-      ...['ver', 'crear', 'editar', 'anular'].map((a) => permisoId('sanidad', a)),
-      permisoId('reportes', 'ver'),
+    "rol-veterinario": [
+      permisoId("animales", "ver"),
+      ...["ver", "crear", "editar", "anular"].map((a) => permisoId("eventos_reproductivos", a)),
+      ...["ver"].map((a) => permisoId("eventos_productivos", a)),
+      ...["ver", "crear", "editar", "anular"].map((a) => permisoId("sanidad", a)),
+      permisoId("reportes", "ver"),
     ],
-    'rol-lectura': todosPermisos.filter((p) => p.accion === 'ver').map((p) => p.id),
+    "rol-lectura": todosPermisos.filter((p) => p.accion === "ver").map((p) => p.id),
   }
 
   for (const [rolId, permisos] of Object.entries(MATRIZ)) {
@@ -145,18 +159,18 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
 
   // Key/values
   const KV = [
-    ['kv-sexo-0', 'sexo', 'Macho', '0'],
-    ['kv-sexo-1', 'sexo', 'Hembra', '1'],
-    ['kv-sexo-2', 'sexo', 'Pajuela', '2'],
-    ['kv-est-0', 'estado_animal', 'En finca', '0'],
-    ['kv-est-1', 'estado_animal', 'Vendido', '1'],
-    ['kv-est-2', 'estado_animal', 'Muerto', '2'],
-    ['kv-ing-0', 'tipo_ingreso', 'Nacido en finca', '0'],
-    ['kv-ing-1', 'tipo_ingreso', 'Comprado', '1'],
-    ['kv-pad-0', 'tipo_padre', 'Monta natural', '0'],
-    ['kv-pad-1', 'tipo_padre', 'Inseminación', '1'],
-    ['kv-sal-0', 'salud_animal', 'Sano', '0'],
-    ['kv-sal-1', 'salud_animal', 'Enfermo', '1'],
+    ["kv-sexo-0", "sexo", "Macho", "0"],
+    ["kv-sexo-1", "sexo", "Hembra", "1"],
+    ["kv-sexo-2", "sexo", "Pajuela", "2"],
+    ["kv-est-0", "estado_animal", "En finca", "0"],
+    ["kv-est-1", "estado_animal", "Vendido", "1"],
+    ["kv-est-2", "estado_animal", "Muerto", "2"],
+    ["kv-ing-0", "tipo_ingreso", "Nacido en finca", "0"],
+    ["kv-ing-1", "tipo_ingreso", "Comprado", "1"],
+    ["kv-pad-0", "tipo_padre", "Monta natural", "0"],
+    ["kv-pad-1", "tipo_padre", "Inseminación", "1"],
+    ["kv-sal-0", "salud_animal", "Sano", "0"],
+    ["kv-sal-1", "salud_animal", "Enfermo", "1"],
   ] as const
 
   for (const [id, opcion, key, value] of KV) {
@@ -169,17 +183,17 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
 
   // Razas
   const razas: [string, string, string][] = [
-    ['raza-brahman',     'Brahman',                'Cebú Brahman'],
-    ['raza-holstein',    'Holstein',               'Holstein Friesian'],
-    ['raza-angus',       'Angus',                  'Aberdeen Angus'],
-    ['raza-brangus',     'Brangus',                'Brahman × Angus'],
-    ['raza-gyr',         'Gyr',                    'Gir Lechero'],
-    ['raza-normando',    'Normando',               'Normando'],
-    ['raza-simmental',   'Simmental',              'Simmental'],
-    ['raza-criollo',     'Criollo',                'Criollo colombiano'],
-    ['raza-romosinuano', 'Romosinuano',            'Romosinuano'],
-    ['raza-bon',         'Blanco Orejinegro',      'BON'],
-    ['raza-cruce',       'Cruce',                  'Cruzamiento comercial'],
+    ["raza-brahman", "Brahman", "Cebú Brahman"],
+    ["raza-holstein", "Holstein", "Holstein Friesian"],
+    ["raza-angus", "Angus", "Aberdeen Angus"],
+    ["raza-brangus", "Brangus", "Brahman × Angus"],
+    ["raza-gyr", "Gyr", "Gir Lechero"],
+    ["raza-normando", "Normando", "Normando"],
+    ["raza-simmental", "Simmental", "Simmental"],
+    ["raza-criollo", "Criollo", "Criollo colombiano"],
+    ["raza-romosinuano", "Romosinuano", "Romosinuano"],
+    ["raza-bon", "Blanco Orejinegro", "BON"],
+    ["raza-cruce", "Cruce", "Cruzamiento comercial"],
   ]
 
   for (const [id, nombre, descripcion] of razas) {
@@ -251,16 +265,16 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
 
   // Parámetros por finca
   const PARAMETROS: [string, string, string][] = [
-    ['edad_minima_servicio_meses', '18',        'RN-010: edad mínima para servicio'],
-    ['peso_minimo_servicio_kg',    '280',       'RN-010: peso mínimo para servicio'],
-    ['dias_puerperio',             '45',        'TR: PARIDA→VACIA'],
-    ['dias_max_lactancia',         '305',       'RN-021: lactancia vigente'],
-    ['stock_minimo_dosis',         '20',        'KPI-10: umbral de stock bajo'],
-    ['peso_nacimiento_default_kg', '32',        'KPI-07: peso al nacer estimado'],
-    ['rol_invitacion_default',     'rol-mayordomo', 'PE-007: rol al registrarse con código'],
+    ["edad_minima_servicio_meses", "18", "RN-010: edad mínima para servicio"],
+    ["peso_minimo_servicio_kg", "280", "RN-010: peso mínimo para servicio"],
+    ["dias_puerperio", "45", "TR: PARIDA→VACIA"],
+    ["dias_max_lactancia", "305", "RN-021: lactancia vigente"],
+    ["stock_minimo_dosis", "20", "KPI-10: umbral de stock bajo"],
+    ["peso_nacimiento_default_kg", "32", "KPI-07: peso al nacer estimado"],
+    ["rol_invitacion_default", "rol-mayordomo", "PE-007: rol al registrarse con código"],
   ]
 
-  for (const fincaId of ['finca-esperanza', 'finca-roble']) {
+  for (const fincaId of ["finca-esperanza", "finca-roble"]) {
     for (const [codigo, valor, descripcion] of PARAMETROS) {
       await sql`
         INSERT INTO config_parametros_finca (id, finca_id, codigo, valor, descripcion, activo)
@@ -363,12 +377,17 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
 
   // Diagnósticos
   const diagnosticos: [string, string, string, string][] = [
-    ['diag-esp-mastitis',    'Mastitis',              'Infección de la glándula mamaria', 'Sanidad'],
-    ['diag-esp-anaplasma',   'Anaplasmosis',          'Hemoparásito transmitido por garrapata', 'Sanidad'],
-    ['diag-esp-ret-plac',    'Retención placentaria', 'No expulsión de placenta post-parto', 'Reproductivo'],
-    ['diag-esp-metritis',    'Metritis',              'Infección uterina post-parto', 'Reproductivo'],
-    ['diag-esp-cojera',      'Cojera',                'Problemas podales', 'Sanidad'],
-    ['diag-esp-quiste-ov',   'Quiste ovárico',        'Alteración reproductiva funcional', 'Reproductivo'],
+    ["diag-esp-mastitis", "Mastitis", "Infección de la glándula mamaria", "Sanidad"],
+    ["diag-esp-anaplasma", "Anaplasmosis", "Hemoparásito transmitido por garrapata", "Sanidad"],
+    [
+      "diag-esp-ret-plac",
+      "Retención placentaria",
+      "No expulsión de placenta post-parto",
+      "Reproductivo",
+    ],
+    ["diag-esp-metritis", "Metritis", "Infección uterina post-parto", "Reproductivo"],
+    ["diag-esp-cojera", "Cojera", "Problemas podales", "Sanidad"],
+    ["diag-esp-quiste-ov", "Quiste ovárico", "Alteración reproductiva funcional", "Reproductivo"],
   ]
 
   for (const [id, nombre, descripcion, categoria] of diagnosticos) {
@@ -434,4 +453,7 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
 
 // =====================================================================
 
-seed().catch((e) => { console.error(e); process.exit(1) })
+seed().catch((error) => {
+  logError(error)
+  process.exit(1)
+})

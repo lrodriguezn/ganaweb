@@ -22,6 +22,31 @@ export { cn } from "./lib/utils"
 
 // Domain components
 export { AnimalCard } from "./ganado/animal-card"
+export {
+  AnimalDeleteDialogCopy,
+  AnimalDesktopScreen,
+  AnimalFichaDesktopScreen,
+  AnimalFichaHeader,
+  AnimalFichaMobileScreen,
+  AnimalFormScreen,
+  AnimalGallery,
+  AnimalGenealogy,
+  AnimalListMobile,
+  AnimalTimeline,
+} from "./ganado/animal-crud"
+export type {
+  AnimalFichaDesktopScreenProps,
+  AnimalFichaMobileScreenProps,
+  AnimalGalleryProps,
+  AnimalGenealogyNode,
+  AnimalGenealogyProps,
+  AnimalImageItem,
+  AnimalListItem,
+  AnimalListMobileProps,
+  AnimalOffspringNode,
+  AnimalTimelineItem,
+  AnimalTimelineProps,
+} from "./ganado/animal-crud"
 export { AppHeader } from "./ganado/app-header"
 export { AparienciaCard } from "./ganado/apariencia-card"
 export { AvatarMenu } from "./ganado/avatar-menu"

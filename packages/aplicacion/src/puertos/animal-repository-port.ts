@@ -14,9 +14,25 @@
  * `aplicacion`, no desde `dominio` (regla `web-to-dominio-direct`).
  */
 
-import type { AnimalResumen } from "@ganaweb/dominio"
+import type { AnimalResumen, EstadoAnimal } from "@ganaweb/dominio"
 
 export type { AnimalResumen }
+
+export interface AnimalRegistro {
+  readonly id: string
+  readonly fincaId: string
+  readonly codigo: string
+  readonly nombre: string
+  readonly sexoKey: 0 | 1 | 2
+  readonly version: number
+  readonly activo: boolean
+  readonly estadoActual?: EstadoAnimal
+  readonly salud?: string
+  readonly potreroId?: string
+  readonly loteId?: string
+  readonly usuarioCreadoPor: string
+  readonly creadoEn: Date
+}
 
 export interface AnimalRepositoryPort {
   /**
@@ -28,6 +44,8 @@ export interface AnimalRepositoryPort {
    */
   buscarPorCodigoYFinca(codigo: string, fincaId: string): Promise<AnimalResumen | null>
 
+  obtenerPorIdYFinca?(animalId: string, fincaId: string): Promise<AnimalRegistro | null>
+
   /**
    * Persiste un animal (insert o update según el caso de uso).
    * La idempotencia y las reglas de duplicado las enforce la DB
@@ -36,4 +54,16 @@ export interface AnimalRepositoryPort {
    * innecesarios.
    */
   guardar(animal: AnimalResumen): Promise<void>
+
+  actualizar?(
+    animalId: string,
+    fincaId: string,
+    cambios: { readonly codigo?: string; readonly versionLeida: number },
+  ): Promise<void>
+
+  inactivar?(animalId: string, fincaId: string): Promise<void>
+
+  reactivar?(animalId: string, fincaId: string, codigo: string): Promise<void>
+
+  eliminarFisico?(animalId: string, fincaId: string): Promise<void>
 }
