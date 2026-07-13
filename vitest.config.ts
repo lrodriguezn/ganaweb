@@ -16,11 +16,6 @@ export default defineConfig({
   test: {
     allowOnly: false,
     include: ["tests/**/*.test.ts"],
-    exclude: [
-      "tests/e2e/**",
-      "node_modules/**",
-      "**/node_modules/**",
-      "**/dist/**",
-    ],
+    exclude: ["tests/e2e/**", "node_modules/**", "**/node_modules/**", "**/dist/**"],
   },
 })
