@@ -18,6 +18,7 @@
     "format": "biome format --write .",
     "ci": "turbo run build typecheck test lint",
     "depcruise": "dependency-cruiser .",
+    "parity:node-types": "node scripts/check-node-types-parity.mjs",
     "no-sqlite": "! grep -rE \"wa-sqlite|OPFS|sqlite-wasm|sql\\.js|better-sqlite3|@libsql|sqlite3|bun:sqlite\" --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.js\" --include=\"*.json\" --include=\"*.yml\" --exclude-dir=node_modules --exclude-dir=.git --exclude=pnpm-lock.yaml . | grep -v \"^./package.json:.*no-sqlite:\" || (echo \"SQLite reference detected\" && exit 1)"
   },
   "devDependencies": {
@@ -27,6 +28,7 @@
     "@types/node": "^22.10.5",
     "dependency-cruiser": "^16.10.3",
     "turbo": "^2.3.3",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.6"
   }
 }
