@@ -230,7 +230,10 @@ function deps(): AnimalUseCaseDeps {
 }
 
 async function testProductionRuntimeRequiresAdapters() {
-  const harness = createAnimalRuntimeHarness({ getSession: async () => session() })
+  const harness = createAnimalRuntimeHarness({
+    depsFactory: null,
+    getSession: async () => session(),
+  })
   await assert.rejects(
     () => harness.list({ fincaId: "finca-1" }),
     /Animal persistence adapters are not configured/,

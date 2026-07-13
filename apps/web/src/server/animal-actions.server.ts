@@ -14,6 +14,8 @@ import {
   reactivarAnimal,
   validarImagenesAnimalMutation,
 } from "@ganaweb/aplicacion"
+import { createAnimalUseCaseDeps } from "@ganaweb/db/animal-infrastructure"
+import { db } from "@ganaweb/db/client"
 import type { AnimalListItem, AnimalTimelineItem } from "@ganaweb/ui"
 import { createServerFn } from "@tanstack/react-start"
 import {
@@ -111,7 +113,7 @@ interface AttachAnimalImageWebInput extends AnimalIdWebInput {
 
 export type AnimalRuntimeDepsFactory = () => AnimalUseCaseDeps
 
-let animalRuntimeDepsFactory: AnimalRuntimeDepsFactory | null = null
+let animalRuntimeDepsFactory: AnimalRuntimeDepsFactory | null = () => createAnimalUseCaseDeps(db)
 
 export function configureAnimalRuntimeDeps(factory: AnimalRuntimeDepsFactory | null) {
   animalRuntimeDepsFactory = factory

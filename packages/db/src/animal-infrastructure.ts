@@ -1,5 +1,17 @@
-import type { AnimalReferenceCheckerPort } from "@ganaweb/aplicacion"
-import { and, eq, or } from "drizzle-orm"
+import { AsyncLocalStorage } from "node:async_hooks"
+import type {
+  AnimalRegistro,
+  AnimalRepositoryPort,
+  AnimalUseCaseDeps,
+  ArchivoAnimalPort,
+  ColaBinariosPort,
+  EntradaOutbox,
+  OutboxPort,
+  TimelineAnimalPort,
+  TransaccionPort,
+} from "@ganaweb/aplicacion"
+import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
+import { and, asc, eq, or } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 import {
   animales,
@@ -7,6 +19,8 @@ import {
   animalesImagenes,
   animalesUbicacionHistorico,
   aplicacionesSanitarias,
+  auditoriaEliminaciones,
+  imagenes,
   muertes,
   palpaciones,
   partos,
@@ -16,8 +30,73 @@ import {
   registrosGrupales,
   revisionesVeterinarias,
   servicios,
+  syncColaBinaria,
+  syncOutbox,
+  syncTombstones,
   ventas,
 } from "./schema/index.js"
+
+const animalDbContext = new AsyncLocalStorage<DbClient>()
+
+function currentDb(db: DbClient): DbClient {
+  return animalDbContext.getStore() ?? db
+}
+
+function sexoFromKey(sexoKey: number | null | undefined): AnimalResumen["sexo"] {
+  if (sexoKey === 1) return "hembra"
+  if (sexoKey === 2) return "pajuela"
+  return "macho"
+}
+
+function sexoKeyFromSexo(sexo: AnimalResumen["sexo"]): AnimalRegistro["sexoKey"] {
+  if (sexo === "hembra") return 1
+  if (sexo === "pajuela") return 2
+  return 0
+}
+
+function estadoFromKey(estadoKey: number | null | undefined): AnimalResumen["estadoActual"] {
+  if (estadoKey === 1) return "vendido"
+  if (estadoKey === 2) return "muerto"
+  return "activo"
+}
+
+function saludFromKey(saludKey: number | null | undefined): AnimalResumen["salud"] {
+  return saludKey === 1 ? "enfermo" : "sano"
+}
+
+function mapAnimalResumen(row: typeof animales.$inferSelect): AnimalResumen {
+  return {
+    id: row.id,
+    fincaId: row.fincaId,
+    codigo: row.codigo,
+    nombreAnimal: row.nombre ?? "",
+    sexo: sexoFromKey(row.sexoKey),
+    estadoActual: estadoFromKey(row.estadoAnimalKey),
+    salud: saludFromKey(row.saludAnimalKey),
+  }
+}
+
+function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegistro {
+  return {
+    id: row.id,
+    fincaId: row.fincaId,
+    codigo: row.codigo,
+    nombre: row.nombre ?? "",
+    sexoKey: sexoKeyFromSexo(sexoFromKey(row.sexoKey)),
+    version: row.version,
+    activo: row.activo === 1,
+    estadoActual: estadoFromKey(row.estadoAnimalKey),
+    salud: saludFromKey(row.saludAnimalKey),
+    ...(row.potreroId ? { potreroId: row.potreroId } : {}),
+    ...(row.loteId ? { loteId: row.loteId } : {}),
+    usuarioCreadoPor: row.usuarioCreadoPor ?? "",
+    creadoEn: row.createdAt,
+  }
+}
+
+function toDateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
 
 export interface ResumenReferenciasAnimalPersistencia {
   readonly eventCount: number
@@ -357,4 +436,289 @@ export function crearAuditoriaEliminacionAnimal(input: AuditoriaEliminacionAnima
     via: input.via,
     createdAt: input.createdAt,
   })
+}
+
+export class DrizzleAnimalRepository implements AnimalRepositoryPort {
+  constructor(private readonly db: DbClient) {}
+
+  async buscarPorCodigoYFinca(codigo: string, fincaId: string): Promise<AnimalResumen | null> {
+    const [row] = await currentDb(this.db)
+      .select()
+      .from(animales)
+      .where(and(eq(animales.fincaId, fincaId), eq(animales.codigo, codigo)))
+      .limit(1)
+    return row ? mapAnimalResumen(row) : null
+  }
+
+  async obtenerPorIdYFinca(animalId: string, fincaId: string): Promise<AnimalRegistro | null> {
+    const [row] = await currentDb(this.db)
+      .select()
+      .from(animales)
+      .where(and(eq(animales.id, animalId), eq(animales.fincaId, fincaId)))
+      .limit(1)
+    return row ? mapAnimalRegistro(row) : null
+  }
+
+  async listarPorFinca(fincaId: string): Promise<readonly AnimalRegistro[]> {
+    const rows = await currentDb(this.db)
+      .select()
+      .from(animales)
+      .where(eq(animales.fincaId, fincaId))
+      .orderBy(asc(animales.codigo))
+    return rows.map(mapAnimalRegistro)
+  }
+
+  async guardar(animal: AnimalResumen): Promise<void> {
+    const persistible = animal as AnimalResumen & {
+      readonly usuarioCreadoPor?: string
+      readonly creadoEn?: Date
+      readonly version?: number
+      readonly activo?: boolean
+    }
+    await currentDb(this.db)
+      .insert(animales)
+      .values({
+        id: animal.id,
+        fincaId: animal.fincaId,
+        codigo: animal.codigo,
+        nombre: animal.nombreAnimal ?? "",
+        sexoKey: sexoKeyFromSexo(animal.sexo),
+        estadoAnimalKey:
+          animal.estadoActual === "activo" ? 0 : animal.estadoActual === "vendido" ? 1 : 2,
+        saludAnimalKey: animal.salud === "enfermo" ? 1 : 0,
+        activo: persistible.activo === false ? 0 : 1,
+        usuarioCreadoPor: persistible.usuarioCreadoPor,
+        createdAt: persistible.creadoEn,
+        version: persistible.version ?? 1,
+      })
+  }
+
+  async actualizar(
+    animalId: string,
+    fincaId: string,
+    cambios: { readonly codigo?: string; readonly versionLeida: number },
+  ): Promise<void> {
+    await currentDb(this.db)
+      .update(animales)
+      .set({
+        ...(cambios.codigo ? { codigo: cambios.codigo.trim() } : {}),
+        version: cambios.versionLeida + 1,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(animales.id, animalId),
+          eq(animales.fincaId, fincaId),
+          eq(animales.version, cambios.versionLeida),
+        ),
+      )
+  }
+
+  async inactivar(animalId: string, fincaId: string): Promise<void> {
+    await currentDb(this.db)
+      .update(animales)
+      .set({ activo: 0, updatedAt: new Date() })
+      .where(and(eq(animales.id, animalId), eq(animales.fincaId, fincaId)))
+  }
+
+  async reactivar(animalId: string, fincaId: string, codigo: string): Promise<void> {
+    await currentDb(this.db)
+      .update(animales)
+      .set({ activo: 1, codigo: codigo.trim(), updatedAt: new Date() })
+      .where(and(eq(animales.id, animalId), eq(animales.fincaId, fincaId)))
+  }
+
+  async eliminarFisico(animalId: string, fincaId: string): Promise<void> {
+    await currentDb(this.db)
+      .delete(animales)
+      .where(and(eq(animales.id, animalId), eq(animales.fincaId, fincaId)))
+  }
+}
+
+export class DrizzleAnimalMediaRepository implements ArchivoAnimalPort {
+  constructor(private readonly db: DbClient) {}
+
+  async listarImagenes(animalId: string, fincaId: string) {
+    const rows = await currentDb(this.db)
+      .select({
+        id: animalesImagenes.id,
+        esPrincipal: animalesImagenes.esPrincipal,
+      })
+      .from(animalesImagenes)
+      .innerJoin(imagenes, eq(imagenes.id, animalesImagenes.imagenId))
+      .where(
+        and(
+          eq(animalesImagenes.animalId, animalId),
+          eq(imagenes.fincaId, fincaId),
+          eq(animalesImagenes.activo, 1),
+        ),
+      )
+      .orderBy(asc(animalesImagenes.createdAt))
+
+    return rows.map((row) => ({
+      id: row.id,
+      esPrincipal: row.esPrincipal === 1,
+      estadoSubida: "pendiente" as const,
+    }))
+  }
+
+  async vincularImagenPendiente(entrada: {
+    readonly id: string
+    readonly fincaId: string
+    readonly animalId: string
+    readonly blobId: string
+    readonly mimeType: string
+    readonly bytes: number
+    readonly esPrincipal: boolean
+    readonly estadoSubida: "pendiente"
+  }): Promise<void> {
+    await currentDb(this.db).insert(imagenes).values({
+      id: entrada.blobId,
+      fincaId: entrada.fincaId,
+      ruta: entrada.blobId,
+      nombreOriginal: entrada.blobId,
+      mimeType: entrada.mimeType,
+      tamanoBytes: entrada.bytes,
+    })
+    await currentDb(this.db)
+      .insert(animalesImagenes)
+      .values({
+        id: entrada.id,
+        animalId: entrada.animalId,
+        imagenId: entrada.blobId,
+        esPrincipal: entrada.esPrincipal ? 1 : 0,
+      })
+  }
+}
+
+export class DrizzleOutboxRepository implements OutboxPort {
+  constructor(private readonly db: DbClient) {}
+
+  async append(evento: EntradaOutbox): Promise<void> {
+    await currentDb(this.db)
+      .insert(syncOutbox)
+      .values({
+        id: evento.id,
+        fincaId: evento.fincaId,
+        dispositivoId: "server",
+        tablaDestino: evento.tablaDestino,
+        operacion: evento.operacion,
+        payload: evento.payload,
+        createdAt: new Date(evento.createdAt),
+        updatedAt: new Date(evento.createdAt),
+      })
+  }
+}
+
+export class DrizzleBinaryQueueRepository implements ColaBinariosPort {
+  constructor(private readonly db: DbClient) {}
+
+  async encolar(entrada: {
+    readonly id: string
+    readonly fincaId: string
+    readonly animalId: string
+    readonly blobId: string
+    readonly mimeType: string
+    readonly bytes: number
+  }): Promise<void> {
+    await currentDb(this.db).insert(syncColaBinaria).values({
+      id: entrada.id,
+      fincaId: entrada.fincaId,
+      entidad: "animal",
+      entidadId: entrada.animalId,
+      blobId: entrada.blobId,
+      mimeType: entrada.mimeType,
+      bytes: entrada.bytes,
+    })
+  }
+}
+
+export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
+  constructor(private readonly db: DbClient) {}
+
+  async listarPagina(consulta: {
+    readonly animalId: string
+    readonly fincaId: string
+    readonly cursor?: string
+    readonly limit: 20
+  }) {
+    const animal = await new DrizzleAnimalRepository(this.db).obtenerPorIdYFinca(
+      consulta.animalId,
+      consulta.fincaId,
+    )
+    return {
+      items: animal
+        ? [
+            {
+              id: `${animal.id}-created`,
+              fecha: animal.creadoEn.toISOString(),
+              titulo: "Animal registrado",
+            },
+          ]
+        : [],
+    }
+  }
+}
+
+export class DrizzleTransactionRunner implements TransaccionPort {
+  constructor(private readonly db: DbClient) {}
+
+  async run<T>(work: () => Promise<T>): Promise<T> {
+    return this.db.transaction((tx) => animalDbContext.run(tx as unknown as DbClient, work))
+  }
+}
+
+export function createAnimalUseCaseDeps(db: DbClient): AnimalUseCaseDeps {
+  return {
+    animales: new DrizzleAnimalRepository(db),
+    referencias: createAnimalReferenceChecker(db),
+    timeline: new DrizzleAnimalTimelineRepository(db),
+    archivos: new DrizzleAnimalMediaRepository(db),
+    outbox: new DrizzleOutboxRepository(db),
+    colaBinarios: new DrizzleBinaryQueueRepository(db),
+    transacciones: new DrizzleTransactionRunner(db),
+    auditoriaEliminaciones: {
+      async registrar(entrada) {
+        await currentDb(db).insert(auditoriaEliminaciones).values(entrada)
+      },
+    },
+    tombstones: {
+      async registrar(entrada) {
+        await currentDb(db).insert(syncTombstones).values({
+          id: entrada.id,
+          fincaId: entrada.fincaId,
+          tablaDestino: entrada.tablaDestino,
+          entidadId: entrada.entidadId,
+          payload: entrada.payload,
+          createdAt: entrada.createdAt,
+        })
+      },
+    },
+    ubicaciones: {
+      async registrarInicial(entrada) {
+        await currentDb(db).insert(animalesUbicacionHistorico).values({
+          id: entrada.id,
+          animalId: entrada.animalId,
+          potreroId: entrada.potreroId,
+          sectorId: entrada.sectorId,
+          loteId: entrada.loteId,
+          fecha: entrada.createdAt,
+          motivo: entrada.motivo,
+        })
+      },
+    },
+    pesajes: {
+      async registrarInicial(entrada) {
+        await currentDb(db)
+          .insert(pesos)
+          .values({
+            id: entrada.id,
+            animalId: entrada.animalId,
+            fecha: toDateOnly(entrada.fecha),
+            pesoKg: entrada.pesoKg.toString(),
+            createdAt: entrada.createdAt,
+          })
+      },
+    },
+  }
 }
