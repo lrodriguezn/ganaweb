@@ -52,6 +52,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Node-types parity check
+        run: pnpm parity:node-types
+
       - name: Biome CI
         run: pnpm exec biome ci .
 
