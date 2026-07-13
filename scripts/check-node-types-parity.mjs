@@ -64,28 +64,42 @@ async function readJson(path) {
   return JSON.parse(raw)
 }
 
-async function listWorkspacePackageJson(rootDir) {
+/**
+ * Collects every `package.json` directly under `<group>/<name>/` for
+ * the given group directory. Returns absolute paths. Missing group
+ * directory → empty list. Missing individual package.json → skipped
+ * (cannot happen in a well-formed pnpm workspace but we are
+ * defensive against partial checkouts).
+ */
+async function findPackageJsonInGroup(groupDir) {
+  let entries = []
+  try {
+    entries = await readdir(groupDir, { withFileTypes: true })
+  } catch (err) {
+    if (err.code === "ENOENT") return []
+    throw err
+  }
   const found = []
-  for (const group of WORKSPACE_GROUPS) {
-    const groupDir = join(rootDir, group)
-    let entries = []
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const pkgPath = join(groupDir, entry.name, "package.json")
     try {
-      entries = await readdir(groupDir, { withFileTypes: true })
+      await readFile(pkgPath, "utf8")
+      found.push(pkgPath)
     } catch (err) {
       if (err.code === "ENOENT") continue
       throw err
     }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-      const pkgPath = join(groupDir, entry.name, "package.json")
-      try {
-        await readFile(pkgPath, "utf8")
-        found.push(pkgPath)
-      } catch (err) {
-        if (err.code === "ENOENT") continue
-        throw err
-      }
-    }
+  }
+  return found
+}
+
+async function listWorkspacePackageJson(rootDir) {
+  const found = []
+  for (const group of WORKSPACE_GROUPS) {
+    const groupDir = join(rootDir, group)
+    const inGroup = await findPackageJsonInGroup(groupDir)
+    found.push(...inGroup)
   }
   return found
 }
@@ -93,8 +107,7 @@ async function listWorkspacePackageJson(rootDir) {
 function findTypesNode(pkg) {
   const groups = ["dependencies", "devDependencies"]
   for (const key of groups) {
-    const bucket = pkg[key]
-    const value = bucket && bucket["@types/node"]
+    const value = pkg[key]?.["@types/node"]
     if (typeof value === "string") return value
   }
   return undefined
@@ -106,9 +119,59 @@ function formatPath(absolute, rootDir) {
   return relative(rootDir, absolute).split(sep).join("/")
 }
 
+/**
+ * Reads the root `engines.node` and returns the parsed major. Throws
+ * a tagged error so the caller can `instanceof` and decide between
+ * "user-error (root engines.node missing/garbage)" (exit 2) and
+ * "infrastructure-error (cannot read root at all)" (rethrow).
+ */
+class RootConfigError extends Error {}
+
+function readRootRuntimeMajor(rootPkg) {
+  const nodeRange = rootPkg.engines?.node
+  if (typeof nodeRange !== "string" || nodeRange.length === 0) {
+    throw new RootConfigError("root engines.node is missing or not a string")
+  }
+  const major = parseMajor(nodeRange)
+  if (Number.isNaN(major)) {
+    throw new RootConfigError(`cannot parse major from root engines.node "${nodeRange}"`)
+  }
+  return major
+}
+
+/**
+ * Inspects one workspace package.json. Returns either:
+ *   { kind: "checked", file }          → had @types/node and the major matched
+ *   { kind: "drift", file, declared }  → had @types/node and the major mismatched
+ *   { kind: "skipped" }                → no @types/node declared (or no major)
+ * Exits 1 on invalid JSON so the gate does not silently pass.
+ */
+function checkWorkspacePackage(pkg, pkgPath, rootDir, runtimeMajor) {
+  const range = findTypesNode(pkg)
+  if (!range) return { kind: "skipped" }
+  const file = formatPath(pkgPath, rootDir)
+  const major = parseMajor(range)
+  if (Number.isNaN(major)) return { kind: "skipped" }
+  if (major !== runtimeMajor) {
+    return { kind: "drift", file, declared: range }
+  }
+  return { kind: "checked", file }
+}
+
+function printDrifts(drifts, runtimeMajor) {
+  console.error(
+    `${PREFIX} FAIL — ${drifts.length} workspace(s) drift from engines.node ${runtimeMajor}:`,
+  )
+  for (const d of drifts) {
+    console.error(`${PREFIX}   ${d.file}: declares @types/node "${d.declared}" (major ${d.major})`)
+  }
+  console.error(
+    `${PREFIX} Fix: align every @types/node range to ^${runtimeMajor} so the spec governance rule passes.`,
+  )
+}
+
 async function main() {
-  const argPath = process.argv[2]
-  const rootDir = argPath ? resolve(argPath) : REPO_ROOT
+  const rootDir = process.argv[2] ? resolve(process.argv[2]) : REPO_ROOT
   const rootPkgPath = join(rootDir, "package.json")
 
   let rootPkg
@@ -119,16 +182,15 @@ async function main() {
     process.exit(2)
   }
 
-  const engines = rootPkg.engines
-  const nodeRange = engines && engines.node
-  if (typeof nodeRange !== "string" || nodeRange.length === 0) {
-    console.error(`${PREFIX} root engines.node is missing or not a string in ${rootPkgPath}.`)
-    process.exit(2)
-  }
-  const runtimeMajor = parseMajor(nodeRange)
-  if (Number.isNaN(runtimeMajor)) {
-    console.error(`${PREFIX} cannot parse major from root engines.node "${nodeRange}".`)
-    process.exit(2)
+  let runtimeMajor
+  try {
+    runtimeMajor = readRootRuntimeMajor(rootPkg)
+  } catch (err) {
+    if (err instanceof RootConfigError) {
+      console.error(`${PREFIX} ${err.message} in ${rootPkgPath}.`)
+      process.exit(2)
+    }
+    throw err
   }
 
   const workspacePkgPaths = await listWorkspacePackageJson(rootDir)
@@ -143,30 +205,30 @@ async function main() {
       console.error(`${PREFIX} invalid JSON in ${formatPath(pkgPath, rootDir)}: ${err.message}`)
       process.exit(1)
     }
-    const range = findTypesNode(pkg)
-    if (!range) continue
-    checked.push(formatPath(pkgPath, rootDir))
-    const major = parseMajor(range)
-    if (Number.isNaN(major)) {
-      // Workspace-tag style: skip silently (no major to compare).
-      continue
-    }
-    if (major !== runtimeMajor) {
-      drifts.push({ file: formatPath(pkgPath, rootDir), declared: range, major })
+    const result = checkWorkspacePackage(pkg, pkgPath, rootDir, runtimeMajor)
+    if (result.kind === "drift") {
+      drifts.push({
+        file: result.file,
+        declared: result.declared,
+        major: parseMajor(result.declared),
+      })
+    } else if (result.kind === "checked") {
+      checked.push(result.file)
     }
   }
 
   if (drifts.length === 0) {
-    const scope = checked.length === 0 ? "no workspaces declare @types/node" : `${checked.length} workspace(s) checked`
-    console.log(`${PREFIX} OK — ${scope}, all @types/node ranges match engines.node ^${runtimeMajor}.`)
+    const scope =
+      checked.length === 0
+        ? "no workspaces declare @types/node"
+        : `${checked.length} workspace(s) checked`
+    console.log(
+      `${PREFIX} OK — ${scope}, all @types/node ranges match engines.node ^${runtimeMajor}.`,
+    )
     process.exit(0)
   }
 
-  console.error(`${PREFIX} FAIL — ${drifts.length} workspace(s) drift from engines.node ${runtimeMajor}:`)
-  for (const d of drifts) {
-    console.error(`${PREFIX}   ${d.file}: declares @types/node "${d.declared}" (major ${d.major})`)
-  }
-  console.error(`${PREFIX} Fix: align every @types/node range to ^${runtimeMajor} so the spec governance rule passes.`)
+  printDrifts(drifts, runtimeMajor)
   process.exit(1)
 }
 
