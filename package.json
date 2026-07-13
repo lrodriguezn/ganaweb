@@ -11,6 +11,7 @@
   },
   "scripts": {
     "dev": "pnpm -F @ganaweb/web dev",
+    "db:up": "bash scripts/db-up.sh",
     "build": "turbo run build",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
