@@ -34,15 +34,26 @@ until docker exec "$DB_CONTAINER" pg_isready -U postgres > /dev/null 2>&1; do
 done
 echo "PostgreSQL listo."
 
+# Forzar password explícitamente: el hash que asigna initdb al crear el
+# cluster no siempre coincide con la conexión TCP desde el host (Docker NAT
+# hace que la IP origen sea la del bridge, no 127.0.0.1, y cae en la regla
+# scram-sha-256). Este ALTER asegura que el hash sea correcto.
+echo "=== Asegurando contraseña del rol postgres ==="
+docker exec "$DB_CONTAINER" psql -U postgres -d ganaweb \
+  -c "ALTER ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres';"
+
 echo "=== Ejecutando migraciones ==="
 pnpm --filter @ganaweb/db migrate
 
-echo "=== Ejecutando seed (sistema) ==="
-DATABASE_URL="$DB_URL" pnpm --filter @ganaweb/db seed
+echo "=== Ejecutando seed (sistema + datos demo) ==="
+DATABASE_URL="$DB_URL" SEED_DEMO=true pnpm --filter @ganaweb/db seed
 
 echo ""
-echo "✅ DB lista. Usuarios disponibles:"
-echo "   - admin@ganaweb.demo / Admin123!  (si correste seed-v3-full con SEED_DEMO=true)"
+echo "✅ DB lista."
+echo ""
+echo "   Usuarios demo disponibles:"
+echo "   - admin@ganaweb.demo / Admin123!  (Administradora en La Esperanza)"
+echo "   - pedro@ganaweb.demo / Admin123!  (Mayordomo en La Esperanza)"
 echo ""
 echo "   Comandos útiles:"
 echo "   psql $DB_URL"
