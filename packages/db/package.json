@@ -34,6 +34,7 @@
     "migrate": "drizzle-kit migrate",
     "push": "drizzle-kit push",
     "seed": "tsx src/seed/seed-v3.ts"
+	"seed-full": "tsx src/seed/seed-v3-full.ts"
   },
   "dependencies": {
     "@ganaweb/aplicacion": "workspace:*",
