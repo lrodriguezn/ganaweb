@@ -372,14 +372,94 @@ async function testRouteViewModelsAndFlows() {
   assert.equal(model.animales[0]?.codigoAnimal, "AA-001")
 }
 
+async function testCreateMapsSplitLocationToUbicacionInicial() {
+  const ubicacionesIniciales: Array<{
+    readonly potreroId?: string
+    readonly sectorId?: string
+    readonly loteId?: string
+  }> = []
+  const harness = createAnimalActionHarness({
+    deps: {
+      ...deps(),
+      ubicaciones: {
+        async registrarInicial(entrada) {
+          ubicacionesIniciales.push({
+            ...(entrada.potreroId !== undefined ? { potreroId: entrada.potreroId } : {}),
+            ...(entrada.sectorId !== undefined ? { sectorId: entrada.sectorId } : {}),
+            ...(entrada.loteId !== undefined ? { loteId: entrada.loteId } : {}),
+          })
+        },
+      },
+    },
+    getSession: async () => session(),
+  })
+  const created = await harness.create({
+    fincaId: "finca-1",
+    datos: {
+      codigo: "MAP-1",
+      nombre: "Mapeada",
+      sexoKey: 1,
+      potreroId: "potrero-norte",
+      sectorId: "sector-cria",
+      loteId: "lote-a",
+      grupoId: "grupo-hato",
+    },
+  })
+  assert.equal(created.tipo, "creado", "create harness must return creado when all checks pass")
+  assert.deepEqual(
+    ubicacionesIniciales,
+    [{ potreroId: "potrero-norte", sectorId: "sector-cria", loteId: "lote-a" }],
+    "create harness must forward split location ids from datos into ubicacionInicial on the use case call",
+  )
+
+  const ubicacionesEnVacio: typeof ubicacionesIniciales = []
+  const sinUbicacionHarness = createAnimalActionHarness({
+    deps: {
+      ...deps(),
+      ubicaciones: {
+        async registrarInicial(entrada) {
+          ubicacionesEnVacio.push({
+            ...(entrada.potreroId !== undefined ? { potreroId: entrada.potreroId } : {}),
+            ...(entrada.sectorId !== undefined ? { sectorId: entrada.sectorId } : {}),
+            ...(entrada.loteId !== undefined ? { loteId: entrada.loteId } : {}),
+          })
+        },
+      },
+    },
+    getSession: async () => session(),
+  })
+  const sinUbicacion = await sinUbicacionHarness.create({
+    fincaId: "finca-1",
+    datos: { codigo: "MAP-2", nombre: "Sin Ubicacion", sexoKey: 1 },
+  })
+  assert.equal(sinUbicacion.tipo, "creado", "create harness must still create when no location ids are provided")
+  assert.deepEqual(
+    ubicacionesEnVacio,
+    [],
+    "create harness must not call ubicaciones.registrarInicial when no split location ids are provided",
+  )
+}
+
 async function testRouteFormPayloadBuilders() {
   const createForm = new FormData()
   createForm.set("codigo", " NV-42 ")
   createForm.set("nombre", " Novilla 42 ")
   createForm.set("sexoKey", "0")
+  createForm.set("potreroId", "potrero-norte")
+  createForm.set("sectorId", "sector-cria")
+  createForm.set("loteId", "lote-a")
+  createForm.set("grupoId", "grupo-hato")
   assert.deepEqual(buildCreateAnimalInputFromFormData("finca-1", createForm), {
     fincaId: "finca-1",
-    datos: { codigo: "NV-42", nombre: "Novilla 42", sexoKey: 0 },
+    datos: {
+      codigo: "NV-42",
+      nombre: "Novilla 42",
+      sexoKey: 0,
+      potreroId: "potrero-norte",
+      sectorId: "sector-cria",
+      loteId: "lote-a",
+      grupoId: "grupo-hato",
+    },
   })
 
   const updateForm = new FormData()
@@ -402,9 +482,23 @@ async function testRouteFilesWireUiAndActions() {
   ]
   const sources = await Promise.all(files.map((file) => readFile(join(ROUTES_DIR, file), "utf8")))
   const all = sources.join("\n")
+  const createRoute = sources[1] ?? ""
+  const editRoute = sources[3] ?? ""
   assert.ok(all.includes("AnimalDesktopScreen"), "list route must compose PR3 desktop UI")
   assert.ok(all.includes("AnimalListMobile"), "list route must compose PR3 mobile UI")
   assert.ok(all.includes("AnimalFormScreen"), "create/edit routes must compose PR3 form UI")
+  assert.ok(
+    createRoute.includes('formVariant="create"'),
+    "create route must render the form with create-mode location semantics",
+  )
+  assert.ok(
+    editRoute.includes('formVariant="edit"'),
+    "edit route must render the form with edit-mode location semantics",
+  )
+  assert.ok(
+    editRoute.includes("currentLocation"),
+    "edit route must pass read-only current location context into AnimalFormScreen",
+  )
   assert.ok(all.includes("AnimalFichaDesktopScreen"), "ficha route must compose PR3 ficha UI")
   assert.ok(all.includes("AnimalFichaMobileScreen"), "ficha route must compose PR3 mobile ficha UI")
   assert.ok(all.includes("listAnimalsAction"), "routes must use server actions/loaders")
@@ -454,6 +548,26 @@ async function testRouteFilesWireUiAndActions() {
   )
 }
 
+async function testCreateRouteWiresCatalogOptions() {
+  const createRoute = await readFile(join(ROUTES_DIR, "animales", "nuevo.tsx"), "utf8")
+  assert.ok(
+    createRoute.includes("catalogOptions"),
+    "create route must pass catalogOptions into AnimalFormScreen so origen and split location selectors are not empty",
+  )
+  assert.ok(
+    createRoute.includes("origen") &&
+      createRoute.includes("potrero") &&
+      createRoute.includes("sector") &&
+      createRoute.includes("lote") &&
+      createRoute.includes("grupo"),
+    "create route must provide origin and all four split location catalog keys",
+  )
+  assert.ok(
+    !createRoute.includes("catalogOptions={undefined}"),
+    "create route must not pass an undefined catalogOptions prop",
+  )
+}
+
 async function testE2eFixtureRequiresSafeRuntimeGuard() {
   const source = await readFile(
     join(WEB_ROOT, "src", "server", "e2e-animals-fixture.server.ts"),
@@ -470,8 +584,10 @@ async function run() {
   await testProductionRuntimeRequiresAdapters()
   await testServerGuards()
   await testRouteViewModelsAndFlows()
+  await testCreateMapsSplitLocationToUbicacionInicial()
   await testRouteFormPayloadBuilders()
   await testRouteFilesWireUiAndActions()
+  await testCreateRouteWiresCatalogOptions()
   await testE2eFixtureRequiresSafeRuntimeGuard()
   // biome-ignore lint/suspicious/noConsole: focused harness progress output
   console.log("✅ animal-web-flow.test.ts passed")
