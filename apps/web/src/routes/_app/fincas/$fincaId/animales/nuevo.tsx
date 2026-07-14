@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 import { AnimalFormScreen } from "@ganaweb/ui"
 import { createFileRoute } from "@tanstack/react-router"
 import { getAnimalFormCatalogOptions } from "../../../../../lib/fixtures/animal-form-catalog.js"
@@ -51,19 +53,67 @@ export function buildCreateAnimalInputFromFormData(
   }
 }
 
+const CAMPO_TO_FIELD_KEY: Record<string, string> = {
+  codigo: "codigo",
+  nombre: "nombre",
+  sexo_key: "sexoKey",
+  fecha_nacimiento: "fechaNacimiento",
+  // fecha_compra intentionally absent — R1: no fechaCompra form field, drop per spec line 32.
+  madre_id: "madre",
+  padre_id: "padre",
+}
+
+/**
+ * Translate the dominio use case's `errores` array into the UI's
+ * `Record<fieldName, message>` shape at the route boundary. The dominio type is not
+ * imported here (design R2: the UI package never imports the domain); we only read the
+ * `campo` and `detalle` fields off each item, and we guard non-array inputs locally
+ * because the use case types `errores: unknown`.
+ */
+export function buildCreateAnimalFieldErrors(errores: unknown): Record<string, string> {
+  if (!Array.isArray(errores)) return {}
+  const fieldErrors: Record<string, string> = {}
+  for (const error of errores) {
+    if (!error || typeof error !== "object") continue
+    const campo = (error as { campo?: unknown }).campo
+    const detalle = (error as { detalle?: unknown }).detalle
+    if (typeof campo !== "string" || typeof detalle !== "string") continue
+    const key = CAMPO_TO_FIELD_KEY[campo]
+    if (key && fieldErrors[key] === undefined) {
+      fieldErrors[key] = detalle
+    }
+  }
+  return fieldErrors
+}
+
 function NewAnimalRoute() {
   const { fincaId } = Route.useParams()
   // Demo catalog source. Migrate to a per-finca loader when the
   // master-data tables (origen/potrero/sector/lote/grupo) are wired
   // through a real server function.
   const catalogOptions = getAnimalFormCatalogOptions()
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const save = async (formData: FormData) => {
     try {
-      await createAnimalAction({
+      const result = await createAnimalAction({
         data: buildCreateAnimalInputFromFormData(fincaId, formData),
       })
-    } finally {
-      window.location.assign(`/fincas/${fincaId}/animales`)
+      if (result.tipo === "creado") {
+        window.location.assign(`/fincas/${fincaId}/animales`)
+        return
+      }
+      if (result.tipo === "validacion") {
+        setFieldErrors(buildCreateAnimalFieldErrors(result.errores))
+        return
+      }
+      // Other tipos (permiso_denegado, no_autenticado, etc.) keep the form mounted
+      // and surface a generic banner — banner is out of scope per design.md.
+      setFieldErrors({})
+    } catch {
+      // Thrown errors (network failure, harness crash) keep the form mounted with the
+      // submitted values intact. No field error is produced — a generic banner is the
+      // intended UX but is out of scope for this change.
+      setFieldErrors({})
     }
   }
 
@@ -74,6 +124,7 @@ function NewAnimalRoute() {
           mode="desktop"
           formVariant="create"
           catalogOptions={catalogOptions}
+          fieldErrors={fieldErrors}
           onSave={save}
           onCancel={() => history.back()}
         />
@@ -83,6 +134,7 @@ function NewAnimalRoute() {
           mode="mobile"
           formVariant="create"
           catalogOptions={catalogOptions}
+          fieldErrors={fieldErrors}
           onSave={save}
           onCancel={() => history.back()}
         />

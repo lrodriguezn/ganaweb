@@ -646,6 +646,148 @@ async function testActionE2eFastPathReturnsCreatedOnly() {
   )
 }
 
+async function testRouteBranchesOnResultTipo() {
+  const createRoute = await readFile(join(ROUTES_DIR, "animales", "nuevo.tsx"), "utf8")
+
+  // 2.1: creado must navigate to the finca-scoped animales list.
+  // The previous try/finally/assign was the bug — it navigated unconditionally.
+  assert.ok(
+    !/}\s*finally\s*\{[\s\S]*window\.location\.assign/m.test(createRoute),
+    "create route must not wrap the action in a try/finally/assign — it navigated on validacion and thrown errors too",
+  )
+  assert.ok(
+    /window\.location\.assign\(`\/fincas\/\$\{fincaId\}\/animales`\)/.test(createRoute),
+    "creado result must navigate to /fincas/{fincaId}/animales (not on validacion or thrown errors)",
+  )
+  assert.ok(
+    /result\.tipo\s*===\s*"creado"/.test(createRoute),
+    "create route must branch on result.tipo === 'creado' before navigating",
+  )
+  // The navigate call must live after the creado check, so the JSX guard ordering is
+  // preserved.
+  const tipoCheck = createRoute.indexOf('result.tipo === "creado"')
+  const navigateCall = createRoute.indexOf("window.location.assign")
+  assert.ok(
+    tipoCheck > 0 && navigateCall > 0 && tipoCheck < navigateCall,
+    "navigate call must be ordered after the creado check so validacion and thrown errors do not redirect",
+  )
+
+  // 2.2: validacion must NOT navigate and must pass fieldErrors to AnimalFormScreen.
+  assert.ok(
+    /useState<Record<string,\s*string>>/.test(createRoute) ||
+      /useState\(\{\}\)/.test(createRoute) ||
+      /useState<Record<string,\s*string>\(/.test(createRoute) ||
+      /useState\(/.test(createRoute),
+    "create route must hold fieldErrors in useState so values survive the rerender on validacion",
+  )
+  // The route must read the errores array off the validacion result and pass it through
+  // the mapper. The mapper is the local buildCreateAnimalFieldErrors helper exported
+  // below; the route just feeds the errores into it.
+  assert.ok(
+    /buildCreateAnimalFieldErrors\(/.test(createRoute),
+    "create route must use the buildCreateAnimalFieldErrors mapper to translate errores to fieldErrors",
+  )
+  // fieldErrors must be threaded into BOTH the desktop and mobile <AnimalFormScreen>
+  // renders — a single render leaves the other mode blind to validation feedback.
+  const formScreenMatches = createRoute.match(/<AnimalFormScreen\b/g) ?? []
+  assert.ok(
+    formScreenMatches.length >= 2,
+    "create route must render AnimalFormScreen in both desktop and mobile layouts (found <2)",
+  )
+  // After the validacion branch sets fieldErrors, the two renders must each receive
+  // it as a prop. We assert that `fieldErrors=` appears at least twice.
+  const fieldErrorsPropMatches = createRoute.match(/fieldErrors=/g) ?? []
+  assert.ok(
+    fieldErrorsPropMatches.length >= 2,
+    "create route must pass fieldErrors to both <AnimalFormScreen> renders (found <2)",
+  )
+
+  // 2.3: thrown errors must NOT navigate and must NOT produce a field error.
+  // The fix removes the unconditional finally-block navigation; the action call is
+  // awaited inside a try/catch that swallows the rejection and leaves fieldErrors
+  // untouched (banner is out of scope per design.md).
+  assert.ok(
+    /catch\s*\{/.test(createRoute) || /catch\s*\(\s*_/.test(createRoute) || /catch\s*\(\s*\)/.test(createRoute),
+    "create route must catch the action rejection so a thrown error keeps the form mounted and does not navigate",
+  )
+  // After the catch, there must be no window.location.assign before the catch's closing
+  // brace. A simple proxy: count the number of window.location.assign calls in the
+  // route — exactly one, inside the creado branch.
+  const assignCalls = createRoute.match(/window\.location\.assign\(/g) ?? []
+  assert.equal(
+    assignCalls.length,
+    1,
+    "create route must call window.location.assign exactly once — inside the creado branch only",
+  )
+}
+
+async function testMapperBuildsFieldErrorsAndDropsFechaCompra() {
+  // Import the mapper directly. It is the route boundary that translates the
+  // dominio's ErrorValidacionAnimal[] into the UI's Record<string, string>.
+  const { buildCreateAnimalFieldErrors } = await import(
+    "../src/routes/_app/fincas/$fincaId/animales/nuevo.js"
+  )
+
+  // 2.4 spec line 34: sexo_key → sexoKey; fecha_compra has no form field and is
+  // dropped silently per spec line 32 (design R1 follow-up).
+  const mapped = buildCreateAnimalFieldErrors([
+    { campo: "sexo_key", regla: "CA-CRE-001", detalle: "El sexo es obligatorio." },
+    { campo: "fecha_compra", regla: "CA-CRE-002", detalle: "La compra requiere fecha de compra." },
+  ])
+  assert.deepEqual(mapped, {
+    sexoKey: "El sexo es obligatorio.",
+  })
+  assert.ok(
+    !("fechaCompra" in mapped),
+    "fecha_compra must be dropped because no fechaCompra form field exists (design R1 follow-up)",
+  )
+
+  // All other spec line 34 mappings round-trip.
+  const allMapped = buildCreateAnimalFieldErrors([
+    { campo: "codigo", regla: "CA-CRE-001", detalle: "Requerido" },
+    { campo: "nombre", regla: "CA-CRE-001", detalle: "Requerido" },
+    { campo: "fecha_nacimiento", regla: "CA-CRE-002", detalle: "Requerido" },
+    { campo: "madre_id", regla: "CA-CRE-003", detalle: "Madre inválida" },
+    { campo: "padre_id", regla: "CA-CRE-004", detalle: "Padre inválido" },
+  ])
+  assert.deepEqual(allMapped, {
+    codigo: "Requerido",
+    nombre: "Requerido",
+    fechaNacimiento: "Requerido",
+    madre: "Madre inválida",
+    padre: "Padre inválido",
+  })
+
+  // First error wins per field (later duplicates are ignored) so the user sees the
+  // first message the use case raised.
+  const firstWins = buildCreateAnimalFieldErrors([
+    { campo: "codigo", regla: "CA-CRE-001", detalle: "Primero" },
+    { campo: "codigo", regla: "CA-CRE-001", detalle: "Segundo" },
+  ])
+  assert.deepEqual(firstWins, { codigo: "Primero" })
+
+  // Local Array.isArray guard (design R2): non-array inputs return {}.
+  assert.deepEqual(buildCreateAnimalFieldErrors(undefined), {})
+  assert.deepEqual(buildCreateAnimalFieldErrors(null), {})
+  assert.deepEqual(buildCreateAnimalFieldErrors("errores"), {})
+  assert.deepEqual(buildCreateAnimalFieldErrors({ campo: "codigo" }), {})
+  assert.deepEqual(buildCreateAnimalFieldErrors([]), {})
+
+  // Items with missing or wrong-typed fields are skipped, not coerced.
+  const mixed = buildCreateAnimalFieldErrors([
+    null,
+    { campo: "codigo", detalle: "OK" },
+    { campo: 123, detalle: "x" },
+    { campo: "codigo" },
+    "string item",
+    { campo: "sexo_key", regla: "CA-CRE-001", detalle: "Sexo requerido" },
+  ])
+  assert.deepEqual(mixed, {
+    codigo: "OK",
+    sexoKey: "Sexo requerido",
+  })
+}
+
 async function run() {
   await testProductionRuntimeRequiresAdapters()
   await testServerGuards()
@@ -657,6 +799,8 @@ async function run() {
   await testE2eFixtureRequiresSafeRuntimeGuard()
   await testActionForwardsValidacionErrores()
   await testActionE2eFastPathReturnsCreatedOnly()
+  await testRouteBranchesOnResultTipo()
+  await testMapperBuildsFieldErrorsAndDropsFechaCompra()
   // biome-ignore lint/suspicious/noConsole: focused harness progress output
   console.log("✅ animal-web-flow.test.ts passed")
 }
