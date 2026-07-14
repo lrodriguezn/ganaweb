@@ -301,8 +301,7 @@ export function createAnimalActionHarness({ deps, getSession }: AnimalActionHarn
       // contract for groups in the initial location and we must not invent
       // schema here.
       const { potreroId, sectorId, loteId } = input.datos
-      const hasUbicacion =
-        potreroId !== undefined || sectorId !== undefined || loteId !== undefined
+      const hasUbicacion = potreroId !== undefined || sectorId !== undefined || loteId !== undefined
       return crearAnimal(deps)({
         sesion: toAnimalSession(session),
         datos: {

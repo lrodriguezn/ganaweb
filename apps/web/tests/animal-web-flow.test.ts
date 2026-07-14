@@ -432,7 +432,11 @@ async function testCreateMapsSplitLocationToUbicacionInicial() {
     fincaId: "finca-1",
     datos: { codigo: "MAP-2", nombre: "Sin Ubicacion", sexoKey: 1 },
   })
-  assert.equal(sinUbicacion.tipo, "creado", "create harness must still create when no location ids are provided")
+  assert.equal(
+    sinUbicacion.tipo,
+    "creado",
+    "create harness must still create when no location ids are provided",
+  )
   assert.deepEqual(
     ubicacionesEnVacio,
     [],

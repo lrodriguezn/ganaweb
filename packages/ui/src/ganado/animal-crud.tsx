@@ -559,7 +559,9 @@ const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Padre", name: "padre" },
 ]
 
-const LOCATION_FIELDS: readonly (AnimalFormField & { optionsKey: keyof AnimalFormCatalogOptions })[] = [
+const LOCATION_FIELDS: readonly (AnimalFormField & {
+  optionsKey: keyof AnimalFormCatalogOptions
+})[] = [
   { label: "Potrero", name: "potreroId", optionsKey: "potrero" },
   { label: "Sector", name: "sectorId", optionsKey: "sector" },
   { label: "Lote", name: "loteId", optionsKey: "lote" },
@@ -623,7 +625,9 @@ export function AnimalFormScreen({
         <input type="hidden" name="versionLeida" value="1" />
         {fields.map((field) => renderAnimalFormField(field, initialValues, catalogOptions))}
         {formVariant === "create"
-          ? LOCATION_FIELDS.map((field) => renderAnimalFormField(field, initialValues, catalogOptions))
+          ? LOCATION_FIELDS.map((field) =>
+              renderAnimalFormField(field, initialValues, catalogOptions),
+            )
           : renderCurrentLocation(currentLocation)}
         {mobile && (
           <p className="rounded-card bg-info-100 text-info-600 p-3 text-support">
@@ -704,7 +708,10 @@ function renderCurrentLocation(currentLocation?: AnimalCurrentLocation) {
   ]
 
   return (
-    <section aria-label="Ubicación actual" className="col-span-full rounded-card border p-4 space-y-3">
+    <section
+      aria-label="Ubicación actual"
+      className="col-span-full rounded-card border p-4 space-y-3"
+    >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-section font-semibold">Ubicación actual</h2>
         <Button type="button" variant="secondary">
