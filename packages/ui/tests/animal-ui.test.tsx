@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs"
 
 import { cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 import {
   AnimalDesktopScreen,
@@ -37,6 +37,21 @@ const nav = [
   { id: "tareas", label: "Tareas", href: "/tareas", icon: () => null },
   { id: "mas", label: "Más", href: "/mas", icon: () => null },
 ]
+
+beforeAll(() => {
+  if (!HTMLElement.prototype.hasPointerCapture) {
+    HTMLElement.prototype.hasPointerCapture = () => false
+  }
+  if (!HTMLElement.prototype.setPointerCapture) {
+    HTMLElement.prototype.setPointerCapture = () => undefined
+  }
+  if (!HTMLElement.prototype.releasePointerCapture) {
+    HTMLElement.prototype.releasePointerCapture = () => undefined
+  }
+  if (!HTMLElement.prototype.scrollIntoView) {
+    HTMLElement.prototype.scrollIntoView = () => undefined
+  }
+})
 
 afterEach(() => cleanup())
 
@@ -162,7 +177,10 @@ describe("PR3 animal UI OpenPencil parity", () => {
       "Origen",
       "Madre",
       "Padre",
-      "Potrero/Sector/Lote/Grupo",
+      "Potrero",
+      "Sector",
+      "Lote",
+      "Grupo",
     ]) {
       expect(screen.getByLabelText(label)).toBeInTheDocument()
     }
@@ -189,6 +207,170 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(formData.get("codigo")).toBe("NV-42")
     expect(formData.get("nombre")).toBe("Novilla 42")
     expect(formData.get("sexoKey")).toBe("1")
+  })
+
+  it("uses labeled catalog selectors for CA-UI-001/003 while preserving form payload keys", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        onSave={onSave}
+        onCancel={vi.fn()}
+        initialValues={{ origen: "origen-compra", sexoKey: 1 }}
+        catalogOptions={{
+          origen: [{ value: "origen-compra", label: "Compra externa" }],
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("Hembra")
+    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("Compra externa")
+    expect(screen.queryByText(/^1$/)).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText("Código *"), "NV-43")
+    await user.type(screen.getByLabelText("Nombre"), "Novilla 43")
+    await user.click(screen.getByRole("combobox", { name: "Sexo" }))
+    expect(screen.getByRole("option", { name: "Macho" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Hembra" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Pajuela" })).toBeInTheDocument()
+    await user.click(screen.getByRole("option", { name: "Macho" }))
+
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+    const [formData] = onSave.mock.calls[0] as [FormData]
+    expect(formData.get("sexoKey")).toBe("0")
+    expect(formData.get("origen")).toBe("origen-compra")
+  })
+
+  it("shows a safe unavailable label for missing CA-UI-001/003 catalog values", () => {
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        initialValues={{ origen: "origen-legacy" }}
+        catalogOptions={{ origen: [] }}
+      />,
+    )
+
+    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("No disponible")
+    expect(screen.queryByText("origen-legacy")).not.toBeInTheDocument()
+  })
+
+  it("falls back to 'No disponible' for create-mode location selectors when catalog options are missing (CA-UI-001/003/005)", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={onSave}
+        onCancel={vi.fn()}
+        catalogOptions={{}}
+      />,
+    )
+
+    for (const label of ["Potrero", "Sector", "Lote", "Grupo"] as const) {
+      expect(screen.getByRole("combobox", { name: label })).toHaveTextContent("No disponible")
+    }
+
+    await user.type(screen.getByLabelText("Código *"), "NV-46")
+    await user.type(screen.getByLabelText("Nombre"), "Novilla 46")
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    const [formData] = onSave.mock.calls[0] as [FormData]
+    for (const name of ["potreroId", "sectorId", "loteId", "grupoId"] as const) {
+      expect(formData.get(name)).toBe("")
+    }
+    expect(formData.get("codigo")).toBe("NV-46")
+    expect(formData.get("nombre")).toBe("Novilla 46")
+    expect(formData.has("ubicacion")).toBe(false)
+  })
+
+  it("renders split CA-UI-005 location controls in create mode and submits selected ids", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={onSave}
+        onCancel={vi.fn()}
+        catalogOptions={{
+          potrero: [{ value: "potrero-4", label: "Potrero 4" }],
+          sector: [{ value: "sector-norte", label: "Sector Norte" }],
+          lote: [{ value: "lote-cria", label: "Lote Cría" }],
+          grupo: [{ value: "grupo-novillas", label: "Grupo Novillas" }],
+        }}
+      />,
+    )
+
+    expect(screen.queryByLabelText("Potrero/Sector/Lote/Grupo")).not.toBeInTheDocument()
+
+    for (const [label, option] of [
+      ["Potrero", "Potrero 4"],
+      ["Sector", "Sector Norte"],
+      ["Lote", "Lote Cría"],
+      ["Grupo", "Grupo Novillas"],
+    ] as const) {
+      await user.click(screen.getByRole("combobox", { name: label }))
+      await user.click(screen.getByRole("option", { name: option }))
+    }
+
+    await user.type(screen.getByLabelText("Código *"), "NV-44")
+    await user.type(screen.getByLabelText("Nombre"), "Novilla 44")
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+
+    const [formData] = onSave.mock.calls[0] as [FormData]
+    expect(formData.get("potreroId")).toBe("potrero-4")
+    expect(formData.get("sectorId")).toBe("sector-norte")
+    expect(formData.get("loteId")).toBe("lote-cria")
+    expect(formData.get("grupoId")).toBe("grupo-novillas")
+    expect(formData.has("ubicacion")).toBe(false)
+  })
+
+  it("renders edit-mode CA-UI-005 location as read-only and excludes direct mutations", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="edit"
+        onSave={onSave}
+        onCancel={vi.fn()}
+        currentLocation={{
+          potrero: "Potrero 4",
+          sector: "Sector Norte",
+          lote: "Lote Cría",
+          grupo: "Grupo Novillas",
+        }}
+      />,
+    )
+
+    const location = screen.getByRole("region", { name: "Ubicación actual" })
+    expect(within(location).getByText("Potrero 4")).toBeInTheDocument()
+    expect(within(location).getByText("Sector Norte")).toBeInTheDocument()
+    expect(within(location).getByText("Lote Cría")).toBeInTheDocument()
+    expect(within(location).getByText("Grupo Novillas")).toBeInTheDocument()
+    expect(within(location).getByRole("button", { name: "Mover animal" })).toBeInTheDocument()
+    expect(screen.queryByLabelText("Potrero/Sector/Lote/Grupo")).not.toBeInTheDocument()
+    expect(screen.queryByRole("combobox", { name: "Potrero" })).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText("Código *"), "NV-45")
+    await user.type(screen.getByLabelText("Nombre"), "Novilla 45")
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+
+    const [formData] = onSave.mock.calls[0] as [FormData]
+    expect(formData.has("potreroId")).toBe(false)
+    expect(formData.has("sectorId")).toBe(false)
+    expect(formData.has("loteId")).toBe(false)
+    expect(formData.has("grupoId")).toBe(false)
+    expect(formData.has("ubicacion")).toBe(false)
   })
 
   it("composes desktop list and ficha structures named after OpenPencil frames", () => {
