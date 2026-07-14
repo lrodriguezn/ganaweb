@@ -498,6 +498,7 @@ export interface AnimalFormScreenProps {
   initialValues?: AnimalFormInitialValues
   catalogOptions?: AnimalFormCatalogOptions
   currentLocation?: AnimalCurrentLocation
+  fieldErrors?: Record<string, string>
 }
 
 export type AnimalFormVariant = "create" | "edit"
@@ -576,6 +577,7 @@ export function AnimalFormScreen({
   initialValues,
   catalogOptions,
   currentLocation,
+  fieldErrors,
 }: AnimalFormScreenProps) {
   const mobile = mode === "mobile"
   const fields = mobile
@@ -623,10 +625,12 @@ export function AnimalFormScreen({
         )}
       >
         <input type="hidden" name="versionLeida" value="1" />
-        {fields.map((field) => renderAnimalFormField(field, initialValues, catalogOptions))}
+        {fields.map((field) =>
+          renderAnimalFormField(field, initialValues, catalogOptions, fieldErrors),
+        )}
         {formVariant === "create"
           ? LOCATION_FIELDS.map((field) =>
-              renderAnimalFormField(field, initialValues, catalogOptions),
+              renderAnimalFormField(field, initialValues, catalogOptions, fieldErrors),
             )
           : renderCurrentLocation(currentLocation)}
         {mobile && (
@@ -658,6 +662,7 @@ function renderAnimalFormField(
   field: AnimalFormField,
   initialValues?: AnimalFormInitialValues,
   catalogOptions?: AnimalFormCatalogOptions,
+  fieldErrors?: Record<string, string>,
 ) {
   if (field.name === "sexoKey") {
     return (
@@ -667,6 +672,7 @@ function renderAnimalFormField(
         name={field.name}
         defaultValue={String(initialValues?.sexoKey ?? 1)}
         options={SEXO_OPTIONS}
+        fieldErrors={fieldErrors}
       />
     )
   }
@@ -679,6 +685,7 @@ function renderAnimalFormField(
         name={field.name}
         defaultValue={initialValues?.origen}
         options={catalogOptions?.origen ?? []}
+        fieldErrors={fieldErrors}
       />
     )
   }
@@ -692,11 +699,12 @@ function renderAnimalFormField(
         name={field.name}
         defaultValue={initialValues?.[field.name as keyof AnimalFormInitialValues]?.toString()}
         options={catalogOptions?.[locationField.optionsKey] ?? []}
+        fieldErrors={fieldErrors}
       />
     )
   }
 
-  return <Field key={field.name} {...field} />
+  return <Field key={field.name} {...field} fieldErrors={fieldErrors} />
 }
 
 function renderCurrentLocation(currentLocation?: AnimalCurrentLocation) {
@@ -735,13 +743,20 @@ function Field({
   name,
   required = false,
   defaultValue,
+  fieldErrors,
 }: {
   label: string
   name: string
   required?: boolean
   defaultValue?: string
+  fieldErrors?: Record<string, string>
 }) {
   const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  const inputProps = errorMessage
+    ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
+    : {}
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -751,7 +766,13 @@ function Field({
         required={required}
         defaultValue={defaultValue}
         className="min-h-[--h-touch]"
+        {...inputProps}
       />
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -761,13 +782,20 @@ function CatalogSelectField({
   name,
   defaultValue,
   options,
+  fieldErrors,
 }: {
   label: string
   name: string
   defaultValue?: string | undefined
   options: readonly SelectOption[]
+  fieldErrors?: Record<string, string>
 }) {
   const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  const triggerProps = errorMessage
+    ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
+    : {}
   const hasDefaultLabel = defaultValue
     ? options.some((option) => option.value === defaultValue)
     : false
@@ -781,7 +809,7 @@ function CatalogSelectField({
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select {...selectProps}>
-        <SelectTrigger id={id} className="min-h-[--h-touch]">
+        <SelectTrigger id={id} className="min-h-[--h-touch]" {...triggerProps}>
           <SelectValue placeholder="No disponible" />
         </SelectTrigger>
         <SelectContent>
@@ -792,6 +820,11 @@ function CatalogSelectField({
           ))}
         </SelectContent>
       </Select>
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   )
 }

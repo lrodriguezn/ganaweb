@@ -185,12 +185,26 @@ describe("PR3 animal UI OpenPencil parity", () => {
       expect(screen.getByLabelText(label)).toBeInTheDocument()
     }
 
+    // 3.2 — when fieldErrors is omitted, no role="alert" and no aria-invalid="true"
+    // renders on any input/select. Existing edit-mode test (:336) relies on the same
+    // prop being undefined by default; this is the explicit omit assertion.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    for (const input of screen.getAllByRole("textbox")) {
+      expect(input).not.toHaveAttribute("aria-invalid", "true")
+    }
+    for (const combobox of screen.getAllByRole("combobox")) {
+      expect(combobox).not.toHaveAttribute("aria-invalid", "true")
+    }
+
     rerender(<AnimalFormScreen mode="mobile" onSave={vi.fn()} onCancel={vi.fn()} />)
     expect(
       screen.getByText("¿No encuentras la raza? Créala sin salir del formulario."),
     ).toBeInTheDocument()
     expect(screen.getByText("Se sincronizará al recuperar señal")).toBeInTheDocument()
     expect(screen.getByRole("contentinfo")).toHaveAttribute("data-sticky-save", "true")
+    // Same omit-by-default pin on the mobile layout — alert markup must not render
+    // when the create route does not supply fieldErrors.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 
   it("submits the animal form through onSave exactly once per Guardar click", async () => {
@@ -207,6 +221,64 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(formData.get("codigo")).toBe("NV-42")
     expect(formData.get("nombre")).toBe("Novilla 42")
     expect(formData.get("sexoKey")).toBe("1")
+  })
+
+  it("renders per-field error under the named input with ARIA wiring when fieldErrors is supplied", () => {
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        fieldErrors={{ codigo: "Requerido" }}
+      />,
+    )
+
+    // The codigo input must be marked invalid and point at the alert id via aria-describedby.
+    const codigoInput = screen.getByLabelText("Código *")
+    expect(codigoInput).toHaveAttribute("aria-invalid", "true")
+    const describedBy = codigoInput.getAttribute("aria-describedby")
+    expect(describedBy).toBeTruthy()
+    const alert = describedBy ? document.getElementById(describedBy) : null
+    expect(alert).not.toBeNull()
+    expect(alert).toHaveAttribute("role", "alert")
+    expect(alert).toHaveTextContent("Requerido")
+
+    // The error text lives under the input (not somewhere unrelated) — getByText
+    // scans from the form root, so the placement is implicit; the explicit ARIA
+    // association above is the spec's authoritative contract.
+    expect(screen.getByText("Requerido")).toBeInTheDocument()
+
+    // Other fields without an error must NOT be marked invalid (no blanket aria-invalid).
+    const nombreInput = screen.getByLabelText("Nombre")
+    expect(nombreInput).not.toHaveAttribute("aria-invalid", "true")
+    expect(nombreInput).not.toHaveAttribute("aria-describedby")
+
+    // Sibling fields must not pick up the codigo alert id.
+    const allAlerts = screen.getAllByRole("alert")
+    expect(allAlerts).toHaveLength(1)
+    expect(allAlerts[0]).toHaveTextContent("Requerido")
+  })
+
+  it("renders per-field error under named CatalogSelectField (Sexo) with ARIA wiring", () => {
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        fieldErrors={{ sexoKey: "Sexo requerido" }}
+      />,
+    )
+
+    // Sexo is rendered via CatalogSelectField (Radix Select). The trigger carries the
+    // aria-invalid / aria-describedby wiring — the alert <p> lives next to it.
+    const sexoTrigger = screen.getByRole("combobox", { name: "Sexo" })
+    expect(sexoTrigger).toHaveAttribute("aria-invalid", "true")
+    const describedBy = sexoTrigger.getAttribute("aria-describedby")
+    expect(describedBy).toBeTruthy()
+    const alert = describedBy ? document.getElementById(describedBy) : null
+    expect(alert).not.toBeNull()
+    expect(alert).toHaveAttribute("role", "alert")
+    expect(alert).toHaveTextContent("Sexo requerido")
   })
 
   it("uses labeled catalog selectors for CA-UI-001/003 while preserving form payload keys", async () => {
