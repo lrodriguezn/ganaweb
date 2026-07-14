@@ -76,6 +76,10 @@ export interface CreateAnimalWebInput {
     readonly codigo: string
     readonly nombre: string
     readonly sexoKey: 0 | 1 | 2
+    readonly potreroId?: string
+    readonly sectorId?: string
+    readonly loteId?: string
+    readonly grupoId?: string
   }
   readonly imagenes?: readonly {
     readonly id: string
@@ -290,9 +294,31 @@ export function createAnimalActionHarness({ deps, getSession }: AnimalActionHarn
       const denied = denyAnimalRouteAccess(session, input.fincaId, "crear")
       if (denied) return denied
 
+      // The web input carries potreroId/sectorId/loteId/grupoId inside `datos`
+      // for round-trip convenience (the route mapper preserves them verbatim),
+      // but the use case contract expects the top-level `ubicacionInicial`
+      // field. grupoId is intentionally NOT forwarded: the use case has no
+      // contract for groups in the initial location and we must not invent
+      // schema here.
+      const { potreroId, sectorId, loteId } = input.datos
+      const hasUbicacion =
+        potreroId !== undefined || sectorId !== undefined || loteId !== undefined
       return crearAnimal(deps)({
         sesion: toAnimalSession(session),
-        datos: input.datos,
+        datos: {
+          codigo: input.datos.codigo,
+          nombre: input.datos.nombre,
+          sexoKey: input.datos.sexoKey,
+        },
+        ...(hasUbicacion
+          ? {
+              ubicacionInicial: {
+                ...(potreroId !== undefined ? { potreroId } : {}),
+                ...(sectorId !== undefined ? { sectorId } : {}),
+                ...(loteId !== undefined ? { loteId } : {}),
+              },
+            }
+          : {}),
         ...(input.imagenes ? { imagenes: input.imagenes } : {}),
       })
     },

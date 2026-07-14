@@ -6,6 +6,10 @@ export interface CreateAnimalWebInput {
     readonly codigo: string
     readonly nombre: string
     readonly sexoKey: 0 | 1 | 2
+    readonly potreroId?: string
+    readonly sectorId?: string
+    readonly loteId?: string
+    readonly grupoId?: string
   }
   readonly imagenes?: readonly {
     readonly id: string
