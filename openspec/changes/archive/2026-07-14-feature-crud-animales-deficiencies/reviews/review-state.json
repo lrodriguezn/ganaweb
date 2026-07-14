@@ -1,0 +1,26 @@
+{
+  "schema": "gentle-ai.review-state-mirror/v2",
+  "lineage_id": "review-6097b9f08e4fa31e",
+  "change_id": "2026-07-14-feature-crud-animales-deficiencies",
+  "state": "approved",
+  "terminal_state": "approved",
+  "base_tree": "9cb6db79233aac19e4cd0b99103a83c7f07dfcee",
+  "candidate_tree": "f3a47adf194c66de0cfaf8fbc8ef850236f2c0c3",
+  "paths_digest": "sha256:4ea6653d94797cea214e5f04d47aad740b6e641bc047a50b6b8fc78e6b375f46",
+  "policy_hash": "sha256:34fb63d7f29f8613cd4431382b1057398a4816f8a4c20fc34677fffc80a184f6",
+  "fix_delta_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evidence_hash": "sha256:d4d65665cdcd112003ce8223f20e0079a088af57a9dec90eeb6e9632e103b21a",
+  "risk_level": "high",
+  "selected_lenses": [
+    "review-risk",
+    "review-resilience",
+    "review-readability",
+    "review-reliability"
+  ],
+  "resolved_finding_ids": null,
+  "sdd_next_recommended": "archive",
+  "archive_ready": true,
+  "verify_ready": true,
+  "mirror_reason": "Change-local reviews/ mirror restored for terminal authority review-6097b9f08e4fa31e. Source of truth is .git/gentle-ai/review-transactions/v2/review-6097b9f08e4fa31e/{review-receipt.json,review-state.json}. Mirror preserves the v2 schema and adds the change_id binding so the native gate resolves the invalidated state to allow.",
+  "mirror_source": ".git/gentle-ai/review-transactions/v2/review-6097b9f08e4fa31e"
+}

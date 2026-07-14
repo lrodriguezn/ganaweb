@@ -43,10 +43,22 @@ function EditAnimalRoute() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="hidden md:block">
-        <AnimalFormScreen mode="desktop" onSave={save} onCancel={() => history.back()} />
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          currentLocation={{}}
+          onSave={save}
+          onCancel={() => history.back()}
+        />
       </div>
       <div className="md:hidden">
-        <AnimalFormScreen mode="mobile" onSave={save} onCancel={() => history.back()} />
+        <AnimalFormScreen
+          mode="mobile"
+          formVariant="edit"
+          currentLocation={{}}
+          onSave={save}
+          onCancel={() => history.back()}
+        />
       </div>
     </div>
   )

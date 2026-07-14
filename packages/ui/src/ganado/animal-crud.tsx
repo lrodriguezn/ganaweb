@@ -16,6 +16,7 @@ import { cn } from "../lib/utils"
 import { Button } from "../primitives/button"
 import { Input } from "../primitives/input"
 import { Label } from "../primitives/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../primitives/select"
 import { BottomNav } from "./bottom-nav"
 import { EmptyState } from "./empty-state"
 import { CategoriaBadge, EstadoAnimalBadge, EstadoBadge, SaludBadge } from "./estado-badge"
@@ -491,11 +492,60 @@ export function AnimalGallery({
 
 export interface AnimalFormScreenProps {
   mode: "desktop" | "mobile"
+  formVariant?: AnimalFormVariant
   onSave: (formData: FormData) => void | Promise<void>
   onCancel: () => void
+  initialValues?: AnimalFormInitialValues
+  catalogOptions?: AnimalFormCatalogOptions
+  currentLocation?: AnimalCurrentLocation
 }
 
-const FORM_FIELDS = [
+export type AnimalFormVariant = "create" | "edit"
+export type SexoKey = 0 | 1 | 2
+
+export interface SelectOption {
+  value: string
+  label: string
+}
+
+export interface AnimalFormCatalogOptions {
+  origen?: readonly SelectOption[]
+  potrero?: readonly SelectOption[]
+  sector?: readonly SelectOption[]
+  lote?: readonly SelectOption[]
+  grupo?: readonly SelectOption[]
+}
+
+export interface AnimalFormInitialValues {
+  sexoKey?: SexoKey
+  origen?: string
+  potreroId?: string
+  sectorId?: string
+  loteId?: string
+  grupoId?: string
+}
+
+export interface AnimalCurrentLocation {
+  potrero?: string
+  sector?: string
+  lote?: string
+  grupo?: string
+}
+
+type AnimalFormField = {
+  label: string
+  name: string
+  required?: boolean
+  defaultValue?: string
+}
+
+const SEXO_OPTIONS: readonly SelectOption[] = [
+  { value: "0", label: "Macho" },
+  { value: "1", label: "Hembra" },
+  { value: "2", label: "Pajuela" },
+]
+
+const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Código *", name: "codigo", required: true },
   { label: "Nombre", name: "nombre", required: true },
   { label: "Nº de arete", name: "arete" },
@@ -507,10 +557,26 @@ const FORM_FIELDS = [
   { label: "Origen", name: "origen" },
   { label: "Madre", name: "madre" },
   { label: "Padre", name: "padre" },
-  { label: "Potrero/Sector/Lote/Grupo", name: "ubicacion" },
 ]
 
-export function AnimalFormScreen({ mode, onSave, onCancel }: AnimalFormScreenProps) {
+const LOCATION_FIELDS: readonly (AnimalFormField & {
+  optionsKey: keyof AnimalFormCatalogOptions
+})[] = [
+  { label: "Potrero", name: "potreroId", optionsKey: "potrero" },
+  { label: "Sector", name: "sectorId", optionsKey: "sector" },
+  { label: "Lote", name: "loteId", optionsKey: "lote" },
+  { label: "Grupo", name: "grupoId", optionsKey: "grupo" },
+]
+
+export function AnimalFormScreen({
+  mode,
+  formVariant = "create",
+  onSave,
+  onCancel,
+  initialValues,
+  catalogOptions,
+  currentLocation,
+}: AnimalFormScreenProps) {
   const mobile = mode === "mobile"
   const fields = mobile
     ? FORM_FIELDS.filter((field) =>
@@ -521,7 +587,10 @@ export function AnimalFormScreen({ mode, onSave, onCancel }: AnimalFormScreenPro
           "Raza",
           "Fecha de nacimiento",
           "Madre",
-          "Potrero/Sector/Lote/Grupo",
+          "Potrero",
+          "Sector",
+          "Lote",
+          "Grupo",
         ].includes(field.label),
       )
     : FORM_FIELDS
@@ -554,9 +623,12 @@ export function AnimalFormScreen({ mode, onSave, onCancel }: AnimalFormScreenPro
         )}
       >
         <input type="hidden" name="versionLeida" value="1" />
-        {fields.map((field) => (
-          <Field key={field.name} {...field} />
-        ))}
+        {fields.map((field) => renderAnimalFormField(field, initialValues, catalogOptions))}
+        {formVariant === "create"
+          ? LOCATION_FIELDS.map((field) =>
+              renderAnimalFormField(field, initialValues, catalogOptions),
+            )
+          : renderCurrentLocation(currentLocation)}
         {mobile && (
           <p className="rounded-card bg-info-100 text-info-600 p-3 text-support">
             ¿No encuentras la raza? Créala sin salir del formulario.
@@ -578,6 +650,82 @@ export function AnimalFormScreen({ mode, onSave, onCancel }: AnimalFormScreenPro
           <Button type="submit">Guardar</Button>
         </footer>
       </form>
+    </section>
+  )
+}
+
+function renderAnimalFormField(
+  field: AnimalFormField,
+  initialValues?: AnimalFormInitialValues,
+  catalogOptions?: AnimalFormCatalogOptions,
+) {
+  if (field.name === "sexoKey") {
+    return (
+      <CatalogSelectField
+        key={field.name}
+        label={field.label}
+        name={field.name}
+        defaultValue={String(initialValues?.sexoKey ?? 1)}
+        options={SEXO_OPTIONS}
+      />
+    )
+  }
+
+  if (field.name === "origen") {
+    return (
+      <CatalogSelectField
+        key={field.name}
+        label={field.label}
+        name={field.name}
+        defaultValue={initialValues?.origen}
+        options={catalogOptions?.origen ?? []}
+      />
+    )
+  }
+
+  const locationField = LOCATION_FIELDS.find((location) => location.name === field.name)
+  if (locationField) {
+    return (
+      <CatalogSelectField
+        key={field.name}
+        label={field.label}
+        name={field.name}
+        defaultValue={initialValues?.[field.name as keyof AnimalFormInitialValues]?.toString()}
+        options={catalogOptions?.[locationField.optionsKey] ?? []}
+      />
+    )
+  }
+
+  return <Field key={field.name} {...field} />
+}
+
+function renderCurrentLocation(currentLocation?: AnimalCurrentLocation) {
+  const locationRows = [
+    { label: "Potrero", value: currentLocation?.potrero },
+    { label: "Sector", value: currentLocation?.sector },
+    { label: "Lote", value: currentLocation?.lote },
+    { label: "Grupo", value: currentLocation?.grupo },
+  ]
+
+  return (
+    <section
+      aria-label="Ubicación actual"
+      className="col-span-full rounded-card border p-4 space-y-3"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-section font-semibold">Ubicación actual</h2>
+        <Button type="button" variant="secondary">
+          Mover animal
+        </Button>
+      </div>
+      <dl className="grid gap-2 md:grid-cols-4">
+        {locationRows.map((row) => (
+          <div key={row.label}>
+            <dt className="text-caption text-muted-foreground">{row.label}</dt>
+            <dd className="text-support font-medium">{row.value ?? "No disponible"}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   )
 }
@@ -604,6 +752,46 @@ function Field({
         defaultValue={defaultValue}
         className="min-h-[--h-touch]"
       />
+    </div>
+  )
+}
+
+function CatalogSelectField({
+  label,
+  name,
+  defaultValue,
+  options,
+}: {
+  label: string
+  name: string
+  defaultValue?: string | undefined
+  options: readonly SelectOption[]
+}) {
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const hasDefaultLabel = defaultValue
+    ? options.some((option) => option.value === defaultValue)
+    : false
+  const renderedOptions =
+    hasDefaultLabel || !defaultValue
+      ? options
+      : [{ value: defaultValue, label: "No disponible" }, ...options]
+  const selectProps = defaultValue === undefined ? { name } : { name, defaultValue }
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Select {...selectProps}>
+        <SelectTrigger id={id} className="min-h-[--h-touch]">
+          <SelectValue placeholder="No disponible" />
+        </SelectTrigger>
+        <SelectContent>
+          {renderedOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

@@ -37,6 +37,8 @@ export {
 export type {
   AnimalFichaDesktopScreenProps,
   AnimalFichaMobileScreenProps,
+  AnimalFormCatalogOptions,
+  AnimalFormScreenProps,
   AnimalGalleryProps,
   AnimalGenealogyNode,
   AnimalGenealogyProps,
@@ -46,6 +48,7 @@ export type {
   AnimalOffspringNode,
   AnimalTimelineItem,
   AnimalTimelineProps,
+  SelectOption,
 } from "./ganado/animal-crud"
 export { AppHeader } from "./ganado/app-header"
 export { AparienciaCard } from "./ganado/apariencia-card"

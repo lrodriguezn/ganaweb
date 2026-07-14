@@ -76,6 +76,10 @@ export interface CreateAnimalWebInput {
     readonly codigo: string
     readonly nombre: string
     readonly sexoKey: 0 | 1 | 2
+    readonly potreroId?: string
+    readonly sectorId?: string
+    readonly loteId?: string
+    readonly grupoId?: string
   }
   readonly imagenes?: readonly {
     readonly id: string
@@ -138,6 +142,34 @@ function hasAnimalPermission(
       (permission.modulo === "animales" && permission.accion === action) ||
       (permission.modulo === "*" && permission.accion === "*"),
   )
+}
+
+function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
+  codigo: string
+  nombre: string
+  sexoKey: 0 | 1 | 2
+} {
+  return {
+    codigo: datos.codigo,
+    nombre: datos.nombre,
+    sexoKey: datos.sexoKey,
+  }
+}
+
+function hasSplitUbicacion(datos: CreateAnimalWebInput["datos"]): boolean {
+  return datos.potreroId !== undefined || datos.sectorId !== undefined || datos.loteId !== undefined
+}
+
+function buildUbicacionInicial(datos: CreateAnimalWebInput["datos"]): {
+  potreroId?: string
+  sectorId?: string
+  loteId?: string
+} {
+  return {
+    ...(datos.potreroId !== undefined ? { potreroId: datos.potreroId } : {}),
+    ...(datos.sectorId !== undefined ? { sectorId: datos.sectorId } : {}),
+    ...(datos.loteId !== undefined ? { loteId: datos.loteId } : {}),
+  }
 }
 
 export function resolveAnimalPermissions(session: SesionAutorizada): AnimalRoutePermissions {
@@ -292,7 +324,10 @@ export function createAnimalActionHarness({ deps, getSession }: AnimalActionHarn
 
       return crearAnimal(deps)({
         sesion: toAnimalSession(session),
-        datos: input.datos,
+        datos: pickCreateAnimalDatos(input.datos),
+        ...(hasSplitUbicacion(input.datos)
+          ? { ubicacionInicial: buildUbicacionInicial(input.datos) }
+          : {}),
         ...(input.imagenes ? { imagenes: input.imagenes } : {}),
       })
     },
