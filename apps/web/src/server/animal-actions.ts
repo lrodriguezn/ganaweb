@@ -75,7 +75,7 @@ export const createAnimalAction = createServerFn({ method: "POST" })
     }
 
     const result = await (await getRuntimeHarness()).create(data)
-    return { tipo: result.tipo }
+    return result
   })
 
 export const updateAnimalAction = createServerFn({ method: "POST" })

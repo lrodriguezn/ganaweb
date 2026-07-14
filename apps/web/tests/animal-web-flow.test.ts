@@ -584,6 +584,68 @@ async function testE2eFixtureRequiresSafeRuntimeGuard() {
   )
 }
 
+async function testActionForwardsValidacionErrores() {
+  // Behavioral anchor: the harness's create() returns the verbatim validacion shape
+  // (including `errores`). The web handler must forward that shape unchanged.
+  const harness = createAnimalActionHarness({ deps: deps(), getSession: async () => session() })
+  // animal-1 has codigo "MT-122" — duplicate triggers validacion in the dominio use case
+  const validacionResult = await harness.create({
+    fincaId: "finca-1",
+    datos: { codigo: "MT-122", nombre: "Duplicada", sexoKey: 1 },
+  })
+  assert.equal(validacionResult.tipo, "validacion")
+  assert.ok(
+    Array.isArray(validacionResult.errores),
+    "harness validacion arm must carry an errores array for the action to forward",
+  )
+  assert.ok(
+    validacionResult.errores.some((e) => e.campo === "codigo"),
+    "duplicate codigo must surface a codigo error so the create route can map it to fieldErrors",
+  )
+
+  // Source-level pin: the createAnimalAction handler at animal-actions.ts must return
+  // the full harness result, not a narrowed `{ tipo: result.tipo }` shape that would
+  // drop the errores array before the route can read it.
+  const actionSource = await readFile(
+    join(WEB_ROOT, "src", "server", "animal-actions.ts"),
+    "utf8",
+  )
+  assert.ok(
+    !actionSource.includes("return { tipo: result.tipo }"),
+    "createAnimalAction must not narrow the harness result — it drops the errores field",
+  )
+  assert.ok(
+    /return\s+result\s*$/m.test(actionSource),
+    "createAnimalAction must return the full harness result on the non-e2e path",
+  )
+  assert.ok(
+    actionSource.includes("createAnimalAction"),
+    "createAnimalAction export name must stay — the web route imports it by string",
+  )
+}
+
+async function testActionE2eFastPathReturnsCreatedOnly() {
+  // Source-level pin: the e2e fast-path (when isAnimalE2eEnabled() is true) must return
+  // exactly { tipo: "creado" as const } with no errores key, so the e2e path is never
+  // confused with a validacion result.
+  const actionSource = await readFile(
+    join(WEB_ROOT, "src", "server", "animal-actions.ts"),
+    "utf8",
+  )
+  assert.ok(
+    actionSource.includes('return { tipo: "creado" as const }'),
+    'e2e fast-path must return exactly { tipo: "creado" as const } with no errores key',
+  )
+  // The fast-path early return must live above the harness return so the harness path
+  // cannot shadow it after the fix.
+  const fastReturnIndex = actionSource.indexOf('return { tipo: "creado" as const }')
+  const harnessReturnIndex = actionSource.indexOf("return result")
+  assert.ok(
+    fastReturnIndex > 0 && harnessReturnIndex > 0 && fastReturnIndex < harnessReturnIndex,
+    "e2e fast-path early return must be ordered before the harness-path return so the fix does not regress it",
+  )
+}
+
 async function run() {
   await testProductionRuntimeRequiresAdapters()
   await testServerGuards()
@@ -593,6 +655,8 @@ async function run() {
   await testRouteFilesWireUiAndActions()
   await testCreateRouteWiresCatalogOptions()
   await testE2eFixtureRequiresSafeRuntimeGuard()
+  await testActionForwardsValidacionErrores()
+  await testActionE2eFastPathReturnsCreatedOnly()
   // biome-ignore lint/suspicious/noConsole: focused harness progress output
   console.log("✅ animal-web-flow.test.ts passed")
 }
