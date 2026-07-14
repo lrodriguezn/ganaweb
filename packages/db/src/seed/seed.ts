@@ -1,12 +1,16 @@
 /**
- * GanaWeb — Seed completo v3 (SQL directo)
- * Reconstruido a partir de seed_v3.ts y ejecutado contra PostgreSQL
- * mediante SQL directo, sin depender del schema Drizzle completo.
+ * GanaWeb — Seed unificado (SQL directo)
  *
- * Incluye los cambios recientes de RBAC, entre ellos el permiso
- * animales:eliminar, reservado al rol Administrador.
+ * Unifica los antiguos seed-v3.ts y seed-v3-full.ts.
+ * Las 2 fincas base (finca-esperanza, finca-roble) y sus parámetros
+ * se crean SIEMPRE en seedSistema(). Los datos demo (usuarios, potreros,
+ * etc.) solo se crean con SEED_DEMO=true.
  *
- * Uso: DATABASE_URL=postgresql://... tsx packages/db/src/seed/seed-v3-full.ts
+ * Idempotente: todos los INSERT usan ON CONFLICT DO NOTHING.
+ *
+ * Uso:
+ *   DATABASE_URL=postgresql://... pnpm --filter @ganaweb/db seed
+ *   SEED_DEMO=true pnpm --filter @ganaweb/db seed    (con datos demo)
  */
 import "dotenv/config"
 import postgres from "postgres"
@@ -48,11 +52,13 @@ async function seed() {
   }
 
   log("✅ Seed completado.")
-  log(
-    DEMO
-      ? "Demo: admin@ganaweb.demo / Admin123! (Administradora en La Esperanza, Solo lectura en El Roble)"
-      : "Solo datos de sistema. Para datos de demostración: SEED_DEMO=true",
-  )
+  log("  • 2 fincas base creadas (La Esperanza / Hacienda El Roble)")
+  if (DEMO) {
+    log("  • admin@ganaweb.demo / Admin123! (Administradora en La Esperanza, Solo lectura en El Roble)")
+    log("  • pedro@ganaweb.demo / Admin123! (Mayordomo en La Esperanza)")
+  } else {
+    log("  • Solo datos de sistema + fincas base. Para datos demo: SEED_DEMO=true")
+  }
 
   await sql.end()
 }
@@ -248,14 +254,8 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
       ('col-pintado', 'Pintado', '#A9A9A9', 1)
     ON CONFLICT (id) DO NOTHING
   `
-}
 
-// =====================================================================
-// NIVEL 2 — DEMO
-// =====================================================================
-
-async function seedDemo(sql: ReturnType<typeof postgres>) {
-  // Fincas
+  // Fincas base — siempre se crean
   await sql`
     INSERT INTO fincas (id, codigo, nombre, departamento, municipio, vereda, area_hectareas, capacidad_maxima, tipo_explotacion_id, activo) VALUES
       ('finca-esperanza', 'GAN001', 'La Esperanza', 'Antioquia', 'Medellín', 'La Verde', 50, 200, 'exp-doble', 1),
@@ -283,7 +283,13 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
       `
     }
   }
+}
 
+// =====================================================================
+// NIVEL 2 — DEMO
+// =====================================================================
+
+async function seedDemo(sql: ReturnType<typeof postgres>) {
   // Usuarios
   await sql`
     INSERT INTO usuarios (id, nombre, email, email_verificado, activo) VALUES
@@ -436,9 +442,9 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
   // Productos sanitarios
   await sql`
     INSERT INTO productos_sanitarios (id, finca_id, codigo, descripcion, ml_mg_por_dosis, tipo_tratamiento, precio_dosis, activo) VALUES
-      ('prod-esp-aftosa',  'finca-esperanza', 'VAC-AFTOSA',   'Vacuna fiebre aftosa',      2, 'vacuna',          3500, true),
-      ('prod-esp-brucela', 'finca-esperanza', 'VAC-BRUCELA',  'Vacuna brucelosis (Cepa 19)', 2, 'vacuna',          4200, true),
-      ('prod-esp-iverm',   'finca-esperanza', 'IVERMECTINA',  'Ivermectina 1%',             1, 'no_reproductivo', 1800, true)
+      ('prod-esp-aftosa',  'finca-esperanza', 'VAC-AFTOSA',   'Vacuna fiebre aftosa',      2, 'vacuna',          3500, 1),
+      ('prod-esp-brucela', 'finca-esperanza', 'VAC-BRUCELA',  'Vacuna brucelosis (Cepa 19)', 2, 'vacuna',          4200, 1),
+      ('prod-esp-iverm',   'finca-esperanza', 'IVERMECTINA',  'Ivermectina 1%',             1, 'no_reproductivo', 1800, 1)
     ON CONFLICT (id) DO NOTHING
   `
 

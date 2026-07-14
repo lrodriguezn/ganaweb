@@ -13,7 +13,7 @@
  * the schema to a long-lived dev PG without writing a migration).
  *
  * DATABASE_URL is loaded lazily by `drizzle-kit` from the environment;
- * the seed script (src/seed/seed-v3.ts) loads it explicitly via dotenv
+ * the seed script (src/seed/seed.ts) loads it explicitly via dotenv
  * so `pnpm --filter @ganaweb/db seed` works without exporting env vars
  * in the developer's shell.
  */

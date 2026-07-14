@@ -5,7 +5,7 @@
  * Fases (en orden):
  *   1. `migrate` — aplica migraciones Drizzle a la DB de CI
  *      (`packages/db`).
- *   2. `seed` — corre `seed-v3.ts` (2 fincas, 0 animales por D11).
+ *   2. `seed` — corre `seed.ts` (2 fincas base + datos de sistema).
  *   3. `dev` — arranca el dev server de TanStack Start en background.
  *   4. `probe` — hace GET a `/api/health` y valida la respuesta.
  *   5. `cleanup` — mata el dev server y sale con código 0/1.
