@@ -144,6 +144,34 @@ function hasAnimalPermission(
   )
 }
 
+function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
+  codigo: string
+  nombre: string
+  sexoKey: 0 | 1 | 2
+} {
+  return {
+    codigo: datos.codigo,
+    nombre: datos.nombre,
+    sexoKey: datos.sexoKey,
+  }
+}
+
+function hasSplitUbicacion(datos: CreateAnimalWebInput["datos"]): boolean {
+  return datos.potreroId !== undefined || datos.sectorId !== undefined || datos.loteId !== undefined
+}
+
+function buildUbicacionInicial(datos: CreateAnimalWebInput["datos"]): {
+  potreroId?: string
+  sectorId?: string
+  loteId?: string
+} {
+  return {
+    ...(datos.potreroId !== undefined ? { potreroId: datos.potreroId } : {}),
+    ...(datos.sectorId !== undefined ? { sectorId: datos.sectorId } : {}),
+    ...(datos.loteId !== undefined ? { loteId: datos.loteId } : {}),
+  }
+}
+
 export function resolveAnimalPermissions(session: SesionAutorizada): AnimalRoutePermissions {
   return {
     canView: hasAnimalPermission(session, "ver"),
@@ -294,29 +322,11 @@ export function createAnimalActionHarness({ deps, getSession }: AnimalActionHarn
       const denied = denyAnimalRouteAccess(session, input.fincaId, "crear")
       if (denied) return denied
 
-      // The web input carries potreroId/sectorId/loteId/grupoId inside `datos`
-      // for round-trip convenience (the route mapper preserves them verbatim),
-      // but the use case contract expects the top-level `ubicacionInicial`
-      // field. grupoId is intentionally NOT forwarded: the use case has no
-      // contract for groups in the initial location and we must not invent
-      // schema here.
-      const { potreroId, sectorId, loteId } = input.datos
-      const hasUbicacion = potreroId !== undefined || sectorId !== undefined || loteId !== undefined
       return crearAnimal(deps)({
         sesion: toAnimalSession(session),
-        datos: {
-          codigo: input.datos.codigo,
-          nombre: input.datos.nombre,
-          sexoKey: input.datos.sexoKey,
-        },
-        ...(hasUbicacion
-          ? {
-              ubicacionInicial: {
-                ...(potreroId !== undefined ? { potreroId } : {}),
-                ...(sectorId !== undefined ? { sectorId } : {}),
-                ...(loteId !== undefined ? { loteId } : {}),
-              },
-            }
+        datos: pickCreateAnimalDatos(input.datos),
+        ...(hasSplitUbicacion(input.datos)
+          ? { ubicacionInicial: buildUbicacionInicial(input.datos) }
           : {}),
         ...(input.imagenes ? { imagenes: input.imagenes } : {}),
       })
