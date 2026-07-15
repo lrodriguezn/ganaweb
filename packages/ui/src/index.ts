@@ -35,9 +35,11 @@ export {
   AnimalTimeline,
 } from "./ganado/animal-crud"
 export type {
+  AnimalCurrentLocation,
   AnimalFichaDesktopScreenProps,
   AnimalFichaMobileScreenProps,
   AnimalFormCatalogOptions,
+  AnimalFormInitialValues,
   AnimalFormScreenProps,
   AnimalGalleryProps,
   AnimalGenealogyNode,
@@ -126,6 +128,13 @@ export {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./primitives/collapsible"
+export { ComboboxBuscable } from "./primitives/combobox-buscable"
+export type {
+  ComboboxBuscableProps,
+  ComboboxOption,
+} from "./primitives/combobox-buscable"
+export { DatePicker } from "./primitives/date-picker"
+export type { DatePickerProps } from "./primitives/date-picker"
 export {
   Drawer,
   DrawerClose,
@@ -157,6 +166,11 @@ export {
 } from "./primitives/dropdown-menu"
 export { Input } from "./primitives/input"
 export { Label } from "./primitives/label"
+export { PillsSegmentadas } from "./primitives/pills-segmentadas"
+export type {
+  PillsOption,
+  PillsSegmentadasProps,
+} from "./primitives/pills-segmentadas"
 export {
   Select,
   SelectContent,
@@ -169,3 +183,5 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./primitives/select"
+export { SelectConCreacion } from "./primitives/select-con-creacion"
+export type { SelectConCreacionProps } from "./primitives/select-con-creacion"
