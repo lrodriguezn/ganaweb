@@ -606,10 +606,7 @@ async function testActionForwardsValidacionErrores() {
   // Source-level pin: the createAnimalAction handler at animal-actions.ts must return
   // the full harness result, not a narrowed `{ tipo: result.tipo }` shape that would
   // drop the errores array before the route can read it.
-  const actionSource = await readFile(
-    join(WEB_ROOT, "src", "server", "animal-actions.ts"),
-    "utf8",
-  )
+  const actionSource = await readFile(join(WEB_ROOT, "src", "server", "animal-actions.ts"), "utf8")
   assert.ok(
     !actionSource.includes("return { tipo: result.tipo }"),
     "createAnimalAction must not narrow the harness result — it drops the errores field",
@@ -628,10 +625,7 @@ async function testActionE2eFastPathReturnsCreatedOnly() {
   // Source-level pin: the e2e fast-path (when isAnimalE2eEnabled() is true) must return
   // exactly { tipo: "creado" as const } with no errores key, so the e2e path is never
   // confused with a validacion result.
-  const actionSource = await readFile(
-    join(WEB_ROOT, "src", "server", "animal-actions.ts"),
-    "utf8",
-  )
+  const actionSource = await readFile(join(WEB_ROOT, "src", "server", "animal-actions.ts"), "utf8")
   assert.ok(
     actionSource.includes('return { tipo: "creado" as const }'),
     'e2e fast-path must return exactly { tipo: "creado" as const } with no errores key',
@@ -707,7 +701,9 @@ async function testRouteBranchesOnResultTipo() {
   // awaited inside a try/catch that swallows the rejection and leaves fieldErrors
   // untouched (banner is out of scope per design.md).
   assert.ok(
-    /catch\s*\{/.test(createRoute) || /catch\s*\(\s*_/.test(createRoute) || /catch\s*\(\s*\)/.test(createRoute),
+    /catch\s*\{/.test(createRoute) ||
+      /catch\s*\(\s*_/.test(createRoute) ||
+      /catch\s*\(\s*\)/.test(createRoute),
     "create route must catch the action rejection so a thrown error keeps the form mounted and does not navigate",
   )
   // After the catch, there must be no window.location.assign before the catch's closing
