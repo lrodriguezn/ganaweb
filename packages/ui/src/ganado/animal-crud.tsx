@@ -1,22 +1,32 @@
 "use client"
 
+import * as PopoverPrimitive from "@radix-ui/react-popover"
+import { format, parseISO, subYears } from "date-fns"
+import { es } from "date-fns/locale"
 import {
   AlertTriangle,
   Baby,
+  Calculator,
   Camera,
   ChevronRight,
   ImagePlus,
   PawPrint,
   Plus,
   Search,
+  X,
 } from "lucide-react"
+import { useId, useState } from "react"
 import type * as React from "react"
 
 import { cn } from "../lib/utils"
 import { Button } from "../primitives/button"
+import { ComboboxBuscable, type ComboboxOption } from "../primitives/combobox-buscable"
+import { DatePicker } from "../primitives/date-picker"
 import { Input } from "../primitives/input"
 import { Label } from "../primitives/label"
+import { type PillsOption, PillsSegmentadas } from "../primitives/pills-segmentadas"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../primitives/select"
+import { SelectConCreacion } from "../primitives/select-con-creacion"
 import { BottomNav } from "./bottom-nav"
 import { EmptyState } from "./empty-state"
 import { CategoriaBadge, EstadoAnimalBadge, EstadoBadge, SaludBadge } from "./estado-badge"
@@ -498,27 +508,81 @@ export interface AnimalFormScreenProps {
   initialValues?: AnimalFormInitialValues
   catalogOptions?: AnimalFormCatalogOptions
   currentLocation?: AnimalCurrentLocation
+  fieldErrors?: Record<string, string>
+  /**
+   * PR 2a (CA-UI-006): while the create/edit action is in flight the submit
+   * button must display "Guardando…" and be disabled. Width must be preserved
+   * to avoid layout shift between the two labels.
+   */
+  isSubmitting?: boolean
+  /**
+   * PR 2a (CA-UI-007): fired when the user toggles the origen pill. The form
+   * already discards the abandoned block's typed values via `key={origen}`,
+   * but the route can react to mount/unmount here.
+   */
+  onOrigenChange?: (origen: OrigenKey) => void
+  /**
+   * PR 2a (CA-CRE-003): the animal being edited. Passed to the madre / padre
+   * Comboboxes as `excludedIds` so the animal cannot be set as its own parent.
+   */
+  currentAnimalId?: string
 }
 
-export type AnimalFormVariant = "create" | "edit"
+export type AnimalFormVariant = "create" | "edit" | "delete"
 export type SexoKey = 0 | 1 | 2
+export type OrigenKey = "nacido_en_finca" | "comprado"
 
 export interface SelectOption {
   value: string
   label: string
 }
 
+/**
+ * Catalog option shape for selectors that may carry extra metadata (e.g. a
+ * hex swatch for `color`). The form-level `SelectOptionWithCreate` widens
+ * the base `SelectOption` so the type stays compatible with the v1.3
+ * `SelectConCreacion` primitive that accepts plain `SelectOption[]`.
+ */
+export interface SelectOptionWithCreate extends SelectOption {
+  readonly meta?: { readonly hex?: string }
+}
+
+export interface CanCreateCatalog {
+  readonly raza?: boolean
+  readonly color?: boolean
+  readonly lugarCompra?: boolean
+  readonly calidad?: boolean
+}
+
 export interface AnimalFormCatalogOptions {
   origen?: readonly SelectOption[]
+  raza?: readonly SelectOptionWithCreate[]
+  color?: readonly SelectOptionWithCreate[]
+  calidad?: readonly SelectOption[]
+  lugarCompra?: readonly SelectOptionWithCreate[]
+  madre?: readonly ComboboxOption[]
+  padre?: readonly ComboboxOption[]
   potrero?: readonly SelectOption[]
   sector?: readonly SelectOption[]
   lote?: readonly SelectOption[]
   grupo?: readonly SelectOption[]
+  canCreateCatalog?: CanCreateCatalog
 }
 
 export interface AnimalFormInitialValues {
   sexoKey?: SexoKey
   origen?: string
+  fechaNacimiento?: string
+  fechaCompra?: string
+  razaId?: string
+  colorId?: string
+  calidadId?: string
+  lugarCompraId?: string
+  madreId?: string
+  padreId?: string
+  precioCompra?: string
+  pesoCompra?: string
+  comentarios?: string
   potreroId?: string
   sectorId?: string
   loteId?: string
@@ -545,6 +609,18 @@ const SEXO_OPTIONS: readonly SelectOption[] = [
   { value: "2", label: "Pajuela" },
 ]
 
+const ORIGEN_OPTIONS: readonly { value: OrigenKey; label: string }[] = [
+  { value: "nacido_en_finca", label: "Nacido en finca" },
+  { value: "comprado", label: "Comprado" },
+]
+
+/**
+ * FORM_FIELDS is the static, mode-independent field list. PR 2a moved
+ * `madre` and `padre` out of this list — they live in the conditional
+ * parents block (rendered when `origen === "nacido_en_finca"`). The
+ * purchase block (rendered when `origen === "comprado"`) is also
+ * outside this list; both blocks are wired in `AnimalFormScreen`.
+ */
 const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Código *", name: "codigo", required: true },
   { label: "Nombre", name: "nombre", required: true },
@@ -555,8 +631,6 @@ const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Color", name: "color" },
   { label: "Calidad", name: "calidad" },
   { label: "Origen", name: "origen" },
-  { label: "Madre", name: "madre" },
-  { label: "Padre", name: "padre" },
 ]
 
 const LOCATION_FIELDS: readonly (AnimalFormField & {
@@ -576,8 +650,47 @@ export function AnimalFormScreen({
   initialValues,
   catalogOptions,
   currentLocation,
+  fieldErrors,
+  isSubmitting = false,
+  onOrigenChange,
+  currentAnimalId,
 }: AnimalFormScreenProps) {
   const mobile = mode === "mobile"
+  // PR 2a: the form is fully controlled for the v1.3 fields that drive
+  // conditional rendering (`origen`) or require post-action state changes
+  // (the `Estimar por edad` shortcut must append `[fecha estimada]` to
+  // `comentarios`). All other fields stay uncontrolled — they read from
+  // the hidden native inputs the primitives already serialise.
+  const initialOrigen: OrigenKey =
+    initialValues?.origen === "comprado" ? "comprado" : "nacido_en_finca"
+  const [origen, setOrigen] = useState<OrigenKey>(initialOrigen)
+  // PR 2a (CA-UI-007): a flip counter ensures the conditional block's
+  // `key` changes on every flip, so React re-mounts the block and the
+  // abandoned uncontrolled inputs revert to their `defaultValue`.
+  const [origenFlipCount, setOrigenFlipCount] = useState(0)
+  const [fechaNacimiento, setFechaNacimiento] = useState<string>(
+    initialValues?.fechaNacimiento ?? "",
+  )
+  const [comentarios, setComentarios] = useState<string>(initialValues?.comentarios ?? "")
+
+  // Bifurcation: if the caller provided a custom `catalogOptions.origen`
+  // (e.g. a non-spec list like the PR 3 fixture shipped), render the
+  // origen as a labeled combobox for backwards compat. Otherwise render
+  // it as the v1.3 `PillsSegmentadas` (radiogroup, 2 options).
+  const useComboboxOrigen = catalogOptions?.origen !== undefined
+
+  const handleOrigenChange = (next: string) => {
+    if (next !== "nacido_en_finca" && next !== "comprado") return
+    setOrigen(next)
+    setOrigenFlipCount((n) => n + 1)
+    onOrigenChange?.(next)
+  }
+
+  const handleEstimar = (iso: string) => {
+    setFechaNacimiento(iso)
+    setComentarios((prev) => (prev ? `${prev} [fecha estimada]` : "[fecha estimada]"))
+  }
+
   const fields = mobile
     ? FORM_FIELDS.filter((field) =>
         [
@@ -586,7 +699,6 @@ export function AnimalFormScreen({
           "Sexo",
           "Raza",
           "Fecha de nacimiento",
-          "Madre",
           "Potrero",
           "Sector",
           "Lote",
@@ -597,9 +709,11 @@ export function AnimalFormScreen({
   const formId = `animal-form-${mode}`
   const submitForm = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (isSubmitting) return
     const form = event.currentTarget
     void onSave(new FormData(form))
   }
+  const isComprado = origen === "comprado"
   return (
     <section
       data-testid={mobile ? "op-f-400233" : "op-f-400191"}
@@ -623,10 +737,82 @@ export function AnimalFormScreen({
         )}
       >
         <input type="hidden" name="versionLeida" value="1" />
-        {fields.map((field) => renderAnimalFormField(field, initialValues, catalogOptions))}
+        {fields.map((field) =>
+          renderAnimalFormField(field, {
+            initialValues,
+            catalogOptions,
+            fieldErrors,
+            origen,
+            fechaNacimiento,
+            comentarios,
+            handleOrigenChange,
+            handleEstimar,
+            useComboboxOrigen,
+            currentAnimalId,
+            setFechaNacimiento,
+            setComentarios,
+          }),
+        )}
+        {/*
+          PR 2a (CA-UI-007 + CA-CRE-002): the conditional block is keyed
+          on `origen` so flipping the pill unmounts the abandoned block.
+          Typed values in the abandoned block are discarded (their
+          hidden inputs disappear from the DOM and therefore from
+          FormData). Wrapping each branch in a `<div key={origen}>`
+          ensures both directions of the flip remount.
+        */}
+        {formVariant !== "delete" ? (
+          <div data-conditional={origen} className="col-span-full grid gap-4">
+            {isComprado ? (
+              <PurchaseBlock
+                key={`purchase-${origen}-${origenFlipCount}`}
+                initialValues={initialValues}
+                catalogOptions={catalogOptions}
+                fieldErrors={fieldErrors}
+              />
+            ) : (
+              <ParentsBlock
+                key={`parents-${origen}-${origenFlipCount}`}
+                initialValues={initialValues}
+                catalogOptions={catalogOptions}
+                fieldErrors={fieldErrors}
+                currentAnimalId={currentAnimalId}
+                showPadre={!mobile}
+              />
+            )}
+          </div>
+        ) : null}
+        {/*
+          Comentarios lives outside the conditional block so it stays
+          visible in both modes. The Estimar por edad shortcut appends
+          the `[fecha estimada]` tag here.
+        */}
+        <div className="col-span-full">
+          <Field
+            key="comentarios"
+            label="Comentarios"
+            name="comentarios"
+            value={comentarios}
+            onChange={setComentarios}
+            fieldErrors={fieldErrors}
+          />
+        </div>
         {formVariant === "create"
           ? LOCATION_FIELDS.map((field) =>
-              renderAnimalFormField(field, initialValues, catalogOptions),
+              renderAnimalFormField(field, {
+                initialValues,
+                catalogOptions,
+                fieldErrors,
+                origen,
+                fechaNacimiento,
+                comentarios,
+                handleOrigenChange,
+                handleEstimar,
+                useComboboxOrigen,
+                currentAnimalId,
+                setFechaNacimiento,
+                setComentarios,
+              }),
             )
           : renderCurrentLocation(currentLocation)}
         {mobile && (
@@ -644,21 +830,55 @@ export function AnimalFormScreen({
           )}
         >
           <p className="mr-auto text-caption text-info-600">Se sincronizará al recuperar señal</p>
-          <Button type="button" variant="secondary" onClick={onCancel}>
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button type="submit">Guardar</Button>
+          {/*
+            PR 2a (CA-UI-006): "min-w-[120px]" preserves button width when
+            the label flips between "Guardar" and "Guardando…".
+          */}
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className="min-w-[120px]"
+          >
+            {isSubmitting ? "Guardando…" : "Guardar"}
+          </Button>
         </footer>
       </form>
     </section>
   )
 }
 
-function renderAnimalFormField(
-  field: AnimalFormField,
-  initialValues?: AnimalFormInitialValues,
-  catalogOptions?: AnimalFormCatalogOptions,
-) {
+interface RenderFieldContext {
+  initialValues?: AnimalFormInitialValues | undefined
+  catalogOptions?: AnimalFormCatalogOptions | undefined
+  fieldErrors?: Record<string, string> | undefined
+  origen: OrigenKey
+  fechaNacimiento: string
+  comentarios: string
+  handleOrigenChange: (next: string) => void
+  handleEstimar: (iso: string) => void
+  useComboboxOrigen: boolean
+  currentAnimalId?: string | undefined
+  setFechaNacimiento: (value: string) => void
+  setComentarios: React.Dispatch<React.SetStateAction<string>>
+}
+
+function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const {
+    initialValues,
+    catalogOptions,
+    fieldErrors,
+    origen,
+    fechaNacimiento,
+    handleOrigenChange,
+    handleEstimar,
+    useComboboxOrigen,
+    setFechaNacimiento,
+  } = ctx
+
   if (field.name === "sexoKey") {
     return (
       <CatalogSelectField
@@ -667,18 +887,84 @@ function renderAnimalFormField(
         name={field.name}
         defaultValue={String(initialValues?.sexoKey ?? 1)}
         options={SEXO_OPTIONS}
+        fieldErrors={fieldErrors}
       />
     )
   }
 
   if (field.name === "origen") {
+    if (useComboboxOrigen) {
+      return (
+        <CatalogSelectField
+          key={field.name}
+          label={field.label}
+          name={field.name}
+          defaultValue={initialValues?.origen}
+          options={catalogOptions?.origen ?? []}
+          fieldErrors={fieldErrors}
+        />
+      )
+    }
     return (
-      <CatalogSelectField
+      <OrigenField
+        key={field.name}
+        label={field.label}
+        value={origen}
+        onChange={handleOrigenChange}
+        fieldErrors={fieldErrors}
+      />
+    )
+  }
+
+  if (field.name === "fechaNacimiento") {
+    return (
+      <FechaNacimientoField
         key={field.name}
         label={field.label}
         name={field.name}
-        defaultValue={initialValues?.origen}
-        options={catalogOptions?.origen ?? []}
+        value={fechaNacimiento}
+        onChange={setFechaNacimiento}
+        onEstimar={handleEstimar}
+        fieldErrors={fieldErrors}
+      />
+    )
+  }
+
+  if (field.name === "raza" || field.name === "color" || field.name === "calidad") {
+    return (
+      <SelectConCreacionField
+        key={field.name}
+        label={field.label}
+        name={field.name}
+        options={
+          (catalogOptions?.[field.name as "raza" | "color" | "calidad"] as
+            | readonly SelectOption[]
+            | undefined) ?? []
+        }
+        canCreate={
+          field.name === "calidad"
+            ? false
+            : (catalogOptions?.canCreateCatalog?.[field.name as "raza" | "color"] ?? false)
+        }
+        defaultValue={
+          (initialValues as Record<string, string | undefined> | undefined)?.[`${field.name}Id`] ??
+          undefined
+        }
+        fieldErrors={fieldErrors}
+      />
+    )
+  }
+
+  if (field.name === "lugarCompra") {
+    return (
+      <SelectConCreacionField
+        key={field.name}
+        label={field.label}
+        name={field.name}
+        options={catalogOptions?.lugarCompra ?? []}
+        canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
+        defaultValue={initialValues?.lugarCompraId}
+        fieldErrors={fieldErrors}
       />
     )
   }
@@ -691,12 +977,99 @@ function renderAnimalFormField(
         label={field.label}
         name={field.name}
         defaultValue={initialValues?.[field.name as keyof AnimalFormInitialValues]?.toString()}
-        options={catalogOptions?.[locationField.optionsKey] ?? []}
+        options={(catalogOptions?.[locationField.optionsKey] ?? []) as readonly SelectOption[]}
+        fieldErrors={fieldErrors}
       />
     )
   }
 
-  return <Field key={field.name} {...field} />
+  return <Field key={field.name} {...field} fieldErrors={fieldErrors} />
+}
+
+/**
+ * Purchase block — rendered when `origen === "comprado"`.
+ *
+ * CA-UI-007: when the user flips origen back to "nacido_en_finca", this
+ * entire block unmounts (the parent `<div key={origen}>` re-mounts) and
+ * every typed value is discarded.
+ */
+function PurchaseBlock({
+  initialValues,
+  catalogOptions,
+  fieldErrors,
+}: {
+  initialValues?: AnimalFormInitialValues | undefined
+  catalogOptions?: AnimalFormCatalogOptions | undefined
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  return (
+    <>
+      <FechaCompraField initialValue={initialValues?.fechaCompra ?? ""} fieldErrors={fieldErrors} />
+      <NumericField
+        label="Precio"
+        name="precioCompra"
+        defaultValue={initialValues?.precioCompra}
+        fieldErrors={fieldErrors}
+      />
+      <NumericField
+        label="Peso compra"
+        name="pesoCompra"
+        defaultValue={initialValues?.pesoCompra}
+        fieldErrors={fieldErrors}
+      />
+      <SelectConCreacionField
+        label="Lugar de compra"
+        name="lugarCompra"
+        options={catalogOptions?.lugarCompra ?? []}
+        canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
+        defaultValue={initialValues?.lugarCompraId}
+        fieldErrors={fieldErrors}
+      />
+    </>
+  )
+}
+
+/**
+ * Parents block — rendered when `origen === "nacido_en_finca"`.
+ *
+ * CA-CRE-003: `excludedIds` filters the current animal out so it cannot
+ * be set as its own parent. The mobile form omits `padre` per the
+ * existing PR 3 mobile filter.
+ */
+function ParentsBlock({
+  initialValues,
+  catalogOptions,
+  fieldErrors,
+  currentAnimalId,
+  showPadre,
+}: {
+  initialValues?: AnimalFormInitialValues | undefined
+  catalogOptions?: AnimalFormCatalogOptions | undefined
+  fieldErrors?: Record<string, string> | undefined
+  currentAnimalId?: string | undefined
+  showPadre: boolean
+}) {
+  return (
+    <>
+      <ComboboxField
+        label="Madre"
+        name="madreId"
+        options={catalogOptions?.madre ?? []}
+        defaultValue={initialValues?.madreId}
+        excludedIds={currentAnimalId ? [currentAnimalId] : []}
+        fieldErrors={fieldErrors}
+      />
+      {showPadre ? (
+        <ComboboxField
+          label="Padre"
+          name="padreId"
+          options={catalogOptions?.padre ?? []}
+          defaultValue={initialValues?.padreId}
+          fieldErrors={fieldErrors}
+        />
+      ) : null}
+    </>
+  )
 }
 
 function renderCurrentLocation(currentLocation?: AnimalCurrentLocation) {
@@ -735,13 +1108,51 @@ function Field({
   name,
   required = false,
   defaultValue,
+  value,
+  onChange,
+  fieldErrors,
 }: {
   label: string
   name: string
   required?: boolean
   defaultValue?: string
+  /**
+   * PR 2a: when supplied, the field renders as a controlled input. The
+   * `Estimar por edad` shortcut writes to `comentarios` and the spec
+   * requires the appended `[fecha estimada]` tag to round-trip through
+   * the form state, so comentarios is the first controlled field.
+   */
+  value?: string
+  onChange?: (next: string) => void
+  fieldErrors?: Record<string, string> | undefined
 }) {
   const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  const inputProps = errorMessage
+    ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
+    : {}
+  if (onChange) {
+    return (
+      <div className="space-y-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        <Input
+          id={id}
+          name={name}
+          required={required}
+          value={value ?? ""}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-h-[--h-touch]"
+          {...inputProps}
+        />
+        {errorMessage ? (
+          <p id={errorId} role="alert" className="text-caption text-danger-600">
+            {errorMessage}
+          </p>
+        ) : null}
+      </div>
+    )
+  }
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -751,7 +1162,13 @@ function Field({
         required={required}
         defaultValue={defaultValue}
         className="min-h-[--h-touch]"
+        {...inputProps}
       />
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -761,13 +1178,20 @@ function CatalogSelectField({
   name,
   defaultValue,
   options,
+  fieldErrors,
 }: {
   label: string
   name: string
   defaultValue?: string | undefined
   options: readonly SelectOption[]
+  fieldErrors?: Record<string, string> | undefined
 }) {
   const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  const triggerProps = errorMessage
+    ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
+    : {}
   const hasDefaultLabel = defaultValue
     ? options.some((option) => option.value === defaultValue)
     : false
@@ -781,7 +1205,7 @@ function CatalogSelectField({
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select {...selectProps}>
-        <SelectTrigger id={id} className="min-h-[--h-touch]">
+        <SelectTrigger id={id} className="min-h-[--h-touch]" {...triggerProps}>
           <SelectValue placeholder="No disponible" />
         </SelectTrigger>
         <SelectContent>
@@ -792,7 +1216,353 @@ function CatalogSelectField({
           ))}
         </SelectContent>
       </Select>
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
+  )
+}
+
+/**
+ * PR 2a — Origen field.
+ *
+ * The spec mandates the v1.3 control is a 2-option radio pill, but the
+ * existing PR 3 catalog fixtures still ship a custom `origen` list. To
+ * keep both contracts valid we bifurcate on whether the caller provided
+ * a non-`undefined` `catalogOptions.origen`:
+ *
+ * - Provided (even empty) → labeled combobox via `CatalogSelectField`
+ *   (preserves the existing PR 3 / CA-UI-001/003 catalog behaviour).
+ * - Undefined → `PillsSegmentadas` (the v1.3 segmented control).
+ */
+function OrigenField({
+  label,
+  value,
+  onChange,
+  fieldErrors,
+}: {
+  label: string
+  value: OrigenKey
+  onChange: (next: string) => void
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.origen
+  return (
+    <div className="space-y-1.5 col-span-full">
+      <Label htmlFor={id}>{label}</Label>
+      <PillsSegmentadas
+        id={id}
+        name="origen"
+        value={value}
+        onChange={onChange}
+        options={ORIGEN_OPTIONS as unknown as readonly [PillsOption, PillsOption]}
+        label={label}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
+      />
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * PR 2a — Fecha de nacimiento field.
+ *
+ * DatePicker for the ISO value + an inline "Estimar por edad" button
+ * that opens a tiny popover with a years input and an Aplicar action.
+ * Applying sets the ISO date on the parent and appends the
+ * `[fecha estimada]` tag to `comentarios` via `onEstimar`.
+ *
+ * The trigger button's text is the es-CO formatted date (or the
+ * `dd/mm/aaaa` placeholder). The hidden native `<input type="date">`
+ * mirrors the ISO value so FormData serialises the raw ISO.
+ */
+function FechaNacimientoField({
+  label,
+  name,
+  value,
+  onChange,
+  onEstimar,
+  fieldErrors,
+}: {
+  label: string
+  name: string
+  value: string
+  onChange: (next: string) => void
+  onEstimar: (iso: string) => void
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  return (
+    <div className="space-y-1.5 col-span-full">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="flex flex-wrap items-start gap-2">
+        <DatePicker
+          id={id}
+          name={name}
+          value={value}
+          onChange={onChange}
+          maxDate={new Date()}
+          className="flex-1 min-w-[200px]"
+          {...(errorMessage
+            ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
+            : {})}
+        />
+        <EstimarPorEdad onApply={onEstimar} />
+      </div>
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * PR 2a — Fecha de compra field.
+ *
+ * Same DatePicker contract as `FechaNacimientoField` but without the
+ * "Estimar por edad" shortcut (compra date is a known user input, not
+ * an estimated one). Renders a `Label` and the DatePicker trigger.
+ */
+function FechaCompraField({
+  initialValue,
+  fieldErrors,
+}: {
+  initialValue: string
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  const label = "Fecha de compra"
+  const name = "fechaCompra"
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <DatePicker
+        id={id}
+        name={name}
+        value={initialValue}
+        onChange={() => {
+          // uncontrolled — the hidden native input mirrors the value
+        }}
+        maxDate={new Date()}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
+      />
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * PR 2a — "Estimar por edad" popover.
+ *
+ * CA-CRE-004: this is NOT a primitive (see design.md Open Q5). It
+ * layers a Radix Popover on top of the existing DatePicker and uses
+ * the parent's `onEstimar` callback to write the ISO date and the
+ * `[fecha estimada]` tag back into form state.
+ */
+function EstimarPorEdad({ onApply }: { onApply: (iso: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [age, setAge] = useState("3")
+  const handleApply = () => {
+    const years = Number.parseInt(age, 10)
+    if (Number.isFinite(years) && years >= 0) {
+      const estimated = new Date()
+      estimated.setFullYear(estimated.getFullYear() - years)
+      onApply(format(estimated, "yyyy-MM-dd"))
+    }
+    setOpen(false)
+  }
+  return (
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+      <PopoverPrimitive.Trigger asChild>
+        <Button type="button" variant="secondary" className="min-h-[--h-touch] shrink-0">
+          <Calculator className="size-4" aria-hidden="true" />
+          Estimar por edad
+        </Button>
+      </PopoverPrimitive.Trigger>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          align="end"
+          sideOffset={6}
+          className="z-50 w-64 rounded-control border bg-popover p-3 text-popover-foreground shadow-md"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="estimar-edad-input">Años</Label>
+            <Input
+              id="estimar-edad-input"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={30}
+              value={age}
+              onChange={(event) => setAge(event.target.value)}
+              className="min-h-[--h-touch]"
+            />
+            <p className="text-caption text-muted-foreground">
+              Se calculará la fecha de nacimiento restando los años a hoy.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={handleApply}>
+                Aplicar
+              </Button>
+            </div>
+          </div>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
+  )
+}
+
+/**
+ * PR 2a — SelectConCreacion wrapper.
+ *
+ * The v1.3 catalog selectors (`raza`, `color`, `calidad`, `lugarCompra`)
+ * all share the same shape: Label + SelectConCreacion trigger + alert.
+ * `canCreate` is gated on `canCreateCatalog` from the form props.
+ */
+function SelectConCreacionField({
+  label,
+  name,
+  options,
+  canCreate,
+  defaultValue,
+  fieldErrors,
+}: {
+  label: string
+  name: string
+  options: readonly SelectOption[]
+  canCreate: boolean
+  defaultValue?: string | undefined
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  // The `SelectConCreacion` primitive uses `aria-label` for the trigger
+  // name; mirroring that to the Label text keeps
+  // `getByRole("combobox", { name: label })` and `getByLabelText`
+  // consistent for the form's consumer tests.
+  const placeholder = label
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <SelectConCreacion
+        id={id}
+        name={name}
+        options={options}
+        value={defaultValue ?? null}
+        onChange={() => {
+          // uncontrolled — the hidden native input mirrors the chosen id
+        }}
+        canCreate={canCreate}
+        placeholder={placeholder}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
+      />
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * PR 2a — ComboboxBuscable wrapper.
+ *
+ * Madre / Padre are searchable selectors (CA-CRE-003) that emit the
+ * option `id` and render rows as `código · nombre`. `excludedIds` is
+ * forwarded so the current animal cannot be its own parent.
+ */
+function ComboboxField({
+  label,
+  name,
+  options,
+  defaultValue,
+  excludedIds,
+  fieldErrors,
+}: {
+  label: string
+  name: string
+  options: readonly ComboboxOption[]
+  defaultValue?: string | undefined
+  excludedIds?: readonly string[]
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  const placeholder = label
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <ComboboxBuscable
+        id={id}
+        name={name}
+        options={options}
+        value={defaultValue ?? null}
+        onChange={() => {
+          // uncontrolled — the hidden native input mirrors the chosen id
+        }}
+        placeholder={placeholder}
+        {...(excludedIds !== undefined ? { excludedIds } : {})}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
+      />
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * PR 2a — Numeric input wrapper.
+ *
+ * `precio_compra` / `peso_compra` are free-text numeric inputs in the
+ * form (es-CO formatting is normalised in PR 2b's mapper). The label +
+ * `aria-invalid` wiring matches the other field wrappers.
+ */
+function NumericField({
+  label,
+  name,
+  defaultValue,
+  fieldErrors,
+}: {
+  label: string
+  name: string
+  defaultValue?: string | undefined
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  return (
+    <Field
+      key={name}
+      label={label}
+      name={name}
+      fieldErrors={fieldErrors}
+      {...(defaultValue !== undefined ? { defaultValue } : {})}
+    />
   )
 }
 

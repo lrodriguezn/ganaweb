@@ -54,7 +54,9 @@ async function seed() {
   log("✅ Seed completado.")
   log("  • 2 fincas base creadas (La Esperanza / Hacienda El Roble)")
   if (DEMO) {
-    log("  • admin@ganaweb.demo / Admin123! (Administradora en La Esperanza, Solo lectura en El Roble)")
+    log(
+      "  • admin@ganaweb.demo / Admin123! (Administradora en La Esperanza, Solo lectura en El Roble)",
+    )
     log("  • pedro@ganaweb.demo / Admin123! (Mayordomo en La Esperanza)")
   } else {
     log("  • Solo datos de sistema + fincas base. Para datos demo: SEED_DEMO=true")

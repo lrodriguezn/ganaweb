@@ -80,6 +80,26 @@ export interface CreateAnimalWebInput {
     readonly sectorId?: string
     readonly loteId?: string
     readonly grupoId?: string
+    /**
+     * v1.3 (PR 2b) — extended fields. The web contract mirrors the fields
+     * the form (PR 2a) emits and the dominio's `validarCreacionAnimal`
+     * accepts (color, raza, tipoIngreso, fechaNacimiento, fechaCompra,
+     * madreId, padreId). The harness's `pickCreateAnimalDatos` forwards
+     * the subset the use case can type-check; the rest are kept in the web
+     * contract for future PRs and for the form-to-datos symmetry the test
+     * exercises.
+     */
+    readonly origen?: "nacido_en_finca" | "comprado"
+    readonly fechaNacimiento?: string
+    readonly fechaCompra?: string
+    readonly razaId?: string
+    readonly colorId?: string
+    readonly calidadId?: string
+    readonly lugarCompraId?: string
+    readonly madreId?: string
+    readonly padreId?: string
+    readonly precioCompra?: number
+    readonly pesoCompra?: number
   }
   readonly imagenes?: readonly {
     readonly id: string
@@ -91,7 +111,30 @@ export interface CreateAnimalWebInput {
 export interface UpdateAnimalWebInput {
   readonly fincaId: string
   readonly animalId: string
-  readonly cambios: { readonly codigo?: string; readonly versionLeida: number }
+  readonly cambios: {
+    readonly codigo?: string
+    readonly versionLeida: number
+    /**
+     * v1.3 (PR 2b) — extended edit fields. The form emits the same 11 keys
+     * as the create form. The dominio's `actualizarAnimal` use case
+     * currently only consumes `codigo` and `versionLeida`; the remaining 9
+     * fields are kept in the web contract so the form-to-datos symmetry
+     * the v1.3 spec mandates is honest at the route boundary, and future
+     * PRs can extend the dominio without re-shaping the route. The
+     * harness's `pickUpdateAnimalCambios` drops them at the boundary.
+     */
+    readonly origen?: "nacido_en_finca" | "comprado"
+    readonly fechaNacimiento?: string
+    readonly fechaCompra?: string
+    readonly razaId?: string
+    readonly colorId?: string
+    readonly calidadId?: string
+    readonly lugarCompraId?: string
+    readonly madreId?: string
+    readonly padreId?: string
+    readonly precioCompra?: number
+    readonly pesoCompra?: number
+  }
 }
 
 interface AnimalIdWebInput {
@@ -148,11 +191,43 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   codigo: string
   nombre: string
   sexoKey: 0 | 1 | 2
+  tipoIngreso?: "nacido_en_finca" | "comprado"
+  fechaNacimiento?: Date | null
+  fechaCompra?: Date | null
+  color?: string | null
+  raza?: string | null
+  madreId?: string | null
+  padreId?: string | null
 } {
   return {
     codigo: datos.codigo,
     nombre: datos.nombre,
     sexoKey: datos.sexoKey,
+    ...(datos.origen ? { tipoIngreso: datos.origen } : {}),
+    ...(datos.fechaNacimiento ? { fechaNacimiento: new Date(datos.fechaNacimiento) } : {}),
+    ...(datos.fechaCompra ? { fechaCompra: new Date(datos.fechaCompra) } : {}),
+    ...(datos.razaId ? { raza: datos.razaId } : {}),
+    ...(datos.colorId ? { color: datos.colorId } : {}),
+    ...(datos.madreId ? { madreId: datos.madreId } : {}),
+    ...(datos.padreId ? { padreId: datos.padreId } : {}),
+  }
+}
+
+/**
+ * v1.3 (PR 2b): narrow the wider `UpdateAnimalWebInput.cambios` contract
+ * down to the 2 fields the dominio's `actualizarAnimal` use case
+ * currently consumes (`codigo` and `versionLeida`). The remaining 9
+ * v1.3 fields stay in the web contract for the form-to-datos symmetry
+ * the spec mandates; a future PR will extend the dominio to accept
+ * them. Mirrors the create route's `pickCreateAnimalDatos` pattern.
+ */
+function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
+  readonly codigo?: string
+  readonly versionLeida: number
+} {
+  return {
+    versionLeida: cambios.versionLeida,
+    ...(cambios.codigo ? { codigo: cambios.codigo } : {}),
   }
 }
 
@@ -344,7 +419,7 @@ export function createAnimalActionHarness({ deps, getSession }: AnimalActionHarn
       return actualizarAnimal(deps)({
         sesion: toAnimalSession(session),
         animalId: input.animalId,
-        cambios: input.cambios,
+        cambios: pickUpdateAnimalCambios(input.cambios),
       })
     },
 
