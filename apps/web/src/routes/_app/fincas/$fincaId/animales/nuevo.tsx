@@ -88,6 +88,10 @@ export function buildCreateAnimalFieldErrors(errores: unknown): Record<string, s
 
 function NewAnimalRoute() {
   const { fincaId } = Route.useParams()
+  return <NewAnimalRouteView fincaId={fincaId} />
+}
+
+export function NewAnimalRouteView({ fincaId }: { readonly fincaId: string }) {
   // Demo catalog source. Migrate to a per-finca loader when the
   // master-data tables (origen/potrero/sector/lote/grupo) are wired
   // through a real server function.

@@ -749,7 +749,7 @@ function Field({
   name: string
   required?: boolean
   defaultValue?: string
-  fieldErrors?: Record<string, string>
+  fieldErrors?: Record<string, string> | undefined
 }) {
   const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
   const errorId = `${id}-error`
@@ -788,7 +788,7 @@ function CatalogSelectField({
   name: string
   defaultValue?: string | undefined
   options: readonly SelectOption[]
-  fieldErrors?: Record<string, string>
+  fieldErrors?: Record<string, string> | undefined
 }) {
   const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
   const errorId = `${id}-error`
