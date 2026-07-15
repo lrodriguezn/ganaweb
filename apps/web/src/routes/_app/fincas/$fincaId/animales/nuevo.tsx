@@ -5,14 +5,29 @@ import { useState } from "react"
 import { AnimalFormScreen } from "@ganaweb/ui"
 import { createFileRoute } from "@tanstack/react-router"
 import { getAnimalFormCatalogOptions } from "../../../../../lib/fixtures/animal-form-catalog.js"
+import { parseEsCONumber } from "../../../../../lib/parsers/es-co-number.js"
 import {
   type CreateAnimalWebInput,
   createAnimalAction,
 } from "../../../../../server/animal-actions.js"
+import { Route as AppRoute } from "../../../../_app.js"
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/nuevo")({
   component: NewAnimalRoute,
 })
+
+/**
+ * CA-UI-002: the "+ Crear nuevo" affordance on Raza / Color / Lugar de
+ * compra is gated on the user having `configuracion:crear`. Calidad
+ * never exposes the affordance per the v1.3 spec.
+ */
+function hasConfiguracionCrear(
+  permisos: readonly { readonly modulo: string; readonly accion: string }[],
+): boolean {
+  return permisos.some(
+    (permiso) => permiso.modulo === "configuracion" && permiso.accion === "crear",
+  )
+}
 
 function requiredText(formData: FormData, name: string): string {
   const value = formData.get(name)
@@ -30,6 +45,12 @@ function parseSexoKey(value: FormDataEntryValue | null): 0 | 1 | 2 {
   return 1
 }
 
+function parseOrigen(value: FormDataEntryValue | null): "nacido_en_finca" | "comprado" | undefined {
+  if (value === "nacido_en_finca") return "nacido_en_finca"
+  if (value === "comprado") return "comprado"
+  return undefined
+}
+
 export function buildCreateAnimalInputFromFormData(
   fincaId: string,
   formData: FormData,
@@ -38,6 +59,17 @@ export function buildCreateAnimalInputFromFormData(
   const sectorId = optionalText(formData, "sectorId")
   const loteId = optionalText(formData, "loteId")
   const grupoId = optionalText(formData, "grupoId")
+  const origen = parseOrigen(formData.get("origen"))
+  const fechaNacimiento = optionalText(formData, "fechaNacimiento")
+  const fechaCompra = optionalText(formData, "fechaCompra")
+  const razaId = optionalText(formData, "raza")
+  const colorId = optionalText(formData, "color")
+  const calidadId = optionalText(formData, "calidad")
+  const lugarCompraId = optionalText(formData, "lugarCompra")
+  const madreId = optionalText(formData, "madreId")
+  const padreId = optionalText(formData, "padreId")
+  const precioCompra = parseEsCONumber(formData.get("precioCompra"))
+  const pesoCompra = parseEsCONumber(formData.get("pesoCompra"))
 
   return {
     fincaId,
@@ -49,6 +81,17 @@ export function buildCreateAnimalInputFromFormData(
       ...(sectorId ? { sectorId } : {}),
       ...(loteId ? { loteId } : {}),
       ...(grupoId ? { grupoId } : {}),
+      ...(origen ? { origen } : {}),
+      ...(fechaNacimiento ? { fechaNacimiento } : {}),
+      ...(fechaCompra ? { fechaCompra } : {}),
+      ...(razaId ? { razaId } : {}),
+      ...(colorId ? { colorId } : {}),
+      ...(calidadId ? { calidadId } : {}),
+      ...(lugarCompraId ? { lugarCompraId } : {}),
+      ...(madreId ? { madreId } : {}),
+      ...(padreId ? { padreId } : {}),
+      ...(precioCompra !== undefined ? { precioCompra } : {}),
+      ...(pesoCompra !== undefined ? { pesoCompra } : {}),
     },
   }
 }
@@ -58,9 +101,15 @@ const CAMPO_TO_FIELD_KEY: Record<string, string> = {
   nombre: "nombre",
   sexo_key: "sexoKey",
   fecha_nacimiento: "fechaNacimiento",
-  // fecha_compra intentionally absent — R1: no fechaCompra form field, drop per spec line 32.
+  fecha_compra: "fechaCompra",
   madre_id: "madre",
   padre_id: "padre",
+  raza: "raza",
+  color: "color",
+  calidad: "calidad",
+  lugar_compra: "lugarCompra",
+  precio_compra: "precioCompra",
+  peso_compra: "pesoCompra",
 }
 
 /**
@@ -91,11 +140,41 @@ function NewAnimalRoute() {
   return <NewAnimalRouteView fincaId={fincaId} />
 }
 
+/**
+ * Read the parent `_app` route context to gate `+ Crear nuevo` on
+ * `configuracion:crear`. Wrapped in try/catch so a unit-test render
+ * without a `<RouterProvider>` (e.g. `apps/web/tests/animal-create-e2e`)
+ * falls back to "all false" instead of crashing the component tree.
+ */
+function readCanCreateCatalog(): boolean {
+  try {
+    const { sesion } = AppRoute.useRouteContext()
+    return hasConfiguracionCrear(sesion.permisos)
+  } catch {
+    return false
+  }
+}
+
 export function NewAnimalRouteView({ fincaId }: { readonly fincaId: string }) {
   // Demo catalog source. Migrate to a per-finca loader when the
   // master-data tables (origen/potrero/sector/lote/grupo) are wired
   // through a real server function.
   const catalogOptions = getAnimalFormCatalogOptions()
+  // The "+ Crear nuevo" affordance on Raza / Color / Lugar de compra is
+  // gated on the user having `configuracion:crear`. The parent `_app` route
+  // resolves the session in its `beforeLoad`; the canCreateCatalog default
+  // stays "all false" so a misconfigured parent never accidentally grants
+  // catalog creation. A real loader would read this from the session.
+  const canCreateCatalog = readCanCreateCatalog()
+  const catalogOptionsConPermisos: typeof catalogOptions = {
+    ...catalogOptions,
+    canCreateCatalog: {
+      raza: canCreateCatalog,
+      color: canCreateCatalog,
+      calidad: false,
+      lugarCompra: canCreateCatalog,
+    },
+  }
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const save = async (formData: FormData) => {
     try {
@@ -127,7 +206,7 @@ export function NewAnimalRouteView({ fincaId }: { readonly fincaId: string }) {
         <AnimalFormScreen
           mode="desktop"
           formVariant="create"
-          catalogOptions={catalogOptions}
+          catalogOptions={catalogOptionsConPermisos}
           fieldErrors={fieldErrors}
           onSave={save}
           onCancel={() => history.back()}
@@ -137,7 +216,7 @@ export function NewAnimalRouteView({ fincaId }: { readonly fincaId: string }) {
         <AnimalFormScreen
           mode="mobile"
           formVariant="create"
-          catalogOptions={catalogOptions}
+          catalogOptions={catalogOptionsConPermisos}
           fieldErrors={fieldErrors}
           onSave={save}
           onCancel={() => history.back()}

@@ -165,6 +165,20 @@ interface CrearAnimalCommand {
     readonly codigo: string
     readonly nombre: string
     readonly sexoKey: 0 | 1 | 2
+    /**
+     * v1.3 (PR 2b) — extended fields. The web mapper carries the raw form
+     * payload; this use-case command is the typed surface the dominio's
+     * `validarCreacionAnimal` expects. `fechaNacimiento` / `fechaCompra`
+     * are normalized to `Date` here so the dominio's nullable-Date fields
+     * stay honest.
+     */
+    readonly tipoIngreso?: "nacido_en_finca" | "comprado"
+    readonly fechaNacimiento?: Date | null
+    readonly fechaCompra?: Date | null
+    readonly color?: string | null
+    readonly raza?: string | null
+    readonly madreId?: string | null
+    readonly padreId?: string | null
   }
   readonly imagenes?: readonly {
     readonly id: string
