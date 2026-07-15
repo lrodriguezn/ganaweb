@@ -45,6 +45,48 @@ interface AttachAnimalImageWebInput extends AnimalIdWebInput {
   }
 }
 
+/**
+ * Serializable surface of `harness.create()` — the harness's internal union
+ * includes `{ tipo: "validacion"; errores: unknown }` (see
+ * `packages/aplicacion/src/casos-uso/animales/index.ts:359`), and `unknown` is
+ * not serializable across TanStack Start's `createServerFn` boundary. This local
+ * type mirrors the actual JSON-serializable shape: `errores` is always an array
+ * of `{ campo, detalle, regla? }` from the dominio use case's
+ * `ErrorValidacionAnimal`. Declared here because the web package is forbidden
+ * from importing `packages/dominio` directly (dependency-cruiser).
+ */
+export type CreateAnimalServerResult =
+  | { readonly tipo: "no_autenticado" }
+  | { readonly tipo: "finca_no_autorizada" }
+  | { readonly tipo: "no_autorizado" }
+  | {
+      readonly tipo: "permiso_denegado"
+      readonly permiso:
+        | "animales:ver"
+        | "animales:crear"
+        | "animales:editar"
+        | "animales:inactivar"
+        | "animales:eliminar"
+    }
+  | {
+      readonly tipo: "creado"
+      readonly animalId: string
+      readonly imagenes?: readonly {
+        readonly id: string
+        readonly blobId: string
+        readonly estadoSubida: "pendiente"
+      }[]
+    }
+  | {
+      readonly tipo: "validacion"
+      readonly errores: readonly {
+        readonly campo: string
+        readonly detalle: string
+        readonly regla?: string
+      }[]
+    }
+  | { readonly tipo: "transaccion_fallida"; readonly razon: string }
+
 async function getRuntimeHarness() {
   const { createAnimalRuntimeHarness } = await import("./animal-actions.server.js")
   return createAnimalRuntimeHarness()
@@ -74,7 +116,7 @@ export const createAnimalAction = createServerFn({ method: "POST" })
       return { tipo: "creado" as const }
     }
 
-    const result = await (await getRuntimeHarness()).create(data)
+    const result = (await (await getRuntimeHarness()).create(data)) as CreateAnimalServerResult
     return result
   })
 
