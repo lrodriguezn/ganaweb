@@ -4,6 +4,7 @@ import { es } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "lucide-react"
 import * as React from "react"
 import { DayPicker } from "react-day-picker"
+import "react-day-picker/style.css"
 
 import { cn } from "../lib/utils"
 import { Button } from "./button"
@@ -17,6 +18,18 @@ import { Button } from "./button"
  *
  * RN-002: any day after `maxDate` (default = today) is disabled in the
  * day grid; the trigger also has `max` on the native fallback input.
+ *
+ * **CSS dependency:** this primitive imports `react-day-picker/style.css`
+ * at the top of the file so the calendar grid is styled when the
+ * consumer renders `<DatePicker />`. The CSS ships as part of the
+ * `@ganaweb/ui` bundle (via tsup) and is injected once when the
+ * consumer imports the primitive. **Consumers MUST NOT import the CSS
+ * themselves** — that would create duplicate selectors.
+ *
+ * **Test runner note:** the `tsx`-based unit tests in `apps/web` need a
+ * Node loader that ignores CSS imports, otherwise the runtime
+ * chokes on `react-day-picker/style.css`. The loader is wired in
+ * `apps/web/package.json` (or via `node --import`).
  */
 
 function toIsoDate(date: Date | null | undefined): string {

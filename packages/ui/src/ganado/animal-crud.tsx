@@ -723,7 +723,7 @@ export function AnimalFormScreen({
       <header
         className={cn(
           "h-14 border-b bg-card px-4 flex items-center",
-          !mobile && "rounded-t-card border",
+          !mobile && "max-w-3xl mx-auto rounded-t-card border w-full",
         )}
       >
         <h1 className="text-title font-semibold">Nuevo animal</h1>
@@ -733,7 +733,7 @@ export function AnimalFormScreen({
         onSubmit={submitForm}
         className={cn(
           "bg-card border-x p-4 grid gap-4",
-          mobile ? "pb-28" : "max-w-3xl mx-auto grid-cols-2 border rounded-b-card",
+          mobile ? "pb-28" : "max-w-3xl mx-auto grid-cols-2 border rounded-b-card w-full",
         )}
       >
         <input type="hidden" name="versionLeida" value="1" />
