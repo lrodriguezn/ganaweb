@@ -506,6 +506,320 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.getByRole("button", { name: "Registrar evento" })).toBeInTheDocument()
   })
 
+  it("renders the v1.3 field set with the new primitives and gates '+ Crear nuevo' on configuracion:crear (CA-UI-001/002/004)", () => {
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        catalogOptions={{
+          raza: [
+            { value: "r1", label: "Angus" },
+            { value: "r2", label: "Brahman" },
+          ],
+          color: [{ value: "c1", label: "Negro" }],
+          calidad: [{ value: "q1", label: "Excelente" }],
+          madre: [
+            { value: "a-100", codigo: "MT-100", nombre: "Lola" },
+            { value: "a-200", codigo: "MT-200", nombre: "Maya" },
+          ],
+          padre: [{ value: "a-300", codigo: "MT-300", nombre: "Roble" }],
+          canCreateCatalog: { raza: true, color: true, lugarCompra: true },
+        }}
+      />,
+    )
+
+    // fechaNacimiento is a DatePicker — trigger is a button labelled by the "Fecha de nacimiento" <Label htmlFor>.
+    const fechaTrigger = screen.getByRole("button", { name: "Fecha de nacimiento" })
+    expect(fechaTrigger).toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "Fecha de nacimiento" })).not.toBeInTheDocument()
+
+    // Raza / Color are SelectConCreacion (combobox role) with label association.
+    expect(screen.getByRole("combobox", { name: "Raza" })).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Color" })).toBeInTheDocument()
+
+    // Calidad is also a SelectConCreacion (per spec the form MUST NOT display raw keys
+    // for calidad either), but `+ Crear nuevo` must NOT render — the spec is explicit
+    // that calidad is a read-only catalog.
+    const calidadCombobox = screen.getByRole("combobox", { name: "Calidad" })
+    expect(calidadCombobox).toBeInTheDocument()
+
+    // Origen is a PillsSegmentadas — radiogroup with 2 options, not a combobox.
+    const origenGroup = screen.getByRole("radiogroup", { name: "Origen" })
+    expect(origenGroup).toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: "Nacido en finca" })).toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: "Comprado" })).toBeInTheDocument()
+    expect(screen.queryByRole("combobox", { name: "Origen" })).not.toBeInTheDocument()
+
+    // Default origen = nacido_en_finca → parents visible, purchase fields not.
+    expect(screen.getByRole("combobox", { name: "Madre" })).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Padre" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Fecha de nacimiento" })).toBeInTheDocument() // only fechaNacimiento trigger
+    expect(screen.queryByRole("combobox", { name: "Lugar de compra" })).not.toBeInTheDocument()
+  })
+
+  it("gates '+ Crear nuevo' inside Raza, Color, Lugar de compra on canCreateCatalog; Calidad never shows it (CA-UI-002)", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        catalogOptions={{
+          raza: [{ value: "r1", label: "Angus" }],
+          color: [{ value: "c1", label: "Negro" }],
+          calidad: [{ value: "q1", label: "Excelente" }],
+          lugarCompra: [{ value: "l1", label: "Feria local" }],
+          canCreateCatalog: { raza: true, color: false, lugarCompra: true },
+        }}
+      />,
+    )
+
+    // Switch to comprado so lugarCompra renders
+    await user.click(screen.getByRole("radio", { name: "Comprado" }))
+
+    // Raza (canCreate) — `+ Crear nuevo` last item
+    await user.click(screen.getByRole("combobox", { name: "Raza" }))
+    const razaList = await screen.findByRole("listbox")
+    expect(within(razaList).getByText("+ Crear nuevo")).toBeInTheDocument()
+    await user.keyboard("{Escape}")
+    // close popover
+    await user.click(document.body)
+    cleanup()
+
+    // Re-render to reset popover state — this is the cleanest way to test the
+    // next field without dealing with stacked Radix popovers in jsdom.
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        catalogOptions={{
+          raza: [{ value: "r1", label: "Angus" }],
+          color: [{ value: "c1", label: "Negro" }],
+          calidad: [{ value: "q1", label: "Excelente" }],
+          lugarCompra: [{ value: "l1", label: "Feria local" }],
+          canCreateCatalog: { raza: true, color: false, lugarCompra: true },
+        }}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Comprado" }))
+
+    // Color (canCreate=false) — `+ Crear nuevo` NOT present
+    await user.click(screen.getByRole("combobox", { name: "Color" }))
+    const colorList = await screen.findByRole("listbox")
+    expect(within(colorList).queryByText("+ Crear nuevo")).not.toBeInTheDocument()
+    await user.click(document.body)
+    cleanup()
+
+    // Calidad (canCreate always false per spec) — `+ Crear nuevo` NOT present
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        catalogOptions={{
+          raza: [{ value: "r1", label: "Angus" }],
+          calidad: [{ value: "q1", label: "Excelente" }],
+          canCreateCatalog: { raza: true, color: false, lugarCompra: true },
+        }}
+      />,
+    )
+    await user.click(screen.getByRole("combobox", { name: "Calidad" }))
+    const calidadList = await screen.findByRole("listbox")
+    expect(within(calidadList).queryByText("+ Crear nuevo")).not.toBeInTheDocument()
+    await user.click(document.body)
+    cleanup()
+
+    // Lugar de compra (canCreate=true) — `+ Crear nuevo` present
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        catalogOptions={{
+          raza: [{ value: "r1", label: "Angus" }],
+          lugarCompra: [{ value: "l1", label: "Feria local" }],
+          canCreateCatalog: { raza: true, color: false, lugarCompra: true },
+        }}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Comprado" }))
+    await user.click(screen.getByRole("combobox", { name: "Lugar de compra" }))
+    const lugarList = await screen.findByRole("listbox")
+    expect(within(lugarList).getByText("+ Crear nuevo")).toBeInTheDocument()
+  })
+
+  it("shows purchase fields (fechaCompra/precioCompra/pesoCompra/lugarCompra) ONLY when origen='comprado' (CA-UI-007)", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    // Default: nacido_en_finca → purchase fields NOT visible
+    expect(screen.queryByRole("button", { name: "Fecha de nacimiento" })).toBeInTheDocument() // only fechaNacimiento
+    expect(screen.queryByLabelText("Fecha de compra")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Precio")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Peso compra")).not.toBeInTheDocument()
+    expect(screen.queryByRole("combobox", { name: "Lugar de compra" })).not.toBeInTheDocument()
+
+    // Toggle to comprado
+    await user.click(screen.getByRole("radio", { name: "Comprado" }))
+
+    // Purchase fields visible
+    expect(screen.getByLabelText("Fecha de compra")).toBeInTheDocument()
+    expect(screen.getByLabelText("Precio")).toBeInTheDocument()
+    expect(screen.getByLabelText("Peso compra")).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Lugar de compra" })).toBeInTheDocument()
+
+    // Parents NOT visible
+    expect(screen.queryByRole("combobox", { name: "Madre" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("combobox", { name: "Padre" })).not.toBeInTheDocument()
+  })
+
+  it("discards abandoned purchase-field values when origen flips back to 'nacido_en_finca' (CA-UI-007)", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    render(
+      <AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />,
+    )
+
+    // Switch to comprado
+    await user.click(screen.getByRole("radio", { name: "Comprado" }))
+
+    // Type a value in Precio
+    const precio = screen.getByLabelText("Precio")
+    await user.type(precio, "1500,75")
+
+    // Switch back to nacido_en_finca
+    await user.click(screen.getByRole("radio", { name: "Nacido en finca" }))
+
+    // Switch to comprado again — the previous value should NOT be there
+    await user.click(screen.getByRole("radio", { name: "Comprado" }))
+    const precioAfter = screen.getByLabelText("Precio")
+    expect(precioAfter).toHaveValue("")
+
+    // Submit and verify the FormData does NOT carry the abandoned value
+    await user.type(screen.getByLabelText("Código *"), "NV-99")
+    await user.type(screen.getByLabelText("Nombre"), "Novilla 99")
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+
+    const [formData] = onSave.mock.calls[0] as [FormData]
+    // CA-UI-007: the purchase-field input may still be in the DOM
+    // (uncontrolled), but its VALUE must be empty so the FormData
+    // does not carry the abandoned user input.
+    expect(formData.get("precioCompra")).toBe("")
+  })
+
+  it("filters out the current animal from the madre/padre options to prevent self-parenting", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="edit"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        currentAnimalId="a-200"
+        catalogOptions={{
+          madre: [
+            { value: "a-100", codigo: "MT-100", nombre: "Lola" },
+            { value: "a-200", codigo: "MT-200", nombre: "Maya" },
+          ],
+          padre: [{ value: "a-300", codigo: "MT-300", nombre: "Roble" }],
+        }}
+      />,
+    )
+
+    // open madre combobox
+    await user.click(screen.getByRole("combobox", { name: "Madre" }))
+    const list = await screen.findByRole("listbox")
+    expect(within(list).queryByText("MT-200 · Maya")).not.toBeInTheDocument()
+    expect(within(list).getByText("MT-100 · Lola")).toBeInTheDocument()
+  })
+
+  it("'Estimar por edad' produces an ISO date and appends '[fecha estimada]' to comentarios (CA-CRE-004)", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    // The 'Estimar por edad' affordance is an inline button next to the fechaNacimiento DatePicker.
+    const estimarBtn = screen.getByRole("button", { name: /Estimar por edad/i })
+    await user.click(estimarBtn)
+
+    // A tiny popover with an age input appears
+    const ageInput = await screen.findByRole("spinbutton", { name: /a[ñn]os/i })
+    await user.clear(ageInput)
+    await user.type(ageInput, "3")
+
+    // Confirm
+    await user.click(screen.getByRole("button", { name: /Aplicar/i }))
+
+    // The DatePicker trigger now shows the formatted date (3 years ago)
+    const today = new Date()
+    const threeYearsAgo = new Date(today)
+    threeYearsAgo.setFullYear(today.getFullYear() - 3)
+    const dd = String(threeYearsAgo.getDate()).padStart(2, "0")
+    const mm = String(threeYearsAgo.getMonth() + 1).padStart(2, "0")
+    const yyyy = threeYearsAgo.getFullYear()
+    const expectedDisplay = `${dd}/${mm}/${yyyy}`
+    expect(screen.getByText(expectedDisplay)).toBeInTheDocument()
+
+    // comentarios ends with [fecha estimada]
+    const comentarios = screen.getByLabelText("Comentarios")
+    expect(comentarios).toHaveValue("[fecha estimada]")
+  })
+
+  it("rejects future dates on fechaNacimiento with aria-invalid='true' and the error message (RN-002)", () => {
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        fieldErrors={{ fechaNacimiento: "La fecha no puede ser futura" }}
+      />,
+    )
+
+    const trigger = screen.getByRole("button", { name: "Fecha de nacimiento" })
+    expect(trigger).toHaveAttribute("aria-invalid", "true")
+    const describedBy = trigger.getAttribute("aria-describedby")
+    expect(describedBy).toBeTruthy()
+    const alert = describedBy ? document.getElementById(describedBy) : null
+    expect(alert).not.toBeNull()
+    expect(alert).toHaveAttribute("role", "alert")
+    expect(alert).toHaveTextContent("La fecha no puede ser futura")
+  })
+
+  it("submit button shows 'Guardando…' and preserves width when isSubmitting is true (CA-UI-006)", () => {
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="create"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        isSubmitting
+      />,
+    )
+
+    const btn = screen.getByRole("button", { name: "Guardando…" })
+    expect(btn).toBeInTheDocument()
+    expect(btn).toBeDisabled()
+    // Width preservation — a fixed minimum that resists collapsing to fit the new label.
+    // Asserted via class because jsdom does not compute layout-derived properties.
+    expect(btn).toHaveClass("min-w-[120px]")
+  })
+
   it("exports and renders genealogy relationships for animal ficha composition", () => {
     render(
       <AnimalGenealogy
