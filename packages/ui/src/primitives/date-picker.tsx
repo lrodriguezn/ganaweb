@@ -1,9 +1,9 @@
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 import { format, isAfter, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "lucide-react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-import { DayPicker } from "react-day-picker"
 import * as React from "react"
+import { DayPicker } from "react-day-picker"
 
 import { cn } from "../lib/utils"
 import { Button } from "./button"

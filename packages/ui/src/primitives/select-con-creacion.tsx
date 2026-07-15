@@ -1,6 +1,6 @@
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 import { Command } from "cmdk"
 import { Check, ChevronDown, Plus } from "lucide-react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
 import * as React from "react"
 
 import { EmptyState } from "../ganado/empty-state"
@@ -165,9 +165,7 @@ export function SelectConCreacion({
                         )}
                       >
                         <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                          {isSelected ? (
-                            <Check className="h-4 w-4" aria-hidden="true" />
-                          ) : null}
+                          {isSelected ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
                         </span>
                         <span>{option.label}</span>
                       </Command.Item>

@@ -53,9 +53,9 @@ describe("DatePicker primitive", () => {
     const day = await screen.findByRole("button", { name: /, 15 de julio de 2026/ })
     await user.click(day)
 
-    const hidden = document.querySelector('input[type="date"][name="fechaNacimiento"]') as
-      | HTMLInputElement
-      | null
+    const hidden = document.querySelector(
+      'input[type="date"][name="fechaNacimiento"]',
+    ) as HTMLInputElement | null
     expect(hidden).not.toBeNull()
     expect(hidden?.value).toBe("2026-07-15")
   })

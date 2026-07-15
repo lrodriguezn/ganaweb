@@ -1,6 +1,6 @@
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 import { Command } from "cmdk"
 import { Check, ChevronDown } from "lucide-react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
 import * as React from "react"
 
 import { cn } from "../lib/utils"
@@ -60,10 +60,7 @@ export function ComboboxBuscable({
   const labelIndex = React.useMemo(() => {
     const idx = new Map<string, string>()
     for (const opt of filtered) {
-      idx.set(
-        opt.value,
-        `${opt.codigo} ${opt.nombre}`.toLowerCase(),
-      )
+      idx.set(opt.value, `${opt.codigo} ${opt.nombre}`.toLowerCase())
     }
     return idx
   }, [filtered])
@@ -139,9 +136,7 @@ export function ComboboxBuscable({
                       )}
                     >
                       <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                        {isSelected ? (
-                          <Check className="h-4 w-4" aria-hidden="true" />
-                        ) : null}
+                        {isSelected ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
                       </span>
                       <span>
                         {option.codigo} · {option.nombre}

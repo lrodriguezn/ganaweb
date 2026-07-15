@@ -60,8 +60,7 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
   if (!animal) {
     return { initialValues: {}, currentLocation: {} }
   }
-  const sexoKey: 0 | 1 | 2 =
-    animal.sexo === "hembra" ? 1 : animal.sexo === "macho" ? 0 : 2
+  const sexoKey: 0 | 1 | 2 = animal.sexo === "hembra" ? 1 : animal.sexo === "macho" ? 0 : 2
   return {
     initialValues: {
       // NOTE: PR 2a locked the form, so `AnimalFormInitialValues` does

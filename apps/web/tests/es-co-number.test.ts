@@ -18,11 +18,7 @@ async function testParseEsCONumberHappyPath() {
     "parseEsCONumber('450,30') must return 450.3 (trailing zero dropped by JS Number)",
   )
   // Single-decimal value: no thousand separator, comma is the decimal.
-  assert.equal(
-    parseEsCONumber("0,5"),
-    0.5,
-    "parseEsCONumber('0,5') must return 0.5",
-  )
+  assert.equal(parseEsCONumber("0,5"), 0.5, "parseEsCONumber('0,5') must return 0.5")
   // Negative values: spec doesn't ban them, but a purchase cannot be
   // negative — dominio validates the sign. The parser must accept `-` for
   // symmetry.
@@ -126,11 +122,7 @@ async function testFormatEsCONumberNullable() {
   // display layer substitutes the placeholder).
   assert.equal(formatEsCONumber(null), "", "formatEsCONumber(null) must return ''")
   assert.equal(formatEsCONumber(undefined), "", "formatEsCONumber(undefined) must return ''")
-  assert.equal(
-    formatEsCONumber(Number.NaN),
-    "",
-    "formatEsCONumber(NaN) must return '' (not 'NaN')",
-  )
+  assert.equal(formatEsCONumber(Number.NaN), "", "formatEsCONumber(NaN) must return '' (not 'NaN')")
   // Infinity is not a valid purchase value, but the formatter must not
   // throw on it.
   assert.equal(

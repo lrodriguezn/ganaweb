@@ -532,7 +532,11 @@ async function testRouteFormPayloadBuilders() {
   assert.equal(updateResult.fincaId, "finca-1", "update result carries fincaId unchanged")
   assert.equal(updateResult.animalId, "animal-1", "update result carries animalId unchanged")
   assert.equal(updateResult.cambios.codigo, "MT-999", "update mapper must read codigo")
-  assert.equal(updateResult.cambios.versionLeida, 7, "update mapper must parse versionLeida as number")
+  assert.equal(
+    updateResult.cambios.versionLeida,
+    7,
+    "update mapper must parse versionLeida as number",
+  )
   assert.equal(
     updateResult.cambios.origen,
     "nacido_en_finca",
@@ -563,16 +567,8 @@ async function testRouteFormPayloadBuilders() {
     "lugar-feria-manizales",
     "update mapper must translate the 'lugarCompra' form key to lugarCompraId in cambios",
   )
-  assert.equal(
-    updateResult.cambios.madreId,
-    "animal-mt-100",
-    "update mapper must read madreId",
-  )
-  assert.equal(
-    updateResult.cambios.padreId,
-    "animal-toro-1",
-    "update mapper must read padreId",
-  )
+  assert.equal(updateResult.cambios.madreId, "animal-mt-100", "update mapper must read madreId")
+  assert.equal(updateResult.cambios.padreId, "animal-toro-1", "update mapper must read padreId")
   // Empty fechaCompra / precioCompra / pesoCompra are dropped from cambios
   // (the form's CA-UI-007 toggle may have mounted the comprado block but
   // left the inputs blank — those must not travel to the harness).
@@ -755,7 +751,8 @@ async function testEditRoutePassesInitialValuesToForm() {
   // with a "Mover animal" link). The current code passes an empty
   // `{}`; the loader wiring should replace it with a real location.
   assert.ok(
-    /currentLocation=\{[^}]+\}/.test(editRoute) || /currentLocation=\{currentLocation\}/.test(editRoute),
+    /currentLocation=\{[^}]+\}/.test(editRoute) ||
+      /currentLocation=\{currentLocation\}/.test(editRoute),
     "edit route must pass a non-empty currentLocation object so the read-only location block renders the real values",
   )
   // The route must not pass an empty literal `currentLocation={{}}`

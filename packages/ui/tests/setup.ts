@@ -39,9 +39,9 @@ if (typeof Element !== "undefined") {
       this: Element,
     ) {
       const computed = typeof window !== "undefined" ? window.getComputedStyle(this) : null
-      const minWidth = computed ? Number.parseFloat(computed.minWidth) : NaN
+      const minWidth = computed ? Number.parseFloat(computed.minWidth) : Number.NaN
       const width = Number.isFinite(minWidth) && minWidth > 0 ? minWidth : 100
-      const minHeight = computed ? Number.parseFloat(computed.minHeight) : NaN
+      const minHeight = computed ? Number.parseFloat(computed.minHeight) : Number.NaN
       const height = Number.isFinite(minHeight) && minHeight > 0 ? minHeight : 40
       return {
         x: 0,

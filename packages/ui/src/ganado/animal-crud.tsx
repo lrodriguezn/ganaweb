@@ -6,8 +6,8 @@ import { es } from "date-fns/locale"
 import {
   AlertTriangle,
   Baby,
-  Camera,
   Calculator,
+  Camera,
   ChevronRight,
   ImagePlus,
   PawPrint,
@@ -24,7 +24,7 @@ import { ComboboxBuscable, type ComboboxOption } from "../primitives/combobox-bu
 import { DatePicker } from "../primitives/date-picker"
 import { Input } from "../primitives/input"
 import { Label } from "../primitives/label"
-import { PillsSegmentadas, type PillsOption } from "../primitives/pills-segmentadas"
+import { type PillsOption, PillsSegmentadas } from "../primitives/pills-segmentadas"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../primitives/select"
 import { SelectConCreacion } from "../primitives/select-con-creacion"
 import { BottomNav } from "./bottom-nav"
@@ -738,23 +738,20 @@ export function AnimalFormScreen({
       >
         <input type="hidden" name="versionLeida" value="1" />
         {fields.map((field) =>
-          renderAnimalFormField(
-            field,
-            {
-              initialValues,
-              catalogOptions,
-              fieldErrors,
-              origen,
-              fechaNacimiento,
-              comentarios,
-              handleOrigenChange,
-              handleEstimar,
-              useComboboxOrigen,
-              currentAnimalId,
-              setFechaNacimiento,
-              setComentarios,
-            },
-          ),
+          renderAnimalFormField(field, {
+            initialValues,
+            catalogOptions,
+            fieldErrors,
+            origen,
+            fechaNacimiento,
+            comentarios,
+            handleOrigenChange,
+            handleEstimar,
+            useComboboxOrigen,
+            currentAnimalId,
+            setFechaNacimiento,
+            setComentarios,
+          }),
         )}
         {/*
           PR 2a (CA-UI-007 + CA-CRE-002): the conditional block is keyed
@@ -765,10 +762,7 @@ export function AnimalFormScreen({
           ensures both directions of the flip remount.
         */}
         {formVariant !== "delete" ? (
-          <div
-            data-conditional={origen}
-            className="col-span-full grid gap-4"
-          >
+          <div data-conditional={origen} className="col-span-full grid gap-4">
             {isComprado ? (
               <PurchaseBlock
                 key={`purchase-${origen}-${origenFlipCount}`}
@@ -872,10 +866,7 @@ interface RenderFieldContext {
   setComentarios: React.Dispatch<React.SetStateAction<string>>
 }
 
-function renderAnimalFormField(
-  field: AnimalFormField,
-  ctx: RenderFieldContext,
-) {
+function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) {
   const {
     initialValues,
     catalogOptions,
@@ -946,9 +937,9 @@ function renderAnimalFormField(
         label={field.label}
         name={field.name}
         options={
-          (catalogOptions?.[
-            field.name as "raza" | "color" | "calidad"
-          ] as readonly SelectOption[] | undefined) ?? []
+          (catalogOptions?.[field.name as "raza" | "color" | "calidad"] as
+            | readonly SelectOption[]
+            | undefined) ?? []
         }
         canCreate={
           field.name === "calidad"
@@ -956,9 +947,8 @@ function renderAnimalFormField(
             : (catalogOptions?.canCreateCatalog?.[field.name as "raza" | "color"] ?? false)
         }
         defaultValue={
-          (initialValues as Record<string, string | undefined> | undefined)?.[
-            `${field.name}Id`
-          ] ?? undefined
+          (initialValues as Record<string, string | undefined> | undefined)?.[`${field.name}Id`] ??
+          undefined
         }
         fieldErrors={fieldErrors}
       />
@@ -987,9 +977,7 @@ function renderAnimalFormField(
         label={field.label}
         name={field.name}
         defaultValue={initialValues?.[field.name as keyof AnimalFormInitialValues]?.toString()}
-        options={
-          (catalogOptions?.[locationField.optionsKey] ?? []) as readonly SelectOption[]
-        }
+        options={(catalogOptions?.[locationField.optionsKey] ?? []) as readonly SelectOption[]}
         fieldErrors={fieldErrors}
       />
     )
@@ -1016,10 +1004,7 @@ function PurchaseBlock({
 }) {
   return (
     <>
-      <FechaCompraField
-        initialValue={initialValues?.fechaCompra ?? ""}
-        fieldErrors={fieldErrors}
-      />
+      <FechaCompraField initialValue={initialValues?.fechaCompra ?? ""} fieldErrors={fieldErrors} />
       <NumericField
         label="Precio"
         name="precioCompra"
@@ -1276,9 +1261,7 @@ function OrigenField({
         onChange={onChange}
         options={ORIGEN_OPTIONS as unknown as readonly [PillsOption, PillsOption]}
         label={label}
-        {...(errorMessage
-          ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
-          : {})}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
       />
       {errorMessage ? (
         <p id={errorId} role="alert" className="text-caption text-danger-600">
@@ -1375,9 +1358,7 @@ function FechaCompraField({
           // uncontrolled — the hidden native input mirrors the value
         }}
         maxDate={new Date()}
-        {...(errorMessage
-          ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
-          : {})}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
       />
       {errorMessage ? (
         <p id={errorId} role="alert" className="text-caption text-danger-600">
@@ -1411,11 +1392,7 @@ function EstimarPorEdad({ onApply }: { onApply: (iso: string) => void }) {
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild>
-        <Button
-          type="button"
-          variant="secondary"
-          className="min-h-[--h-touch] shrink-0"
-        >
+        <Button type="button" variant="secondary" className="min-h-[--h-touch] shrink-0">
           <Calculator className="size-4" aria-hidden="true" />
           Estimar por edad
         </Button>
@@ -1499,9 +1476,7 @@ function SelectConCreacionField({
         }}
         canCreate={canCreate}
         placeholder={placeholder}
-        {...(errorMessage
-          ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
-          : {})}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
       />
       {errorMessage ? (
         <p id={errorId} role="alert" className="text-caption text-danger-600">
@@ -1551,9 +1526,7 @@ function ComboboxField({
         }}
         placeholder={placeholder}
         {...(excludedIds !== undefined ? { excludedIds } : {})}
-        {...(errorMessage
-          ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
-          : {})}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
       />
       {errorMessage ? (
         <p id={errorId} role="alert" className="text-caption text-danger-600">
