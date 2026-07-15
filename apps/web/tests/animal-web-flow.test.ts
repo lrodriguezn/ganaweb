@@ -372,7 +372,7 @@ async function testRouteViewModelsAndFlows() {
   assert.equal(model.animales[0]?.codigoAnimal, "AA-001")
 }
 
-async function testCreateMapsSplitLocationToUbicacionInicial() {
+async function testCreatePreservesFechaCompra() {
   const ubicacionesIniciales: Array<{
     readonly potreroId?: string
     readonly sectorId?: string
@@ -442,6 +442,47 @@ async function testCreateMapsSplitLocationToUbicacionInicial() {
     [],
     "create harness must not call ubicaciones.registrarInicial when no split location ids are provided",
   )
+
+  // PR 2b (v1.3 — spec line 50): the v1.0 schema dropped fechaCompra from the
+  // create form (CA-CRE-002 used to surface as a generic `fecha_compra` error
+  // that the form had no input for). v1.3 brings it back: when `origen ===
+  // "comprado"` the form submits fechaCompra and the harness must forward it
+  // to the dominio so `validarOrigen` accepts the create.
+  const fechaCompraInvalido = await sinUbicacionHarness.create({
+    fincaId: "finca-1",
+    datos: {
+      codigo: "MAP-3",
+      nombre: "Sin fecha de compra",
+      sexoKey: 1,
+      origen: "comprado",
+    },
+  })
+  assert.equal(
+    fechaCompraInvalido.tipo,
+    "validacion",
+    "create harness must surface validacion when origen=comprado and fechaCompra is missing — the field must reach validarOrigen",
+  )
+  assert.ok(
+    fechaCompraInvalido.tipo === "validacion" &&
+      fechaCompraInvalido.errores.some((e) => e.campo === "fecha_compra"),
+    "validacion errores must include fecha_compra so the mapper can route it back to the v1.3 fechaCompra form field",
+  )
+
+  const fechaCompraValido = await sinUbicacionHarness.create({
+    fincaId: "finca-1",
+    datos: {
+      codigo: "MAP-4",
+      nombre: "Con fecha de compra",
+      sexoKey: 1,
+      origen: "comprado",
+      fechaCompra: "2025-03-15",
+    },
+  })
+  assert.equal(
+    fechaCompraValido.tipo,
+    "creado",
+    "create harness must succeed when origen=comprado and fechaCompra is provided — the field is preserved end-to-end",
+  )
 }
 
 async function testRouteFormPayloadBuilders() {
@@ -466,14 +507,298 @@ async function testRouteFormPayloadBuilders() {
     },
   })
 
+  // PR 2b (CA-UPD-001): the edit form submits the same 11 v1.3 keys as the
+  // create form (minus `codigo` which is immutable when the animal has
+  // events, per spec §5). The update mapper MUST read each one into the
+  // `cambios` object so the dominio can later consume the subset it knows
+  // about (per animal-actions.server.ts:170 — the harness picks a subset
+  // for the dominio; the rest of the keys are kept in the web contract
+  // for form-to-datos symmetry, just like the create route).
   const updateForm = new FormData()
   updateForm.set("codigo", " MT-999 ")
   updateForm.set("versionLeida", "7")
-  assert.deepEqual(buildUpdateAnimalInputFromFormData("finca-1", "animal-1", updateForm), {
-    fincaId: "finca-1",
-    animalId: "animal-1",
-    cambios: { codigo: "MT-999", versionLeida: 7 },
-  })
+  updateForm.set("origen", "nacido_en_finca")
+  updateForm.set("fechaNacimiento", "2024-03-15")
+  updateForm.set("fechaCompra", "")
+  updateForm.set("raza", "raza-angus")
+  updateForm.set("color", "color-negro")
+  updateForm.set("calidad", "calidad-extra")
+  updateForm.set("lugarCompra", "lugar-feria-manizales")
+  updateForm.set("madreId", "animal-mt-100")
+  updateForm.set("padreId", "animal-toro-1")
+  updateForm.set("precioCompra", "")
+  updateForm.set("pesoCompra", "")
+  const updateResult = buildUpdateAnimalInputFromFormData("finca-1", "animal-1", updateForm)
+  assert.equal(updateResult.fincaId, "finca-1", "update result carries fincaId unchanged")
+  assert.equal(updateResult.animalId, "animal-1", "update result carries animalId unchanged")
+  assert.equal(updateResult.cambios.codigo, "MT-999", "update mapper must read codigo")
+  assert.equal(updateResult.cambios.versionLeida, 7, "update mapper must parse versionLeida as number")
+  assert.equal(
+    updateResult.cambios.origen,
+    "nacido_en_finca",
+    "update mapper must read the v1.3 origen pill value",
+  )
+  assert.equal(
+    updateResult.cambios.fechaNacimiento,
+    "2024-03-15",
+    "update mapper must read fechaNacimiento",
+  )
+  assert.equal(
+    updateResult.cambios.razaId,
+    "raza-angus",
+    "update mapper must translate the 'raza' form key to razaId in cambios",
+  )
+  assert.equal(
+    updateResult.cambios.colorId,
+    "color-negro",
+    "update mapper must translate the 'color' form key to colorId in cambios",
+  )
+  assert.equal(
+    updateResult.cambios.calidadId,
+    "calidad-extra",
+    "update mapper must translate the 'calidad' form key to calidadId in cambios",
+  )
+  assert.equal(
+    updateResult.cambios.lugarCompraId,
+    "lugar-feria-manizales",
+    "update mapper must translate the 'lugarCompra' form key to lugarCompraId in cambios",
+  )
+  assert.equal(
+    updateResult.cambios.madreId,
+    "animal-mt-100",
+    "update mapper must read madreId",
+  )
+  assert.equal(
+    updateResult.cambios.padreId,
+    "animal-toro-1",
+    "update mapper must read padreId",
+  )
+  // Empty fechaCompra / precioCompra / pesoCompra are dropped from cambios
+  // (the form's CA-UI-007 toggle may have mounted the comprado block but
+  // left the inputs blank — those must not travel to the harness).
+  assert.ok(
+    !("fechaCompra" in updateResult.cambios),
+    "update mapper must drop empty fechaCompra from cambios",
+  )
+  assert.ok(
+    !("precioCompra" in updateResult.cambios),
+    "update mapper must drop empty precioCompra from cambios",
+  )
+  assert.ok(
+    !("pesoCompra" in updateResult.cambios),
+    "update mapper must drop empty pesoCompra from cambios",
+  )
+
+  // A minimal update (only codigo + versionLeida) still works — the mapper
+  // is backwards-compatible with the v1.0 two-field contract.
+  const minimalUpdate = new FormData()
+  minimalUpdate.set("codigo", "MT-122")
+  minimalUpdate.set("versionLeida", "1")
+  const minimalResult = buildUpdateAnimalInputFromFormData("finca-1", "animal-1", minimalUpdate)
+  assert.deepEqual(minimalResult.cambios, { codigo: "MT-122", versionLeida: 1 })
+}
+
+async function testCreateRouteNormalizesEsCOCompraNumerics() {
+  // v1.3 spec §3.5: precio_compra and peso_compra accept es-CO formatting
+  // (`.` thousand, `,` decimal). The form submits the raw string; the
+  // route mapper MUST normalize to a JavaScript number so the dominio
+  // use case receives a typed value (AnimalFormScreen applies the same
+  // Intl.NumberFormat("es-CO") round-trip for display, but FormData
+  // carries the raw user input).
+  const form = new FormData()
+  form.set("codigo", "CP-1")
+  form.set("nombre", "Comprada 1")
+  form.set("sexoKey", "1")
+  form.set("origen", "comprado")
+  form.set("precioCompra", "1.500,75")
+  form.set("pesoCompra", "450,30")
+  const result = buildCreateAnimalInputFromFormData("finca-1", form)
+  assert.equal(result.datos.precioCompra, 1500.75, "precioCompra must be 1500.75 after es-CO parse")
+  assert.equal(result.datos.pesoCompra, 450.3, "pesoCompra must be 450.30 after es-CO parse")
+
+  // Round-trip identity: the display formatter should reproduce the same
+  // string the user typed, so the form can rehydrate the field on blur.
+  const displayFormatter = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 })
+  assert.equal(
+    displayFormatter.format(1500.75),
+    "1.500,75",
+    "Intl.NumberFormat('es-CO') round-trip must reproduce the user's input verbatim",
+  )
+  assert.equal(
+    displayFormatter.format(450.3),
+    "450,3",
+    "Intl.NumberFormat('es-CO') round-trip must produce 450,3 for 450.3 (single decimal, no trailing zero)",
+  )
+
+  // Empty / whitespace / zero inputs must NOT produce NaN or throw.
+  const empty = new FormData()
+  empty.set("codigo", "CP-2")
+  empty.set("nombre", "Comprada 2")
+  empty.set("sexoKey", "1")
+  const emptyResult = buildCreateAnimalInputFromFormData("finca-1", empty)
+  assert.equal(
+    emptyResult.datos.precioCompra,
+    undefined,
+    "missing precioCompra must be undefined, not NaN",
+  )
+  assert.equal(
+    emptyResult.datos.pesoCompra,
+    undefined,
+    "missing pesoCompra must be undefined, not NaN",
+  )
+}
+
+async function testEditRouteMapperNormalizesEsCOCompraNumerics() {
+  // v1.3 spec §3.5: precio_compra and peso_compra accept es-CO formatting
+  // in BOTH the create and edit routes. The update mapper MUST apply the
+  // same es-CO parser so an animal being edited (origen=comprado, the
+  // user typed a fresh price after a peso change) round-trips correctly
+  // through the dominio. The PR 2a contract treats the form's raw string
+  // identically in create and edit; PR 2b extends the update mapper to
+  // share the parser.
+  const form = new FormData()
+  form.set("codigo", "ED-1")
+  form.set("versionLeida", "3")
+  form.set("origen", "comprado")
+  form.set("precioCompra", "1.500,75")
+  form.set("pesoCompra", "450,30")
+  const result = buildUpdateAnimalInputFromFormData("finca-1", "animal-1", form)
+  assert.equal(
+    result.cambios.precioCompra,
+    1500.75,
+    "update mapper must parse precioCompra from es-CO string to 1500.75",
+  )
+  assert.equal(
+    result.cambios.pesoCompra,
+    450.3,
+    "update mapper must parse pesoCompra from es-CO string to 450.3",
+  )
+
+  // Empty inputs must NOT produce NaN or throw on the update path.
+  const empty = new FormData()
+  empty.set("codigo", "ED-2")
+  empty.set("versionLeida", "1")
+  empty.set("origen", "comprado")
+  const emptyResult = buildUpdateAnimalInputFromFormData("finca-1", "animal-1", empty)
+  assert.equal(
+    emptyResult.cambios.precioCompra,
+    undefined,
+    "missing precioCompra on update must be undefined, not NaN",
+  )
+  assert.equal(
+    emptyResult.cambios.pesoCompra,
+    undefined,
+    "missing pesoCompra on update must be undefined, not NaN",
+  )
+
+  // The shared helper (es-co-number.ts) is the single source of truth for
+  // the parser — a source-level pin prevents the create and edit routes
+  // from drifting (PR 1, design.md R2: dominio has zero deps; the web
+  // layer owns its own lib). The path depth differs by one segment
+  // (edit route is one level deeper), so we use a regex that accepts
+  // either depth.
+  const editRoute = await readFile(join(ROUTES_DIR, "animales", "$animalId", "editar.tsx"), "utf8")
+  const createRoute = await readFile(join(ROUTES_DIR, "animales", "nuevo.tsx"), "utf8")
+  const sharedImportPattern = /from\s+"\.\.(\/\.\.)+\/lib\/parsers\/es-co-number\.js"/
+  assert.ok(
+    sharedImportPattern.test(editRoute),
+    "edit route must import the shared es-CO parser so the update mapper shares the create route's semantics",
+  )
+  assert.ok(
+    !editRoute.includes("function parseEsCONumber("),
+    "edit route must not declare its own parseEsCONumber — the shared helper is the single source of truth",
+  )
+  assert.ok(
+    sharedImportPattern.test(createRoute),
+    "create route must import the shared es-CO parser (the inline duplicate was extracted in PR 2b)",
+  )
+  assert.ok(
+    !createRoute.includes("function parseEsCONumber("),
+    "create route must not declare its own parseEsCONumber — the shared helper is the single source of truth",
+  )
+}
+
+async function testEditRoutePassesInitialValuesToForm() {
+  // v1.3 spec §5 (CA-UPD-001): the edit form must pre-populate the
+  // 11 v1.3 fields from the current animal so the user does not retype
+  // them. The route carries the values to <AnimalFormScreen> via the
+  // `initialValues` prop; without the loader wiring, the form would
+  // render with empty inputs and the user would have to retype every
+  // field on each save — a regression from the v1.0 two-field contract.
+  const editRoute = await readFile(join(ROUTES_DIR, "animales", "$animalId", "editar.tsx"), "utf8")
+  const editRouteModule = await import(
+    "../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js"
+  )
+
+  // Source-level pin: the route must wire `initialValues` to BOTH the
+  // desktop and mobile <AnimalFormScreen> renders. Mirrors the
+  // `fieldErrors` wiring in testRouteBranchesOnResultTipo.
+  const initialValuesMatches = editRoute.match(/initialValues=/g) ?? []
+  assert.ok(
+    initialValuesMatches.length >= 2,
+    `edit route must pass initialValues to both <AnimalFormScreen> renders (found ${initialValuesMatches.length})`,
+  )
+
+  // The route must call a fetcher (loader or a server function like
+  // `getAnimalFichaAction`) that returns the current animal's data shape.
+  // Source-level pin: any of the accepted patterns is fine, as long as
+  // the loader's return value is threaded into the form.
+  const usesLoader =
+    /loader\s*:\s*async\s*\(/.test(editRoute) || /loader\s*:\s*async\s*\{/.test(editRoute)
+  const usesGetFicha = editRoute.includes("getAnimalFichaAction")
+  assert.ok(
+    usesLoader || usesGetFicha,
+    "edit route must declare a loader or call getAnimalFichaAction so initialValues is sourced from the current animal, not a hard-coded demo object",
+  )
+
+  // currentLocation must also be wired (CA-UPD-001: location is read-only
+  // with a "Mover animal" link). The current code passes an empty
+  // `{}`; the loader wiring should replace it with a real location.
+  assert.ok(
+    /currentLocation=\{[^}]+\}/.test(editRoute) || /currentLocation=\{currentLocation\}/.test(editRoute),
+    "edit route must pass a non-empty currentLocation object so the read-only location block renders the real values",
+  )
+  // The route must not pass an empty literal `currentLocation={{}}`
+  // because that regresses the read-only location to a blank card.
+  assert.ok(
+    !/currentLocation=\{\{\}\}/.test(editRoute),
+    "edit route must not pass an empty currentLocation={{}} — the loader must source the real values",
+  )
+
+  // The 11 v1.3 keys must appear somewhere in the edit route's loader
+  // return value (or in a `mapAnimalToInitialValues` helper it imports).
+  // We assert the keys are present in the form props (the loader's return
+  // shape matches `AnimalFormInitialValues`).
+  for (const key of [
+    "origen",
+    "fechaNacimiento",
+    "razaId",
+    "colorId",
+    "calidadId",
+    "lugarCompraId",
+    "madreId",
+    "padreId",
+  ]) {
+    assert.ok(
+      editRoute.includes(key) || editRouteModule.mapAnimalFichaToInitialValues !== undefined,
+      `edit route's loader/initialValues wiring must include the v1.3 key '${key}'`,
+    )
+  }
+
+  // canCreateCatalog must be threaded to both screens (the v1.3 + Crear
+  // affordance gates on this flag per CA-UI-002).
+  const canCreateCatalogMatches = editRoute.match(/canCreateCatalog/g) ?? []
+  assert.ok(
+    canCreateCatalogMatches.length >= 2,
+    `edit route must pass canCreateCatalog to both <AnimalFormScreen> renders (found ${canCreateCatalogMatches.length})`,
+  )
+
+  // catalogOptions must be threaded to both screens.
+  const catalogOptionsMatches = editRoute.match(/catalogOptions/g) ?? []
+  assert.ok(
+    catalogOptionsMatches.length >= 2,
+    `edit route must pass catalogOptions to both <AnimalFormScreen> renders (found ${catalogOptionsMatches.length})`,
+  )
 }
 
 async function testRouteFilesWireUiAndActions() {
@@ -569,6 +894,53 @@ async function testCreateRouteWiresCatalogOptions() {
   assert.ok(
     !createRoute.includes("catalogOptions={undefined}"),
     "create route must not pass an undefined catalogOptions prop",
+  )
+}
+
+async function testCreateRouteWiresNewCatalogOptions() {
+  // PR 2b: the v1.3 form expects six new catalog keys plus canCreateCatalog so the
+  // SelectConCreacion primitives (raza/color/calidad/lugarCompra) and ComboboxBuscable
+  // primitives (madre/padre) can render. The source-level pin keeps the wiring honest
+  // even if the route component refactors.
+  const createRoute = await readFile(join(ROUTES_DIR, "animales", "nuevo.tsx"), "utf8")
+  for (const key of ["raza", "color", "calidad", "lugarCompra", "madre", "padre"]) {
+    assert.ok(
+      createRoute.includes(key),
+      `create route must pass catalog option '${key}' to AnimalFormScreen so the v1.3 form fields render non-empty`,
+    )
+  }
+  assert.ok(
+    createRoute.includes("canCreateCatalog"),
+    "create route must pass canCreateCatalog to AnimalFormScreen so the '+ Crear' affordance is gated on configuracion:crear",
+  )
+
+  // The fixture must hold demo data for each catalog. At least 3 entries per catalog so
+  // the SelectConCreacion/ComboboxBuscable primitives exercise a meaningful list.
+  const fixture = await import("../src/lib/fixtures/animal-form-catalog.js")
+  const options = fixture.getAnimalFormCatalogOptions()
+  for (const key of ["raza", "color", "calidad", "lugarCompra", "madre", "padre"] as const) {
+    const arr = options[key]
+    assert.ok(Array.isArray(arr), `fixture must expose ${key} as an array`)
+    assert.ok(
+      Array.isArray(arr) && arr.length >= 3,
+      `fixture must provide ≥3 demo options for '${key}' (found ${Array.isArray(arr) ? arr.length : "n/a"})`,
+    )
+  }
+  // Color swatch metadata — the swatch rendering requires `meta: { hex: string }` on
+  // each color option so the form can render a color circle next to the label.
+  assert.ok(
+    Array.isArray(options.color) &&
+      options.color.every(
+        (c) =>
+          typeof (c as { meta?: { hex?: string } }).meta?.hex === "string" &&
+          (c as { meta: { hex: string } }).meta.hex.length > 0,
+      ),
+    "fixture color options must carry meta.hex so the swatch renders",
+  )
+  // canCreateCatalog must be a non-null object so the form can read individual flags.
+  assert.ok(
+    options.canCreateCatalog !== undefined && typeof options.canCreateCatalog === "object",
+    "fixture must expose canCreateCatalog so the '+ Crear' gating has a source",
   )
 }
 
@@ -717,34 +1089,43 @@ async function testRouteBranchesOnResultTipo() {
   )
 }
 
-async function testMapperBuildsFieldErrorsAndDropsFechaCompra() {
+async function testMapperBuildsFieldErrorsAndPreservesFechaCompra() {
   // Import the mapper directly. It is the route boundary that translates the
   // dominio's ErrorValidacionAnimal[] into the UI's Record<string, string>.
   const { buildCreateAnimalFieldErrors } = await import(
     "../src/routes/_app/fincas/$fincaId/animales/nuevo.js"
   )
 
-  // 2.4 spec line 34: sexo_key → sexoKey; fecha_compra has no form field and is
-  // dropped silently per spec line 32 (design R1 follow-up).
+  // PR 2b INVERSION: in v1.0 fecha_compra had no form field and the mapper
+  // dropped the error silently. v1.3 brings the fechaCompra input back, so
+  // the mapper MUST now route `campo: "fecha_compra"` errors to the form's
+  // `fechaCompra` key. The regression-guard at tasks.md:3.8 keeps the route
+  // honest (no `// fecha_compra intentionally absent` literal returns to
+  // nuevo.tsx).
   const mapped = buildCreateAnimalFieldErrors([
     { campo: "sexo_key", regla: "CA-CRE-001", detalle: "El sexo es obligatorio." },
     { campo: "fecha_compra", regla: "CA-CRE-002", detalle: "La compra requiere fecha de compra." },
   ])
   assert.deepEqual(mapped, {
     sexoKey: "El sexo es obligatorio.",
+    fechaCompra: "La compra requiere fecha de compra.",
   })
-  assert.ok(
-    !("fechaCompra" in mapped),
-    "fecha_compra must be dropped because no fechaCompra form field exists (design R1 follow-up)",
-  )
 
-  // All other spec line 34 mappings round-trip.
+  // All v1.3 spec mappings round-trip — the new Raza / Color / Calidad /
+  // LugarCompra / PrecioCompra / PesoCompra entries keep the form's error
+  // labels honest when the dominio surfaces a validacion error.
   const allMapped = buildCreateAnimalFieldErrors([
     { campo: "codigo", regla: "CA-CRE-001", detalle: "Requerido" },
     { campo: "nombre", regla: "CA-CRE-001", detalle: "Requerido" },
     { campo: "fecha_nacimiento", regla: "CA-CRE-002", detalle: "Requerido" },
     { campo: "madre_id", regla: "CA-CRE-003", detalle: "Madre inválida" },
     { campo: "padre_id", regla: "CA-CRE-004", detalle: "Padre inválido" },
+    { campo: "raza", regla: "CA-CRE-005", detalle: "Raza inválida" },
+    { campo: "color", regla: "CA-CRE-005", detalle: "Color inválido" },
+    { campo: "calidad", regla: "CA-CRE-005", detalle: "Calidad inválida" },
+    { campo: "lugar_compra", regla: "CA-CRE-006", detalle: "Lugar de compra requerido" },
+    { campo: "precio_compra", regla: "CA-CRE-006", detalle: "Precio de compra inválido" },
+    { campo: "peso_compra", regla: "CA-CRE-006", detalle: "Peso de compra inválido" },
   ])
   assert.deepEqual(allMapped, {
     codigo: "Requerido",
@@ -752,6 +1133,12 @@ async function testMapperBuildsFieldErrorsAndDropsFechaCompra() {
     fechaNacimiento: "Requerido",
     madre: "Madre inválida",
     padre: "Padre inválido",
+    raza: "Raza inválida",
+    color: "Color inválido",
+    calidad: "Calidad inválida",
+    lugarCompra: "Lugar de compra requerido",
+    precioCompra: "Precio de compra inválido",
+    pesoCompra: "Peso de compra inválido",
   })
 
   // First error wins per field (later duplicates are ignored) so the user sees the
@@ -782,21 +1169,34 @@ async function testMapperBuildsFieldErrorsAndDropsFechaCompra() {
     codigo: "OK",
     sexoKey: "Sexo requerido",
   })
+
+  // Regression guard: the `// fecha_compra intentionally absent` literal must
+  // not have crept back into the route. If a future refactor re-introduces
+  // the v1.0 silent-drop behaviour, this source-level pin fires.
+  const createRoute = await readFile(join(ROUTES_DIR, "animales", "nuevo.tsx"), "utf8")
+  assert.ok(
+    !createRoute.includes("// fecha_compra intentionally absent"),
+    "create route must not carry the v1.0 'fecha_compra intentionally absent' literal — v1.3 has a fechaCompra form field",
+  )
 }
 
 async function run() {
   await testProductionRuntimeRequiresAdapters()
   await testServerGuards()
   await testRouteViewModelsAndFlows()
-  await testCreateMapsSplitLocationToUbicacionInicial()
+  await testCreatePreservesFechaCompra()
   await testRouteFormPayloadBuilders()
+  await testCreateRouteNormalizesEsCOCompraNumerics()
+  await testEditRouteMapperNormalizesEsCOCompraNumerics()
+  await testEditRoutePassesInitialValuesToForm()
   await testRouteFilesWireUiAndActions()
   await testCreateRouteWiresCatalogOptions()
+  await testCreateRouteWiresNewCatalogOptions()
   await testE2eFixtureRequiresSafeRuntimeGuard()
   await testActionForwardsValidacionErrores()
   await testActionE2eFastPathReturnsCreatedOnly()
   await testRouteBranchesOnResultTipo()
-  await testMapperBuildsFieldErrorsAndDropsFechaCompra()
+  await testMapperBuildsFieldErrorsAndPreservesFechaCompra()
   // biome-ignore lint/suspicious/noConsole: focused harness progress output
   console.log("✅ animal-web-flow.test.ts passed")
 }
