@@ -25,7 +25,7 @@ docker run -d \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=ganaweb \
   -v "$DB_VOLUME":/var/lib/postgresql/data \
-  -p 5432:5432 \
+  -p 127.0.0.1:5432:5432 \
   "$DB_IMAGE"
 
 echo "=== Esperando a que PostgreSQL esté listo ==="
@@ -34,10 +34,10 @@ until docker exec "$DB_CONTAINER" pg_isready -U postgres > /dev/null 2>&1; do
 done
 echo "PostgreSQL listo."
 
-# Forzar password explícitamente: el hash que asigna initdb al crear el
-# cluster no siempre coincide con la conexión TCP desde el host (Docker NAT
-# hace que la IP origen sea la del bridge, no 127.0.0.1, y cae en la regla
-# scram-sha-256). Este ALTER asegura que el hash sea correcto.
+echo "=== Configurando pg_hba.conf para trust (local dev) ==="
+docker exec "$DB_CONTAINER" sh -c "sed -i 's/scram-sha-256/trust/g' /var/lib/postgresql/data/pg_hba.conf"
+docker exec "$DB_CONTAINER" psql -U postgres -c "SELECT pg_reload_conf();"
+
 echo "=== Asegurando contraseña del rol postgres ==="
 docker exec "$DB_CONTAINER" psql -U postgres -d ganaweb \
   -c "ALTER ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres';"
