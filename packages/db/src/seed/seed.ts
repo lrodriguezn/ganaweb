@@ -257,14 +257,6 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
     ON CONFLICT (id) DO NOTHING
   `
 
-  // Fincas base — siempre se crean
-  await sql`
-    INSERT INTO fincas (id, codigo, nombre, departamento, municipio, vereda, area_hectareas, capacidad_maxima, tipo_explotacion_id, activo) VALUES
-      ('finca-esperanza', 'GAN001', 'La Esperanza', 'Antioquia', 'Medellín', 'La Verde', 50, 200, 'exp-doble', 1),
-      ('finca-roble',     'GAN002', 'Hacienda El Roble', 'Córdoba', 'Montería', 'El Roble', 100, 400, 'exp-cria', 1)
-    ON CONFLICT (id) DO NOTHING
-  `
-
   // Parámetros por finca
   const PARAMETROS: [string, string, string][] = [
     ["edad_minima_servicio_meses", "18", "RN-010: edad mínima para servicio"],
@@ -275,6 +267,21 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
     ["peso_nacimiento_default_kg", "32", "KPI-07: peso al nacer estimado"],
     ["rol_invitacion_default", "rol-mayordomo", "PE-007: rol al registrarse con código"],
   ]
+}
+
+// =====================================================================
+// NIVEL 2 — DEMO
+// =====================================================================
+
+async function seedDemo(sql: ReturnType<typeof postgres>) {
+
+  // Fincas base — siempre se crean
+  await sql`
+    INSERT INTO fincas (id, codigo, nombre, departamento, municipio, vereda, area_hectareas, capacidad_maxima, tipo_explotacion_id, activo) VALUES
+      ('finca-esperanza', 'GAN001', 'La Esperanza', 'Antioquia', 'Medellín', 'La Verde', 50, 200, 'exp-doble', 1),
+      ('finca-roble',     'GAN002', 'Hacienda El Roble', 'Córdoba', 'Montería', 'El Roble', 100, 400, 'exp-cria', 1)
+    ON CONFLICT (id) DO NOTHING
+  `
 
   for (const fincaId of ["finca-esperanza", "finca-roble"]) {
     for (const [codigo, valor, descripcion] of PARAMETROS) {
@@ -285,13 +292,7 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
       `
     }
   }
-}
-
-// =====================================================================
-// NIVEL 2 — DEMO
-// =====================================================================
-
-async function seedDemo(sql: ReturnType<typeof postgres>) {
+  
   // Usuarios
   await sql`
     INSERT INTO usuarios (id, nombre, email, email_verificado, activo) VALUES
