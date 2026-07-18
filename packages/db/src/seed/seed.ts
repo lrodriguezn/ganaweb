@@ -256,22 +256,21 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
       ('col-pintado', 'Pintado', '#A9A9A9', 1)
     ON CONFLICT (id) DO NOTHING
   `
-
-  // Parámetros por finca
-  const PARAMETROS: [string, string, string][] = [
-    ["edad_minima_servicio_meses", "18", "RN-010: edad mínima para servicio"],
-    ["peso_minimo_servicio_kg", "280", "RN-010: peso mínimo para servicio"],
-    ["dias_puerperio", "45", "TR: PARIDA→VACIA"],
-    ["dias_max_lactancia", "305", "RN-021: lactancia vigente"],
-    ["stock_minimo_dosis", "20", "KPI-10: umbral de stock bajo"],
-    ["peso_nacimiento_default_kg", "32", "KPI-07: peso al nacer estimado"],
-    ["rol_invitacion_default", "rol-mayordomo", "PE-007: rol al registrarse con código"],
-  ]
 }
 
 // =====================================================================
 // NIVEL 2 — DEMO
 // =====================================================================
+
+const PARAMETROS: [string, string, string][] = [
+  ["edad_minima_servicio_meses", "18", "RN-010: edad mínima para servicio"],
+  ["peso_minimo_servicio_kg", "280", "RN-010: peso mínimo para servicio"],
+  ["dias_puerperio", "45", "TR: PARIDA→VACIA"],
+  ["dias_max_lactancia", "305", "RN-021: lactancia vigente"],
+  ["stock_minimo_dosis", "20", "KPI-10: umbral de stock bajo"],
+  ["peso_nacimiento_default_kg", "32", "KPI-07: peso al nacer estimado"],
+  ["rol_invitacion_default", "rol-mayordomo", "PE-007: rol al registrarse con código"],
+]
 
 async function seedDemo(sql: ReturnType<typeof postgres>) {
 
