@@ -18,7 +18,7 @@ CREATE TABLE "animales" (
 	"fecha_nacimiento" integer,
 	"fecha_compra" integer,
 	"sexo_key" integer DEFAULT 0,
-	"tipo_ingreso_id" integer DEFAULT 0,
+	"tipo_ingreso_key" integer DEFAULT 0,
 	"madre_id" text,
 	"codigo_madre" text DEFAULT '',
 	"ind_transferencia_embriones" integer DEFAULT 0,
@@ -27,7 +27,8 @@ CREATE TABLE "animales" (
 	"padre_id" text,
 	"codigo_padre" text DEFAULT '',
 	"codigo_pajuela" text DEFAULT '',
-	"config_razas_id" text,
+	"raza_id" text,
+	"color_id" text,
 	"potrero_id" text,
 	"sector_id" text,
 	"lote_id" text,
@@ -59,6 +60,7 @@ CREATE TABLE "animales" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"version" integer DEFAULT 1 NOT NULL
 );
+
 --> statement-breakpoint
 CREATE TABLE "animales_condicion_corporal" (
 	"id" text PRIMARY KEY NOT NULL,
@@ -692,7 +694,8 @@ CREATE TABLE "veterinarios" (
 ALTER TABLE "almacen_entradas" ADD CONSTRAINT "almacen_entradas_producto_id_productos_sanitarios_id_fk" FOREIGN KEY ("producto_id") REFERENCES "public"."productos_sanitarios"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "almacen_entradas" ADD CONSTRAINT "almacen_entradas_usuario_creado_por_usuarios_id_fk" FOREIGN KEY ("usuario_creado_por") REFERENCES "public"."usuarios"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "animales" ADD CONSTRAINT "animales_finca_id_fincas_id_fk" FOREIGN KEY ("finca_id") REFERENCES "public"."fincas"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "animales" ADD CONSTRAINT "animales_config_razas_id_config_razas_id_fk" FOREIGN KEY ("config_razas_id") REFERENCES "public"."config_razas"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "animales" ADD CONSTRAINT "animales_raza_id_raza_id_fk" FOREIGN KEY ("raza_id") REFERENCES "public"."config_razas"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "animales" ADD CONSTRAINT "animales_color_id_color_id_fk" FOREIGN KEY ("color_id") REFERENCES "public"."config_colores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "animales" ADD CONSTRAINT "animales_potrero_id_potreros_id_fk" FOREIGN KEY ("potrero_id") REFERENCES "public"."potreros"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "animales" ADD CONSTRAINT "animales_sector_id_sectores_id_fk" FOREIGN KEY ("sector_id") REFERENCES "public"."sectores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "animales" ADD CONSTRAINT "animales_lote_id_lotes_id_fk" FOREIGN KEY ("lote_id") REFERENCES "public"."lotes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
