@@ -44,6 +44,7 @@ CREATE TABLE "animales" (
 	"salud_animal_key" integer DEFAULT 0,
 	"estado_animal_key" integer DEFAULT 0,
 	"ind_descartado" integer DEFAULT 0,
+	"es_de_monta" integer DEFAULT 0,
 	"tipo_explotacion_id" text,
 	"transferencia_embrion" boolean DEFAULT false NOT NULL,
 	"donadora_id" text,
