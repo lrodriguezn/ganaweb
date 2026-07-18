@@ -536,7 +536,7 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
   await sql`
     INSERT INTO animales (
       id, finca_id, codigo, nombre, fecha_nacimiento, fecha_compra,
-      sexo_key, tipo_ingreso_key, tipo_padre_key, madre_id, codigo_madre,
+      sexo_key, tipo_ingreso_key, tipo_padre_id, madre_id, codigo_madre,
       raza_id, color_id, potrero_id, sector_id, lote_id, grupo_id,
       hierro_id, propietario_id, calidad_animal_id, tipo_explotacion_id,
       precio_compra, peso_compra, codigo_rfid, codigo_arete,
