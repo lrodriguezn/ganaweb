@@ -18,7 +18,7 @@ CREATE TABLE "animales" (
 	"fecha_nacimiento" integer,
 	"fecha_compra" integer,
 	"sexo_key" integer DEFAULT 0,
-	"tipo_ingreso_key" integer DEFAULT 0,
+	"tipo_ingreso_id" integer DEFAULT 0,
 	"madre_id" text,
 	"codigo_madre" text DEFAULT '',
 	"ind_transferencia_embriones" integer DEFAULT 0,
