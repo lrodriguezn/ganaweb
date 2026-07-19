@@ -41,6 +41,7 @@ export type ReglaAnimal =
   | "CA-CRE-005"
   | "CA-CRE-006"
   | "CA-CRE-007"
+  | "CA-CRE-008"
   | "CA-UPD-001"
   | "CA-UPD-002"
   | "CA-UPD-003"
