@@ -69,9 +69,9 @@ Chain strategy: feature-branch-chain
 
 ## Phase 5: BUG-004 — Shared Calendar Presentation
 
-- [ ] 5.1 RED: token/nav/ARIA/theme regressions.
-- [ ] 5.2 GREEN: `date-picker.tsx`; no hex/`dark:`.
-- [ ] 5.3 Verify and commit BUG-004 rollback unit.
+- [x] 5.1 RED: token/nav/ARIA/theme regressions.
+- [x] 5.2 GREEN: `date-picker.tsx`; no hex/`dark:`.
+- [x] 5.3 Verify and commit BUG-004 rollback unit.
 
 ## Phase 6: Global Catalog Reader — PR5 Reader Foundation (base: PR4)
 

@@ -208,3 +208,130 @@ describe("DatePicker primitive", () => {
     }
   })
 })
+
+// =====================================================================
+// BUG-004: Shared calendar presentation MUST be token-driven and use
+// dropdown navigation. No hex literals, no theme-flip variants.
+// =====================================================================
+
+function openCalendar(value = "") {
+  return (
+    <DatePicker
+      name="fechaNacimiento"
+      value={value}
+      onChange={() => {}}
+      maxDate={new Date(2026, 6, 19, 23, 59, 59)}
+    />
+  )
+}
+
+describe("DatePicker BUG-004 — tokenized calendar styling", () => {
+  it("renders the dropdown caption label with text-support + font-semibold tokens (14px / 600)", async () => {
+    const user = userEvent.setup()
+    render(openCalendar())
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    // Dropdown mode renders two visible captions (month + year) with
+    // the same token hierarchy. Filter to the aria-hidden display span.
+    const dropdownCaptions = Array.from(
+      document.querySelectorAll<HTMLElement>('[aria-hidden="true"]'),
+    ).filter((el) => {
+      const cls = typeof el.className === "string" ? el.className : ""
+      return cls.includes("text-support") && cls.includes("font-semibold")
+    })
+    expect(dropdownCaptions.length).toBeGreaterThanOrEqual(2)
+    for (const caption of dropdownCaptions) {
+      const cls = caption.className as string
+      expect(cls).toContain("text-support")
+      expect(cls).toContain("font-semibold")
+    }
+  })
+
+  it("renders every weekday header cell with text-caption + text-muted-foreground + font-medium (12px / 500)", async () => {
+    const user = userEvent.setup()
+    render(openCalendar())
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    const weekdayCells = document.querySelectorAll<HTMLElement>("th.text-caption")
+    expect(weekdayCells.length).toBe(7) // lu, ma, mi, ju, vi, sá, do
+    for (const cell of weekdayCells) {
+      const cls = cell.className
+      expect(cls).toContain("text-caption")
+      expect(cls).toContain("text-muted-foreground")
+      expect(cls).toContain("font-medium")
+    }
+  })
+
+  it("renders day number buttons with text-support + tabular-nums (14px / 400)", async () => {
+    const user = userEvent.setup()
+    render(openCalendar())
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    // A regular, non-today, non-disabled, non-selected day button.
+    const day = await screen.findByRole("button", { name: /^miércoles, 1 de julio de 2026$/ })
+    const cls = day.className
+    expect(cls).toContain("text-support")
+    // `num` (project token) or `tabular-nums` (Tailwind utility) is acceptable.
+    expect(cls).toMatch(/\b(num|tabular-nums)\b/)
+  })
+
+  it("renders today's day button with text-primary + font-semibold (keeps primary color, adds 600)", async () => {
+    const user = userEvent.setup()
+    render(openCalendar())
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    // react-day-picker prefixes today's button aria-label with "Today,".
+    const today = await screen.findByRole("button", { name: /^Today,/ })
+    const cls = today.className
+    expect(cls).toContain("text-primary")
+    expect(cls).toContain("font-semibold")
+  })
+
+  it("renders the selected day button with bg-primary + text-primary-foreground tokens", async () => {
+    const user = userEvent.setup()
+    render(openCalendar("2026-07-15"))
+    await user.click(screen.getByRole("button", { name: "15/07/2026" }))
+
+    const selectedCell = document.querySelector<HTMLElement>('[class*="rdp-selected"]')
+    const selectedButton = selectedCell?.querySelector<HTMLElement>("button")
+    expect(selectedButton).not.toBeNull()
+    expect(selectedButton!.className).toContain("bg-primary")
+    expect(selectedButton!.className).toContain("text-primary-foreground")
+  })
+
+  it("renders a disabled day button with the text-muted-foreground token", async () => {
+    const user = userEvent.setup()
+    render(openCalendar())
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    // Days past maxDate (19) are disabled and receive text-muted-foreground
+    // (replacing text-support via twMerge).
+    const future = await screen.findByRole("button", { name: /^lunes, 20 de julio de 2026$/ })
+    expect(future).toBeDisabled()
+    expect(future.className).toContain("text-muted-foreground")
+  })
+
+  it("renders the caption as a dropdown with month + year selects (captionLayout='dropdown')", async () => {
+    const user = userEvent.setup()
+    render(openCalendar())
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    const dialog = screen.getByRole("dialog")
+    const selects = dialog.querySelectorAll<HTMLSelectElement>("select")
+    expect(selects.length).toBe(2) // one for month, one for year
+  })
+
+  it("constrains navigation via startMonth + endMonth: year options span a bounded window", async () => {
+    const user = userEvent.setup()
+    render(openCalendar())
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    const dialog = screen.getByRole("dialog")
+    const yearSelect = dialog.querySelectorAll<HTMLSelectElement>("select")[1]
+    // endMonth=2026-07, 5-year lookback startMonth=2021-07 → bounded window.
+    const years = Array.from(yearSelect!.options).map((o) => o.value)
+    expect(years).toContain("2026")
+    expect(years).toContain("2021")
+    expect(years).not.toContain("2020")
+  })
+})

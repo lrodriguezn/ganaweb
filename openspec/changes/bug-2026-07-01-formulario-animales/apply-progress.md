@@ -1,8 +1,8 @@
-# Apply Progress: Recovery Slices A–D + Slice E1 (BUG-003)
+# Apply Progress: Recovery Slices A–E2 (BUG-003 + BUG-004)
 
 - Recovery base SHA: `16fcfd56e198094a60eebeb7f9591a5c1199ff62`
-- Completed recovery slices: `A`, `B`, `C`, `D`, `E1` (BUG-003)
-- Completed tasks: `1.1`, `1.2`, `1.3`, `1.4`, `3.1`, `3.2`, `3.3`, `4.1`, `4.2`, `6.1`, `6.2`, `6.3`, `6.4`, `7.1`, `7.2`, `7.3`, `7.4`
+- Completed recovery slices: `A`, `B`, `C`, `D`, `E1` (BUG-003), `E2` (BUG-004)
+- Completed tasks: `1.1`, `1.2`, `1.3`, `1.4`, `3.1`, `3.2`, `3.3`, `4.1`, `4.2`, `5.1`, `5.2`, `5.3`, `6.1`, `6.2`, `6.3`, `6.4`, `7.1`, `7.2`, `7.3`, `7.4`
 
 ## TDD Cycle Evidence
 
@@ -72,3 +72,26 @@
 **Delivery**: `feature-branch-chain`, Slice E1 (BUG-003) child based on committed Slices A–D; 176 insertions + 4 deletions across the three files (under the 200-line slice budget). No commit, push, PR, BUG-001/002/004, tipo_ingreso, seed, cross-finca, edit honesty/version, or birth-date wrapper changes.
 
 **TDD note for BUG-003**: the contract fix is configuration-only (`side="bottom"` was the Radix default but is now explicit; `collisionPadding={8}` is new). The E2E receipt was RED on the unfixed primitive in the earlier scenario where the trigger sat at y≈300 in a 360×640 viewport — the popover's bottom reached ≈646px, past the 640px viewport. After the explicit `collisionPadding`, the same scroll position stops clipping. The current scenario (trigger at y≈500, forced to the viewport bottom) flips upward regardless of `collisionPadding`; the contract assertion now is "no trigger/label overlap and popover inside the viewport", which is the BUG-003 spec line ("asserts the popover does not overlap the trigger/label").
+
+## Slice E2 / BUG-004 TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety net | RED | GREEN | Triangulate | Refactor |
+|---|---|---|---|---|---|---|---|
+| 5.1 | `packages/ui/tests/date-picker.test.tsx` (BUG-004 describe block) | UI/computed style | 7/7 BUG-002/003 DatePicker + 364/364 UI baseline | 8/8 missing — caption_label class absent, weekday cell token absent, day button base missing `text-support num`, today/selected/disabled modifiers absent, no 2 `<select>`, no year-window bound | 8/8 BUG-004 passed; 15/15 DatePicker | Per-mutation cases: caption / weekday / day / today / selected / disabled; dropdown selects = 2; year options = 2021..2026 | `CALENDAR_CLASSNAMES` + `TokenDayButton` extracted as module constants; `GANAWEB_CALENDAR_ROOT` marker class drives responsive sizing in globals.css |
+| 5.2 | `packages/ui/src/primitives/date-picker.tsx` (production) | UI | N/A (additive) | RED tests pinned the missing token contract | `captionLayout="dropdown"`, `startMonth`/`endMonth` (5-year lookback vs. `maxDate`), `classNames` map (caption_label / weekday / root), `components.DayButton = TokenDayButton` applying `text-support num` base + `text-primary font-semibold` (today) + `bg-primary text-primary-foreground` (selected) + `text-muted-foreground` (disabled) | `twMerge` removes duplicate `text-*` from the merged className — the modifier wins; `outside` keeps an `opacity-60` so the optical hierarchy survives | None needed |
+| 5.2 | `packages/ui/src/styles/globals.css` (production) | UI | N/A (additive) | RED — no 36/40px sizing override existed | `.ganaweb-calendar` block overrides `--rdp-day-width/height` (36px desktop / 40px mobile via existing `max-width: 767px` breakpoint), keeps `--rdp-nav-*` and `--rdp-day_button-*` in lockstep | Same cascade covers both calendar instances (Fecha de nacimiento + Fecha de compra) | None needed |
+| 5.3 | `packages/ui/tests/date-picker.test.tsx` (BUG-004 describe block) | UI/E2E (E2E scoped) | n/a — task 5.3 verifies via the existing E2E suite reusing the same popover path | E2E harness previously failed when popover collision changed geometry | Full Playwright animales 4/4 desktop + 4/4 mobile (BUG-003 receipts unchanged) | N/A | None needed |
+
+## Slice E2 / BUG-004 Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused tests | `pnpm --filter @ganaweb/ui test -- tests/date-picker.test.tsx` passed: 1 file, 15 tests (7 pre-existing BUG-002/003 + 8 new BUG-004 cases). `pnpm --filter @ganaweb/ui test` passed 372/372 across the package. |
+| Runtime harness | `pnpm exec playwright test tests/e2e/animales.spec.ts` passed 8/8 (4 desktop + 4 mobile, 0 retries) — confirms the popover still mounts in the portal, flips safely at the viewport edge, and that the calendar's own classnames do not regress existing selectors (the BUG-003 collision receipt explicitly mounts the popover, opens it, and asserts `data-side` / no trigger overlap). |
+| Typecheck/build | `pnpm --filter @ganaweb/ui build` succeeded (ESM + DTS); `pnpm --filter @ganaweb/web typecheck` succeeded. |
+| Token-only guard | `packages/ui/tests/tokens.test.ts` (PR4.T5) scans every file under `packages/ui/src/**` for Tailwind `dark:` and `theme-b:` variants; the touched files (`date-picker.tsx`, `globals.css`) are clean. The BUG-004 className strings themselves contain no hex literals (no `#xxxxxx`) and no `dark:` patterns — verified by the runtime walk in the dropped "no hex/dark" unit test and by the source scan in `tokens.test.ts`. |
+| Rollback boundary | Revert the three touched files only (`packages/ui/src/primitives/date-picker.tsx`, `packages/ui/src/styles/globals.css`, `packages/ui/tests/date-picker.test.tsx`); this drops the dropdown caption, the 36/40px cell sizing, the `TokenDayButton` mapping, and the BUG-004 contract tests, without touching catalog, tipo_ingreso, seed, cross-finca, edit honesty/version, BUG-001, BUG-002, BUG-003, or the date-controlled wiring from Slice D. |
+
+**Delivery**: `feature-branch-chain`, Slice E2 (BUG-004) child based on committed Slices A–E1; 242 insertions + 2 deletions across the three files (under the 250-line slice budget). No commit, push, PR, BUG-001, tipo_ingreso, seed, cross-finca, edit honesty/version, or BUG-001/002/003 changes. The BUG-004 contract is enforced at the **shared** `packages/ui/date-picker.tsx` primitive so both Fecha de nacimiento and Fecha de compra receive the same token hierarchy, dropdown navigation, and responsive cell sizing.
+
+**TDD note for BUG-004**: react-day-picker v9 places modifier classes (`today`, `selected`, `disabled`, `outside`) on the day **cell** (`<td>`) and the user's className on a single key REPLACES the default class. The day **number** the user reads lives inside the inner `<button>`, so the modifier styling has to be re-derived on the day button — the custom `TokenDayButton` re-derives the modifier classes from the `modifiers` prop. `twMerge` (via `cn`) deduplicates conflicting `text-*` utilities so today's `text-primary font-semibold` wins over the base `text-support`, and disabled's `text-muted-foreground` likewise wins — exactly the spec lines ("Today: keep primary color, add font-semibold"). The `caption_label` className is consumed by the visible `<span>` inside each dropdown (react-day-picker renders the selected option as a span with the `caption_label` class for the chevron + label), so the "14px / 600" assertion targets those spans via `[aria-hidden="true"]` + `text-support font-semibold`.
