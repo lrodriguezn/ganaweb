@@ -201,8 +201,14 @@
           "notNull": false,
           "default": "''"
         },
-        "config_razas_id": {
-          "name": "config_razas_id",
+        "raza_id": {
+          "name": "raza_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "color_id": {
+          "name": "color_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -300,6 +306,13 @@
         },
         "ind_descartado": {
           "name": "ind_descartado",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "es_de_monta": {
+          "name": "es_de_monta",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
@@ -488,11 +501,20 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "animales_config_razas_id_config_razas_id_fk": {
-          "name": "animales_config_razas_id_config_razas_id_fk",
+        "animales_raza_id_config_razas_id_fk": {
+          "name": "animales_raza_id_config_razas_id_fk",
           "tableFrom": "animales",
           "tableTo": "config_razas",
-          "columnsFrom": ["config_razas_id"],
+          "columnsFrom": ["raza_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "animales_color_id_config_colores_id_fk": {
+          "name": "animales_color_id_config_colores_id_fk",
+          "tableFrom": "animales",
+          "tableTo": "config_colores",
+          "columnsFrom": ["color_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"

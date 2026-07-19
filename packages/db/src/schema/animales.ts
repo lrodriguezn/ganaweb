@@ -12,7 +12,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core"
 import { usuarios } from "./auth.js"
-import { configCalidadAnimal, configRazas, configTiposExplotacion } from "./config.js"
+import { configCalidadAnimal, configColores, configRazas, configTiposExplotacion } from "./config.js"
 import { fincas } from "./fincas.js"
 import { grupos, hierros, lotes, potreros, propietarios, sectores } from "./maestros.js"
 
@@ -37,7 +37,9 @@ export const animales = pgTable(
     padreId: text("padre_id"),
     codigoPadre: text("codigo_padre").default(""),
     codigoPajuela: text("codigo_pajuela").default(""),
-    configRazasId: text("config_razas_id").references(() => configRazas.id),
+    razaId: text("raza_id").references(() => configRazas.id),
+    colorId: text("color_id").references(() => configColores.id),
+    esDeMonta: integer("es_de_monta").default(0),
     potreroId: text("potrero_id").references(() => potreros.id),
     sectorId: text("sector_id").references(() => sectores.id),
     loteId: text("lote_id").references(() => lotes.id),
