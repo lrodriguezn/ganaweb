@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from "lucide-react"
-import { useId, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import type * as React from "react"
 
 import { cn } from "../lib/utils"
@@ -672,6 +672,11 @@ export function AnimalFormScreen({
     initialValues?.fechaNacimiento ?? "",
   )
   const [comentarios, setComentarios] = useState<string>(initialValues?.comentarios ?? "")
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   // Bifurcation: if the caller provided a custom `catalogOptions.origen`
   // (e.g. a non-spec list like the PR 3 fixture shipped), render the
@@ -731,11 +736,13 @@ export function AnimalFormScreen({
       <form
         id={formId}
         onSubmit={submitForm}
+        aria-busy={!isHydrated || isSubmitting}
         className={cn(
           "bg-card border-x p-4 grid gap-4",
           mobile ? "pb-28" : "max-w-3xl mx-auto grid-cols-2 border rounded-b-card w-full",
         )}
       >
+        <fieldset disabled={!isHydrated || isSubmitting} className="contents">
         <input type="hidden" name="versionLeida" value="1" />
         {fields.map((field) =>
           renderAnimalFormField(field, {
@@ -846,6 +853,7 @@ export function AnimalFormScreen({
             {isSubmitting ? "Guardando…" : "Guardar"}
           </Button>
         </footer>
+        </fieldset>
       </form>
     </section>
   )

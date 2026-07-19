@@ -7,7 +7,7 @@ export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: false,
   forbidOnly: true,
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   workers: 1,
   reporter: process.env.CI ? "github" : "list",
   use: {
@@ -15,10 +15,10 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `PLAYWRIGHT_TEST=1 GANAWEB_E2E_ANIMALS=1 pnpm --filter @ganaweb/web dev --host 127.0.0.1 --port ${PORT}`,
+    command: `pnpm --filter @ganaweb/ui build && PLAYWRIGHT_TEST=1 GANAWEB_E2E_ANIMALS=1 pnpm --filter @ganaweb/web dev --host 127.0.0.1 --port ${PORT} --force`,
     url: baseURL,
     timeout: 120_000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
   projects: [
     {

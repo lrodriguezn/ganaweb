@@ -167,7 +167,7 @@ export function configureAnimalRuntimeDeps(factory: AnimalRuntimeDepsFactory | n
 }
 
 function getConfiguredAnimalDeps(factory: AnimalRuntimeDepsFactory | null): AnimalUseCaseDeps {
-  if (!factory && isAnimalE2eEnabled()) return createAnimalE2eDeps()
+  if (isAnimalE2eEnabled()) return createAnimalE2eDeps()
   if (!factory) {
     throw new Error(
       "Animal persistence adapters are not configured for apps/web. Register real AnimalUseCaseDeps with configureAnimalRuntimeDeps; demo harnesses are test-only.",

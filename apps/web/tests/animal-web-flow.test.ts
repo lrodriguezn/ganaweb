@@ -11,6 +11,7 @@ import {
   denyAnimalRouteAccess,
   resolveAnimalPermissions,
 } from "../src/server/animal-actions.server.js"
+import { isAnimalE2eEnabled } from "../src/server/e2e-animals-fixture.server.js"
 
 const WEB_ROOT = join(import.meta.dirname, "..")
 const ROUTES_DIR = join(WEB_ROOT, "src", "routes", "_app", "fincas", "$fincaId")
@@ -942,15 +943,47 @@ async function testCreateRouteWiresNewCatalogOptions() {
 }
 
 async function testE2eFixtureRequiresSafeRuntimeGuard() {
-  const source = await readFile(
-    join(WEB_ROOT, "src", "server", "e2e-animals-fixture.server.ts"),
-    "utf8",
-  )
-  assert.ok(source.includes("isSafeAnimalE2eRuntime"), "fixture gate must include runtime guard")
-  assert.ok(
-    source.includes("NODE_ENV") && source.includes("CI") && source.includes("VITEST"),
-    "fixture mode must only enable in local/test runtimes, not deployed production",
-  )
+  const originalEnv = { ...process.env }
+  try {
+    process.env.GANAWEB_E2E_ANIMALS = "1"
+    process.env.NODE_ENV = "production"
+    process.env.PLAYWRIGHT_TEST = "1"
+    assert.equal(isAnimalE2eEnabled(), false, "production must never enable fixtures")
+
+    process.env.NODE_ENV = "development"
+    Reflect.deleteProperty(process.env, "PLAYWRIGHT_TEST")
+    assert.equal(isAnimalE2eEnabled(), false, "ordinary development must not enable fixtures")
+    process.env.CI = "true"
+    assert.equal(isAnimalE2eEnabled(), false, "CI alone must not enable fixtures")
+
+    process.env.NODE_ENV = "test"
+    assert.equal(
+      isAnimalE2eEnabled(),
+      true,
+      "test runtime must enable an explicitly flagged fixture",
+    )
+    process.env.NODE_ENV = "development"
+    process.env.PLAYWRIGHT_TEST = "1"
+    const harness = createAnimalRuntimeHarness({
+      depsFactory: () => {
+        throw new Error("production dependencies must not run in E2E mode")
+      },
+    })
+    const result = await harness.list({ fincaId: "finca-1" })
+    assert.equal(result.tipo, "lista")
+    assert.equal(result.animales[0]?.codigoAnimal, "MT-122")
+
+    const config = await readFile(join(WEB_ROOT, "..", "..", "playwright.config.ts"), "utf8")
+    assert.ok(config.includes("pnpm --filter @ganaweb/ui build &&"))
+    assert.ok(config.includes("PLAYWRIGHT_TEST=1 GANAWEB_E2E_ANIMALS=1"))
+    assert.ok(config.includes("reuseExistingServer: false"))
+    assert.ok(config.includes("retries: 0"))
+  } finally {
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) Reflect.deleteProperty(process.env, key)
+    }
+    Object.assign(process.env, originalEnv)
+  }
 }
 
 async function testActionForwardsValidacionErrores() {

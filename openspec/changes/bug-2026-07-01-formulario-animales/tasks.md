@@ -45,10 +45,10 @@ Chain strategy: feature-branch-chain
 
 ## Phase 1: Evidence and Test Capability
 
-- [ ] 1.1 E2E fixture requires an explicit flag plus test-runtime signal and fails closed in production.
-- [ ] 1.2 E2E fixture dependencies and session take precedence over production dependencies.
-- [ ] 1.3 Playwright builds UI, starts a fresh flagged server, and uses zero retries.
-- [ ] 1.4 Shared animal form defers interaction until hydration completes.
+- [x] 1.1 E2E fixture requires an explicit flag plus test-runtime signal and fails closed in production.
+- [x] 1.2 E2E fixture dependencies and session take precedence over production dependencies.
+- [x] 1.3 Playwright builds UI, starts a fresh flagged server, and uses zero retries.
+- [x] 1.4 Shared animal form defers interaction until hydration completes.
 
 ## Phase 2: BUG-001 — Diagnose Before Correcting
 

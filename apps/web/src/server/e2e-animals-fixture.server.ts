@@ -15,18 +15,12 @@ export function isAnimalE2eEnabled(): boolean {
 }
 
 export function isSafeAnimalE2eRuntime(): boolean {
+  if (process.env.NODE_ENV === "production") return false
   const explicitlyTestRuntime =
-    process.env.CI === "true" ||
     process.env.VITEST === "true" ||
     process.env.PLAYWRIGHT_TEST === "1" ||
     process.env.PLAYWRIGHT === "1"
-  if (process.env.NODE_ENV === "production" && !explicitlyTestRuntime) return false
-  return (
-    process.env.NODE_ENV === "test" ||
-    explicitlyTestRuntime ||
-    process.env.NODE_ENV === "development" ||
-    process.env.NODE_ENV === undefined
-  )
+  return process.env.NODE_ENV === "test" || explicitlyTestRuntime
 }
 
 export function getAnimalE2eSession(): SesionAutorizada {

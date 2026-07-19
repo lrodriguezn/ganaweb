@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from "node:fs"
+import { renderToString } from "react-dom/server"
 
 import { cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -221,6 +222,18 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(formData.get("codigo")).toBe("NV-42")
     expect(formData.get("nombre")).toBe("Novilla 42")
     expect(formData.get("sexoKey")).toBe("1")
+  })
+
+  it("keeps server-rendered controls disabled until hydration enables the interactive form", () => {
+    const props = { mode: "desktop" as const, onSave: vi.fn(), onCancel: vi.fn() }
+    const serverMarkup = renderToString(<AnimalFormScreen {...props} />)
+
+    expect(serverMarkup).toContain('aria-busy="true"')
+    expect(serverMarkup).toContain('disabled=""')
+
+    render(<AnimalFormScreen {...props} />)
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled()
+    expect(screen.getByLabelText("Código *")).toBeEnabled()
   })
 
   it("renders per-field error under the named input with ARIA wiring when fieldErrors is supplied", () => {
