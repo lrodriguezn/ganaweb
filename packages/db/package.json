@@ -20,6 +20,10 @@
     "./animal-infrastructure": {
       "types": "./src/animal-infrastructure.ts",
       "import": "./src/animal-infrastructure.ts"
+    },
+    "./catalogo-global-infrastructure": {
+      "types": "./src/catalogo-global-infrastructure.ts",
+      "import": "./src/catalogo-global-infrastructure.ts"
     }
   },
   "scripts": {

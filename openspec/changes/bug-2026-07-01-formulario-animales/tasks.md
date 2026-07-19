@@ -75,10 +75,10 @@ Chain strategy: feature-branch-chain
 
 ## Phase 6: Global Catalog Reader — PR5 Reader Foundation (base: PR4)
 
-- [ ] 6.1 RED: `packages/aplicacion/tests/catalogo-sexo.test.ts`: reader and exact `"0"|"1"|"2"`.
-- [ ] 6.2 GREEN: port/DTO/use case; export `packages/aplicacion/src/index.ts`.
-- [ ] 6.3 RED: `packages/db/tests/catalogo-global-infrastructure.test.ts`: sexo/active, mapping, invalid/duplicate/empty, order.
-- [ ] 6.4 GREEN: add/export minimal Drizzle global-active adapter.
+- [x] 6.1 RED: `packages/aplicacion/tests/catalogo-sexo.test.ts`: reader and exact `"0"|"1"|"2"`.
+- [x] 6.2 GREEN: port/DTO/use case; export `packages/aplicacion/src/index.ts`.
+- [x] 6.3 RED: `packages/db/tests/catalogo-global-infrastructure.test.ts`: sexo/active, mapping, invalid/duplicate/empty, order.
+- [x] 6.4 GREEN: add/export minimal Drizzle global-active adapter.
 - [ ] 6.5 Commit reader foundation; rollback catalog app/db/tests.
 
 ## Phase 7: Sexo Integration — PR6 (base: PR5)
