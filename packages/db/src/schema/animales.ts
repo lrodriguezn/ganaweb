@@ -33,7 +33,7 @@ export const animales = pgTable(
     codigoMadre: text("codigo_madre").default(""),
     indTransferenciaEmbriones: integer("ind_transferencia_embriones").default(0),
     codigoDonadora: text("codigo_donadora").default(""),
-    tipoPadreKey: integer("tipo_padre_key").default(0),
+    tipoPadreId: integer("tipo_padre_id").default(0),
     padreId: text("padre_id"),
     codigoPadre: text("codigo_padre").default(""),
     codigoPajuela: text("codigo_pajuela").default(""),

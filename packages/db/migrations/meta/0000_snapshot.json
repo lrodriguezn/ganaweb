@@ -174,8 +174,8 @@
           "notNull": false,
           "default": "''"
         },
-        "tipo_padre_key": {
-          "name": "tipo_padre_key",
+        "tipo_padre_id": {
+          "name": "tipo_padre_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
