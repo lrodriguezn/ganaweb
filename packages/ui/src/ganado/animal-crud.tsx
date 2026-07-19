@@ -604,7 +604,6 @@ type AnimalFormField = {
   defaultValue?: string
 }
 
-
 const ORIGEN_OPTIONS: readonly { value: OrigenKey; label: string }[] = [
   { value: "nacido_en_finca", label: "Nacido en finca" },
   { value: "comprado", label: "Comprado" },
@@ -741,24 +740,24 @@ export function AnimalFormScreen({
         )}
       >
         <fieldset disabled={!isHydrated || isSubmitting} className="contents">
-        <input type="hidden" name="versionLeida" value="1" />
-        {fields.map((field) =>
-          renderAnimalFormField(field, {
-            initialValues,
-            catalogOptions,
-            fieldErrors,
-            origen,
-            fechaNacimiento,
-            comentarios,
-            handleOrigenChange,
-            handleEstimar,
-            useComboboxOrigen,
-            currentAnimalId,
-            setFechaNacimiento,
-            setComentarios,
-          }),
-        )}
-        {/*
+          <input type="hidden" name="versionLeida" value="1" />
+          {fields.map((field) =>
+            renderAnimalFormField(field, {
+              initialValues,
+              catalogOptions,
+              fieldErrors,
+              origen,
+              fechaNacimiento,
+              comentarios,
+              handleOrigenChange,
+              handleEstimar,
+              useComboboxOrigen,
+              currentAnimalId,
+              setFechaNacimiento,
+              setComentarios,
+            }),
+          )}
+          {/*
           PR 2a (CA-UI-007 + CA-CRE-002): the conditional block is keyed
           on `origen` so flipping the pill unmounts the abandoned block.
           Typed values in the abandoned block are discarded (their
@@ -766,94 +765,94 @@ export function AnimalFormScreen({
           FormData). Wrapping each branch in a `<div key={origen}>`
           ensures both directions of the flip remount.
         */}
-        {formVariant !== "delete" ? (
-          <div data-conditional={origen} className="col-span-full grid gap-4">
-            {isComprado ? (
-              <PurchaseBlock
-                key={`purchase-${origen}-${origenFlipCount}`}
-                initialValues={initialValues}
-                catalogOptions={catalogOptions}
-                fieldErrors={fieldErrors}
-                fechaCompra={fechaCompra}
-                fechaNacimiento={fechaNacimiento}
-                onFechaCompraChange={setFechaCompra}
-              />
-            ) : (
-              <ParentsBlock
-                key={`parents-${origen}-${origenFlipCount}`}
-                initialValues={initialValues}
-                catalogOptions={catalogOptions}
-                fieldErrors={fieldErrors}
-                currentAnimalId={currentAnimalId}
-                showPadre={!mobile}
-              />
-            )}
-          </div>
-        ) : null}
-        {/*
+          {formVariant !== "delete" ? (
+            <div data-conditional={origen} className="col-span-full grid gap-4">
+              {isComprado ? (
+                <PurchaseBlock
+                  key={`purchase-${origen}-${origenFlipCount}`}
+                  initialValues={initialValues}
+                  catalogOptions={catalogOptions}
+                  fieldErrors={fieldErrors}
+                  fechaCompra={fechaCompra}
+                  fechaNacimiento={fechaNacimiento}
+                  onFechaCompraChange={setFechaCompra}
+                />
+              ) : (
+                <ParentsBlock
+                  key={`parents-${origen}-${origenFlipCount}`}
+                  initialValues={initialValues}
+                  catalogOptions={catalogOptions}
+                  fieldErrors={fieldErrors}
+                  currentAnimalId={currentAnimalId}
+                  showPadre={!mobile}
+                />
+              )}
+            </div>
+          ) : null}
+          {/*
           Comentarios lives outside the conditional block so it stays
           visible in both modes. The Estimar por edad shortcut appends
           the `[fecha estimada]` tag here.
         */}
-        <div className="col-span-full">
-          <Field
-            key="comentarios"
-            label="Comentarios"
-            name="comentarios"
-            value={comentarios}
-            onChange={setComentarios}
-            fieldErrors={fieldErrors}
-          />
-        </div>
-        {formVariant === "create"
-          ? LOCATION_FIELDS.map((field) =>
-              renderAnimalFormField(field, {
-                initialValues,
-                catalogOptions,
-                fieldErrors,
-                origen,
-                fechaNacimiento,
-                comentarios,
-                handleOrigenChange,
-                handleEstimar,
-                useComboboxOrigen,
-                currentAnimalId,
-                setFechaNacimiento,
-                setComentarios,
-              }),
-            )
-          : renderCurrentLocation(currentLocation)}
-        {mobile && (
-          <p className="rounded-card bg-info-100 text-info-600 p-3 text-support">
-            ¿No encuentras la raza? Créala sin salir del formulario.
-          </p>
-        )}
-        <footer
-          data-sticky-save="true"
-          className={cn(
-            "border-t bg-card p-4 flex items-center gap-2 z-40",
-            mobile
-              ? "fixed inset-x-0 bottom-0 min-h-20"
-              : "col-span-full -mx-4 -mb-4 border-x border-b rounded-b-card justify-end",
+          <div className="col-span-full">
+            <Field
+              key="comentarios"
+              label="Comentarios"
+              name="comentarios"
+              value={comentarios}
+              onChange={setComentarios}
+              fieldErrors={fieldErrors}
+            />
+          </div>
+          {formVariant === "create"
+            ? LOCATION_FIELDS.map((field) =>
+                renderAnimalFormField(field, {
+                  initialValues,
+                  catalogOptions,
+                  fieldErrors,
+                  origen,
+                  fechaNacimiento,
+                  comentarios,
+                  handleOrigenChange,
+                  handleEstimar,
+                  useComboboxOrigen,
+                  currentAnimalId,
+                  setFechaNacimiento,
+                  setComentarios,
+                }),
+              )
+            : renderCurrentLocation(currentLocation)}
+          {mobile && (
+            <p className="rounded-card bg-info-100 text-info-600 p-3 text-support">
+              ¿No encuentras la raza? Créala sin salir del formulario.
+            </p>
           )}
-        >
-          <p className="mr-auto text-caption text-info-600">Se sincronizará al recuperar señal</p>
-          <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
-            Cancelar
-          </Button>
-          {/*
+          <footer
+            data-sticky-save="true"
+            className={cn(
+              "border-t bg-card p-4 flex items-center gap-2 z-40",
+              mobile
+                ? "fixed inset-x-0 bottom-0 min-h-20"
+                : "col-span-full -mx-4 -mb-4 border-x border-b rounded-b-card justify-end",
+            )}
+          >
+            <p className="mr-auto text-caption text-info-600">Se sincronizará al recuperar señal</p>
+            <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            {/*
             PR 2a (CA-UI-006): "min-w-[120px]" preserves button width when
             the label flips between "Guardar" and "Guardando…".
           */}
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            aria-busy={isSubmitting}
-            className="min-w-[120px]"
-          >
-            {isSubmitting ? "Guardando…" : "Guardar"}
-          </Button>
-        </footer>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className="min-w-[120px]"
+            >
+              {isSubmitting ? "Guardando…" : "Guardar"}
+            </Button>
+          </footer>
         </fieldset>
       </form>
     </section>
@@ -895,7 +894,11 @@ function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) 
         key={field.name}
         label={field.label}
         name={field.name}
-        defaultValue={sexo.some((option) => option.value === "1") ? String(initialValues?.sexoKey ?? 1) : undefined}
+        defaultValue={
+          sexo.some((option) => option.value === "1")
+            ? String(initialValues?.sexoKey ?? 1)
+            : undefined
+        }
         options={sexo}
         disabledWhenEmpty
         fieldErrors={fieldErrors}
@@ -1222,17 +1225,25 @@ function CatalogSelectField({
   const unavailable = disabledWhenEmpty && options.length === 0
   const renderedOptions = unavailable
     ? []
-    :
-    hasDefaultLabel || !defaultValue
+    : hasDefaultLabel || !defaultValue
       ? options
       : [{ value: defaultValue, label: "No disponible" }, ...options]
-  const selectProps = unavailable ? {} : defaultValue === undefined ? { name } : { name, defaultValue }
+  const selectProps = unavailable
+    ? {}
+    : defaultValue === undefined
+      ? { name }
+      : { name, defaultValue }
 
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select {...selectProps}>
-        <SelectTrigger id={id} disabled={unavailable} className="min-h-[--h-touch]" {...triggerProps}>
+        <SelectTrigger
+          id={id}
+          disabled={unavailable}
+          className="min-h-[--h-touch]"
+          {...triggerProps}
+        >
           {unavailable ? "No disponible" : <SelectValue placeholder="No disponible" />}
         </SelectTrigger>
         <SelectContent>

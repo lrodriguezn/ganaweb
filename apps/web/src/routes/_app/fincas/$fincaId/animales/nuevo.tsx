@@ -156,7 +156,10 @@ function readCanCreateCatalog(): boolean {
   }
 }
 
-export function NewAnimalRouteView({ fincaId, sexoCatalog }: { readonly fincaId: string; readonly sexoCatalog?: AnimalSexoCatalog }) {
+export function NewAnimalRouteView({
+  fincaId,
+  sexoCatalog,
+}: { readonly fincaId: string; readonly sexoCatalog?: AnimalSexoCatalog }) {
   // Demo catalog source. Migrate to a per-finca loader when the
   // master-data tables (origen/potrero/sector/lote/grupo) are wired
   // through a real server function.

@@ -22,8 +22,8 @@ import { db } from "@ganaweb/db/client"
 import type { AnimalListItem, AnimalTimelineItem } from "@ganaweb/ui"
 import { createServerFn } from "@tanstack/react-start"
 import {
-  createAnimalE2eDeps,
   createAnimalE2eCatalogoPort,
+  createAnimalE2eDeps,
   getAnimalE2eSession,
   isAnimalE2eEnabled,
 } from "./e2e-animals-fixture.server.js"
@@ -190,13 +190,19 @@ function getConfiguredAnimalDeps(factory: AnimalRuntimeDepsFactory | null): Anim
 }
 
 export type AnimalSexoCatalog =
-  | { readonly tipo: "disponible"; readonly options: readonly { readonly label: string; readonly value: string }[] }
+  | {
+      readonly tipo: "disponible"
+      readonly options: readonly { readonly label: string; readonly value: string }[]
+    }
   | { readonly tipo: "no_disponible" }
 
 export async function loadAnimalSexoCatalog(port: CatalogoGlobalPort): Promise<AnimalSexoCatalog> {
   try {
     const options = await listarCatalogoSexo(port)
-    return { tipo: "disponible", options: options.map(({ label, value }) => ({ label, value: String(value) })) }
+    return {
+      tipo: "disponible",
+      options: options.map(({ label, value }) => ({ label, value: String(value) })),
+    }
   } catch {
     return { tipo: "no_disponible" }
   }
@@ -398,7 +404,11 @@ export function buildAnimalRouteViewModel(input: {
   }
 }
 
-export function createAnimalActionHarness({ deps, getSession, catalogoSexo }: AnimalActionHarnessDeps) {
+export function createAnimalActionHarness({
+  deps,
+  getSession,
+  catalogoSexo,
+}: AnimalActionHarnessDeps) {
   return {
     async list(input: { readonly fincaId: string } & AnimalListFilters) {
       const session = await getSession()
@@ -458,7 +468,11 @@ export function createAnimalActionHarness({ deps, getSession, catalogoSexo }: An
           }
         }
         sexoKey = validated
-      } else if (input.datos.sexoKey === 0 || input.datos.sexoKey === 1 || input.datos.sexoKey === 2) {
+      } else if (
+        input.datos.sexoKey === 0 ||
+        input.datos.sexoKey === 1 ||
+        input.datos.sexoKey === 2
+      ) {
         sexoKey = input.datos.sexoKey
       } else {
         return {

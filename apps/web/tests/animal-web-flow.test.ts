@@ -494,22 +494,36 @@ async function testCreateRejectsCrossFincaUbicaciones() {
   const verificar = async (entrada: { fincaId: string; [k: string]: string | undefined }) => {
     const ok = fincas.get(entrada.fincaId) ?? new Set<string>()
     const out: { campo: string; regla: string; detalle: string }[] = []
-    for (const [k, campo, nombre] of ([["potreroId", "potrero_id", "potrero"], ["sectorId", "sector_id", "sector"], ["loteId", "lote_id", "lote"], ["grupoId", "grupo_id", "grupo"]] as const)) {
+    for (const [k, campo, nombre] of [
+      ["potreroId", "potrero_id", "potrero"],
+      ["sectorId", "sector_id", "sector"],
+      ["loteId", "lote_id", "lote"],
+      ["grupoId", "grupo_id", "grupo"],
+    ] as const) {
       const id = entrada[k]
       if (typeof id === "string" && !ok.has(id)) {
-        out.push({ campo, regla: "CA-CRE-008", detalle: `La ubicación (${nombre}) no pertenece a la finca activa.` })
+        out.push({
+          campo,
+          regla: "CA-CRE-008",
+          detalle: `La ubicación (${nombre}) no pertenece a la finca activa.`,
+        })
       }
     }
     return out
   }
   const harness = createAnimalActionHarness({
-    deps: { ...deps(), ubicaciones: { async registrarInicial() {}, verificarPropiedadEnFinca: verificar } },
+    deps: {
+      ...deps(),
+      ubicaciones: { async registrarInicial() {}, verificarPropiedadEnFinca: verificar },
+    },
     getSession: async () => session(),
   })
   const bundle = (codigo: string, mismoFinca: boolean, grupoId?: string) => ({
     fincaId: "finca-1" as const,
     datos: {
-      codigo, nombre: codigo, sexoKey: 1 as const,
+      codigo,
+      nombre: codigo,
+      sexoKey: 1 as const,
       potreroId: mismoFinca ? "potrero-norte" : "potrero-otro",
       sectorId: mismoFinca ? "sector-cria" : "sector-otro",
       loteId: mismoFinca ? "lote-a" : "lote-otro",
@@ -519,11 +533,28 @@ async function testCreateRejectsCrossFincaUbicaciones() {
   const mismo = await harness.create(bundle("CR-OK", true))
   assert.equal(mismo.tipo, "creado", "same-finca bundle must reach creado (CA-CRE-008 silent)")
   const cross = await harness.create(bundle("CR-X", false))
-  assert.equal(cross.tipo, "validacion", "all-cross-finca must return validacion with 4 CA-CRE-008 errors")
-  assert.ok(cross.tipo === "validacion" && cross.errores.filter((e) => e.regla === "CA-CRE-008").length === 4, "cross-finca must surface one CA-CRE-008 error per split-location id")
+  assert.equal(
+    cross.tipo,
+    "validacion",
+    "all-cross-finca must return validacion with 4 CA-CRE-008 errors",
+  )
+  assert.ok(
+    cross.tipo === "validacion" &&
+      cross.errores.filter((e) => e.regla === "CA-CRE-008").length === 4,
+    "cross-finca must surface one CA-CRE-008 error per split-location id",
+  )
   const parcial = await harness.create(bundle("CR-P", true, "grupo-otro"))
-  assert.equal(parcial.tipo, "validacion", "partial (only grupoId cross-finca) must surface exactly one error")
-  assert.ok(parcial.tipo === "validacion" && parcial.errores.length === 1 && parcial.errores[0]?.campo === "grupo_id", "partial cross-finca must surface exactly one CA-CRE-008 error for the offending grupoId")
+  assert.equal(
+    parcial.tipo,
+    "validacion",
+    "partial (only grupoId cross-finca) must surface exactly one error",
+  )
+  assert.ok(
+    parcial.tipo === "validacion" &&
+      parcial.errores.length === 1 &&
+      parcial.errores[0]?.campo === "grupo_id",
+    "partial cross-finca must surface exactly one CA-CRE-008 error for the offending grupoId",
+  )
 }
 
 async function testRouteFormPayloadBuilders() {
@@ -856,15 +887,30 @@ async function testCreatePersistsDatesRoundTripIntoEditLoader() {
       ]
     },
   }
-  const harness = createAnimalActionHarness({ deps: deps(), getSession: async () => session(), catalogoSexo })
+  const harness = createAnimalActionHarness({
+    deps: deps(),
+    getSession: async () => session(),
+    catalogoSexo,
+  })
 
   // String non-canonical sexoKey: lower-level revalidation surfaces
   // validacion instead of throwing the previous defensive error.
   const stringSexo = await harness.create({
     fincaId: "finca-1",
-    datos: { codigo: "RT-001", nombre: "Persistente", sexoKey: "9", origen: "comprado", fechaNacimiento: "2026-07-10", fechaCompra: "2026-07-15" },
+    datos: {
+      codigo: "RT-001",
+      nombre: "Persistente",
+      sexoKey: "9",
+      origen: "comprado",
+      fechaNacimiento: "2026-07-10",
+      fechaCompra: "2026-07-15",
+    },
   })
-  assert.equal(stringSexo.tipo, "validacion", "string non-canonical sexoKey must return validacion from the lower-level action harness")
+  assert.equal(
+    stringSexo.tipo,
+    "validacion",
+    "string non-canonical sexoKey must return validacion from the lower-level action harness",
+  )
   assert.ok(
     stringSexo.tipo === "validacion" && stringSexo.errores.some((e) => e.campo === "sexo_key"),
     "validacion errores must include campo: 'sexo_key'",
@@ -874,7 +920,14 @@ async function testCreatePersistsDatesRoundTripIntoEditLoader() {
   // into the edit loader, the new animalId is recorded in the store.
   const creado = await harness.create({
     fincaId: "finca-1",
-    datos: { codigo: "RT-002", nombre: "Numerica", sexoKey: 1, origen: "comprado", fechaNacimiento: "2026-07-10", fechaCompra: "2026-07-15" },
+    datos: {
+      codigo: "RT-002",
+      nombre: "Numerica",
+      sexoKey: 1,
+      origen: "comprado",
+      fechaNacimiento: "2026-07-10",
+      fechaCompra: "2026-07-15",
+    },
   })
   assert.equal(creado.tipo, "creado", "numeric sexoKey: 1 must reach creado (happy path)")
   if (creado.tipo !== "creado") return

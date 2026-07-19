@@ -42,7 +42,10 @@ export interface CreateAnimalWebInput {
 }
 
 export type AnimalSexoCatalog =
-  | { readonly tipo: "disponible"; readonly options: readonly { readonly label: string; readonly value: string }[] }
+  | {
+      readonly tipo: "disponible"
+      readonly options: readonly { readonly label: string; readonly value: string }[]
+    }
   | { readonly tipo: "no_disponible" }
 
 export interface UpdateAnimalWebInput {
@@ -156,7 +159,10 @@ export const getAnimalFichaAction = createServerFn({ method: "GET" })
 
 export const createAnimalAction = createServerFn({ method: "POST" })
   .validator((data: CreateAnimalWebInput) => data)
-  .handler(async ({ data }) => (await (await getRuntimeHarness()).create(data)) as CreateAnimalServerResult)
+  .handler(
+    async ({ data }) =>
+      (await (await getRuntimeHarness()).create(data)) as CreateAnimalServerResult,
+  )
 
 export const updateAnimalAction = createServerFn({ method: "POST" })
   .validator((data: UpdateAnimalWebInput) => data)

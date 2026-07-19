@@ -11,8 +11,8 @@ import type {
   TransaccionPort,
 } from "@ganaweb/aplicacion"
 import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
-import { and, asc, eq, or } from "drizzle-orm"
 import type { ErrorValidacionAnimal } from "@ganaweb/aplicacion"
+import { and, asc, eq, or } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 import {
   animales,
@@ -703,7 +703,8 @@ export class DrizzleAnimalUbicacionesRepository {
         .from(potreros)
         .where(and(eq(potreros.id, entrada.potreroId), eq(potreros.fincaId, entrada.fincaId)))
         .limit(1)
-      if (!row) errores.push(errorUbicacion("potrero_id", "El potrero no pertenece a la finca activa."))
+      if (!row)
+        errores.push(errorUbicacion("potrero_id", "El potrero no pertenece a la finca activa."))
     }
     if (entrada.sectorId !== undefined) {
       const [row] = await db
@@ -711,7 +712,8 @@ export class DrizzleAnimalUbicacionesRepository {
         .from(sectores)
         .where(and(eq(sectores.id, entrada.sectorId), eq(sectores.fincaId, entrada.fincaId)))
         .limit(1)
-      if (!row) errores.push(errorUbicacion("sector_id", "El sector no pertenece a la finca activa."))
+      if (!row)
+        errores.push(errorUbicacion("sector_id", "El sector no pertenece a la finca activa."))
     }
     if (entrada.loteId !== undefined) {
       const [row] = await db
