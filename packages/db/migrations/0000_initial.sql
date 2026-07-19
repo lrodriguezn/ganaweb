@@ -23,7 +23,7 @@ CREATE TABLE "animales" (
 	"codigo_madre" text DEFAULT '',
 	"ind_transferencia_embriones" integer DEFAULT 0,
 	"codigo_donadora" text DEFAULT '',
-	"tipo_padre_key" integer DEFAULT 0,
+	"tipo_padre_id" integer DEFAULT 0,
 	"padre_id" text,
 	"codigo_padre" text DEFAULT '',
 	"codigo_pajuela" text DEFAULT '',
