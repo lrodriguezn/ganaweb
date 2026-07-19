@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from "lucide-react"
-import { useId, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import type * as React from "react"
 
 import { cn } from "../lib/utils"
@@ -555,6 +555,7 @@ export interface CanCreateCatalog {
 }
 
 export interface AnimalFormCatalogOptions {
+  sexo?: readonly SelectOption[]
   origen?: readonly SelectOption[]
   raza?: readonly SelectOptionWithCreate[]
   color?: readonly SelectOptionWithCreate[]
@@ -603,11 +604,6 @@ type AnimalFormField = {
   defaultValue?: string
 }
 
-const SEXO_OPTIONS: readonly SelectOption[] = [
-  { value: "0", label: "Macho" },
-  { value: "1", label: "Hembra" },
-  { value: "2", label: "Pajuela" },
-]
 
 const ORIGEN_OPTIONS: readonly { value: OrigenKey; label: string }[] = [
   { value: "nacido_en_finca", label: "Nacido en finca" },
@@ -625,7 +621,7 @@ const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Código *", name: "codigo", required: true },
   { label: "Nombre", name: "nombre", required: true },
   { label: "Nº de arete", name: "arete" },
-  { label: "Sexo", name: "sexoKey", defaultValue: "1" },
+  { label: "Sexo", name: "sexoKey" },
   { label: "Raza", name: "raza" },
   { label: "Fecha de nacimiento", name: "fechaNacimiento" },
   { label: "Color", name: "color" },
@@ -671,7 +667,13 @@ export function AnimalFormScreen({
   const [fechaNacimiento, setFechaNacimiento] = useState<string>(
     initialValues?.fechaNacimiento ?? "",
   )
+  const [fechaCompra, setFechaCompra] = useState<string>(initialValues?.fechaCompra ?? "")
   const [comentarios, setComentarios] = useState<string>(initialValues?.comentarios ?? "")
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   // Bifurcation: if the caller provided a custom `catalogOptions.origen`
   // (e.g. a non-spec list like the PR 3 fixture shipped), render the
@@ -699,6 +701,7 @@ export function AnimalFormScreen({
           "Sexo",
           "Raza",
           "Fecha de nacimiento",
+          "Origen",
           "Potrero",
           "Sector",
           "Lote",
@@ -731,11 +734,13 @@ export function AnimalFormScreen({
       <form
         id={formId}
         onSubmit={submitForm}
+        aria-busy={!isHydrated || isSubmitting}
         className={cn(
           "bg-card border-x p-4 grid gap-4",
           mobile ? "pb-28" : "max-w-3xl mx-auto grid-cols-2 border rounded-b-card w-full",
         )}
       >
+        <fieldset disabled={!isHydrated || isSubmitting} className="contents">
         <input type="hidden" name="versionLeida" value="1" />
         {fields.map((field) =>
           renderAnimalFormField(field, {
@@ -769,6 +774,9 @@ export function AnimalFormScreen({
                 initialValues={initialValues}
                 catalogOptions={catalogOptions}
                 fieldErrors={fieldErrors}
+                fechaCompra={fechaCompra}
+                fechaNacimiento={fechaNacimiento}
+                onFechaCompraChange={setFechaCompra}
               />
             ) : (
               <ParentsBlock
@@ -846,6 +854,7 @@ export function AnimalFormScreen({
             {isSubmitting ? "Guardando…" : "Guardar"}
           </Button>
         </footer>
+        </fieldset>
       </form>
     </section>
   )
@@ -880,13 +889,15 @@ function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) 
   } = ctx
 
   if (field.name === "sexoKey") {
+    const sexo = catalogOptions?.sexo ?? []
     return (
       <CatalogSelectField
         key={field.name}
         label={field.label}
         name={field.name}
-        defaultValue={String(initialValues?.sexoKey ?? 1)}
-        options={SEXO_OPTIONS}
+        defaultValue={sexo.some((option) => option.value === "1") ? String(initialValues?.sexoKey ?? 1) : undefined}
+        options={sexo}
+        disabledWhenEmpty
         fieldErrors={fieldErrors}
       />
     )
@@ -997,14 +1008,25 @@ function PurchaseBlock({
   initialValues,
   catalogOptions,
   fieldErrors,
+  fechaCompra,
+  fechaNacimiento,
+  onFechaCompraChange,
 }: {
   initialValues?: AnimalFormInitialValues | undefined
   catalogOptions?: AnimalFormCatalogOptions | undefined
   fieldErrors?: Record<string, string> | undefined
+  fechaCompra: string
+  fechaNacimiento: string
+  onFechaCompraChange: (value: string) => void
 }) {
   return (
     <>
-      <FechaCompraField initialValue={initialValues?.fechaCompra ?? ""} fieldErrors={fieldErrors} />
+      <FechaCompraField
+        value={fechaCompra}
+        minDate={fechaNacimiento ? new Date(`${fechaNacimiento}T00:00:00`) : undefined}
+        onChange={onFechaCompraChange}
+        fieldErrors={fieldErrors}
+      />
       <NumericField
         label="Precio"
         name="precioCompra"
@@ -1178,15 +1200,17 @@ function CatalogSelectField({
   name,
   defaultValue,
   options,
+  disabledWhenEmpty = false,
   fieldErrors,
 }: {
   label: string
   name: string
   defaultValue?: string | undefined
   options: readonly SelectOption[]
+  disabledWhenEmpty?: boolean
   fieldErrors?: Record<string, string> | undefined
 }) {
-  const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const id = `${label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}-${useId()}`
   const errorId = `${id}-error`
   const errorMessage = fieldErrors?.[name]
   const triggerProps = errorMessage
@@ -1195,18 +1219,21 @@ function CatalogSelectField({
   const hasDefaultLabel = defaultValue
     ? options.some((option) => option.value === defaultValue)
     : false
-  const renderedOptions =
+  const unavailable = disabledWhenEmpty && options.length === 0
+  const renderedOptions = unavailable
+    ? []
+    :
     hasDefaultLabel || !defaultValue
       ? options
       : [{ value: defaultValue, label: "No disponible" }, ...options]
-  const selectProps = defaultValue === undefined ? { name } : { name, defaultValue }
+  const selectProps = unavailable ? {} : defaultValue === undefined ? { name } : { name, defaultValue }
 
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select {...selectProps}>
-        <SelectTrigger id={id} className="min-h-[--h-touch]" {...triggerProps}>
-          <SelectValue placeholder="No disponible" />
+        <SelectTrigger id={id} disabled={unavailable} className="min-h-[--h-touch]" {...triggerProps}>
+          {unavailable ? "No disponible" : <SelectValue placeholder="No disponible" />}
         </SelectTrigger>
         <SelectContent>
           {renderedOptions.map((option) => (
@@ -1336,10 +1363,14 @@ function FechaNacimientoField({
  * an estimated one). Renders a `Label` and the DatePicker trigger.
  */
 function FechaCompraField({
-  initialValue,
+  value,
+  minDate,
+  onChange,
   fieldErrors,
 }: {
-  initialValue: string
+  value: string
+  minDate?: Date | undefined
+  onChange: (value: string) => void
   fieldErrors?: Record<string, string> | undefined
 }) {
   const label = "Fecha de compra"
@@ -1353,10 +1384,9 @@ function FechaCompraField({
       <DatePicker
         id={id}
         name={name}
-        value={initialValue}
-        onChange={() => {
-          // uncontrolled — the hidden native input mirrors the value
-        }}
+        value={value}
+        minDate={minDate}
+        onChange={onChange}
         maxDate={new Date()}
         {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
       />

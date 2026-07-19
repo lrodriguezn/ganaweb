@@ -5,7 +5,7 @@ export interface CreateAnimalWebInput {
   readonly datos: {
     readonly codigo: string
     readonly nombre: string
-    readonly sexoKey: 0 | 1 | 2
+    readonly sexoKey: string | null
     readonly potreroId?: string
     readonly sectorId?: string
     readonly loteId?: string
@@ -40,6 +40,10 @@ export interface CreateAnimalWebInput {
     readonly bytes: number
   }[]
 }
+
+export type AnimalSexoCatalog =
+  | { readonly tipo: "disponible"; readonly options: readonly { readonly label: string; readonly value: string }[] }
+  | { readonly tipo: "no_disponible" }
 
 export interface UpdateAnimalWebInput {
   readonly fincaId: string
@@ -142,29 +146,17 @@ export const listAnimalsAction = createServerFn({ method: "GET" })
   .validator((data: { fincaId: string }) => data)
   .handler(async ({ data }) => (await getRuntimeHarness()).list(data))
 
+export const getAnimalSexoCatalogAction = createServerFn({ method: "GET" }).handler(
+  async () => (await (await getRuntimeHarness()).sexoCatalog()) as AnimalSexoCatalog,
+)
+
 export const getAnimalFichaAction = createServerFn({ method: "GET" })
   .validator((data: AnimalIdWebInput & { cursorTimeline?: string }) => data)
   .handler(async ({ data }) => (await getRuntimeHarness()).ficha(data))
 
 export const createAnimalAction = createServerFn({ method: "POST" })
   .validator((data: CreateAnimalWebInput) => data)
-  .handler(async ({ data }) => {
-    const { addAnimalE2eRecord, isAnimalE2eEnabled } = await import(
-      "./e2e-animals-fixture.server.js"
-    )
-    if (isAnimalE2eEnabled()) {
-      addAnimalE2eRecord({
-        fincaId: data.fincaId,
-        codigo: data.datos.codigo,
-        nombre: data.datos.nombre,
-        sexoKey: data.datos.sexoKey,
-      })
-      return { tipo: "creado" as const }
-    }
-
-    const result = (await (await getRuntimeHarness()).create(data)) as CreateAnimalServerResult
-    return result
-  })
+  .handler(async ({ data }) => (await (await getRuntimeHarness()).create(data)) as CreateAnimalServerResult)
 
 export const updateAnimalAction = createServerFn({ method: "POST" })
   .validator((data: UpdateAnimalWebInput) => data)

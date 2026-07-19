@@ -928,3 +928,31 @@
   --radius-card: 1rem;
   --radius-sheet: 1.5rem;
 }
+
+/* =====================================================================
+   BUG-004 — shared calendar presentation in the DatePicker primitive.
+   The DayPicker root carries the `ganaweb-calendar` marker so the
+   cell sizing overrides the react-day-picker defaults (44×44) with
+   36×36 on desktop and 40×40 on mobile. Touch minimum is ~44px, but
+   40px stays close to the existing field rhythm and gives the dropdown
+   room without clipping. Token-only — no hex, no `dark:`. The 36/40
+   rem values resolve against the project root font size, matching the
+   surrounding design system spacing scale (0.5rem = 8px).
+   ===================================================================== */
+.ganaweb-calendar {
+  --rdp-day-width: 2.25rem; /* 36px — desktop */
+  --rdp-day-height: 2.25rem;
+  --rdp-day_button-width: 2.25rem;
+  --rdp-day_button-height: 2.25rem;
+  --rdp-nav-height: 2.5rem;
+  --rdp-nav_button-width: 2rem;
+  --rdp-nav_button-height: 2rem;
+}
+@media (max-width: 767px) {
+  .ganaweb-calendar {
+    --rdp-day-width: 2.5rem; /* 40px — mobile, close to touch minimum */
+    --rdp-day-height: 2.5rem;
+    --rdp-day_button-width: 2.5rem;
+    --rdp-day_button-height: 2.5rem;
+  }
+}

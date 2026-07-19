@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from "node:fs"
+import { renderToString } from "react-dom/server"
 
 import { cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -211,7 +212,14 @@ describe("PR3 animal UI OpenPencil parity", () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
 
-    render(<AnimalFormScreen mode="desktop" onSave={onSave} onCancel={vi.fn()} />)
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        onSave={onSave}
+        onCancel={vi.fn()}
+        catalogOptions={{ sexo: [{ value: "1", label: "Hembra" }] }}
+      />,
+    )
     await user.type(screen.getByLabelText("Código *"), "NV-42")
     await user.type(screen.getByLabelText("Nombre"), "Novilla 42")
     await user.click(screen.getByRole("button", { name: "Guardar" }))
@@ -221,6 +229,18 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(formData.get("codigo")).toBe("NV-42")
     expect(formData.get("nombre")).toBe("Novilla 42")
     expect(formData.get("sexoKey")).toBe("1")
+  })
+
+  it("keeps server-rendered controls disabled until hydration enables the interactive form", () => {
+    const props = { mode: "desktop" as const, onSave: vi.fn(), onCancel: vi.fn() }
+    const serverMarkup = renderToString(<AnimalFormScreen {...props} />)
+
+    expect(serverMarkup).toContain('aria-busy="true"')
+    expect(serverMarkup).toContain('disabled=""')
+
+    render(<AnimalFormScreen {...props} />)
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled()
+    expect(screen.getByLabelText("Código *")).toBeEnabled()
   })
 
   it("renders per-field error under the named input with ARIA wiring when fieldErrors is supplied", () => {
@@ -292,6 +312,11 @@ describe("PR3 animal UI OpenPencil parity", () => {
         onCancel={vi.fn()}
         initialValues={{ origen: "origen-compra", sexoKey: 1 }}
         catalogOptions={{
+          sexo: [
+            { value: "0", label: "Macho" },
+            { value: "1", label: "Hembra" },
+            { value: "2", label: "Pajuela" },
+          ],
           origen: [{ value: "origen-compra", label: "Compra externa" }],
         }}
       />,
@@ -313,6 +338,40 @@ describe("PR3 animal UI OpenPencil parity", () => {
     const [formData] = onSave.mock.calls[0] as [FormData]
     expect(formData.get("sexoKey")).toBe("0")
     expect(formData.get("origen")).toBe("origen-compra")
+  })
+
+  it("uses dynamic sexo options, serializes selection, and fails closed without a catalog", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    const { rerender } = render(
+      <>
+        <AnimalFormScreen
+          mode="desktop"
+          onSave={onSave}
+          onCancel={vi.fn()}
+          catalogOptions={{ sexo: [{ value: "0", label: "Macho" }, { value: "1", label: "Hembra" }] }}
+        />
+        <AnimalFormScreen
+          mode="mobile"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          catalogOptions={{ sexo: [{ value: "0", label: "Macho" }, { value: "1", label: "Hembra" }] }}
+        />
+      </>,
+    )
+    const sexoControls = screen.getAllByRole("combobox", { name: "Sexo" })
+    expect(sexoControls).toHaveLength(2)
+    expect(sexoControls[0]).not.toHaveAttribute("id", sexoControls[1]?.id)
+    await user.click(sexoControls[0]!)
+    await user.click(screen.getByRole("option", { name: "Macho" }))
+    await user.type(screen.getAllByLabelText("Código *")[0]!, "SX-1")
+    await user.type(screen.getAllByLabelText("Nombre")[0]!, "Sexo dinámico")
+    await user.click(screen.getAllByRole("button", { name: "Guardar" })[0]!)
+    expect((onSave.mock.calls[0]![0] as FormData).get("sexoKey")).toBe("0")
+
+    rerender(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} catalogOptions={{ sexo: [] }} />)
+    expect(screen.getByRole("combobox", { name: "Sexo" })).toBeDisabled()
+    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("No disponible")
   })
 
   it("shows a safe unavailable label for missing CA-UI-001/003 catalog values", () => {
@@ -717,6 +776,29 @@ describe("PR3 animal UI OpenPencil parity", () => {
     // (uncontrolled), but its VALUE must be empty so the FormData
     // does not carry the abandoned user input.
     expect(formData.get("precioCompra")).toBe("")
+  })
+
+  it("serializes controlled birth and purchase dates while rejecting purchase dates before birth", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />)
+
+    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+    await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
+    await user.click(screen.getByRole("radio", { name: "Comprado" }))
+    await user.click(screen.getByRole("button", { name: "Fecha de compra" }))
+
+    const beforeBirth = await screen.findByRole("button", { name: /, 9 de julio de 2026/ })
+    expect(beforeBirth).toBeDisabled()
+    await user.click(await screen.findByRole("button", { name: /, 15 de julio de 2026/ }))
+    expect(screen.getByRole("button", { name: "Fecha de compra" })).toHaveTextContent("15/07/2026")
+
+    await user.type(screen.getByLabelText("Código *"), "NV-DATE")
+    await user.type(screen.getByLabelText("Nombre"), "Fecha controlada")
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+    const [formData] = onSave.mock.calls[0] as [FormData]
+    expect(formData.get("fechaNacimiento")).toBe("2026-07-10")
+    expect(formData.get("fechaCompra")).toBe("2026-07-15")
   })
 
   it("filters out the current animal from the madre/padre options to prevent self-parenting", async () => {

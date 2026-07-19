@@ -2,6 +2,7 @@ import type {
   AnimalRegistro,
   AnimalResumen,
   AnimalUseCaseDeps,
+  CatalogoGlobalPort,
   SesionAutorizada,
 } from "@ganaweb/aplicacion"
 import { getRequestHeader } from "@tanstack/react-start/server"
@@ -15,18 +16,12 @@ export function isAnimalE2eEnabled(): boolean {
 }
 
 export function isSafeAnimalE2eRuntime(): boolean {
+  if (process.env.NODE_ENV === "production") return false
   const explicitlyTestRuntime =
-    process.env.CI === "true" ||
     process.env.VITEST === "true" ||
     process.env.PLAYWRIGHT_TEST === "1" ||
     process.env.PLAYWRIGHT === "1"
-  if (process.env.NODE_ENV === "production" && !explicitlyTestRuntime) return false
-  return (
-    process.env.NODE_ENV === "test" ||
-    explicitlyTestRuntime ||
-    process.env.NODE_ENV === "development" ||
-    process.env.NODE_ENV === undefined
-  )
+  return process.env.NODE_ENV === "test" || explicitlyTestRuntime
 }
 
 export function getAnimalE2eSession(): SesionAutorizada {
@@ -75,12 +70,26 @@ function toAnimalResumen(animal: AnimalRegistro): AnimalResumen {
     sexo: animal.sexoKey === 1 ? "hembra" : animal.sexoKey === 0 ? "macho" : "pajuela",
     estadoActual: animal.activo ? (animal.estadoActual ?? "activo") : "vendido",
     salud: "sano",
+    fechaNacimiento: animal.fechaNacimiento ?? null,
+    fechaCompra: animal.fechaCompra ?? null,
   }
 }
 
 const images = new Map([
   ["animal-1", [{ id: "imagen-pendiente", esPrincipal: true, estadoSubida: "pendiente" as const }]],
 ])
+
+export function createAnimalE2eCatalogoPort(): CatalogoGlobalPort {
+  return {
+    async listarActivos() {
+      return [
+        { id: "sexo-macho", key: "Macho", value: "0" },
+        { id: "sexo-hembra", key: "Hembra", value: "1" },
+        { id: "sexo-pajuela", key: "Pajuela", value: "2" },
+      ]
+    },
+  }
+}
 
 export function addAnimalE2eRecord(input: {
   readonly fincaId: string
@@ -129,6 +138,8 @@ export function createAnimalE2eDeps(): AnimalUseCaseDeps {
         activo: true,
         usuarioCreadoPor: "usuario-operario",
         creadoEn: new Date("2026-07-12T10:00:00.000Z"),
+        fechaNacimiento: animal.fechaNacimiento ?? null,
+        fechaCompra: animal.fechaCompra ?? null,
       })
     },
     async actualizar(animalId, fincaId, cambios) {

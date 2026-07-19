@@ -26,6 +26,9 @@ export interface AnimalResumen {
   readonly sexo: Sexo
   readonly estadoActual: EstadoAnimal
   readonly salud: Salud
+  /** epoch seconds (UTC) — null si no aplica. PR Slice D2: persistencia. */
+  readonly fechaNacimiento?: number | null
+  readonly fechaCompra?: number | null
 }
 
 export type SexoKey = 0 | 1 | 2

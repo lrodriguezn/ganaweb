@@ -32,6 +32,9 @@ export interface AnimalRegistro {
   readonly loteId?: string
   readonly usuarioCreadoPor: string
   readonly creadoEn: Date
+  /** epoch seconds (UTC) — null si no aplica. PR Slice D2: persistencia. */
+  readonly fechaNacimiento?: number | null
+  readonly fechaCompra?: number | null
 }
 
 export interface AnimalRepositoryPort {

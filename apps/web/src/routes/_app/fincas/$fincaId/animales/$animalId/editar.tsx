@@ -11,16 +11,23 @@ import { createFileRoute } from "@tanstack/react-router"
 import { getAnimalFormCatalogOptions } from "../../../../../../lib/fixtures/animal-form-catalog.js"
 import { parseEsCONumber } from "../../../../../../lib/parsers/es-co-number.js"
 import {
+  type AnimalSexoCatalog,
   type UpdateAnimalWebInput,
   getAnimalFichaAction,
+  getAnimalSexoCatalogAction,
   updateAnimalAction,
 } from "../../../../../../server/animal-actions.js"
 import { Route as AppRoute } from "../../../../../_app.js"
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/$animalId/editar")({
   component: EditAnimalRoute,
-  loader: async ({ params }) =>
-    loadEditAnimalInitialValues({ fincaId: params.fincaId, animalId: params.animalId }),
+  loader: async ({ params }) => {
+    const [data, sexoCatalog] = await Promise.all([
+      loadEditAnimalInitialValues({ fincaId: params.fincaId, animalId: params.animalId }),
+      getAnimalSexoCatalogAction(),
+    ])
+    return { ...data, sexoCatalog }
+  },
 })
 
 interface AnimalFichaLike {
@@ -30,12 +37,15 @@ interface AnimalFichaLike {
     readonly codigoAnimal?: string
     readonly nombreAnimal?: string
     readonly sexo?: "macho" | "hembra" | "pajuela"
+    readonly fechaNacimiento?: number | null
+    readonly fechaCompra?: number | null
   }
 }
 
 export interface EditAnimalLoaderData {
   readonly initialValues: AnimalFormInitialValues
   readonly currentLocation: AnimalCurrentLocation
+  readonly sexoCatalog?: AnimalSexoCatalog
 }
 
 /**
@@ -61,6 +71,8 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
     return { initialValues: {}, currentLocation: {} }
   }
   const sexoKey: 0 | 1 | 2 = animal.sexo === "hembra" ? 1 : animal.sexo === "macho" ? 0 : 2
+  const epochToIso = (epoch: number | null | undefined) =>
+    epoch ? new Date(epoch * 1000).toISOString().slice(0, 10) : ""
   return {
     initialValues: {
       // NOTE: PR 2a locked the form, so `AnimalFormInitialValues` does
@@ -70,8 +82,8 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
       // extend the form type to pre-populate codigo/nombre on edit.
       sexoKey,
       origen: "nacido_en_finca",
-      fechaNacimiento: "",
-      fechaCompra: "",
+      fechaNacimiento: epochToIso(animal.fechaNacimiento),
+      fechaCompra: epochToIso(animal.fechaCompra),
       razaId: "raza-angus",
       colorId: "color-negro",
       calidadId: "calidad-extra",
@@ -262,6 +274,7 @@ function EditAnimalRoute() {
   const canCreateCatalog = readCanCreateCatalog()
   const catalogOptionsConPermisos: typeof catalogOptions = {
     ...catalogOptions,
+    sexo: loaderData.sexoCatalog?.tipo === "disponible" ? loaderData.sexoCatalog.options : [],
     canCreateCatalog: {
       raza: canCreateCatalog,
       color: canCreateCatalog,
