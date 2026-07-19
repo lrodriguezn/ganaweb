@@ -67,7 +67,9 @@ describe("animal sexo catalog boundary", () => {
         }),
       ).resolves.toMatchObject({ tipo: "creado" })
       await expect(harness.list({ fincaId: "finca-1" })).resolves.toMatchObject({
-        animales: expect.arrayContaining([expect.objectContaining({ codigoAnimal: "SEX-ROUNDTRIP-01" })]),
+        animales: expect.arrayContaining([
+          expect.objectContaining({ codigoAnimal: "SEX-ROUNDTRIP-01" }),
+        ]),
       })
     } finally {
       if (previous === undefined) process.env.GANAWEB_E2E_ANIMALS = undefined
@@ -97,7 +99,9 @@ describe("animal sexo catalog boundary", () => {
         }),
       ).resolves.toMatchObject({ tipo: "validacion", errores: [{ campo: "sexo_key" }] })
       await expect(harness.list({ fincaId: "finca-1" })).resolves.not.toMatchObject({
-        animales: expect.arrayContaining([expect.objectContaining({ codigoAnimal: "SEX-REJECT-01" })]),
+        animales: expect.arrayContaining([
+          expect.objectContaining({ codigoAnimal: "SEX-REJECT-01" }),
+        ]),
       })
     } finally {
       if (previous === undefined) process.env.GANAWEB_E2E_ANIMALS = undefined

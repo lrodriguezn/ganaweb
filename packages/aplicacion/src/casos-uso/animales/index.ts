@@ -1,10 +1,13 @@
 import {
+  type ErrorValidacionAnimal,
   calcularDecisionEliminarAnimal,
   crearEstadoBannerFichaAnimal,
   validarActualizacionAnimal,
   validarCreacionAnimal,
   validarReactivacionAnimal,
 } from "@ganaweb/dominio"
+
+export type { ErrorValidacionAnimal }
 import type { EntradaOutbox } from "@ganaweb/sync"
 import type { ArchivoAnimalPort, ColaBinariosPort } from "../../puertos/animal-media-port.js"
 import type { AnimalReferenceCheckerPort } from "../../puertos/animal-reference-checker-port.js"
@@ -61,6 +64,15 @@ export interface AnimalUseCaseDeps {
       readonly motivo: "inicial"
       readonly createdAt: Date
     }): Promise<void>
+    /** CA-CRE-008: returns one ErrorValidacionAnimal per split-location id
+     *  whose (id, fincaId) does not match the active finca. */
+    verificarPropiedadEnFinca?(entrada: {
+      readonly fincaId: string
+      readonly potreroId?: string
+      readonly sectorId?: string
+      readonly loteId?: string
+      readonly grupoId?: string
+    }): Promise<readonly ErrorValidacionAnimal[]>
   }
   readonly pesajes?: {
     registrarInicial(entrada: {
@@ -189,6 +201,7 @@ interface CrearAnimalCommand {
     readonly potreroId?: string
     readonly sectorId?: string
     readonly loteId?: string
+    readonly grupoId?: string
   }
   readonly pesoInicial?: {
     readonly pesoKg: number
@@ -205,6 +218,7 @@ async function registrarUbicacionInicialAnimal(
       readonly potreroId?: string
       readonly sectorId?: string
       readonly loteId?: string
+      readonly grupoId?: string
     }
   },
 ) {
@@ -391,6 +405,16 @@ export function crearAnimal(deps: AnimalUseCaseDeps) {
       existentes: existente ? [{ fincaId: existente.fincaId, codigo: existente.codigo }] : [],
     })
     if (!validacion.valido) return { tipo: "validacion", errores: validacion.errores }
+
+    if (cmd.ubicacionInicial && deps.ubicaciones?.verificarPropiedadEnFinca) {
+      const erroresUbicacion = await deps.ubicaciones.verificarPropiedadEnFinca({
+        fincaId: cmd.sesion.fincaActivaId,
+        ...cmd.ubicacionInicial,
+      })
+      if (erroresUbicacion.length > 0) {
+        return { tipo: "validacion", errores: erroresUbicacion }
+      }
+    }
 
     const validacionImagenes = validarImagenesAnimalMutation(cmd.imagenes ?? [])
     if (!validacionImagenes.valido) {

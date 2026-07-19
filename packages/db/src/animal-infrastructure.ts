@@ -11,6 +11,7 @@ import type {
   TransaccionPort,
 } from "@ganaweb/aplicacion"
 import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
+import type { ErrorValidacionAnimal } from "@ganaweb/aplicacion"
 import { and, asc, eq, or } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 import {
@@ -20,15 +21,19 @@ import {
   animalesUbicacionHistorico,
   aplicacionesSanitarias,
   auditoriaEliminaciones,
+  grupos,
   imagenes,
+  lotes,
   muertes,
   palpaciones,
   partos,
   partosCrias,
   pesos,
+  potreros,
   produccionesLacteas,
   registrosGrupales,
   revisionesVeterinarias,
+  sectores,
   servicios,
   syncColaBinaria,
   syncOutbox,
@@ -672,6 +677,65 @@ export class DrizzleTransactionRunner implements TransaccionPort {
   }
 }
 
+function errorUbicacion(
+  campo: "potrero_id" | "sector_id" | "lote_id" | "grupo_id",
+  detalle: string,
+): ErrorValidacionAnimal {
+  return { campo, regla: "CA-CRE-008", detalle }
+}
+
+export class DrizzleAnimalUbicacionesRepository {
+  constructor(private readonly db: DbClient) {}
+
+  async verificarPropiedadEnFinca(entrada: {
+    readonly fincaId: string
+    readonly potreroId?: string
+    readonly sectorId?: string
+    readonly loteId?: string
+    readonly grupoId?: string
+  }): Promise<readonly ErrorValidacionAnimal[]> {
+    const db = currentDb(this.db)
+    const errores: ErrorValidacionAnimal[] = []
+
+    if (entrada.potreroId !== undefined) {
+      const [row] = await db
+        .select({ id: potreros.id })
+        .from(potreros)
+        .where(and(eq(potreros.id, entrada.potreroId), eq(potreros.fincaId, entrada.fincaId)))
+        .limit(1)
+      if (!row)
+        errores.push(errorUbicacion("potrero_id", "El potrero no pertenece a la finca activa."))
+    }
+    if (entrada.sectorId !== undefined) {
+      const [row] = await db
+        .select({ id: sectores.id })
+        .from(sectores)
+        .where(and(eq(sectores.id, entrada.sectorId), eq(sectores.fincaId, entrada.fincaId)))
+        .limit(1)
+      if (!row)
+        errores.push(errorUbicacion("sector_id", "El sector no pertenece a la finca activa."))
+    }
+    if (entrada.loteId !== undefined) {
+      const [row] = await db
+        .select({ id: lotes.id })
+        .from(lotes)
+        .where(and(eq(lotes.id, entrada.loteId), eq(lotes.fincaId, entrada.fincaId)))
+        .limit(1)
+      if (!row) errores.push(errorUbicacion("lote_id", "El lote no pertenece a la finca activa."))
+    }
+    if (entrada.grupoId !== undefined) {
+      const [row] = await db
+        .select({ id: grupos.id })
+        .from(grupos)
+        .where(and(eq(grupos.id, entrada.grupoId), eq(grupos.fincaId, entrada.fincaId)))
+        .limit(1)
+      if (!row) errores.push(errorUbicacion("grupo_id", "El grupo no pertenece a la finca activa."))
+    }
+
+    return errores
+  }
+}
+
 export function createAnimalUseCaseDeps(db: DbClient): AnimalUseCaseDeps {
   return {
     animales: new DrizzleAnimalRepository(db),
@@ -709,6 +773,9 @@ export function createAnimalUseCaseDeps(db: DbClient): AnimalUseCaseDeps {
           fecha: entrada.createdAt,
           motivo: entrada.motivo,
         })
+      },
+      async verificarPropiedadEnFinca(entrada) {
+        return new DrizzleAnimalUbicacionesRepository(db).verificarPropiedadEnFinca(entrada)
       },
     },
     pesajes: {

@@ -22,8 +22,8 @@ import { db } from "@ganaweb/db/client"
 import type { AnimalListItem, AnimalTimelineItem } from "@ganaweb/ui"
 import { createServerFn } from "@tanstack/react-start"
 import {
-  createAnimalE2eDeps,
   createAnimalE2eCatalogoPort,
+  createAnimalE2eDeps,
   getAnimalE2eSession,
   isAnimalE2eEnabled,
 } from "./e2e-animals-fixture.server.js"
@@ -63,6 +63,14 @@ interface AnimalListFilters {
 interface AnimalActionHarnessDeps {
   readonly deps: AnimalUseCaseDeps
   readonly getSession: () => Promise<SesionAutorizada | null>
+  /**
+   * Catalog used to revalidate a string `sexoKey` submission on the
+   * `create` arm. The runtime harness always provides one; the
+   * option is omitted at the action-harness level so focused unit
+   * tests that pass a typed numeric `sexoKey` can construct the
+   * harness without mocking the catalog.
+   */
+  readonly catalogoSexo?: CatalogoGlobalPort
 }
 
 interface AnimalRuntimeHarnessOptions {
@@ -182,13 +190,19 @@ function getConfiguredAnimalDeps(factory: AnimalRuntimeDepsFactory | null): Anim
 }
 
 export type AnimalSexoCatalog =
-  | { readonly tipo: "disponible"; readonly options: readonly { readonly label: string; readonly value: string }[] }
+  | {
+      readonly tipo: "disponible"
+      readonly options: readonly { readonly label: string; readonly value: string }[]
+    }
   | { readonly tipo: "no_disponible" }
 
 export async function loadAnimalSexoCatalog(port: CatalogoGlobalPort): Promise<AnimalSexoCatalog> {
   try {
     const options = await listarCatalogoSexo(port)
-    return { tipo: "disponible", options: options.map(({ label, value }) => ({ label, value: String(value) })) }
+    return {
+      tipo: "disponible",
+      options: options.map(({ label, value }) => ({ label, value: String(value) })),
+    }
   } catch {
     return { tipo: "no_disponible" }
   }
@@ -220,7 +234,6 @@ function hasAnimalPermission(
 function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   codigo: string
   nombre: string
-  sexoKey: 0 | 1 | 2
   tipoIngreso?: "nacido_en_finca" | "comprado"
   fechaNacimiento?: Date | null
   fechaCompra?: Date | null
@@ -229,12 +242,9 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   madreId?: string | null
   padreId?: string | null
 } {
-  if (datos.sexoKey !== 0 && datos.sexoKey !== 1 && datos.sexoKey !== 2)
-    throw new Error("sexoKey must be revalidated before creating an animal")
   return {
     codigo: datos.codigo,
     nombre: datos.nombre,
-    sexoKey: datos.sexoKey,
     ...(datos.origen ? { tipoIngreso: datos.origen } : {}),
     ...(datos.fechaNacimiento ? { fechaNacimiento: new Date(datos.fechaNacimiento) } : {}),
     ...(datos.fechaCompra ? { fechaCompra: new Date(datos.fechaCompra) } : {}),
@@ -243,6 +253,17 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
     ...(datos.madreId ? { madreId: datos.madreId } : {}),
     ...(datos.padreId ? { padreId: datos.padreId } : {}),
   }
+}
+
+/** Lower-level sexoKey revalidation: a string submission is revalidated
+ *  against the catalog; a number is accepted as-is. */
+async function normalizarSexoKeyParaCreacion(
+  value: CreateAnimalWebInput["datos"]["sexoKey"],
+  port: CatalogoGlobalPort,
+): Promise<0 | 1 | 2 | null> {
+  if (value === 0 || value === 1 || value === 2) return value
+  if (typeof value !== "string") return null
+  return validateSubmittedSexoKey(value, port)
 }
 
 /**
@@ -271,11 +292,13 @@ function buildUbicacionInicial(datos: CreateAnimalWebInput["datos"]): {
   potreroId?: string
   sectorId?: string
   loteId?: string
+  grupoId?: string
 } {
   return {
     ...(datos.potreroId !== undefined ? { potreroId: datos.potreroId } : {}),
     ...(datos.sectorId !== undefined ? { sectorId: datos.sectorId } : {}),
     ...(datos.loteId !== undefined ? { loteId: datos.loteId } : {}),
+    ...(datos.grupoId !== undefined ? { grupoId: datos.grupoId } : {}),
   }
 }
 
@@ -381,7 +404,11 @@ export function buildAnimalRouteViewModel(input: {
   }
 }
 
-export function createAnimalActionHarness({ deps, getSession }: AnimalActionHarnessDeps) {
+export function createAnimalActionHarness({
+  deps,
+  getSession,
+  catalogoSexo,
+}: AnimalActionHarnessDeps) {
   return {
     async list(input: { readonly fincaId: string } & AnimalListFilters) {
       const session = await getSession()
@@ -431,9 +458,32 @@ export function createAnimalActionHarness({ deps, getSession }: AnimalActionHarn
       const denied = denyAnimalRouteAccess(session, input.fincaId, "crear")
       if (denied) return denied
 
+      let sexoKey: 0 | 1 | 2
+      if (catalogoSexo) {
+        const validated = await normalizarSexoKeyParaCreacion(input.datos.sexoKey, catalogoSexo)
+        if (validated === null) {
+          return {
+            tipo: "validacion" as const,
+            errores: [{ campo: "sexo_key", detalle: "El sexo no está disponible." }],
+          }
+        }
+        sexoKey = validated
+      } else if (
+        input.datos.sexoKey === 0 ||
+        input.datos.sexoKey === 1 ||
+        input.datos.sexoKey === 2
+      ) {
+        sexoKey = input.datos.sexoKey
+      } else {
+        return {
+          tipo: "validacion" as const,
+          errores: [{ campo: "sexo_key", detalle: "El sexo no está disponible." }],
+        }
+      }
+
       return crearAnimal(deps)({
         sesion: toAnimalSession(session),
-        datos: pickCreateAnimalDatos(input.datos),
+        datos: { ...pickCreateAnimalDatos(input.datos), sexoKey },
         ...(hasSplitUbicacion(input.datos)
           ? { ubicacionInicial: buildUbicacionInicial(input.datos) }
           : {}),
@@ -580,7 +630,14 @@ export function createAnimalRuntimeHarness({
 }: AnimalRuntimeHarnessOptions = {}) {
   const runWithHarness = async <Result>(
     work: (harness: ReturnType<typeof createAnimalActionHarness>) => Promise<Result>,
-  ) => work(createAnimalActionHarness({ deps: getConfiguredAnimalDeps(depsFactory), getSession }))
+  ) =>
+    work(
+      createAnimalActionHarness({
+        deps: getConfiguredAnimalDeps(depsFactory),
+        getSession,
+        catalogoSexo,
+      }),
+    )
 
   return {
     list: (input: { readonly fincaId: string } & AnimalListFilters) =>
@@ -588,12 +645,7 @@ export function createAnimalRuntimeHarness({
     ficha: (input: AnimalIdWebInput & { readonly cursorTimeline?: string }) =>
       runWithHarness((harness) => harness.ficha(input)),
     sexoCatalog: () => loadAnimalSexoCatalog(catalogoSexo),
-    create: async (input: CreateAnimalWebInput) => {
-      const sexoKey = await validateSubmittedSexoKey(input.datos.sexoKey, catalogoSexo)
-      if (sexoKey === null)
-        return { tipo: "validacion" as const, errores: [{ campo: "sexo_key", detalle: "El sexo no está disponible." }] }
-      return runWithHarness((harness) => harness.create({ ...input, datos: { ...input.datos, sexoKey } }))
-    },
+    create: (input: CreateAnimalWebInput) => runWithHarness((harness) => harness.create(input)),
     update: (input: UpdateAnimalWebInput) => runWithHarness((harness) => harness.update(input)),
     delete: (input: DeleteAnimalWebInput) => runWithHarness((harness) => harness.delete(input)),
     reactivate: (input: ReactivateAnimalWebInput) =>

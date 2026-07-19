@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
-import type { AnimalUseCaseDeps, SesionAutorizada } from "@ganaweb/aplicacion"
+import type { AnimalUseCaseDeps, CatalogoGlobalPort, SesionAutorizada } from "@ganaweb/aplicacion"
 import { buildUpdateAnimalInputFromFormData } from "../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js"
 import { buildCreateAnimalInputFromFormData } from "../src/routes/_app/fincas/$fincaId/animales/nuevo.js"
 import {
@@ -486,6 +486,77 @@ async function testCreatePreservesFechaCompra() {
   )
 }
 
+async function testCreateRejectsCrossFincaUbicaciones() {
+  const fincas = new Map([
+    ["finca-1", new Set(["potrero-norte", "sector-cria", "lote-a", "grupo-hato"])],
+    ["finca-2", new Set(["potrero-otro", "sector-otro", "lote-otro", "grupo-otro"])],
+  ])
+  const verificar = async (entrada: { fincaId: string; [k: string]: string | undefined }) => {
+    const ok = fincas.get(entrada.fincaId) ?? new Set<string>()
+    const out: { campo: string; regla: string; detalle: string }[] = []
+    for (const [k, campo, nombre] of [
+      ["potreroId", "potrero_id", "potrero"],
+      ["sectorId", "sector_id", "sector"],
+      ["loteId", "lote_id", "lote"],
+      ["grupoId", "grupo_id", "grupo"],
+    ] as const) {
+      const id = entrada[k]
+      if (typeof id === "string" && !ok.has(id)) {
+        out.push({
+          campo,
+          regla: "CA-CRE-008",
+          detalle: `La ubicación (${nombre}) no pertenece a la finca activa.`,
+        })
+      }
+    }
+    return out
+  }
+  const harness = createAnimalActionHarness({
+    deps: {
+      ...deps(),
+      ubicaciones: { async registrarInicial() {}, verificarPropiedadEnFinca: verificar },
+    },
+    getSession: async () => session(),
+  })
+  const bundle = (codigo: string, mismoFinca: boolean, grupoId?: string) => ({
+    fincaId: "finca-1" as const,
+    datos: {
+      codigo,
+      nombre: codigo,
+      sexoKey: 1 as const,
+      potreroId: mismoFinca ? "potrero-norte" : "potrero-otro",
+      sectorId: mismoFinca ? "sector-cria" : "sector-otro",
+      loteId: mismoFinca ? "lote-a" : "lote-otro",
+      grupoId: grupoId ?? (mismoFinca ? "grupo-hato" : "grupo-otro"),
+    },
+  })
+  const mismo = await harness.create(bundle("CR-OK", true))
+  assert.equal(mismo.tipo, "creado", "same-finca bundle must reach creado (CA-CRE-008 silent)")
+  const cross = await harness.create(bundle("CR-X", false))
+  assert.equal(
+    cross.tipo,
+    "validacion",
+    "all-cross-finca must return validacion with 4 CA-CRE-008 errors",
+  )
+  assert.ok(
+    cross.tipo === "validacion" &&
+      cross.errores.filter((e) => e.regla === "CA-CRE-008").length === 4,
+    "cross-finca must surface one CA-CRE-008 error per split-location id",
+  )
+  const parcial = await harness.create(bundle("CR-P", true, "grupo-otro"))
+  assert.equal(
+    parcial.tipo,
+    "validacion",
+    "partial (only grupoId cross-finca) must surface exactly one error",
+  )
+  assert.ok(
+    parcial.tipo === "validacion" &&
+      parcial.errores.length === 1 &&
+      parcial.errores[0]?.campo === "grupo_id",
+    "partial cross-finca must surface exactly one CA-CRE-008 error for the offending grupoId",
+  )
+}
+
 async function testRouteFormPayloadBuilders() {
   const createForm = new FormData()
   createForm.set("codigo", " NV-42 ")
@@ -500,7 +571,12 @@ async function testRouteFormPayloadBuilders() {
     datos: {
       codigo: "NV-42",
       nombre: "Novilla 42",
-      sexoKey: 0,
+      // v1.3 spec (BUG-001..BUG-004): the route mapper surfaces the
+      // raw FormData string so the lower-level action harness can
+      // revalidate it against the sexo catalog. The action harness
+      // narrows it to `0 | 1 | 2` (testActionHarnessRevalidatesSexoKey
+      // exercises the path).
+      sexoKey: "0",
       potreroId: "potrero-norte",
       sectorId: "sector-cria",
       loteId: "lote-a",
@@ -801,12 +877,60 @@ async function testEditRoutePassesInitialValuesToForm() {
 
 async function testCreatePersistsDatesRoundTripIntoEditLoader() {
   const editModule = await import("../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js")
-  const harness = createAnimalActionHarness({ deps: deps(), getSession: async () => session() })
+  // The catalog is the only port the revalidation path uses.
+  const catalogoSexo: CatalogoGlobalPort = {
+    async listarActivos() {
+      return [
+        { id: "sexo-macho", key: "Macho", value: "0" },
+        { id: "sexo-hembra", key: "Hembra", value: "1" },
+        { id: "sexo-pajuela", key: "Pajuela", value: "2" },
+      ]
+    },
+  }
+  const harness = createAnimalActionHarness({
+    deps: deps(),
+    getSession: async () => session(),
+    catalogoSexo,
+  })
+
+  // String non-canonical sexoKey: lower-level revalidation surfaces
+  // validacion instead of throwing the previous defensive error.
+  const stringSexo = await harness.create({
+    fincaId: "finca-1",
+    datos: {
+      codigo: "RT-001",
+      nombre: "Persistente",
+      sexoKey: "9",
+      origen: "comprado",
+      fechaNacimiento: "2026-07-10",
+      fechaCompra: "2026-07-15",
+    },
+  })
+  assert.equal(
+    stringSexo.tipo,
+    "validacion",
+    "string non-canonical sexoKey must return validacion from the lower-level action harness",
+  )
+  assert.ok(
+    stringSexo.tipo === "validacion" && stringSexo.errores.some((e) => e.campo === "sexo_key"),
+    "validacion errores must include campo: 'sexo_key'",
+  )
+
+  // Numeric sexoKey: 1 (happy path): create succeeds, dates round-trip
+  // into the edit loader, the new animalId is recorded in the store.
   const creado = await harness.create({
     fincaId: "finca-1",
-    datos: { codigo: "RT-001", nombre: "Persistente", sexoKey: "1", origen: "comprado", fechaNacimiento: "2026-07-10", fechaCompra: "2026-07-15" },
+    datos: {
+      codigo: "RT-002",
+      nombre: "Numerica",
+      sexoKey: 1,
+      origen: "comprado",
+      fechaNacimiento: "2026-07-10",
+      fechaCompra: "2026-07-15",
+    },
   })
-  if (creado.tipo !== "creado") throw new Error("create must succeed")
+  assert.equal(creado.tipo, "creado", "numeric sexoKey: 1 must reach creado (happy path)")
+  if (creado.tipo !== "creado") return
   const ficha = await harness.ficha({ fincaId: "finca-1", animalId: creado.animalId })
   if (ficha.tipo !== "ficha") throw new Error("ficha must be available")
   const loader = editModule.mapAnimalFichaToLoaderData(ficha)
@@ -1005,7 +1129,7 @@ async function testActionForwardsValidacionErrores() {
   // Behavioral anchor: the harness's create() returns the verbatim validacion shape
   // (including `errores`). The web handler must forward that shape unchanged.
   const harness = createAnimalActionHarness({ deps: deps(), getSession: async () => session() })
-  // animal-1 has codigo "MT-122" — duplicate triggers validacion in the dominio use case
+  // animal-1 has codigo "MT-122" — duplicate triggers validacion in el dominio
   const validacionResult = await harness.create({
     fincaId: "finca-1",
     datos: { codigo: "MT-122", nombre: "Duplicada", sexoKey: 1 },
@@ -1230,6 +1354,7 @@ async function run() {
   await testServerGuards()
   await testRouteViewModelsAndFlows()
   await testCreatePreservesFechaCompra()
+  await testCreateRejectsCrossFincaUbicaciones()
   await testRouteFormPayloadBuilders()
   await testCreateRouteNormalizesEsCOCompraNumerics()
   await testEditRouteMapperNormalizesEsCOCompraNumerics()
