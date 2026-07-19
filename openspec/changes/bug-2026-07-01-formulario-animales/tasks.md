@@ -83,10 +83,10 @@ Chain strategy: feature-branch-chain
 
 ## Phase 7: Sexo Integration — PR6 (base: PR5)
 
-- [ ] 7.1 RED: web unavailable/tampered/no-write and explicit injection tests.
-- [ ] 7.2 GREEN: `animal-actions.server.ts` compose/revalidate; no fallback.
-- [ ] 7.3 GREEN: `animal-actions.ts`, `nuevo.tsx`, `editar.tsx` dynamic/injectable options.
-- [ ] 7.4 RED/GREEN: UI/web regressions; `combobox`; submit→reload persistence.
+- [x] 7.1 RED: web unavailable/tampered/no-write and explicit injection tests.
+- [x] 7.2 GREEN: `animal-actions.server.ts` compose/revalidate; no fallback.
+- [x] 7.3 GREEN: `animal-actions.ts`, `nuevo.tsx`, `editar.tsx` dynamic/injectable options.
+- [x] 7.4 RED/GREEN: UI/web regressions; `combobox`; submit→reload persistence.
 - [ ] 7.5 Desktop/mobile Playwright 6/6, no retry/skip; commit PR6 rollback.
 
 ## Completion Criteria

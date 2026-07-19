@@ -212,7 +212,14 @@ describe("PR3 animal UI OpenPencil parity", () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
 
-    render(<AnimalFormScreen mode="desktop" onSave={onSave} onCancel={vi.fn()} />)
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        onSave={onSave}
+        onCancel={vi.fn()}
+        catalogOptions={{ sexo: [{ value: "1", label: "Hembra" }] }}
+      />,
+    )
     await user.type(screen.getByLabelText("Código *"), "NV-42")
     await user.type(screen.getByLabelText("Nombre"), "Novilla 42")
     await user.click(screen.getByRole("button", { name: "Guardar" }))
@@ -305,6 +312,11 @@ describe("PR3 animal UI OpenPencil parity", () => {
         onCancel={vi.fn()}
         initialValues={{ origen: "origen-compra", sexoKey: 1 }}
         catalogOptions={{
+          sexo: [
+            { value: "0", label: "Macho" },
+            { value: "1", label: "Hembra" },
+            { value: "2", label: "Pajuela" },
+          ],
           origen: [{ value: "origen-compra", label: "Compra externa" }],
         }}
       />,
@@ -326,6 +338,40 @@ describe("PR3 animal UI OpenPencil parity", () => {
     const [formData] = onSave.mock.calls[0] as [FormData]
     expect(formData.get("sexoKey")).toBe("0")
     expect(formData.get("origen")).toBe("origen-compra")
+  })
+
+  it("uses dynamic sexo options, serializes selection, and fails closed without a catalog", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    const { rerender } = render(
+      <>
+        <AnimalFormScreen
+          mode="desktop"
+          onSave={onSave}
+          onCancel={vi.fn()}
+          catalogOptions={{ sexo: [{ value: "0", label: "Macho" }, { value: "1", label: "Hembra" }] }}
+        />
+        <AnimalFormScreen
+          mode="mobile"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          catalogOptions={{ sexo: [{ value: "0", label: "Macho" }, { value: "1", label: "Hembra" }] }}
+        />
+      </>,
+    )
+    const sexoControls = screen.getAllByRole("combobox", { name: "Sexo" })
+    expect(sexoControls).toHaveLength(2)
+    expect(sexoControls[0]).not.toHaveAttribute("id", sexoControls[1]?.id)
+    await user.click(sexoControls[0]!)
+    await user.click(screen.getByRole("option", { name: "Macho" }))
+    await user.type(screen.getAllByLabelText("Código *")[0]!, "SX-1")
+    await user.type(screen.getAllByLabelText("Nombre")[0]!, "Sexo dinámico")
+    await user.click(screen.getAllByRole("button", { name: "Guardar" })[0]!)
+    expect((onSave.mock.calls[0]![0] as FormData).get("sexoKey")).toBe("0")
+
+    rerender(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} catalogOptions={{ sexo: [] }} />)
+    expect(screen.getByRole("combobox", { name: "Sexo" })).toBeDisabled()
+    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("No disponible")
   })
 
   it("shows a safe unavailable label for missing CA-UI-001/003 catalog values", () => {

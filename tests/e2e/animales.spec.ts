@@ -34,7 +34,13 @@ test.describe("animal CRUD web flow", () => {
 
     await form.locator('input[name="codigo"]').fill(codigo)
     await form.locator('input[name="nombre"]').fill("Novilla E2E")
-    await form.locator('input[name="sexoKey"]').fill("1")
+    const sexo = form.getByRole("combobox", { name: "Sexo" })
+    await sexo.click()
+    await page.getByRole("option", { name: "Hembra", exact: true }).click()
+    await expect(sexo).toHaveText("Hembra")
+    expect(
+      await form.locator("form").evaluate((element) => new FormData(element as HTMLFormElement).get("sexoKey")),
+    ).toBe("1")
     await expect(form.getByRole("button", { name: "Guardar" })).toBeVisible()
 
     await page.goto("/fincas/finca-1/animales/animal-1/imagenes")

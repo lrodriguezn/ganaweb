@@ -2,6 +2,7 @@ import type {
   AnimalRegistro,
   AnimalResumen,
   AnimalUseCaseDeps,
+  CatalogoGlobalPort,
   SesionAutorizada,
 } from "@ganaweb/aplicacion"
 import { getRequestHeader } from "@tanstack/react-start/server"
@@ -75,6 +76,18 @@ function toAnimalResumen(animal: AnimalRegistro): AnimalResumen {
 const images = new Map([
   ["animal-1", [{ id: "imagen-pendiente", esPrincipal: true, estadoSubida: "pendiente" as const }]],
 ])
+
+export function createAnimalE2eCatalogoPort(): CatalogoGlobalPort {
+  return {
+    async listarActivos() {
+      return [
+        { id: "sexo-macho", key: "Macho", value: "0" },
+        { id: "sexo-hembra", key: "Hembra", value: "1" },
+        { id: "sexo-pajuela", key: "Pajuela", value: "2" },
+      ]
+    },
+  }
+}
 
 export function addAnimalE2eRecord(input: {
   readonly fincaId: string

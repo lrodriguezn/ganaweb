@@ -11,16 +11,23 @@ import { createFileRoute } from "@tanstack/react-router"
 import { getAnimalFormCatalogOptions } from "../../../../../../lib/fixtures/animal-form-catalog.js"
 import { parseEsCONumber } from "../../../../../../lib/parsers/es-co-number.js"
 import {
+  type AnimalSexoCatalog,
   type UpdateAnimalWebInput,
   getAnimalFichaAction,
+  getAnimalSexoCatalogAction,
   updateAnimalAction,
 } from "../../../../../../server/animal-actions.js"
 import { Route as AppRoute } from "../../../../../_app.js"
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/$animalId/editar")({
   component: EditAnimalRoute,
-  loader: async ({ params }) =>
-    loadEditAnimalInitialValues({ fincaId: params.fincaId, animalId: params.animalId }),
+  loader: async ({ params }) => {
+    const [data, sexoCatalog] = await Promise.all([
+      loadEditAnimalInitialValues({ fincaId: params.fincaId, animalId: params.animalId }),
+      getAnimalSexoCatalogAction(),
+    ])
+    return { ...data, sexoCatalog }
+  },
 })
 
 interface AnimalFichaLike {
@@ -36,6 +43,7 @@ interface AnimalFichaLike {
 export interface EditAnimalLoaderData {
   readonly initialValues: AnimalFormInitialValues
   readonly currentLocation: AnimalCurrentLocation
+  readonly sexoCatalog?: AnimalSexoCatalog
 }
 
 /**
@@ -262,6 +270,7 @@ function EditAnimalRoute() {
   const canCreateCatalog = readCanCreateCatalog()
   const catalogOptionsConPermisos: typeof catalogOptions = {
     ...catalogOptions,
+    sexo: loaderData.sexoCatalog?.tipo === "disponible" ? loaderData.sexoCatalog.options : [],
     canCreateCatalog: {
       raza: canCreateCatalog,
       color: canCreateCatalog,

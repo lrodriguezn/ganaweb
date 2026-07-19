@@ -7,13 +7,16 @@ import { createFileRoute } from "@tanstack/react-router"
 import { getAnimalFormCatalogOptions } from "../../../../../lib/fixtures/animal-form-catalog.js"
 import { parseEsCONumber } from "../../../../../lib/parsers/es-co-number.js"
 import {
+  type AnimalSexoCatalog,
   type CreateAnimalWebInput,
   createAnimalAction,
+  getAnimalSexoCatalogAction,
 } from "../../../../../server/animal-actions.js"
 import { Route as AppRoute } from "../../../../_app.js"
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/nuevo")({
   component: NewAnimalRoute,
+  loader: () => getAnimalSexoCatalogAction(),
 })
 
 /**
@@ -39,10 +42,8 @@ function optionalText(formData: FormData, name: string): string | undefined {
   return value.length > 0 ? value : undefined
 }
 
-function parseSexoKey(value: FormDataEntryValue | null): 0 | 1 | 2 {
-  if (value === "0") return 0
-  if (value === "2") return 2
-  return 1
+function parseSexoKey(value: FormDataEntryValue | null): string | null {
+  return value === "0" || value === "1" || value === "2" ? value : null
 }
 
 function parseOrigen(value: FormDataEntryValue | null): "nacido_en_finca" | "comprado" | undefined {
@@ -137,7 +138,7 @@ export function buildCreateAnimalFieldErrors(errores: unknown): Record<string, s
 
 function NewAnimalRoute() {
   const { fincaId } = Route.useParams()
-  return <NewAnimalRouteView fincaId={fincaId} />
+  return <NewAnimalRouteView fincaId={fincaId} sexoCatalog={Route.useLoaderData()} />
 }
 
 /**
@@ -155,7 +156,7 @@ function readCanCreateCatalog(): boolean {
   }
 }
 
-export function NewAnimalRouteView({ fincaId }: { readonly fincaId: string }) {
+export function NewAnimalRouteView({ fincaId, sexoCatalog }: { readonly fincaId: string; readonly sexoCatalog?: AnimalSexoCatalog }) {
   // Demo catalog source. Migrate to a per-finca loader when the
   // master-data tables (origen/potrero/sector/lote/grupo) are wired
   // through a real server function.
@@ -168,6 +169,7 @@ export function NewAnimalRouteView({ fincaId }: { readonly fincaId: string }) {
   const canCreateCatalog = readCanCreateCatalog()
   const catalogOptionsConPermisos: typeof catalogOptions = {
     ...catalogOptions,
+    sexo: sexoCatalog?.tipo === "disponible" ? sexoCatalog.options : [],
     canCreateCatalog: {
       raza: canCreateCatalog,
       color: canCreateCatalog,
