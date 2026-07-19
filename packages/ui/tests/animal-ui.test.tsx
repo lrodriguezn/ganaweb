@@ -349,27 +349,58 @@ describe("PR3 animal UI OpenPencil parity", () => {
           mode="desktop"
           onSave={onSave}
           onCancel={vi.fn()}
-          catalogOptions={{ sexo: [{ value: "0", label: "Macho" }, { value: "1", label: "Hembra" }] }}
+          catalogOptions={{
+            sexo: [
+              { value: "0", label: "Macho" },
+              { value: "1", label: "Hembra" },
+            ],
+          }}
         />
         <AnimalFormScreen
           mode="mobile"
           onSave={vi.fn()}
           onCancel={vi.fn()}
-          catalogOptions={{ sexo: [{ value: "0", label: "Macho" }, { value: "1", label: "Hembra" }] }}
+          catalogOptions={{
+            sexo: [
+              { value: "0", label: "Macho" },
+              { value: "1", label: "Hembra" },
+            ],
+          }}
         />
       </>,
     )
     const sexoControls = screen.getAllByRole("combobox", { name: "Sexo" })
     expect(sexoControls).toHaveLength(2)
     expect(sexoControls[0]).not.toHaveAttribute("id", sexoControls[1]?.id)
-    await user.click(sexoControls[0]!)
+    const firstSexo = sexoControls[0]
+    if (!firstSexo) throw new Error("first sexo control expected")
+    await user.click(firstSexo)
     await user.click(screen.getByRole("option", { name: "Macho" }))
-    await user.type(screen.getAllByLabelText("Código *")[0]!, "SX-1")
-    await user.type(screen.getAllByLabelText("Nombre")[0]!, "Sexo dinámico")
-    await user.click(screen.getAllByRole("button", { name: "Guardar" })[0]!)
-    expect((onSave.mock.calls[0]![0] as FormData).get("sexoKey")).toBe("0")
+    const codigoInputs = screen.getAllByLabelText("Código *")
+    const firstCodigo = codigoInputs[0]
+    if (!firstCodigo) throw new Error("first codigo input expected")
+    await user.type(firstCodigo, "SX-1")
+    const nombreInputs = screen.getAllByLabelText("Nombre")
+    const firstNombre = nombreInputs[0]
+    if (!firstNombre) throw new Error("first nombre input expected")
+    await user.type(firstNombre, "Sexo dinámico")
+    const guardarButtons = screen.getAllByRole("button", { name: "Guardar" })
+    const firstGuardar = guardarButtons[0]
+    if (!firstGuardar) throw new Error("first guardar button expected")
+    await user.click(firstGuardar)
+    const firstCall = onSave.mock.calls[0]
+    const firstArg = firstCall?.[0]
+    if (!(firstArg instanceof FormData)) throw new Error("expected FormData as first arg")
+    expect(firstArg.get("sexoKey")).toBe("0")
 
-    rerender(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} catalogOptions={{ sexo: [] }} />)
+    rerender(
+      <AnimalFormScreen
+        mode="desktop"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        catalogOptions={{ sexo: [] }}
+      />,
+    )
     expect(screen.getByRole("combobox", { name: "Sexo" })).toBeDisabled()
     expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("No disponible")
   })
@@ -781,7 +812,9 @@ describe("PR3 animal UI OpenPencil parity", () => {
   it("serializes controlled birth and purchase dates while rejecting purchase dates before birth", async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
-    render(<AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />)
+    render(
+      <AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />,
+    )
 
     await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
     await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))

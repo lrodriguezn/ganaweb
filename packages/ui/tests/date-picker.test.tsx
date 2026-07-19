@@ -84,7 +84,9 @@ describe("DatePicker primitive", () => {
     await user.click(today)
 
     expect(screen.getByRole("button", { name: "15/07/2026" })).toBeInTheDocument()
-    expect(new FormData(container.querySelector("form")!).get("fechaNacimiento")).toBe("2026-07-15")
+    const formEl = container.querySelector("form")
+    if (!formEl) throw new Error("form expected")
+    expect(new FormData(formEl).get("fechaNacimiento")).toBe("2026-07-15")
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
@@ -295,8 +297,9 @@ describe("DatePicker BUG-004 — tokenized calendar styling", () => {
     const selectedCell = document.querySelector<HTMLElement>('[class*="rdp-selected"]')
     const selectedButton = selectedCell?.querySelector<HTMLElement>("button")
     expect(selectedButton).not.toBeNull()
-    expect(selectedButton!.className).toContain("bg-primary")
-    expect(selectedButton!.className).toContain("text-primary-foreground")
+    const selectedClassName = selectedButton?.className ?? ""
+    expect(selectedClassName).toContain("bg-primary")
+    expect(selectedClassName).toContain("text-primary-foreground")
   })
 
   it("renders a disabled day button with the text-muted-foreground token", async () => {
@@ -329,7 +332,8 @@ describe("DatePicker BUG-004 — tokenized calendar styling", () => {
     const dialog = screen.getByRole("dialog")
     const yearSelect = dialog.querySelectorAll<HTMLSelectElement>("select")[1]
     // endMonth=2026-07, 5-year lookback startMonth=2021-07 → bounded window.
-    const years = Array.from(yearSelect!.options).map((o) => o.value)
+    if (!yearSelect) throw new Error("year select expected")
+    const years = Array.from(yearSelect.options).map((o) => o.value)
     expect(years).toContain("2026")
     expect(years).toContain("2021")
     expect(years).not.toContain("2020")

@@ -256,7 +256,13 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
       ('col-pintado', 'Pintado', '#A9A9A9', 1)
     ON CONFLICT (id) DO NOTHING
   `
+}
 
+// =====================================================================
+// NIVEL 2 — DEMO
+// =====================================================================
+
+async function seedDemo(sql: ReturnType<typeof postgres>) {
   // Parámetros por finca
   const PARAMETROS: [string, string, string][] = [
     ["edad_minima_servicio_meses", "18", "RN-010: edad mínima para servicio"],
@@ -267,13 +273,6 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
     ["peso_nacimiento_default_kg", "32", "KPI-07: peso al nacer estimado"],
     ["rol_invitacion_default", "rol-mayordomo", "PE-007: rol al registrarse con código"],
   ]
-}
-
-// =====================================================================
-// NIVEL 2 — DEMO
-// =====================================================================
-
-async function seedDemo(sql: ReturnType<typeof postgres>) {
 
   // Fincas base — siempre se crean
   await sql`
@@ -292,7 +291,7 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
       `
     }
   }
-  
+
   // Usuarios
   await sql`
     INSERT INTO usuarios (id, nombre, email, email_verificado, activo) VALUES
