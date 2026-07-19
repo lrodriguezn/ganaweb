@@ -70,6 +70,8 @@ function toAnimalResumen(animal: AnimalRegistro): AnimalResumen {
     sexo: animal.sexoKey === 1 ? "hembra" : animal.sexoKey === 0 ? "macho" : "pajuela",
     estadoActual: animal.activo ? (animal.estadoActual ?? "activo") : "vendido",
     salud: "sano",
+    fechaNacimiento: animal.fechaNacimiento ?? null,
+    fechaCompra: animal.fechaCompra ?? null,
   }
 }
 
@@ -136,6 +138,8 @@ export function createAnimalE2eDeps(): AnimalUseCaseDeps {
         activo: true,
         usuarioCreadoPor: "usuario-operario",
         creadoEn: new Date("2026-07-12T10:00:00.000Z"),
+        fechaNacimiento: animal.fechaNacimiento ?? null,
+        fechaCompra: animal.fechaCompra ?? null,
       })
     },
     async actualizar(animalId, fincaId, cambios) {

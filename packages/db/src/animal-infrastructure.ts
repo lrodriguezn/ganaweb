@@ -91,6 +91,8 @@ function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegistro {
     ...(row.loteId ? { loteId: row.loteId } : {}),
     usuarioCreadoPor: row.usuarioCreadoPor ?? "",
     creadoEn: row.createdAt,
+    fechaNacimiento: row.fechaNacimiento,
+    fechaCompra: row.fechaCompra,
   }
 }
 
@@ -490,6 +492,8 @@ export class DrizzleAnimalRepository implements AnimalRepositoryPort {
         usuarioCreadoPor: persistible.usuarioCreadoPor,
         createdAt: persistible.creadoEn,
         version: persistible.version ?? 1,
+        fechaNacimiento: persistible.fechaNacimiento ?? null,
+        fechaCompra: persistible.fechaCompra ?? null,
       })
   }
 

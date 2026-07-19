@@ -243,6 +243,18 @@ describe("animal use cases", () => {
     expect(overLimit.transacciones.run).not.toHaveBeenCalled()
   })
 
+  it("persists validated birth and purchase dates as epoch seconds on create", async () => {
+    const d = deps()
+    await crearAnimal(d)({
+      sesion: sesionCrear,
+      datos: { codigo: "MT-128", nombre: "Bella", sexoKey: 1, fechaNacimiento: new Date("2026-07-10T00:00:00Z"), fechaCompra: new Date("2026-07-15T00:00:00Z") },
+    })
+    expect(d.animales.guardar).toHaveBeenCalledWith(expect.objectContaining({
+      fechaNacimiento: Math.floor(Date.UTC(2026, 6, 10) / 1000),
+      fechaCompra: Math.floor(Date.UTC(2026, 6, 15) / 1000),
+    }))
+  })
+
   it("updates animals with permission, version validation, repository mutation and outbox", async () => {
     const d = deps()
 

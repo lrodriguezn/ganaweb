@@ -778,6 +778,29 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(formData.get("precioCompra")).toBe("")
   })
 
+  it("serializes controlled birth and purchase dates while rejecting purchase dates before birth", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />)
+
+    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+    await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
+    await user.click(screen.getByRole("radio", { name: "Comprado" }))
+    await user.click(screen.getByRole("button", { name: "Fecha de compra" }))
+
+    const beforeBirth = await screen.findByRole("button", { name: /, 9 de julio de 2026/ })
+    expect(beforeBirth).toBeDisabled()
+    await user.click(await screen.findByRole("button", { name: /, 15 de julio de 2026/ }))
+    expect(screen.getByRole("button", { name: "Fecha de compra" })).toHaveTextContent("15/07/2026")
+
+    await user.type(screen.getByLabelText("Código *"), "NV-DATE")
+    await user.type(screen.getByLabelText("Nombre"), "Fecha controlada")
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+    const [formData] = onSave.mock.calls[0] as [FormData]
+    expect(formData.get("fechaNacimiento")).toBe("2026-07-10")
+    expect(formData.get("fechaCompra")).toBe("2026-07-15")
+  })
+
   it("filters out the current animal from the madre/padre options to prevent self-parenting", async () => {
     const user = userEvent.setup()
 

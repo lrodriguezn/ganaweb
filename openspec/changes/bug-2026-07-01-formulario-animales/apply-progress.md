@@ -1,8 +1,8 @@
-# Apply Progress: Recovery Slices A–C
+# Apply Progress: Recovery Slices A–D
 
 - Recovery base SHA: `16fcfd56e198094a60eebeb7f9591a5c1199ff62`
-- Completed recovery slices: `A`, `B`, `C`
-- Completed tasks: `1.1`, `1.2`, `1.3`, `1.4`, `6.1`, `6.2`, `6.3`, `6.4`, `7.1`, `7.2`, `7.3`, `7.4`
+- Completed recovery slices: `A`, `B`, `C`, `D`
+- Completed tasks: `1.1`, `1.2`, `1.3`, `1.4`, `3.1`, `3.2`, `3.3`, `6.1`, `6.2`, `6.3`, `6.4`, `7.1`, `7.2`, `7.3`, `7.4`
 
 ## TDD Cycle Evidence
 
@@ -14,6 +14,7 @@
 | 6.3–6.4 | `packages/db/tests/catalogo-global-infrastructure.test.ts` | DB adapter contract | N/A (new files) | Module resolution failed: adapter absent | 2/2 passed | active global query/mapping; propagated DB failure | None needed |
 | 7.1–7.2 | `tests/animal-catalogo-sexo.test.ts` | Web/runtime | 3/3 partial tests passed | 2/4 failed: numeric accepted and injected unavailable catalog wrote | 4/4 passed | available, unavailable, rejected noncanonical/tampered/missing, write/no-write | Added explicit catalog-port injection; tests remain green |
 | 7.3–7.4 | `packages/ui/tests/animal-ui.test.tsx`, `tests/e2e/animales.spec.ts` | UI/E2E | 26/26 UI baseline passed | Existing hidden-input E2E locator failed after dynamic select replaced it | UI 27/27 passed; desktop and mobile Playwright each 1/1 passed | desktop/mobile unique IDs, dynamic labels, unavailable state, FormData selection | Replaced locator with active-frame combobox and portal option; asserted native FormData |
+| 3.1–3.3 | `packages/ui/tests/date-picker.test.tsx`, `packages/ui/tests/animal-ui.test.tsx`, `tests/e2e/animales.spec.ts` | UI/E2E | 4/4 DatePicker and 27/27 animal UI passed | Calendar remained open after selection; purchase date accepted a pre-birth day and did not update its controlled value | DatePicker 5/5; animal UI 28/28; Playwright desktop/mobile 6/6 | close-after-assignment, today/future, birth/purchase payloads, pre-birth disabled, submit/list/reload | Added shared day-normalized min/max bounds and a controlled purchase-date owner; mobile exposes Origen to reach the purchase flow |
 
 ## Work Unit Evidence
 
@@ -45,3 +46,14 @@
 | Rollback boundary | Revert the Slice-C web routes/actions/fixture, UI selector/test, focused catalog test, and bounded E2E test; this removes dynamic sexo loading and validation without affecting Slice A/B, DatePicker, tipo_ingreso, seed, cross-finca, or edit honesty/version work. |
 
 **Delivery**: `feature-branch-chain`, Slice C child based on committed Slice A/B; 303 authored production/test additions plus deletions, under the 390-line Slice-C budget. No commit, push, PR, DatePicker, tipo_ingreso, seed, cross-finca, or edit honesty/version changes. Task `7.5` remains open because the user requested no commit/PR and the bounded Playwright scope is intentionally not a 6/6 closure.
+
+## Slice D Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused tests | `pnpm --filter @ganaweb/ui test -- tests/date-picker.test.tsx` passed: 1 file, 5 tests. `pnpm --filter @ganaweb/ui test -- tests/animal-ui.test.tsx` passed: 1 file, 28 tests. |
+| Runtime harness | `pnpm exec playwright test tests/e2e/animales.spec.ts` used the fresh configured server and passed exactly 6/6: desktop/mobile create selects birth and purchase dates through DatePicker, clicks Guardar, verifies the list, and verifies after reload; 0 failed, 0 skipped, 0 retries. |
+| Typecheck/build | `pnpm --filter @ganaweb/ui build && pnpm --filter @ganaweb/web typecheck` passed. |
+| Rollback boundary | Revert only the Slice-D DatePicker primitive, animal date wiring, focused UI tests, and E2E date receipt; this removes controlled date closure without affecting catalog, tipo_ingreso, seed, cross-finca, edit, or later visual slices. |
+
+**Delivery**: `feature-branch-chain`, Slice D child based on committed Slices A–C; 119 authored production/test additions plus deletions before progress artifacts, under the requested 220-line slice budget. No commit, push, PR, BUG-003/004 styling/position, tipo_ingreso, seed, cross-finca, or edit hardening changes.

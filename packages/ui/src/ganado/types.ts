@@ -41,6 +41,9 @@ export interface AnimalResumen {
   estadoActual: EstadoAnimal
   potrero?: string | null
   lote?: string | null
+  /** epoch seconds (UTC) — null si no aplica. PR Slice D2: persistencia. */
+  fechaNacimiento?: number | null
+  fechaCompra?: number | null
 }
 
 export interface EventoTimeline {

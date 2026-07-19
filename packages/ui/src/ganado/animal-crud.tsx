@@ -667,6 +667,7 @@ export function AnimalFormScreen({
   const [fechaNacimiento, setFechaNacimiento] = useState<string>(
     initialValues?.fechaNacimiento ?? "",
   )
+  const [fechaCompra, setFechaCompra] = useState<string>(initialValues?.fechaCompra ?? "")
   const [comentarios, setComentarios] = useState<string>(initialValues?.comentarios ?? "")
   const [isHydrated, setIsHydrated] = useState(false)
 
@@ -700,6 +701,7 @@ export function AnimalFormScreen({
           "Sexo",
           "Raza",
           "Fecha de nacimiento",
+          "Origen",
           "Potrero",
           "Sector",
           "Lote",
@@ -772,6 +774,9 @@ export function AnimalFormScreen({
                 initialValues={initialValues}
                 catalogOptions={catalogOptions}
                 fieldErrors={fieldErrors}
+                fechaCompra={fechaCompra}
+                fechaNacimiento={fechaNacimiento}
+                onFechaCompraChange={setFechaCompra}
               />
             ) : (
               <ParentsBlock
@@ -1003,14 +1008,25 @@ function PurchaseBlock({
   initialValues,
   catalogOptions,
   fieldErrors,
+  fechaCompra,
+  fechaNacimiento,
+  onFechaCompraChange,
 }: {
   initialValues?: AnimalFormInitialValues | undefined
   catalogOptions?: AnimalFormCatalogOptions | undefined
   fieldErrors?: Record<string, string> | undefined
+  fechaCompra: string
+  fechaNacimiento: string
+  onFechaCompraChange: (value: string) => void
 }) {
   return (
     <>
-      <FechaCompraField initialValue={initialValues?.fechaCompra ?? ""} fieldErrors={fieldErrors} />
+      <FechaCompraField
+        value={fechaCompra}
+        minDate={fechaNacimiento ? new Date(`${fechaNacimiento}T00:00:00`) : undefined}
+        onChange={onFechaCompraChange}
+        fieldErrors={fieldErrors}
+      />
       <NumericField
         label="Precio"
         name="precioCompra"
@@ -1347,10 +1363,14 @@ function FechaNacimientoField({
  * an estimated one). Renders a `Label` and the DatePicker trigger.
  */
 function FechaCompraField({
-  initialValue,
+  value,
+  minDate,
+  onChange,
   fieldErrors,
 }: {
-  initialValue: string
+  value: string
+  minDate?: Date | undefined
+  onChange: (value: string) => void
   fieldErrors?: Record<string, string> | undefined
 }) {
   const label = "Fecha de compra"
@@ -1364,10 +1384,9 @@ function FechaCompraField({
       <DatePicker
         id={id}
         name={name}
-        value={initialValue}
-        onChange={() => {
-          // uncontrolled — the hidden native input mirrors the value
-        }}
+        value={value}
+        minDate={minDate}
+        onChange={onChange}
         maxDate={new Date()}
         {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
       />

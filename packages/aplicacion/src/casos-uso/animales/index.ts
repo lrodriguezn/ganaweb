@@ -311,8 +311,12 @@ function crearAnimalPersistible(input: {
   readonly sexoKey: 0 | 1 | 2
   readonly version: number
   readonly activo: boolean
+  readonly fechaNacimiento?: Date | null
+  readonly fechaCompra?: Date | null
 }) {
   const sexo = input.sexoKey === 1 ? "hembra" : input.sexoKey === 0 ? "macho" : "pajuela"
+  const epochSeconds = (date: Date | null | undefined) =>
+    date ? Math.floor(date.getTime() / 1000) : null
   return {
     id: input.animalId,
     fincaId: input.fincaId,
@@ -325,6 +329,8 @@ function crearAnimalPersistible(input: {
     activo: input.activo,
     usuarioCreadoPor: input.usuarioId,
     creadoEn: new Date(),
+    fechaNacimiento: epochSeconds(input.fechaNacimiento),
+    fechaCompra: epochSeconds(input.fechaCompra),
   } as const
 }
 
@@ -401,6 +407,8 @@ export function crearAnimal(deps: AnimalUseCaseDeps) {
       sexoKey: validacion.valor.sexoKey,
       version: validacion.valor.version,
       activo: validacion.valor.activo,
+      fechaNacimiento: cmd.datos.fechaNacimiento ?? null,
+      fechaCompra: cmd.datos.fechaCompra ?? null,
     })
     let imagenesPendientes: ImagenPendienteAnimal[] = []
 

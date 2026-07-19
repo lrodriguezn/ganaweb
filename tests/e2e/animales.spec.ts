@@ -34,6 +34,20 @@ test.describe("animal CRUD web flow", () => {
 
     await form.locator('input[name="codigo"]').fill(codigo)
     await form.locator('input[name="nombre"]').fill("Novilla E2E")
+    await form.getByRole("button").filter({ hasText: "dd/mm/aaaa" }).click()
+    await page.getByRole("button", { name: /, 10 de julio de 2026/ }).click()
+    await expect(form.getByRole("button").filter({ hasText: "10/07/2026" })).toBeVisible()
+    await form.getByRole("radio", { name: "Comprado" }).click()
+    await form.getByRole("button").filter({ hasText: "dd/mm/aaaa" }).click()
+    await expect(page.getByRole("button", { name: /, 9 de julio de 2026/ })).toBeDisabled()
+    await page.getByRole("button", { name: /, 15 de julio de 2026/ }).click()
+    await expect(form.getByRole("button").filter({ hasText: "15/07/2026" })).toBeVisible()
+    expect(
+      await form.locator("form").evaluate((element) => new FormData(element as HTMLFormElement).get("fechaNacimiento")),
+    ).toBe("2026-07-10")
+    expect(
+      await form.locator("form").evaluate((element) => new FormData(element as HTMLFormElement).get("fechaCompra")),
+    ).toBe("2026-07-15")
     const sexo = form.getByRole("combobox", { name: "Sexo" })
     await sexo.click()
     await page.getByRole("option", { name: "Hembra", exact: true }).click()

@@ -799,6 +799,21 @@ async function testEditRoutePassesInitialValuesToForm() {
   )
 }
 
+async function testCreatePersistsDatesRoundTripIntoEditLoader() {
+  const editModule = await import("../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js")
+  const harness = createAnimalActionHarness({ deps: deps(), getSession: async () => session() })
+  const creado = await harness.create({
+    fincaId: "finca-1",
+    datos: { codigo: "RT-001", nombre: "Persistente", sexoKey: "1", origen: "comprado", fechaNacimiento: "2026-07-10", fechaCompra: "2026-07-15" },
+  })
+  if (creado.tipo !== "creado") throw new Error("create must succeed")
+  const ficha = await harness.ficha({ fincaId: "finca-1", animalId: creado.animalId })
+  if (ficha.tipo !== "ficha") throw new Error("ficha must be available")
+  const loader = editModule.mapAnimalFichaToLoaderData(ficha)
+  assert.equal(loader.initialValues.fechaNacimiento, "2026-07-10")
+  assert.equal(loader.initialValues.fechaCompra, "2026-07-15")
+}
+
 async function testRouteFilesWireUiAndActions() {
   const files = [
     "animales.tsx",
@@ -1219,6 +1234,7 @@ async function run() {
   await testCreateRouteNormalizesEsCOCompraNumerics()
   await testEditRouteMapperNormalizesEsCOCompraNumerics()
   await testEditRoutePassesInitialValuesToForm()
+  await testCreatePersistsDatesRoundTripIntoEditLoader()
   await testRouteFilesWireUiAndActions()
   await testCreateRouteWiresCatalogOptions()
   await testCreateRouteWiresNewCatalogOptions()

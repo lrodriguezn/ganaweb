@@ -37,6 +37,8 @@ interface AnimalFichaLike {
     readonly codigoAnimal?: string
     readonly nombreAnimal?: string
     readonly sexo?: "macho" | "hembra" | "pajuela"
+    readonly fechaNacimiento?: number | null
+    readonly fechaCompra?: number | null
   }
 }
 
@@ -69,6 +71,8 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
     return { initialValues: {}, currentLocation: {} }
   }
   const sexoKey: 0 | 1 | 2 = animal.sexo === "hembra" ? 1 : animal.sexo === "macho" ? 0 : 2
+  const epochToIso = (epoch: number | null | undefined) =>
+    epoch ? new Date(epoch * 1000).toISOString().slice(0, 10) : ""
   return {
     initialValues: {
       // NOTE: PR 2a locked the form, so `AnimalFormInitialValues` does
@@ -78,8 +82,8 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
       // extend the form type to pre-populate codigo/nombre on edit.
       sexoKey,
       origen: "nacido_en_finca",
-      fechaNacimiento: "",
-      fechaCompra: "",
+      fechaNacimiento: epochToIso(animal.fechaNacimiento),
+      fechaCompra: epochToIso(animal.fechaCompra),
       razaId: "raza-angus",
       colorId: "color-negro",
       calidadId: "calidad-extra",

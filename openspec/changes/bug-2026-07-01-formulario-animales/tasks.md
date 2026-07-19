@@ -58,9 +58,9 @@ Chain strategy: feature-branch-chain
 
 ## Phase 3: BUG-002 — Controlled Purchase Date
 
-- [ ] 3.1 RED: date display/payload/bounds RN-002.
-- [ ] 3.2 GREEN: `animal-crud.tsx` plus `date-picker.tsx` bounds.
-- [ ] 3.3 Verify modes; commit BUG-002 only.
+- [x] 3.1 RED: date display/payload/bounds RN-002.
+- [x] 3.2 GREEN: `animal-crud.tsx` plus `date-picker.tsx` bounds.
+- [x] 3.3 Verify modes; commit BUG-002 only.
 
 ## Phase 4: BUG-003 — Collision Evidence
 

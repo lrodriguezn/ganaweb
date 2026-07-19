@@ -1,5 +1,5 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover"
-import { format, isAfter, parseISO } from "date-fns"
+import { format, isAfter, isBefore, parseISO, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "lucide-react"
 import * as React from "react"
@@ -53,6 +53,7 @@ export interface DatePickerProps {
   id?: string
   placeholder?: string
   disabled?: boolean
+  minDate?: Date | undefined
   maxDate?: Date
   "aria-invalid"?: "true" | "false" | boolean
   "aria-describedby"?: string
@@ -66,18 +67,21 @@ export function DatePicker({
   id,
   placeholder = "dd/mm/aaaa",
   disabled = false,
+  minDate,
   maxDate,
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedby,
   className,
 }: DatePickerProps) {
-  const effectiveMax = maxDate ?? new Date()
+  const [open, setOpen] = React.useState(false)
+  const effectiveMin = minDate ? startOfDay(minDate) : undefined
+  const effectiveMax = startOfDay(maxDate ?? new Date())
   const selected = value ? parseISO(value) : undefined
   const display = toDisplayDate(value)
 
   return (
     <span className={cn("inline-flex flex-col gap-1", className)}>
-      <PopoverPrimitive.Root>
+      <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
         <PopoverPrimitive.Trigger asChild>
           <Button
             type="button"
@@ -103,8 +107,14 @@ export function DatePicker({
             <DayPicker
               mode="single"
               selected={selected}
-              onSelect={(date) => onChange(toIsoDate(date ?? null))}
-              disabled={(day) => isAfter(day, effectiveMax)}
+              onSelect={(date) => {
+                if (!date) return
+                onChange(toIsoDate(date))
+                setOpen(false)
+              }}
+              disabled={(day) =>
+                isAfter(startOfDay(day), effectiveMax) || (effectiveMin ? isBefore(startOfDay(day), effectiveMin) : false)
+              }
               locale={es}
               defaultMonth={selected ?? effectiveMax}
             />
@@ -116,6 +126,7 @@ export function DatePicker({
         type="date"
         name={name}
         value={value}
+        min={effectiveMin ? format(effectiveMin, "yyyy-MM-dd") : undefined}
         max={format(effectiveMax, "yyyy-MM-dd")}
         onChange={(event) => onChange(event.target.value)}
         tabIndex={-1}

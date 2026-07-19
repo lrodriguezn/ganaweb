@@ -319,6 +319,8 @@ function toAnimalListItem(animal: AnimalRegistro): AnimalListItem {
     salud: "sano",
     sexo: animal.sexoKey === 1 ? "hembra" : animal.sexoKey === 0 ? "macho" : "pajuela",
     categoriaReproductiva: animal.sexoKey === 1 ? "novilla" : "no_aplica",
+    fechaNacimiento: animal.fechaNacimiento ?? null,
+    fechaCompra: animal.fechaCompra ?? null,
   }
 }
 

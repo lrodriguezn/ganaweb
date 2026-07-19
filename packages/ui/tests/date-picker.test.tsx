@@ -60,6 +60,34 @@ describe("DatePicker primitive", () => {
     expect(hidden?.value).toBe("2026-07-15")
   })
 
+  it("assigns a selected date before closing and keeps today selectable at the day boundary", async () => {
+    const user = userEvent.setup()
+
+    function Harness() {
+      const [value, setValue] = useState("")
+      return (
+        <form>
+          <DatePicker
+            name="fechaNacimiento"
+            value={value}
+            onChange={setValue}
+            maxDate={new Date(2026, 6, 15, 23, 59, 59)}
+          />
+        </form>
+      )
+    }
+
+    const { container } = render(<Harness />)
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+    const today = await screen.findByRole("button", { name: /, 15 de julio de 2026/ })
+    expect(today).toBeEnabled()
+    await user.click(today)
+
+    expect(screen.getByRole("button", { name: "15/07/2026" })).toBeInTheDocument()
+    expect(new FormData(container.querySelector("form")!).get("fechaNacimiento")).toBe("2026-07-15")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
   it("disables future days so onChange cannot emit a future ISO string (RN-002)", async () => {
     const onChange = vi.fn()
     const user = userEvent.setup()
