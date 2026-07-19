@@ -100,8 +100,10 @@ export function DatePicker({
         </PopoverPrimitive.Trigger>
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content
+            side="bottom"
             align="start"
             sideOffset={4}
+            collisionPadding={8}
             className="z-50 rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none"
           >
             <DayPicker
@@ -113,7 +115,8 @@ export function DatePicker({
                 setOpen(false)
               }}
               disabled={(day) =>
-                isAfter(startOfDay(day), effectiveMax) || (effectiveMin ? isBefore(startOfDay(day), effectiveMin) : false)
+                isAfter(startOfDay(day), effectiveMax) ||
+                (effectiveMin ? isBefore(startOfDay(day), effectiveMin) : false)
               }
               locale={es}
               defaultMonth={selected ?? effectiveMax}

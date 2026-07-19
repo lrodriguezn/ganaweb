@@ -43,17 +43,23 @@ test.describe("animal CRUD web flow", () => {
     await page.getByRole("button", { name: /, 15 de julio de 2026/ }).click()
     await expect(form.getByRole("button").filter({ hasText: "15/07/2026" })).toBeVisible()
     expect(
-      await form.locator("form").evaluate((element) => new FormData(element as HTMLFormElement).get("fechaNacimiento")),
+      await form
+        .locator("form")
+        .evaluate((element) => new FormData(element as HTMLFormElement).get("fechaNacimiento")),
     ).toBe("2026-07-10")
     expect(
-      await form.locator("form").evaluate((element) => new FormData(element as HTMLFormElement).get("fechaCompra")),
+      await form
+        .locator("form")
+        .evaluate((element) => new FormData(element as HTMLFormElement).get("fechaCompra")),
     ).toBe("2026-07-15")
     const sexo = form.getByRole("combobox", { name: "Sexo" })
     await sexo.click()
     await page.getByRole("option", { name: "Hembra", exact: true }).click()
     await expect(sexo).toHaveText("Hembra")
     expect(
-      await form.locator("form").evaluate((element) => new FormData(element as HTMLFormElement).get("sexoKey")),
+      await form
+        .locator("form")
+        .evaluate((element) => new FormData(element as HTMLFormElement).get("sexoKey")),
     ).toBe("1")
     await expect(form.getByRole("button", { name: "Guardar" })).toBeVisible()
 
@@ -99,6 +105,97 @@ test.describe("animal CRUD web flow", () => {
     await expect(page.getByText("Ficha animal")).toBeVisible()
     await expect(page.getByRole("button", { name: "Eliminar animal" })).toHaveCount(0)
     await expect(page.getByRole("button", { name: "Reactivar animal" })).toHaveCount(0)
+
+    await context.close()
+  })
+
+  // BUG-003: popover anchor and collision — minimum reproduction.
+  // The shared DatePicker is used in the purchase-date field; the popover
+  // must NOT overlap its own trigger or its label when the field sits near
+  // the bottom of a constrained mobile viewport.
+  test("BUG-003: purchase-date popover does not cover the trigger or label near the viewport bottom", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: 360, height: 640 },
+      isMobile: true,
+      hasTouch: true,
+    })
+    const page = await context.newPage()
+
+    await page.goto("/fincas/finca-1/animales/nuevo")
+    const form = page.getByLabel("21 Nuevo Animal · Mobile")
+    await form.locator('input[name="codigo"]').fill("NV-BUG003")
+    await form.locator('input[name="nombre"]').fill("BUG-003 Animal")
+    await form.getByRole("radio", { name: "Comprado" }).click()
+
+    // Locate the purchase date trigger by its form id and scroll it to the
+    // very bottom of the viewport so a 300+px popover MUST flip upward.
+    const purchaseTrigger = page.locator("#fecha-de-compra")
+    await purchaseTrigger.evaluate((el) => {
+      el.scrollIntoView({ block: "end", behavior: "instant" as ScrollBehavior })
+    })
+    // Force the trigger to sit ~500px from the top of the viewport.
+    await page.evaluate((targetY) => {
+      const el = document.getElementById("fecha-de-compra")
+      if (!el) return
+      const absoluteY = window.scrollY + el.getBoundingClientRect().top
+      window.scrollTo({ top: absoluteY - targetY, behavior: "instant" as ScrollBehavior })
+    }, 500)
+
+    await purchaseTrigger.click()
+    const popover = page.getByRole("dialog")
+    await expect(popover).toBeVisible()
+
+    // Read the rects of the popover, the trigger, and the trigger's label
+    // and assert the popover does not overlap either of them.
+    const measurement = await page.evaluate(() => {
+      const popoverEl = document.querySelector('[role="dialog"]') as HTMLElement | null
+      const triggerEl = document.getElementById("fecha-de-compra") as HTMLElement | null
+      if (!popoverEl || !triggerEl) return { error: "missing-element" }
+      const labelEl = document.querySelector('label[for="fecha-de-compra"]') as HTMLElement | null
+      const popoverRect = popoverEl.getBoundingClientRect()
+      const triggerRect = triggerEl.getBoundingClientRect()
+      const labelRect = labelEl?.getBoundingClientRect() ?? null
+      const overlap = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+      return {
+        side: popoverEl.getAttribute("data-side"),
+        align: popoverEl.getAttribute("data-align"),
+        popover: {
+          top: popoverRect.top,
+          bottom: popoverRect.bottom,
+          left: popoverRect.left,
+          right: popoverRect.right,
+        },
+        trigger: {
+          top: triggerRect.top,
+          bottom: triggerRect.bottom,
+          left: triggerRect.left,
+          right: triggerRect.right,
+        },
+        label: labelRect
+          ? {
+              top: labelRect.top,
+              bottom: labelRect.bottom,
+              left: labelRect.left,
+              right: labelRect.right,
+            }
+          : null,
+        overlapsTrigger: overlap(popoverRect, triggerRect),
+        overlapsLabel: labelRect ? overlap(popoverRect, labelRect) : false,
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      }
+    })
+
+    expect(measurement.error ?? null).toBeNull()
+    expect(measurement.overlapsTrigger).toBe(false)
+    expect(measurement.overlapsLabel).toBe(false)
+    // The popover must stay inside the viewport — collision padding must
+    // keep it from being clipped at the top or bottom edge.
+    expect(measurement.popover.top).toBeGreaterThanOrEqual(0)
+    expect(measurement.popover.bottom).toBeLessThanOrEqual(measurement.viewportHeight)
 
     await context.close()
   })

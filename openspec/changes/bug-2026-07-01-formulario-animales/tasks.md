@@ -64,8 +64,8 @@ Chain strategy: feature-branch-chain
 
 ## Phase 4: BUG-003 — Collision Evidence
 
-- [ ] 4.1 RED: viewport/scroll safety receipt.
-- [ ] 4.2 GREEN: `date-picker.tsx` collision; commit BUG-003.
+- [x] 4.1 RED: viewport/scroll safety receipt.
+- [x] 4.2 GREEN: `date-picker.tsx` collision; commit BUG-003.
 
 ## Phase 5: BUG-004 — Shared Calendar Presentation
 

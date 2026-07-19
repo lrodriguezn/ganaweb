@@ -135,4 +135,76 @@ describe("DatePicker primitive", () => {
     render(<Harness />)
     expect(screen.getByRole("button", { name: "15/03/2024" })).toBeInTheDocument()
   })
+
+  // BUG-003: popover anchor and collision contract.
+  it("opens the calendar via a portal anchored to the trigger with side=bottom, align=start", async () => {
+    const user = userEvent.setup()
+    render(<DatePicker name="fechaCompra" value="" onChange={() => {}} />)
+
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    const popover = screen.getByRole("dialog")
+    // Portal: the popover is mounted in document.body, NOT inside the trigger's flex wrapper.
+    expect(popover.closest('[class*="inline-flex"]')).toBeNull()
+    expect(popover.parentElement?.parentElement).toBe(document.body)
+    // Contract: explicit anchor so Radix chooses `bottom` by default and can flip safely.
+    expect(popover).toHaveAttribute("data-side", "bottom")
+    expect(popover).toHaveAttribute("data-align", "start")
+  })
+
+  it("flips the popover upward when the trigger sits below the viewport edge, and the flipped content does not overlap the trigger rect (BUG-003 collision)", async () => {
+    const user = userEvent.setup()
+    const originalInnerHeight = window.innerHeight
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect
+    // Constrained viewport: 600px tall. Trigger sits at the very bottom (top=560, bottom=600),
+    // so a 240px-tall calendar cannot fit below — Radix MUST flip, and the flipped content
+    // must respect the collision padding so it does not cover the trigger or its label.
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 600 })
+    HTMLElement.prototype.getBoundingClientRect = function polyfilledRect() {
+      if (this.tagName === "BUTTON" && this.getAttribute("type") === "button") {
+        return {
+          x: 0,
+          y: 560,
+          left: 0,
+          top: 560,
+          right: 320,
+          bottom: 600,
+          width: 320,
+          height: 40,
+          toJSON: () => ({}),
+        } as DOMRect
+      }
+      return {
+        x: 0,
+        y: 0,
+        left: 0,
+        top: 0,
+        right: 320,
+        bottom: 240,
+        width: 320,
+        height: 240,
+        toJSON: () => ({}),
+      } as DOMRect
+    }
+    try {
+      render(<DatePicker name="fechaCompra" value="" onChange={() => {}} />)
+      await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+      const popover = screen.getByRole("dialog")
+      // Radix chose to flip the popover because the trigger cannot fit a 240px calendar below it.
+      expect(popover).toHaveAttribute("data-side", "top")
+      // Even after the flip, the popover's bottom must stay strictly above the trigger's top — no overlap.
+      const popoverRect = popover.getBoundingClientRect()
+      const triggerRect = screen.getByRole("button", { name: "dd/mm/aaaa" }).getBoundingClientRect()
+      expect(popoverRect.bottom).toBeLessThanOrEqual(triggerRect.top)
+      // And the popover remains inside the viewport — collision padding keeps it from being clipped.
+      expect(popoverRect.top).toBeGreaterThanOrEqual(0)
+    } finally {
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect
+    }
+  })
 })
