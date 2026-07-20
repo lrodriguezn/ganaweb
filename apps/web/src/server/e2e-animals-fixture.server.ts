@@ -2,7 +2,18 @@ import type {
   AnimalRegistro,
   AnimalResumen,
   AnimalUseCaseDeps,
+  CalidadOption,
+  CatalogoAnimalMaestroPort,
+  CatalogoFincaOption,
+  CatalogoFincaPort,
   CatalogoGlobalPort,
+  ColorOption,
+  GrupoOption,
+  LoteOption,
+  LugarCompraOption,
+  PotreroOption,
+  RazaOption,
+  SectorOption,
   SesionAutorizada,
 } from "@ganaweb/aplicacion"
 import { getRequestHeader } from "@tanstack/react-start/server"
@@ -207,4 +218,133 @@ export function createAnimalE2eDeps(): AnimalUseCaseDeps {
       },
     },
   }
+}
+
+/**
+ * PR-5: E2E fallback for CatalogoAnimalMaestroPort.
+ * Returns seeded raza/color/calidad data matching the DB seed canonical IDs.
+ */
+export function createAnimalE2eCatalogoMaestroPort(): CatalogoAnimalMaestroPort<
+  "raza" | "color" | "calidad",
+  RazaOption | ColorOption | CalidadOption
+> {
+  const razas: readonly RazaOption[] = [
+    {
+      id: "raza-angus",
+      nombre: "Angus",
+      activo: true,
+      descripcion: null,
+      origen: null,
+      tipoProduccion: null,
+    },
+    {
+      id: "raza-brahman",
+      nombre: "Brahman",
+      activo: true,
+      descripcion: null,
+      origen: null,
+      tipoProduccion: null,
+    },
+    {
+      id: "raza-holstein",
+      nombre: "Holstein",
+      activo: true,
+      descripcion: null,
+      origen: null,
+      tipoProduccion: null,
+    },
+  ]
+  const colores: readonly ColorOption[] = [
+    { id: "col-negro", nombre: "Negro", activo: true, meta: { hex: "#1a1a1a" } },
+    { id: "col-blanco", nombre: "Blanco", activo: true, meta: { hex: "#f5f5f5" } },
+    { id: "col-rojo", nombre: "Rojo", activo: true, meta: { hex: "#8b0000" } },
+  ]
+  const calidades: readonly CalidadOption[] = [
+    { id: "cal-excelente", nombre: "Excelente", activo: true },
+    { id: "cal-bueno", nombre: "Bueno", activo: true },
+  ]
+
+  return {
+    async listarActivos(tabla) {
+      switch (tabla) {
+        case "raza":
+          return razas
+        case "color":
+          return colores
+        case "calidad":
+          return calidades
+        default:
+          return []
+      }
+    },
+  } as CatalogoAnimalMaestroPort<
+    "raza" | "color" | "calidad",
+    RazaOption | ColorOption | CalidadOption
+  >
+}
+
+/**
+ * PR-5: E2E fallback for CatalogoFincaPort.
+ * Returns seeded potrero/sector/lote/grupo/lugarCompra data for the test finca (finca-1).
+ */
+export function createAnimalE2eCatalogoFincaPort(): CatalogoFincaPort<
+  "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
+  CatalogoFincaOption
+> {
+  const fincaId = "finca-1"
+  const potreros: readonly PotreroOption[] = [
+    {
+      id: "potrero-norte",
+      nombre: "Potrero Norte",
+      fincaId,
+      activo: true,
+      codigo: "PN",
+      areaHectareas: 10,
+    },
+    {
+      id: "potrero-sur",
+      nombre: "Potrero Sur",
+      fincaId,
+      activo: true,
+      codigo: "PS",
+      areaHectareas: 8,
+    },
+  ]
+  const sectores: readonly SectorOption[] = [
+    { id: "sector-cria", nombre: "Sector Cría", fincaId, activo: true, codigo: "SC" },
+    { id: "sector-levante", nombre: "Sector Levante", fincaId, activo: true, codigo: "SL" },
+  ]
+  const lotes: readonly LoteOption[] = [
+    { id: "lote-a", nombre: "Lote A", fincaId, activo: true },
+    { id: "lote-b", nombre: "Lote B", fincaId, activo: true },
+  ]
+  const grupos: readonly GrupoOption[] = [
+    { id: "grupo-hato", nombre: "Hato General", fincaId, activo: true },
+  ]
+  const lugaresCompra: readonly LugarCompraOption[] = [
+    { id: "lc-feria", nombre: "Feria local", fincaId, activo: true },
+  ]
+
+  return {
+    async listarPorFinca(requestedFincaId, tabla) {
+      if (requestedFincaId !== fincaId) return []
+      switch (tabla) {
+        case "potrero":
+          return potreros
+        case "sector":
+          return sectores
+        case "lote":
+          return lotes
+        case "grupo":
+          return grupos
+        case "lugarCompra":
+          return lugaresCompra
+        default:
+          return []
+      }
+    },
+  } as CatalogoFincaPort<
+    "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
+    CatalogoFincaOption
+  >
 }

@@ -3,20 +3,25 @@
 import { useState } from "react"
 
 import { AnimalFormScreen } from "@ganaweb/ui"
+import type { AnimalFormCatalogOptions } from "@ganaweb/ui"
 import { createFileRoute } from "@tanstack/react-router"
-import { getAnimalFormCatalogOptions } from "../../../../../lib/fixtures/animal-form-catalog.js"
 import { parseEsCONumber } from "../../../../../lib/parsers/es-co-number.js"
 import {
-  type AnimalSexoCatalog,
+  type AnimalCatalogs,
   type CreateAnimalWebInput,
   createAnimalAction,
-  getAnimalSexoCatalogAction,
+  getAnimalCatalogsAction,
 } from "../../../../../server/animal-actions.js"
 import { Route as AppRoute } from "../../../../_app.js"
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/nuevo")({
   component: NewAnimalRoute,
-  loader: () => getAnimalSexoCatalogAction(),
+  loader: async ({ params }) => {
+    const [catalogs] = await Promise.all([
+      getAnimalCatalogsAction({ data: { fincaId: params.fincaId } }),
+    ])
+    return { catalogs }
+  },
 })
 
 /**
@@ -138,7 +143,8 @@ export function buildCreateAnimalFieldErrors(errores: unknown): Record<string, s
 
 function NewAnimalRoute() {
   const { fincaId } = Route.useParams()
-  return <NewAnimalRouteView fincaId={fincaId} sexoCatalog={Route.useLoaderData()} />
+  const { catalogs } = Route.useLoaderData()
+  return <NewAnimalRouteView fincaId={fincaId} catalogs={catalogs} />
 }
 
 /**
@@ -156,23 +162,47 @@ function readCanCreateCatalog(): boolean {
   }
 }
 
+/**
+ * PR-5: Transform the composite AnimalCatalogs (from loadAnimalCatalogs) into
+ * the AnimalFormCatalogOptions shape that AnimalFormScreen expects.
+ * For each catalog: "disponible" → the options array; "no_disponible" → [].
+ *
+ * Replaces the mock getAnimalFormCatalogOptions() fixture. The mock is
+ * retained in animal-form-catalog.ts as a rollback stub (throws in prod).
+ */
+function catalogsToFormOptions(catalogs: AnimalCatalogs): AnimalFormCatalogOptions {
+  const extract = (catalog: {
+    tipo: string
+    options: readonly { value: string; label: string; meta?: { hex?: string } }[]
+  }) => (catalog.tipo === "disponible" ? catalog.options : [])
+  return {
+    sexo: extract(catalogs.sexo),
+    raza: extract(catalogs.raza),
+    color: extract(catalogs.color),
+    calidad: extract(catalogs.calidad),
+    potrero: extract(catalogs.potrero),
+    sector: extract(catalogs.sector),
+    lote: extract(catalogs.lote),
+    grupo: extract(catalogs.grupo),
+    lugarCompra: extract(catalogs.lugarCompra),
+  }
+}
+
 export function NewAnimalRouteView({
   fincaId,
-  sexoCatalog,
-}: { readonly fincaId: string; readonly sexoCatalog?: AnimalSexoCatalog }) {
-  // Demo catalog source. Migrate to a per-finca loader when the
-  // master-data tables (origen/potrero/sector/lote/grupo) are wired
-  // through a real server function.
-  const catalogOptions = getAnimalFormCatalogOptions()
+  catalogs,
+}: { readonly fincaId: string; readonly catalogs?: AnimalCatalogs }) {
+  // PR-5: real DB catalogs from the composite loader. If catalogs are not
+  // available (loader failure), all options default to empty (no_disponible).
+  const catalogOptions: AnimalFormCatalogOptions = catalogs ? catalogsToFormOptions(catalogs) : {}
   // The "+ Crear nuevo" affordance on Raza / Color / Lugar de compra is
   // gated on the user having `configuracion:crear`. The parent `_app` route
   // resolves the session in its `beforeLoad`; the canCreateCatalog default
   // stays "all false" so a misconfigured parent never accidentally grants
   // catalog creation. A real loader would read this from the session.
   const canCreateCatalog = readCanCreateCatalog()
-  const catalogOptionsConPermisos: typeof catalogOptions = {
+  const catalogOptionsConPermisos: AnimalFormCatalogOptions = {
     ...catalogOptions,
-    sexo: sexoCatalog?.tipo === "disponible" ? sexoCatalog.options : [],
     canCreateCatalog: {
       raza: canCreateCatalog,
       color: canCreateCatalog,

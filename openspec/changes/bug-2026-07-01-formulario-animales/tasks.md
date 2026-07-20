@@ -52,9 +52,9 @@ Chain strategy: feature-branch-chain
 
 ## Phase 2: BUG-001 — Diagnose Before Correcting
 
-- [ ] 2.1 RED: desktop/mobile four-catalog selection contract.
-- [ ] 2.2 Diagnose before changing `select-con-creacion.tsx`.
-- [ ] 2.3 GREEN and commit BUG-001 regression.
+- [x] 2.1 RED: desktop/mobile four-catalog selection contract. **Absorbed by:** selects-animales-catalogo-real-offline PR-5 (diagnosis-first with real DB data). Root cause: `SelectConCreacionField` had a no-op `onChange` (uncontrolled pattern). Fix: controlled state via `useState` in `animal-crud.tsx`.
+- [x] 2.2 Diagnose before changing `select-con-creacion.tsx`. **Absorbed by:** selects-animales-catalogo-real-offline PR-5 (diagnosis-bug-001.md documents the root cause).
+- [x] 2.3 GREEN and commit BUG-001 regression. **Absorbed by:** selects-animales-catalogo-real-offline PR-5 (3 regression tests in `packages/ui/tests/animal-ui.test.tsx` pass with canonical DB IDs).
 
 ## Phase 3: BUG-002 — Controlled Purchase Date
 

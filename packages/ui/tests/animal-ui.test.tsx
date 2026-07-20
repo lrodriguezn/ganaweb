@@ -957,4 +957,114 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.getByText("Hija · CR-301 · Nube")).toBeInTheDocument()
     expect(screen.getByText("Hijo · CR-302")).toBeInTheDocument()
   })
+
+  /**
+   * BUG-001 regression tests.
+   *
+   * These tests use canonical DB seed IDs (not the mock fixture IDs) to
+   * determine whether the selection bug was caused by mock ID prefix mismatch
+   * (col- vs color-) or by a deeper issue in the SelectConCreacion primitive.
+   *
+   * Root cause: SelectConCreacionField had a no-op onChange, making the hidden
+   * native input never update after selection. Fix: controlled state via
+   * useState + onChange → setSelectedValue.
+   */
+  describe("BUG-001 selection contract with real-data IDs", () => {
+    it("raza click → FormData carries canonical id (raza-angus, not mock prefix)", async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={onSave}
+          onCancel={vi.fn()}
+          catalogOptions={{
+            raza: [
+              { value: "raza-angus", label: "Angus" },
+              { value: "raza-brahman", label: "Brahman" },
+              { value: "raza-holstein", label: "Holstein" },
+            ],
+            sexo: [{ value: "1", label: "Hembra" }],
+            canCreateCatalog: { raza: true },
+          }}
+        />,
+      )
+
+      await user.click(screen.getByRole("combobox", { name: "Raza" }))
+      await user.click(await screen.findByRole("option", { name: "Angus" }))
+
+      await user.type(screen.getByLabelText("Código *"), "NV-BUG001-R")
+      await user.type(screen.getByLabelText("Nombre"), "BUG-001 Raza")
+      await user.click(screen.getByRole("button", { name: "Guardar" }))
+
+      const [formData] = onSave.mock.calls[0] as [FormData]
+      expect(formData.get("raza")).toBe("raza-angus")
+    })
+
+    it("color click → FormData carries canonical id (col-negro, not color-negro)", async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={onSave}
+          onCancel={vi.fn()}
+          catalogOptions={{
+            color: [
+              { value: "col-negro", label: "Negro", meta: { hex: "#1a1a1a" } },
+              { value: "col-blanco", label: "Blanco", meta: { hex: "#f5f5f5" } },
+            ],
+            sexo: [{ value: "1", label: "Hembra" }],
+            canCreateCatalog: { color: true },
+          }}
+        />,
+      )
+
+      await user.click(screen.getByRole("combobox", { name: "Color" }))
+      await user.click(await screen.findByRole("option", { name: "Negro" }))
+
+      await user.type(screen.getByLabelText("Código *"), "NV-BUG001-C")
+      await user.type(screen.getByLabelText("Nombre"), "BUG-001 Color")
+      await user.click(screen.getByRole("button", { name: "Guardar" }))
+
+      const [formData] = onSave.mock.calls[0] as [FormData]
+      expect(formData.get("color")).toBe("col-negro")
+    })
+
+    it("keyboard navigation (Enter) selects the first option with canonical id", async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={onSave}
+          onCancel={vi.fn()}
+          catalogOptions={{
+            raza: [
+              { value: "raza-angus", label: "Angus" },
+              { value: "raza-brahman", label: "Brahman" },
+            ],
+            sexo: [{ value: "1", label: "Hembra" }],
+          }}
+        />,
+      )
+
+      const razaCombo = screen.getByRole("combobox", { name: "Raza" })
+      await user.click(razaCombo)
+      await user.keyboard("{Enter}")
+
+      await user.type(screen.getByLabelText("Código *"), "NV-BUG001-K")
+      await user.type(screen.getByLabelText("Nombre"), "BUG-001 Kbd")
+      await user.click(screen.getByRole("button", { name: "Guardar" }))
+
+      const [formData] = onSave.mock.calls[0] as [FormData]
+      expect(formData.get("raza")).toBe("raza-angus")
+    })
+  })
 })
