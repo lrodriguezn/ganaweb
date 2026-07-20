@@ -1480,6 +1480,12 @@ function EstimarPorEdad({ onApply }: { onApply: (iso: string) => void }) {
  * The v1.3 catalog selectors (`raza`, `color`, `calidad`, `lugarCompra`)
  * all share the same shape: Label + SelectConCreacion trigger + alert.
  * `canCreate` is gated on `canCreateCatalog` from the form props.
+ *
+ * BUG-001 fix: the field is now controlled via internal state. The previous
+ * uncontrolled pattern had a no-op onChange, which meant the hidden native
+ * input (rendered by SelectConCreacion) never updated after selection. With
+ * controlled state, onSelect writes to `selectedValue`, and both the trigger
+ * label and the hidden input reflect the chosen option.
  */
 function SelectConCreacionField({
   label,
@@ -1499,10 +1505,7 @@ function SelectConCreacionField({
   const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
   const errorId = `${id}-error`
   const errorMessage = fieldErrors?.[name]
-  // The `SelectConCreacion` primitive uses `aria-label` for the trigger
-  // name; mirroring that to the Label text keeps
-  // `getByRole("combobox", { name: label })` and `getByLabelText`
-  // consistent for the form's consumer tests.
+  const [selectedValue, setSelectedValue] = useState<string | null>(defaultValue ?? null)
   const placeholder = label
   return (
     <div className="space-y-1.5">
@@ -1511,10 +1514,8 @@ function SelectConCreacionField({
         id={id}
         name={name}
         options={options}
-        value={defaultValue ?? null}
-        onChange={() => {
-          // uncontrolled — the hidden native input mirrors the chosen id
-        }}
+        value={selectedValue}
+        onChange={(next) => setSelectedValue(next)}
         canCreate={canCreate}
         placeholder={placeholder}
         {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}

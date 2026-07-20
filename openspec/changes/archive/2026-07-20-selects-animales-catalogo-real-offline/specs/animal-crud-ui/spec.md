@@ -1,10 +1,6 @@
-# Animal CRUD UI Specification
+# Delta for Animal CRUD UI
 
-## Purpose
-
-Define the animal create/edit form UI contract for catalog-backed fields, sex labels, split location controls, and CA-UI remediation acceptance. This specification is limited to the animal form; shell/header finca-label behavior is out of scope.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Catalog-backed fields use labeled selectors
 
@@ -24,69 +20,6 @@ The animal form MUST render catalog-backed values as selector controls with huma
 - WHEN the form renders that field
 - THEN the field MUST show a safe unavailable-label state
 - AND it MUST NOT expose the raw id/key as the user-facing label
-
-### Requirement: Sex selection hides raw numeric keys
-
-The `sexo_key` field MUST display domain labels for `0=Macho`, `1=Hembra`, and `2=Pajuela`, while preserving `0`, `1`, or `2` internally. The UI MUST NOT show raw numeric values such as `1` as the visible selection. This satisfies CA-UI-001 and CA-UI-003.
-
-#### Scenario: Default female value is labeled
-
-- GIVEN the create form initializes `sexo_key` to `1`
-- WHEN the form is shown
-- THEN the visible selection is `Hembra`
-- AND the submitted value remains `1`
-
-#### Scenario: User changes sex value
-
-- GIVEN the user changes the sex selector to `Macho`
-- WHEN the form is submitted
-- THEN the payload contains `sexo_key=0`
-- AND no raw numeric sex key is displayed to the user
-
-### Requirement: Location controls are semantically split
-
-The animal form MUST represent location as separate controls for potrero, sector, lote, and grupo. It MUST NOT merge location into one ambiguous free-text control. This satisfies CA-UI-005.
-
-#### Scenario: Create mode captures optional split location
-
-- GIVEN the user is creating an animal
-- WHEN the location section is displayed
-- THEN potrero, sector, lote, and grupo are separate optional controls
-- AND selected values are submitted as their respective ids
-
-#### Scenario: Location is not collapsed
-
-- GIVEN location controls are available
-- WHEN the user reviews the form
-- THEN there is no single free-text field labeled as a combined potrero/sector/lote/grupo value
-
-### Requirement: Edit mode respects location move semantics
-
-In edit mode, location fields MUST respect CA-UPD-001: potrero, sector, lote, and grupo are not directly editable in the animal data form after creation. The form MUST present current location as read-only and SHOULD provide a `Mover animal` action when movement is available.
-
-#### Scenario: Edit mode shows read-only location
-
-- GIVEN an existing animal has current location data
-- WHEN the edit form renders
-- THEN potrero, sector, lote, and grupo are displayed as read-only values
-- AND the form does not submit direct location mutations
-
-#### Scenario: Move flow is offered from edit mode
-
-- GIVEN the user has permission to move an animal
-- WHEN the edit form shows the read-only location section
-- THEN the UI SHOULD expose a `Mover animal` action
-- AND movement is handled outside the data edit submission
-
-### Requirement: CA-UI acceptance traceability
-
-Acceptance evidence for this remediation MUST explicitly cite CA-UI-001, CA-UI-003, and CA-UI-005 in tests and review notes.
-
-#### Scenario: Verification cites rules
-
-- GIVEN the remediation is ready for review
-- WHEN tests and PR notes are prepared
-- THEN they explicitly reference CA-UI-001, CA-UI-003, and CA-UI-005
 
 ### Requirement: Raza, Color, and Calidad render as labeled catalog selectors
 
@@ -137,66 +70,7 @@ When `raza`, `color`, `calidad`, or `lugar_compra` is empty, the dropdown MUST r
 - THEN the EmptyState shows `+ Crear el primero` rendered disabled
 - AND no creation flow opens
 
-### Requirement: Submit button shows in-flight state and respects validity
-
-The `Guardar` button MUST display `Guardando…` while the create action is in flight, MUST preserve its width, and MUST be disabled when the form has any validation error. This satisfies CA-UI-006.
-
-#### Scenario: In-flight and disabled states
-
-- GIVEN the form state is valid with action in flight, OR has any validation error
-- WHEN the button is rendered
-- THEN the label is `Guardando…` and the button is disabled (in flight) — width preserved
-- AND the button is disabled without calling the action (invalid)
-
-### Requirement: Origen toggle mounts/unmounts conditional fields and discards stale values
-
-The form MUST render `madre`/`padre` ONLY when `origen = "nacido_en_finca"` and the four purchase inputs (`fecha_compra`, `precio_compra`, `peso_compra`, `lugar_compra`) ONLY when `origen = "comprado"`. When `origen` flips, the abandoned fields MUST unmount and their typed values MUST NOT be submitted. This satisfies CA-UI-007 and CA-CRE-002.
-
-#### Scenario: Mode-driven block visibility
-
-- GIVEN `origen` is `nacido_en_finca` or `comprado`
-- WHEN the form renders
-- THEN `Madre` and `Padre` are visible AND no purchase block (nacido)
-- AND the four purchase inputs are visible AND parents are not (comprado)
-
-#### Scenario: Flip discards abandoned values
-
-- GIVEN a value was typed in the abandoned mode's field
-- WHEN the user flips `origen`
-- THEN that field is not rendered
-- AND the payload does NOT include the abandoned field
-
-### Requirement: DatePicker "Estimar por edad" shortcut
-
-The `Fecha de nacimiento` `DatePicker` MUST expose an `Estimar por edad` action. Activating it MUST produce a date and the form MUST append `[fecha estimada]` to `comentarios`. This satisfies CA-CRE-004.
-
-#### Scenario: Estimar emits date and tags comentarios
-
-- GIVEN the user invokes `Estimar por edad` with `3 años`
-- WHEN they confirm
-- THEN `fecha_nacimiento` is set to the computed ISO date
-- AND `comentarios` ends with `[fecha estimada]`
-
-### Requirement: Fecha de nacimiento rejects future dates
-
-The `Fecha de nacimiento` `DatePicker` MUST NOT allow selecting a future date, and the form validation MUST reject any future date submitted by any path. This satisfies RN-002.
-
-#### Scenario: Future date blocked at UI and validation
-
-- GIVEN today is `15/07/2026`
-- WHEN the user opens the calendar OR a programmatic submit carries `fecha_nacimiento = "2099-01-01"`
-- THEN any day after `15/07/2026` is disabled in the day grid
-- AND the form validation rejects the submit and marks the field `aria-invalid="true"`
-
-### Requirement: Numeric inputs use es-CO formatting
-
-`precio_compra` and `peso_compra` MUST accept es-CO formatted input (`,` decimal, `.` thousand). The form MUST normalize to a JavaScript number before persisting.
-
-#### Scenario: User enters 1.500,75
-
-- GIVEN the user types `1.500,75` into `precio_compra`
-- WHEN the form normalizes
-- THEN the persisted value is the number `1500.75`
+## ADDED Requirements
 
 ### Requirement: Global catalog use cases (raza, color, calidad)
 
@@ -250,7 +124,7 @@ The system MUST provide five use cases — `listarPotrerosPorFinca`, `listarSect
 
 ### Requirement: loadAnimalCatalogs server loader composition
 
-`apps/web` MUST expose a `loadAnimalCatalogs(fincaId)` server function that revalidates the session (PE-002), calls the eight catalog use cases in parallel (sexo + three maestro + five finca-scoped), and returns a composite `AnimalCatalogs` object. Each catalog value MUST be wrapped in `{ tipo: "disponible" | "no_disponible" }` matching the existing `AnimalSexoCatalog` pattern. On DB error, the loader MUST return `no_disponible` for every catalog and MUST NOT substitute mock or demo data (IA-001, T-003).
+`apps/web` MUST expose a `loadAnimalCatalogs(fincaId)` server function that revalidates the session (PE-002), calls the eight catalog use cases in parallel (sexo + three maestro + five finca-scoped), and returns a composite `AnimalCatalogs` object. Each catalog value MUST be wrapped in `{ tipo: "disponible" | "no_disponible" }` matching the existing `AnimalSexoCatalog` pattern. On DB error, the loader MUST return `no_disponible` for every catalog and MUST NOT substitute demo or mock data (IA-001, T-003).
 
 #### Scenario: All eight catalogs are composed
 
@@ -317,23 +191,15 @@ Phase 1 MUST NOT regress the existing `sexo` flow. `CatalogoGlobalPort`, `listar
 
 ## Rule Citations
 
-- CA-UI-001 — Catalog-backed fields render as labeled selectors, not raw inputs. (Extended to all 8 catalogs: raza, color, calidad, potrero, sector, lote, grupo, lugarCompra.)
-- CA-UI-002 — `+ Crear nuevo` affordance is gated on the `configuracion:crear` permission. (Extended to potrero, sector, lote, grupo.)
-- CA-UI-003 — Domain sex/origin labels are shown to users; raw numeric keys are preserved internally only.
-- CA-UI-004 — Empty catalog renders `EmptyState` with `+ Crear el primero`; otherwise field is disabled with a hint.
-- CA-UI-005 — Location is split into potrero, sector, lote, and grupo controls; no merged free-text `ubicacion` field.
-- CA-UI-006 — Submit button shows `Guardando…` while in flight and is disabled when any validation error exists; width is preserved.
-- CA-UI-007 — Origen toggle remounts the abandoned conditional block; abandoned values are NOT submitted.
-- CA-CRE-002 — `origen` is rendered as `PillsSegmentadas` (Nacimiento / Comprado) with `key={origen}` remount semantics.
-- CA-CRE-003 — `madre`/`padre` comboboxes exclude the current animal id and use `código · nombre` row labels.
-- CA-CRE-004 — `Estimar por edad` DatePicker shortcut produces a date and appends `[fecha estimada]` to `comentarios`.
-- CA-UPD-001 — After creation, animal location is moved through a dedicated `Mover animal` flow, not through the data edit submission.
-- RN-002 — `Fecha de nacimiento` rejects future dates at the calendar AND at form validation.
-- IA-003 — Reuse `packages/ui` components for any UI surfaced in this change.
-- T-003 — Domain names and UI text in Spanish; es-CO `localeCompare` ordering for catalog options.
-- T-004 — No `dark:` variants; token-only theming.
-- PE-002 — Server function revalidates the session and effective permissions per finca.
-- PE-003 — Finca-scoped permissions: `session.fincaActivaId === fincaId` is required.
-- RN-001 — Unique code per finca (`uq_animales_finca_codigo`); no schema changes in Phase 1.
-- RN-050 — Masters referenced by events are not removed (Phase 1 is read-only, no impact).
-- IA-001 — Ambiguity stops work (applied to BUG-001 diagnosis-first); mock data must not substitute for real data.
+- PE-002 — server function revalidates the session and effective permissions per finca.
+- PE-003 — finca-scoped permissions: `session.fincaActivaId === fincaId` is required.
+- RN-050 — masters referenced by events are not removed (Phase 1 is read-only, no impact).
+- RN-001 — `uq_animales_finca_codigo` not affected (no schema changes).
+- CA-UI-001 — labels shown to the user; canonical id carried in the payload.
+- CA-UI-002 — `+ Crear nuevo` gated on `configuracion:crear`; stubbed in Phase 1.
+- CA-UI-004 — EmptyState with `+ Crear el primero`; disabled for empty finca-scoped catalogs.
+- CA-UI-005 — location split into `potrero`, `sector`, `lote`, `grupo`; no merged free-text.
+- T-003 — Spanish labels; es-CO `localeCompare` ordering.
+- T-004 — token-only theming (no `dark:` variants).
+- IA-001 — diagnosis-first closure for BUG-001; ambiguity stops work.
+- IA-003 — reuse `packages/ui` primitives; no duplicated select primitive.

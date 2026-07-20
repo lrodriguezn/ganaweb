@@ -112,11 +112,21 @@ const CAN_CREATE_CATALOG = {
 } as const
 
 /**
- * Devuelve las opciones de catálogo demo. La función (en lugar de una
- * constante exportada) deja la puerta abierta a un loader real
- * `await cargarCatalogosAnimales(fincaId)` sin tocar al caller.
+ * PR-5: Retained as rollback safety. Not consumed in production by Phase 1.
+ *
+ * The real catalog source is now `getAnimalCatalogsAction()` which loads
+ * from the DB via `loadAnimalCatalogs(fincaId, ports)`. This fixture is
+ * kept so routes can be reverted to fixture-sourced options if needed.
+ *
+ * In production, calling this function throws to prevent accidental use.
+ * Tests that import the types (AnimalFormCatalogOptions, etc.) are unaffected.
  */
 export function getAnimalFormCatalogOptions(): AnimalFormCatalogOptions {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Mock catalogs not available in production. Use getAnimalCatalogsAction() instead.",
+    )
+  }
   return {
     // PR 2b (v1.3 spec): `origen` is intentionally NOT in the fixture.
     // The form's `useComboboxOrigen` bifurcation renders the v1.3

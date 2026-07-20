@@ -24,6 +24,14 @@
     "./catalogo-global-infrastructure": {
       "types": "./src/catalogo-global-infrastructure.ts",
       "import": "./src/catalogo-global-infrastructure.ts"
+    },
+    "./catalogo-animal-maestro-infrastructure": {
+      "types": "./src/catalogo-animal-maestro-infrastructure.ts",
+      "import": "./src/catalogo-animal-maestro-infrastructure.ts"
+    },
+    "./catalogo-finca-infrastructure": {
+      "types": "./src/catalogo-finca-infrastructure.ts",
+      "import": "./src/catalogo-finca-infrastructure.ts"
     }
   },
   "scripts": {

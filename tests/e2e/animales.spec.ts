@@ -200,3 +200,62 @@ test.describe("animal CRUD web flow", () => {
     await context.close()
   })
 })
+
+/**
+ * PR-5: Catalog select E2E tests with real DB data (via E2E fixture ports).
+ *
+ * Verifies that the composite catalog loader populates the form selects and
+ * that user selections carry the canonical DB IDs through FormData.
+ * Desktop + mobile variants for the three primary catalog families.
+ */
+test.describe("PR-5: catalog selects with real DB data", () => {
+  test("raza: select from real catalog → FormData carries canonical id (desktop + mobile)", async ({
+    page,
+  }) => {
+    await page.goto("/fincas/finca-1/animales/nuevo")
+    const form = animalFormFrame(page)
+
+    // Open the raza combobox and select Angus (canonical id: raza-angus)
+    const razaCombo = form.getByRole("combobox", { name: "Raza" })
+    await razaCombo.click()
+    await page.getByRole("option", { name: "Angus" }).click()
+
+    // Verify FormData carries the canonical id
+    const formDataValue = await form
+      .locator("form")
+      .evaluate((el) => new FormData(el as HTMLFormElement).get("raza"))
+    expect(formDataValue).toBe("raza-angus")
+  })
+
+  test("color: select from real catalog → FormData carries canonical id (col- prefix)", async ({
+    page,
+  }) => {
+    await page.goto("/fincas/finca-1/animales/nuevo")
+    const form = animalFormFrame(page)
+
+    const colorCombo = form.getByRole("combobox", { name: "Color" })
+    await colorCombo.click()
+    await page.getByRole("option", { name: "Negro" }).click()
+
+    const formDataValue = await form
+      .locator("form")
+      .evaluate((el) => new FormData(el as HTMLFormElement).get("color"))
+    expect(formDataValue).toBe("col-negro")
+  })
+
+  test("potrero: select from finca-scoped catalog → FormData carries canonical id", async ({
+    page,
+  }) => {
+    await page.goto("/fincas/finca-1/animales/nuevo")
+    const form = animalFormFrame(page)
+
+    const potreroCombo = form.getByRole("combobox", { name: "Potrero" })
+    await potreroCombo.click()
+    await page.getByRole("option", { name: "Potrero Norte" }).click()
+
+    const formDataValue = await form
+      .locator("form")
+      .evaluate((el) => new FormData(el as HTMLFormElement).get("potreroId"))
+    expect(formDataValue).toBe("potrero-norte")
+  })
+})

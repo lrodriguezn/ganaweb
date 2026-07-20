@@ -35,8 +35,34 @@ export type { RelojDelSistemaPort } from "./puertos/reloj-del-sistema-port.js"
 export type { OutboxPort, EventoOutbox, EntradaOutbox } from "./puertos/outbox-port.js"
 export type { TransaccionPort } from "./puertos/transaccion-port.js"
 export type { CatalogoGlobalPort, CatalogoRaw } from "./puertos/catalogo-global-port.js"
+export type {
+  CatalogoAnimalMaestroPort,
+  CatalogoMaestroOption,
+  CalidadOption,
+  ColorOption,
+  RazaOption,
+  TablaMaestro,
+} from "./puertos/catalogo-animal-maestro-port.js"
+export type {
+  CatalogoFincaOption,
+  CatalogoFincaPort,
+  GrupoOption,
+  LoteOption,
+  LugarCompraOption,
+  PotreroOption,
+  SectorOption,
+  TablaFinca,
+} from "./puertos/catalogo-finca-port.js"
 export * from "./casos-uso/animales/index.js"
 export * from "./casos-uso/auth/index.js"
 export * from "./casos-uso/listar-catalogo-sexo.js"
+export * from "./casos-uso/listar-catalogo-raza.js"
+export * from "./casos-uso/listar-catalogo-color.js"
+export * from "./casos-uso/listar-catalogo-calidad.js"
+export * from "./casos-uso/listar-potreros-por-finca.js"
+export * from "./casos-uso/listar-sectores-por-finca.js"
+export * from "./casos-uso/listar-lotes-por-finca.js"
+export * from "./casos-uso/listar-grupos-por-finca.js"
+export * from "./casos-uso/listar-lugares-compra-por-finca.js"
 export type * from "./puertos/auth-repository-port.js"
 export type { DecisionAutorizacion, PermisoUsuario, SesionAutorizada } from "@ganaweb/dominio"

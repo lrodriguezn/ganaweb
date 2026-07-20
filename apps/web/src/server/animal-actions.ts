@@ -153,6 +153,17 @@ export const getAnimalSexoCatalogAction = createServerFn({ method: "GET" }).hand
   async () => (await (await getRuntimeHarness()).sexoCatalog()) as AnimalSexoCatalog,
 )
 
+/**
+ * PR-5: Composite catalog action. Loads all 9 catalogs (sexo + 3 maestro +
+ * 5 finca-scoped) via Promise.allSettled. Returns AnimalCatalogs with each
+ * catalog wrapped in {tipo: "disponible" | "no_disponible"}.
+ */
+export type { AnimalCatalogResult, AnimalCatalogs } from "./animal-actions.server.js"
+
+export const getAnimalCatalogsAction = createServerFn({ method: "GET" })
+  .validator((data: { fincaId: string }) => data)
+  .handler(async ({ data }) => (await getRuntimeHarness()).allCatalogs(data.fincaId))
+
 export const getAnimalFichaAction = createServerFn({ method: "GET" })
   .validator((data: AnimalIdWebInput & { cursorTimeline?: string }) => data)
   .handler(async ({ data }) => (await getRuntimeHarness()).ficha(data))
