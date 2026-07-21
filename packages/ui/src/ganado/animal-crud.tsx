@@ -1637,6 +1637,7 @@ export interface AnimalDesktopScreenProps {
   selectedIds?: string[]
   canCreate?: boolean
   onNuevoAnimal: () => void
+  onPressAnimal?: (animal: AnimalListItem) => void
 }
 
 export function AnimalDesktopScreen({
@@ -1644,6 +1645,7 @@ export function AnimalDesktopScreen({
   selectedIds = [],
   canCreate = true,
   onNuevoAnimal,
+  onPressAnimal,
 }: AnimalDesktopScreenProps) {
   return (
     <section
@@ -1682,7 +1684,27 @@ export function AnimalDesktopScreen({
           </thead>
           <tbody>
             {animales.map((animal) => (
-              <tr key={animal.id} className="h-11 border-t">
+              <tr
+                key={animal.id}
+                className={cn(
+                  "h-11 border-t",
+                  onPressAnimal && "cursor-pointer hover:bg-muted/50 transition-colors",
+                )}
+                tabIndex={onPressAnimal ? 0 : undefined}
+                role={onPressAnimal ? "button" : undefined}
+                aria-label={
+                  onPressAnimal
+                    ? [animal.codigoAnimal, animal.nombreAnimal].filter(Boolean).join(" ")
+                    : undefined
+                }
+                onClick={() => onPressAnimal?.(animal)}
+                onKeyDown={(e) => {
+                  if (onPressAnimal && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault()
+                    onPressAnimal(animal)
+                  }
+                }}
+              >
                 <td className="px-3 font-semibold">{animal.codigoAnimal}</td>
                 <td className="px-3">{animal.nombreAnimal}</td>
                 <td className="px-3">
