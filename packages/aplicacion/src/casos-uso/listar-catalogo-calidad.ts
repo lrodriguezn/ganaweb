@@ -8,17 +8,6 @@ export interface CatalogoCalidadResult {
   readonly options: readonly CalidadOption[]
 }
 
-/**
- * Canonical calidad IDs from packages/db/src/seed/seed.ts (lines 238-242).
- * The strict decoder rejects any ID not in this set.
- */
-const CANONICAL_CALIDAD_IDS: ReadonlySet<string> = new Set([
-  "cal-excelente",
-  "cal-bueno",
-  "cal-regular",
-  "cal-descarte",
-])
-
 const NO_DISPONIBLE: CatalogoCalidadResult = { tipo: "no_disponible", options: [] }
 
 export async function listarCatalogoCalidad(
@@ -31,7 +20,6 @@ export async function listarCatalogoCalidad(
     const seen = new Set<string>()
     for (const row of rows) {
       if (!row.id || typeof row.id !== "string") return NO_DISPONIBLE
-      if (!CANONICAL_CALIDAD_IDS.has(row.id)) return NO_DISPONIBLE
       if (seen.has(row.id)) return NO_DISPONIBLE
       seen.add(row.id)
     }

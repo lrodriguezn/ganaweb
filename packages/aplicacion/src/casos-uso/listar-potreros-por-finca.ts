@@ -5,20 +5,6 @@ export interface CatalogoPotreroResult {
   readonly options: readonly PotreroOption[]
 }
 
-/**
- * Canonical potrero IDs from packages/db/src/seed/seed.ts
- * (lines 341-345 for finca-esperanza, lines 479-483 for finca-roble).
- * The strict decoder rejects any ID not in this set.
- */
-const CANONICAL_POTRERO_IDS: ReadonlySet<string> = new Set([
-  "pot-esp-1",
-  "pot-esp-3",
-  "pot-esp-5",
-  "pot-rob-1",
-  "pot-rob-2",
-  "pot-rob-3",
-])
-
 const NO_DISPONIBLE: CatalogoPotreroResult = { tipo: "no_disponible", options: [] }
 
 export async function listarPotrerosPorFinca(
@@ -34,7 +20,6 @@ export async function listarPotrerosPorFinca(
     const seen = new Set<string>()
     for (const row of rows) {
       if (!row.id || typeof row.id !== "string") return NO_DISPONIBLE
-      if (!CANONICAL_POTRERO_IDS.has(row.id)) return NO_DISPONIBLE
       if (seen.has(row.id)) return NO_DISPONIBLE
       seen.add(row.id)
     }
