@@ -202,6 +202,7 @@ async function seedSistema(sql: ReturnType<typeof postgres>) {
     ["raza-romosinuano", "Romosinuano", "Romosinuano"],
     ["raza-bon", "Blanco Orejinegro", "BON"],
     ["raza-cruce", "Cruce", "Cruzamiento comercial"],
+    ["raza-cruce2", "Cruce2", "Cruzamiento2"],
   ]
 
   for (const [id, nombre, descripcion] of razas) {
