@@ -30,7 +30,14 @@ function AnimalsListRoute() {
   return (
     <div className="space-y-4">
       <div className="hidden md:block">
-        <AnimalDesktopScreen animales={animales} canCreate={canCreate} onNuevoAnimal={goNew} />
+        <AnimalDesktopScreen
+          animales={animales}
+          canCreate={canCreate}
+          onNuevoAnimal={goNew}
+          onPressAnimal={(animal) =>
+            window.location.assign(`${window.location.pathname}/${animal.id}`)
+          }
+        />
       </div>
       <div className="md:hidden">
         <AnimalListMobile
