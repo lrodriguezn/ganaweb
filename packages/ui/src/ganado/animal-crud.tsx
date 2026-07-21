@@ -501,7 +501,7 @@ export function AnimalGallery({
 }
 
 export interface AnimalFormScreenProps {
-  mode: "desktop" | "mobile"
+  mode?: "desktop" | "mobile"
   formVariant?: AnimalFormVariant
   onSave: (formData: FormData) => void | Promise<void>
   onCancel: () => void
@@ -637,6 +637,27 @@ const LOCATION_FIELDS: readonly (AnimalFormField & {
   { label: "Grupo", name: "grupoId", optionsKey: "grupo" },
 ]
 
+/**
+ * Subscribes to a CSS media query and returns whether it currently matches.
+ * SSR-safe: defaults to `true` (desktop) so the server markup agrees with
+ * the first client render. The existing `isHydrated` gate in
+ * `AnimalFormScreen` suppresses any brief mismatch before the effect runs.
+ */
+function useMatchMedia(query: string): boolean {
+  const [matches, setMatches] = useState(true)
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return
+    const mql = window.matchMedia(query)
+    setMatches(mql.matches)
+    const handler = (event: MediaQueryListEvent) => setMatches(event.matches)
+    mql.addEventListener("change", handler)
+    return () => mql.removeEventListener("change", handler)
+  }, [query])
+
+  return matches
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: refactor pendiente — issue #62
 export function AnimalFormScreen({
   mode,
@@ -651,7 +672,8 @@ export function AnimalFormScreen({
   onOrigenChange,
   currentAnimalId,
 }: AnimalFormScreenProps) {
-  const mobile = mode === "mobile"
+  const mediaMatches = useMatchMedia("(min-width: 768px)")
+  const mobile = mode === "mobile" || (mode === undefined && !mediaMatches)
   // PR 2a: the form is fully controlled for the v1.3 fields that drive
   // conditional rendering (`origen`) or require post-action state changes
   // (the `Estimar por edad` shortcut must append `[fecha estimada]` to
@@ -709,7 +731,7 @@ export function AnimalFormScreen({
         ].includes(field.label),
       )
     : FORM_FIELDS
-  const formId = `animal-form-${mode}`
+  const formId = `animal-form-${currentAnimalId ?? "new"}`
   const submitForm = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isSubmitting) return

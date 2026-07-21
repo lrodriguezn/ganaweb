@@ -237,26 +237,13 @@ export function NewAnimalRouteView({
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="hidden md:block">
-        <AnimalFormScreen
-          mode="desktop"
-          formVariant="create"
-          catalogOptions={catalogOptionsConPermisos}
-          fieldErrors={fieldErrors}
-          onSave={save}
-          onCancel={() => history.back()}
-        />
-      </div>
-      <div className="md:hidden">
-        <AnimalFormScreen
-          mode="mobile"
-          formVariant="create"
-          catalogOptions={catalogOptionsConPermisos}
-          fieldErrors={fieldErrors}
-          onSave={save}
-          onCancel={() => history.back()}
-        />
-      </div>
+      <AnimalFormScreen
+        formVariant="create"
+        catalogOptions={catalogOptionsConPermisos}
+        fieldErrors={fieldErrors}
+        onSave={save}
+        onCancel={() => history.back()}
+      />
     </div>
   )
 }

@@ -308,32 +308,16 @@ function EditAnimalRoute() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="hidden md:block">
-        <AnimalFormScreen
-          mode="desktop"
-          formVariant="edit"
-          currentLocation={currentLocation}
-          initialValues={initialValues}
-          catalogOptions={catalogOptionsConPermisos}
-          fieldErrors={fieldErrors}
-          onSave={save}
-          onCancel={() => history.back()}
-          currentAnimalId={animalId}
-        />
-      </div>
-      <div className="md:hidden">
-        <AnimalFormScreen
-          mode="mobile"
-          formVariant="edit"
-          currentLocation={currentLocation}
-          initialValues={initialValues}
-          catalogOptions={catalogOptionsConPermisos}
-          fieldErrors={fieldErrors}
-          onSave={save}
-          onCancel={() => history.back()}
-          currentAnimalId={animalId}
-        />
-      </div>
+      <AnimalFormScreen
+        formVariant="edit"
+        currentLocation={currentLocation}
+        initialValues={initialValues}
+        catalogOptions={catalogOptionsConPermisos}
+        fieldErrors={fieldErrors}
+        onSave={save}
+        onCancel={() => history.back()}
+        currentAnimalId={animalId}
+      />
     </div>
   )
 }

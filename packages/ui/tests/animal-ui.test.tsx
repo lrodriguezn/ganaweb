@@ -1067,4 +1067,132 @@ describe("PR3 animal UI OpenPencil parity", () => {
       expect(formData.get("raza")).toBe("raza-angus")
     })
   })
+
+  describe("viewport-flip state preservation (issue #59)", () => {
+    type ChangeHandler = (event: { matches: boolean }) => void
+
+    function installMatchMediaWithEvents(initial: "mobile" | "desktop") {
+      const listeners = new Set<ChangeHandler>()
+      let currentMatches = initial === "desktop"
+
+      Object.defineProperty(window, "matchMedia", {
+        writable: true,
+        configurable: true,
+        value: (query: string) => ({
+          matches: currentMatches,
+          media: query,
+          onchange: null,
+          addEventListener: (_type: string, handler: ChangeHandler) => {
+            listeners.add(handler)
+          },
+          removeEventListener: (_type: string, handler: ChangeHandler) => {
+            listeners.delete(handler)
+          },
+        }),
+      })
+
+      return {
+        setViewport(viewport: "mobile" | "desktop") {
+          currentMatches = viewport === "desktop"
+          for (const handler of [...listeners]) {
+            handler({ matches: currentMatches })
+          }
+        },
+      }
+    }
+
+    function uninstallMatchMedia() {
+      try {
+        Reflect.deleteProperty(window, "matchMedia")
+      } catch {
+        // ignore
+      }
+    }
+
+    afterEach(() => {
+      uninstallMatchMedia()
+    })
+
+    it("preserves comentarios and fechaNacimiento when viewport flips desktop → mobile", async () => {
+      const mock = installMatchMediaWithEvents("desktop")
+      const user = userEvent.setup()
+
+      // @ts-expect-error — mode is required until task 1.1 makes it optional (RED)
+      render(<AnimalFormScreen onSave={vi.fn()} onCancel={vi.fn()} />)
+
+      // Desktop initially
+      expect(screen.getByTestId("op-f-400191")).toBeInTheDocument()
+
+      // Type into comentarios
+      await user.type(screen.getByLabelText("Comentarios"), "animal enfermo")
+
+      // Set fechaNacimiento via DatePicker
+      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+      await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
+
+      // Flip viewport to mobile
+      mock.setViewport("mobile")
+
+      // Should re-render as mobile variant (RED: current code has no matchMedia listener)
+      const mobileSection = await screen.findByTestId("op-f-400233")
+      expect(mobileSection).toBeInTheDocument()
+
+      // State must survive the re-render
+      expect(screen.getByLabelText("Comentarios")).toHaveValue("animal enfermo")
+      expect(screen.getByRole("button", { name: "Fecha de nacimiento" })).toHaveTextContent(
+        "10/07/2026",
+      )
+    })
+
+    it("preserves state on mobile → desktop flip and formId is stable", async () => {
+      const mock = installMatchMediaWithEvents("mobile")
+      const user = userEvent.setup()
+
+      // @ts-expect-error — mode is required until task 1.1 makes it optional (RED)
+      render(<AnimalFormScreen onSave={vi.fn()} onCancel={vi.fn()} />)
+
+      // Wait for the matchMedia effect to flip to mobile
+      const mobileSection = await screen.findByTestId("op-f-400233")
+      expect(mobileSection).toBeInTheDocument()
+
+      // Type into comentarios in mobile
+      await user.type(screen.getByLabelText("Comentarios"), "dato móvil")
+
+      // Flip to desktop
+      mock.setViewport("desktop")
+
+      // Should render desktop variant
+      const desktopSection = await screen.findByTestId("op-f-400191")
+      expect(desktopSection).toBeInTheDocument()
+
+      // State preserved
+      expect(screen.getByLabelText("Comentarios")).toHaveValue("dato móvil")
+
+      // formId is stable across variants (no mode segment)
+      const form = document.querySelector("form")
+      expect(form).toHaveAttribute("id", "animal-form-new")
+    })
+
+    it("explicit mode prop overrides the media query", () => {
+      const mock = installMatchMediaWithEvents("desktop")
+
+      render(<AnimalFormScreen mode="mobile" onSave={vi.fn()} onCancel={vi.fn()} />)
+
+      // Mobile variant rendered because mode overrides
+      expect(screen.getByTestId("op-f-400233")).toBeInTheDocument()
+
+      // Flip viewport — component should NOT change
+      mock.setViewport("desktop")
+
+      // Still mobile because mode="mobile" takes precedence
+      expect(screen.getByTestId("op-f-400233")).toBeInTheDocument()
+    })
+
+    it("SSR markup is desktop when mode is not provided", () => {
+      // @ts-expect-error — mode is required until task 1.1 makes it optional (RED)
+      const markup = renderToString(<AnimalFormScreen onSave={vi.fn()} onCancel={vi.fn()} />)
+      expect(markup).toContain("op-f-400191")
+      expect(markup).toContain("20 Nuevo Animal · Desktop")
+    })
+  })
 })
