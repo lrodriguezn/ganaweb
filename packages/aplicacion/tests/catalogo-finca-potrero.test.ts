@@ -37,13 +37,14 @@ describe("listarPotrerosPorFinca", () => {
     expect(result.options).toEqual([])
   })
 
-  it("returns {tipo: no_disponible} when a row has an unknown/noncanonical id", async () => {
+  it("accepts a row with an unknown id and includes it in options", async () => {
     const result = await listarPotrerosPorFinca(
       "finca-esperanza",
       port([{ ...potreroLaLoma, id: "pot-desconocido-xyz" }]),
     )
-    expect(result.tipo).toBe("no_disponible")
-    expect(result.options).toEqual([])
+    expect(result.tipo).toBe("disponible")
+    expect(result.options).toHaveLength(1)
+    expect(result.options[0].id).toBe("pot-desconocido-xyz")
   })
 
   it("returns {tipo: no_disponible} when fincaId is null or empty", async () => {

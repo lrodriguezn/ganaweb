@@ -32,10 +32,11 @@ describe("listarCatalogoRaza", () => {
     expect(result.options).toEqual([])
   })
 
-  it("returns {tipo: no_disponible} when a row has an unknown/noncanonical id", async () => {
+  it("accepts a row with an unknown id and includes it in options", async () => {
     const result = await listarCatalogoRaza(port([{ ...razaAngus, id: "raza-desconocida-xyz" }]))
-    expect(result.tipo).toBe("no_disponible")
-    expect(result.options).toEqual([])
+    expect(result.tipo).toBe("disponible")
+    expect(result.options).toHaveLength(1)
+    expect(result.options[0].id).toBe("raza-desconocida-xyz")
   })
 
   it("returns {tipo: no_disponible} when duplicate IDs exist", async () => {

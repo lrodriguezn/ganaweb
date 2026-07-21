@@ -8,21 +8,6 @@ export interface CatalogoColorResult {
   readonly options: readonly ColorOption[]
 }
 
-/**
- * Canonical color IDs from packages/db/src/seed/seed.ts (lines 248-256).
- * The strict decoder rejects any ID not in this set.
- */
-const CANONICAL_COLOR_IDS: ReadonlySet<string> = new Set([
-  "col-negro",
-  "col-blanco",
-  "col-rojo",
-  "col-cafe",
-  "col-canela",
-  "col-bayo",
-  "col-overo",
-  "col-pintado",
-])
-
 const NO_DISPONIBLE: CatalogoColorResult = { tipo: "no_disponible", options: [] }
 
 export async function listarCatalogoColor(
@@ -35,7 +20,6 @@ export async function listarCatalogoColor(
     const seen = new Set<string>()
     for (const row of rows) {
       if (!row.id || typeof row.id !== "string") return NO_DISPONIBLE
-      if (!CANONICAL_COLOR_IDS.has(row.id)) return NO_DISPONIBLE
       if (seen.has(row.id)) return NO_DISPONIBLE
       seen.add(row.id)
     }
