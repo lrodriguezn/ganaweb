@@ -216,13 +216,13 @@ describe("DatePicker primitive", () => {
 // dropdown navigation. No hex literals, no theme-flip variants.
 // =====================================================================
 
-function openCalendar(value = "") {
+function openCalendar(value = "", maxDate?: Date) {
   return (
     <DatePicker
       name="fechaNacimiento"
       value={value}
       onChange={() => {}}
-      maxDate={new Date(2026, 6, 19, 23, 59, 59)}
+      maxDate={maxDate ?? new Date()}
     />
   )
 }
@@ -304,7 +304,8 @@ describe("DatePicker BUG-004 — tokenized calendar styling", () => {
 
   it("renders a disabled day button with the text-muted-foreground token", async () => {
     const user = userEvent.setup()
-    render(openCalendar())
+    // Pass a past maxDate so days after it are disabled.
+    render(openCalendar("", new Date(2026, 6, 19, 23, 59, 59)))
     await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
 
     // Days past maxDate (19) are disabled and receive text-muted-foreground
