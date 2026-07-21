@@ -637,6 +637,7 @@ const LOCATION_FIELDS: readonly (AnimalFormField & {
   { label: "Grupo", name: "grupoId", optionsKey: "grupo" },
 ]
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: refactor pendiente — issue #62
 export function AnimalFormScreen({
   mode,
   formVariant = "create",
@@ -874,6 +875,7 @@ interface RenderFieldContext {
   setComentarios: React.Dispatch<React.SetStateAction<string>>
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: refactor pendiente — issue #62
 function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) {
   const {
     initialValues,

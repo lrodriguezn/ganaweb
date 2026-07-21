@@ -12,7 +12,12 @@ import {
   varchar,
 } from "drizzle-orm/pg-core"
 import { usuarios } from "./auth.js"
-import { configCalidadAnimal, configColores, configRazas, configTiposExplotacion } from "./config.js"
+import {
+  configCalidadAnimal,
+  configColores,
+  configRazas,
+  configTiposExplotacion,
+} from "./config.js"
 import { fincas } from "./fincas.js"
 import { grupos, hierros, lotes, potreros, propietarios, sectores } from "./maestros.js"
 

@@ -392,6 +392,7 @@ export function crearAnimal(deps: AnimalUseCaseDeps) {
       }
     | { readonly tipo: "validacion"; readonly errores: unknown }
     | { readonly tipo: "transaccion_fallida"; readonly razon: string }
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: refactor pendiente — issue #62
   > => {
     if (!tienePermiso(cmd.sesion, "crear")) return { tipo: "no_autorizado" }
 
