@@ -207,6 +207,7 @@ export class DrizzleAuthRepository implements AuthRepositoryPort {
         nombre: usuario.nombre,
         email: usuario.email,
         fincaActivaId: activeMembership.fincaId,
+        fincaActivaNombre: activeMembership.fincaNombre,
         rol: roleRows[0]?.rol ?? "Autorizado",
         permisos,
       },
