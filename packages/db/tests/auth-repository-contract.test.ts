@@ -115,6 +115,7 @@ describe("DrizzleAuthRepository authorization contract", () => {
       tipo: "autorizado",
       sesion: {
         fincaActivaId: "finca-1",
+        fincaActivaNombre: "Finca Uno",
         permisos: [{ modulo: "animales", accion: "ver" }],
       },
     })

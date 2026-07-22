@@ -136,7 +136,7 @@ function AppLayout() {
   const activoId = deriveActivoId(pathname)
   const fincaActiva: FincaResumen = {
     id: sesion.fincaActivaId,
-    nombre: `Finca ${sesion.fincaActivaId}`,
+    nombre: sesion.fincaActivaNombre,
     rol: sesion.rol,
     esAdmin: sesion.permisos.some(
       (permiso: PermisoUsuario) =>
