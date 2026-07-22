@@ -7,10 +7,12 @@ import type {
   CatalogoFincaOption,
   CatalogoFincaPort,
   CatalogoGlobalPort,
+  CatalogoPadresPort,
   ColorOption,
   GrupoOption,
   LoteOption,
   LugarCompraOption,
+  ParentComboboxOption,
   PotreroOption,
   RazaOption,
   SectorOption,
@@ -348,4 +350,34 @@ export function createAnimalE2eCatalogoFincaPort(): CatalogoFincaPort<
     "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
     CatalogoFincaOption
   >
+}
+
+/**
+ * E2E mock for CatalogoPadresPort.
+ * Returns seeded hembras (madres), machos and pajuelas (padres) for finca-1.
+ * Respects excludedIds to prevent self-parent selection in edit mode.
+ */
+export function createAnimalE2eCatalogoPadresPort(): CatalogoPadresPort {
+  const fincaId = "finca-1"
+  const hembras: readonly ParentComboboxOption[] = [
+    { id: "animal-1", codigo: "MT-122", nombre: "Matilda" },
+    { id: "animal-e2e-h2", codigo: "HR-010", nombre: "Rosa" },
+  ]
+  const machos: readonly ParentComboboxOption[] = [
+    { id: "animal-e2e-m1", codigo: "TOR-001", nombre: "Trueno" },
+  ]
+  const pajuelas: readonly ParentComboboxOption[] = [
+    { id: "animal-e2e-p1", codigo: "PJ-001", nombre: "Don Líbano" },
+  ]
+
+  return {
+    async listarMadres(requestedFincaId, excludedIds) {
+      if (requestedFincaId !== fincaId) return []
+      return hembras.filter((h) => !excludedIds.includes(h.id))
+    },
+    async listarPadres(requestedFincaId, excludedIds) {
+      if (requestedFincaId !== fincaId) return []
+      return [...machos, ...pajuelas].filter((p) => !excludedIds.includes(p.id))
+    },
+  }
 }

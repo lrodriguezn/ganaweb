@@ -32,6 +32,10 @@
     "./catalogo-finca-infrastructure": {
       "types": "./src/catalogo-finca-infrastructure.ts",
       "import": "./src/catalogo-finca-infrastructure.ts"
+    },
+    "./catalogo-padres-infrastructure": {
+      "types": "./src/catalogo-padres-infrastructure.ts",
+      "import": "./src/catalogo-padres-infrastructure.ts"
     }
   },
   "scripts": {

@@ -161,8 +161,10 @@ export const getAnimalSexoCatalogAction = createServerFn({ method: "GET" }).hand
 export type { AnimalCatalogResult, AnimalCatalogs } from "./animal-actions.server.js"
 
 export const getAnimalCatalogsAction = createServerFn({ method: "GET" })
-  .validator((data: { fincaId: string }) => data)
-  .handler(async ({ data }) => (await getRuntimeHarness()).allCatalogs(data.fincaId))
+  .validator((data: { fincaId: string; excludedIds?: readonly string[] }) => data)
+  .handler(async ({ data }) =>
+    (await getRuntimeHarness()).allCatalogs(data.fincaId, data.excludedIds),
+  )
 
 export const getAnimalFichaAction = createServerFn({ method: "GET" })
   .validator((data: AnimalIdWebInput & { cursorTimeline?: string }) => data)
