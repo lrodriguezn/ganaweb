@@ -807,7 +807,7 @@ export function AnimalFormScreen({
                   catalogOptions={catalogOptions}
                   fieldErrors={fieldErrors}
                   currentAnimalId={currentAnimalId}
-                  showPadre={!mobile}
+                  showPadre={true}
                 />
               )}
             </div>
@@ -1579,6 +1579,7 @@ function ComboboxField({
   const errorId = `${id}-error`
   const errorMessage = fieldErrors?.[name]
   const placeholder = label
+  const [value, setValue] = useState<string | null>(defaultValue ?? null)
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -1586,10 +1587,8 @@ function ComboboxField({
         id={id}
         name={name}
         options={options}
-        value={defaultValue ?? null}
-        onChange={() => {
-          // uncontrolled — the hidden native input mirrors the chosen id
-        }}
+        value={value}
+        onChange={(next) => setValue(next)}
         placeholder={placeholder}
         {...(excludedIds !== undefined ? { excludedIds } : {})}
         {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
