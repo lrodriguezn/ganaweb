@@ -1,5 +1,5 @@
 import { AnimalDesktopScreen, AnimalListMobile } from "@ganaweb/ui"
-import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router"
+import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
 import { Calendar, CheckSquare, Home, Menu, PawPrint } from "lucide-react"
 import { listAnimalsAction } from "../../../../server/animal-actions.js"
 
@@ -18,13 +18,14 @@ const bottomNavItems = [
 function AnimalsListRoute() {
   const data = Route.useLoaderData()
   const { fincaId } = Route.useParams()
+  const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   if (pathname !== `/fincas/${fincaId}/animales`) return <Outlet />
 
   const animales = data.tipo === "lista" ? [...data.animales] : []
   const canCreate = data.tipo === "lista" && data.permissions.canCreate
   const goNew = () => {
-    if (canCreate) window.location.assign(`${window.location.pathname}/nuevo`)
+    if (canCreate) void navigate({ to: `/fincas/${fincaId}/animales/nuevo` })
   }
 
   return (
@@ -35,7 +36,7 @@ function AnimalsListRoute() {
           canCreate={canCreate}
           onNuevoAnimal={goNew}
           onPressAnimal={(animal) =>
-            window.location.assign(`${window.location.pathname}/${animal.id}`)
+            void navigate({ to: `/fincas/${fincaId}/animales/${animal.id}` })
           }
         />
       </div>
@@ -44,7 +45,7 @@ function AnimalsListRoute() {
           animales={animales}
           canCreate={canCreate}
           onPressAnimal={(animal) =>
-            window.location.assign(`${window.location.pathname}/${animal.id}`)
+            void navigate({ to: `/fincas/${fincaId}/animales/${animal.id}` })
           }
           onNuevoAnimal={goNew}
           bottomNavItems={bottomNavItems}

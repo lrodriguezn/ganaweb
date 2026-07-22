@@ -20,8 +20,11 @@
  * SIEMPRE herede el shell.
  *
  * Reglas de layout (no son decorativas, son contrato del spec):
- *   - Desktop ≥ 768px: grid 2 cols `[240px_1fr]` — Sidebar 240px +
+ *   - Desktop ≥ 768px: flex-row — Sidebar 240px (shrink-0) +
  *     columna derecha con AppHeader 56px + Outlet scrollable.
+ *     `min-w-0` en el wrapper de contenido y `<main>` previene que
+ *     contenido ancho (tablas, grid interno) fuerce el colapso del
+ *     flex item durante transiciones de ruta (BUG-LAYOUT-001).
  *   - Mobile < 768px: flex-col — AppHeader 56px arriba + Outlet
  *     scrollable + BottomNav 64px fijo al fondo (el BottomNav ya
  *     es `position: fixed` y trae su propio `pb-safe`).
@@ -74,6 +77,7 @@ export const Route = createFileRoute("/_app")({
     if (decision.tipo !== "autorizado") throw redirect({ to: "/login" })
     return { sesion: decision.sesion }
   },
+  staleTime: 60_000,
   component: AppLayout,
 })
 
@@ -160,7 +164,7 @@ function AppLayout() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen md:grid md:grid-cols-[240px_1fr] md:h-screen">
+    <div className="flex flex-col min-h-screen md:flex-row md:h-screen">
       <Sidebar
         items={itemsSidebar}
         activoId={activoId}
@@ -169,7 +173,7 @@ function AppLayout() {
         onConfigurar={() => logPendingNavigation("/configuracion")}
       />
 
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 min-h-0 min-w-0">
         <AppHeader
           fincas={[fincaActiva]}
           fincaActivaId={sesion.fincaActivaId}
@@ -188,7 +192,7 @@ function AppLayout() {
           }}
         />
 
-        <main className="flex-1 min-h-0 overflow-y-auto pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-0">
+        <main className="flex-1 min-h-0 min-w-0 overflow-y-auto pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-0">
           <Outlet />
         </main>
       </div>
