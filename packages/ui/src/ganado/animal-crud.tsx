@@ -78,7 +78,7 @@ export function AnimalListMobile({
     <section
       data-testid="op-frame-0185"
       aria-label="03 Animales · Mobile"
-      className="min-h-[844px] w-full max-w-[390px] bg-background pb-[calc(var(--h-bottomnav)+16px)]"
+      className="min-h-[100dvh] w-full bg-background pb-[calc(var(--h-bottomnav)+16px)]"
     >
       <header className="h-14 border-b bg-card px-4 flex items-center justify-between">
         <div>
@@ -797,7 +797,7 @@ export function AnimalFormScreen({
     <section
       data-testid={mobile ? "op-f-400233" : "op-f-400191"}
       aria-label={mobile ? "21 Nuevo Animal · Mobile" : "20 Nuevo Animal · Desktop"}
-      className={cn("bg-background", mobile ? "max-w-[390px] min-h-[844px]" : "min-h-[900px] p-8")}
+      className={cn("bg-background", mobile ? "w-full min-h-[100dvh]" : "min-h-[900px] p-8")}
     >
       <header
         className={cn(
@@ -1867,7 +1867,7 @@ export function AnimalFichaMobileScreen({
     <section
       data-testid="op-frame-0232"
       aria-label="04 Ficha Animal · Mobile"
-      className="min-h-[844px] w-full max-w-[390px] bg-background pb-[calc(var(--h-bottomnav)+16px)]"
+      className="min-h-[100dvh] w-full bg-background pb-[calc(var(--h-bottomnav)+16px)]"
     >
       <header className="h-14 border-b bg-card px-4 flex items-center">
         <div>
