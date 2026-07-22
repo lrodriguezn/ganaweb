@@ -26,7 +26,7 @@
  */
 
 import { AparienciaCard, type PermisosUsuario, crearPermisos, tienePermiso } from "@ganaweb/ui"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { LogOut, Settings, User } from "lucide-react"
 
 import { initials, logoutAction } from "../../server/auth.js"
@@ -41,12 +41,13 @@ export const Route = createFileRoute("/_app/mas")({
  */
 function Mas() {
   const { sesion } = AppRoute.useRouteContext()
+  const navigate = useNavigate()
   const permisosUsuario: PermisosUsuario = crearPermisos([...sesion.permisos])
   const puedeConfigurar = tienePermiso(permisosUsuario, "configuracion", "ver")
 
   async function onCerrarSesion() {
     await logoutAction()
-    window.location.assign("/login")
+    void navigate({ to: "/login" })
   }
 
   return (

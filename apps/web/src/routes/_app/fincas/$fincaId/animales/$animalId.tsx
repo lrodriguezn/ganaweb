@@ -5,7 +5,7 @@ import {
   AnimalFichaDesktopScreen,
   AnimalFichaMobileScreen,
 } from "@ganaweb/ui"
-import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router"
+import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
 import { CheckSquare, Home, Menu, PawPrint } from "lucide-react"
 import type * as React from "react"
 import {
@@ -31,6 +31,7 @@ const bottomNavItems = [
 function AnimalFichaRoute() {
   const data = Route.useLoaderData()
   const params = Route.useParams()
+  const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   if (pathname !== `/fincas/${params.fincaId}/animales/${params.animalId}`) return <Outlet />
 
@@ -43,7 +44,7 @@ function AnimalFichaRoute() {
     await deleteAnimalAction({
       data: { fincaId: params.fincaId, animalId: params.animalId, online: true },
     })
-    window.location.reload()
+    void navigate({ to: `/fincas/${params.fincaId}/animales` })
   }
   const reactivate = () =>
     reactivateAnimalAction({

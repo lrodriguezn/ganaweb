@@ -4,7 +4,7 @@ import { useState } from "react"
 
 import { AnimalFormScreen } from "@ganaweb/ui"
 import type { AnimalFormCatalogOptions } from "@ganaweb/ui"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { parseEsCONumber } from "../../../../../lib/parsers/es-co-number.js"
 import {
   type AnimalCatalogs,
@@ -205,6 +205,7 @@ export function NewAnimalRouteView({
   fincaId,
   catalogs,
 }: { readonly fincaId: string; readonly catalogs?: AnimalCatalogs }) {
+  const navigate = useNavigate()
   // PR-5: real DB catalogs from the composite loader. If catalogs are not
   // available (loader failure), all options default to empty (no_disponible).
   const catalogOptions: AnimalFormCatalogOptions = catalogs ? catalogsToFormOptions(catalogs) : {}
@@ -230,7 +231,7 @@ export function NewAnimalRouteView({
         data: buildCreateAnimalInputFromFormData(fincaId, formData),
       })
       if (result.tipo === "creado") {
-        window.location.assign(`/fincas/${fincaId}/animales`)
+        void navigate({ to: `/fincas/${fincaId}/animales` })
         return
       }
       if (result.tipo === "validacion") {
