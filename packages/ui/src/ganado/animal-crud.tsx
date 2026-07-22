@@ -1673,11 +1673,51 @@ function ComboboxField({
 }
 
 /**
+ * Formats the raw digits+comma input into es-CO display format
+ * (`.` thousand separator, `,` decimal separator). Returns the
+ * formatted string and the cursor adjustment delta needed to keep
+ * the caret in the same logical position.
+ *
+ * Examples:
+ *   "1500"     → "1.500"
+ *   "1500,75"  → "1.500,75"
+ *   "1000000"  → "1.000.000"
+ */
+function formatEsCONumeric(raw: string): string {
+  // 1. Strip everything except digits and comma; keep only the first comma
+  const cleaned = raw.replace(/[^\d,]/g, "")
+  const commaIdx = cleaned.indexOf(",")
+  const integer = commaIdx === -1 ? cleaned : cleaned.slice(0, commaIdx)
+  const decimal =
+    commaIdx === -1
+      ? ""
+      : cleaned
+          .slice(commaIdx + 1)
+          .replace(/,/g, "")
+          .slice(0, 2)
+
+  // 2. Format integer part with dots as thousand separators
+  const formattedInt = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+
+  // 3. Reconstruct
+  if (commaIdx === -1) return formattedInt || ""
+  return `${formattedInt},${decimal}`
+}
+
+/**
  * PR 2a — Numeric input wrapper.
  *
- * `precio_compra` / `peso_compra` are free-text numeric inputs in the
- * form (es-CO formatting is normalised in PR 2b's mapper). The label +
- * `aria-invalid` wiring matches the other field wrappers.
+ * `precio_compra` / `peso_compra` are numeric inputs in the form that
+ * accept es-CO formatting (`.` thousand separator, `,` decimal separator).
+ *
+ * The input uses `inputMode="decimal"` to show the numeric keypad on mobile
+ * and strips any character that is not a digit or comma via a client-side
+ * `onInput` filter. Thousand separators are automatically inserted as the
+ * user types with cursor-position preservation. Server-side `parseEsCONumber`
+ * normalises the submitted value into a JavaScript `number`.
+ *
+ * `type="text"` is deliberate — `<input type="number">` does not accept
+ * comma as a decimal separator in any browser, which breaks es-CO entry.
  */
 function NumericField({
   label,
@@ -1690,14 +1730,53 @@ function NumericField({
   defaultValue?: string | undefined
   fieldErrors?: Record<string, string> | undefined
 }) {
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[name]
+  const inputProps = errorMessage
+    ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
+    : {}
+
   return (
-    <Field
-      key={name}
-      label={label}
-      name={name}
-      fieldErrors={fieldErrors}
-      {...(defaultValue !== undefined ? { defaultValue } : {})}
-    />
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        name={name}
+        type="text"
+        inputMode="decimal"
+        pattern="[0-9.,-]*"
+        title={label === "Precio" ? "Ej: 1.500,75" : "Ej: 450,30"}
+        defaultValue={defaultValue}
+        className="min-h-[--h-touch] num"
+        onInput={(event) => {
+          const input = event.currentTarget as HTMLInputElement
+          const before = input.value
+          const cursorBefore = input.selectionStart ?? before.length
+
+          // Format the value with thousand separators
+          const formatted = formatEsCONumeric(before)
+
+          // Calculate the new cursor position:
+          // we format only the prefix up to the old cursor and measure its
+          // length to determine where the caret should land.
+          const formattedPrefix = formatEsCONumeric(before.slice(0, cursorBefore))
+          const cursorAfter = formattedPrefix.length
+
+          input.value = formatted
+
+          // Restore cursor, clamped to the new value length
+          const safeCursor = Math.min(cursorAfter, formatted.length)
+          input.setSelectionRange(safeCursor, safeCursor)
+        }}
+        {...inputProps}
+      />
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
   )
 }
 
