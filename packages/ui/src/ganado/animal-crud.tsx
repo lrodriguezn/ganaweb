@@ -667,13 +667,13 @@ function useAnimalForm({
   onSave,
   isSubmitting = false,
 }: {
-  mode?: "desktop" | "mobile"
+  mode?: "desktop" | "mobile" | undefined
   initialValues?: AnimalFormInitialValues | undefined
   catalogOptions?: AnimalFormCatalogOptions | undefined
-  currentAnimalId?: string
-  onOrigenChange?: (origen: OrigenKey) => void
+  currentAnimalId?: string | undefined
+  onOrigenChange?: ((origen: OrigenKey) => void) | undefined
   onSave: (formData: FormData) => void | Promise<void>
-  isSubmitting?: boolean
+  isSubmitting?: boolean | undefined
 }) {
   const mediaMatches = useMatchMedia("(min-width: 768px)")
   const mobile = mode === "mobile" || (mode === undefined && !mediaMatches)
