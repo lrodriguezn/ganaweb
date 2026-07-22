@@ -175,6 +175,17 @@ function catalogsToFormOptions(catalogs: AnimalCatalogs): AnimalFormCatalogOptio
     tipo: string
     options: readonly { value: string; label: string; meta?: { hex?: string } }[]
   }) => (catalog.tipo === "disponible" ? catalog.options : [])
+  const extractParent = (catalog: {
+    tipo: string
+    options: readonly { value: string; codigo?: string; nombre?: string }[]
+  }) =>
+    catalog.tipo === "disponible"
+      ? catalog.options.map((o) => ({
+          value: o.value,
+          codigo: o.codigo ?? "",
+          nombre: o.nombre ?? "",
+        }))
+      : []
   return {
     sexo: extract(catalogs.sexo),
     raza: extract(catalogs.raza),
@@ -185,6 +196,8 @@ function catalogsToFormOptions(catalogs: AnimalCatalogs): AnimalFormCatalogOptio
     lote: extract(catalogs.lote),
     grupo: extract(catalogs.grupo),
     lugarCompra: extract(catalogs.lugarCompra),
+    madre: extractParent(catalogs.madre),
+    padre: extractParent(catalogs.padre),
   }
 }
 

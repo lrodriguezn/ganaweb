@@ -7,6 +7,7 @@ import type {
   CatalogoAnimalMaestroPort,
   CatalogoFincaPort,
   CatalogoGlobalPort,
+  CatalogoPadresPort,
   ColorOption,
   GrupoOption,
   LoteOption,
@@ -38,12 +39,14 @@ import { createAnimalUseCaseDeps } from "@ganaweb/db/animal-infrastructure"
 import { DrizzleCatalogoAnimalMaestroAdapter } from "@ganaweb/db/catalogo-animal-maestro-infrastructure"
 import { DrizzleCatalogoFincaAdapter } from "@ganaweb/db/catalogo-finca-infrastructure"
 import { DrizzleCatalogoGlobalAdapter } from "@ganaweb/db/catalogo-global-infrastructure"
+import { DrizzleCatalogoPadresAdapter } from "@ganaweb/db/catalogo-padres-infrastructure"
 import { db } from "@ganaweb/db/client"
 import type { AnimalListItem, AnimalTimelineItem } from "@ganaweb/ui"
 import { createServerFn } from "@tanstack/react-start"
 import {
   createAnimalE2eCatalogoFincaPort,
   createAnimalE2eCatalogoMaestroPort,
+  createAnimalE2eCatalogoPadresPort,
   createAnimalE2eCatalogoPort,
   createAnimalE2eDeps,
   getAnimalE2eSession,
@@ -248,6 +251,8 @@ export interface AnimalCatalogSelectOption {
   readonly value: string
   readonly label: string
   readonly meta?: { readonly hex?: string }
+  readonly codigo?: string
+  readonly nombre?: string
 }
 
 export interface AnimalCatalogResult {
@@ -265,6 +270,8 @@ export interface AnimalCatalogs {
   readonly lote: AnimalCatalogResult
   readonly grupo: AnimalCatalogResult
   readonly lugarCompra: AnimalCatalogResult
+  readonly madre: AnimalCatalogResult
+  readonly padre: AnimalCatalogResult
 }
 
 export interface AnimalCatalogPorts {
@@ -277,6 +284,7 @@ export interface AnimalCatalogPorts {
     "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
     PotreroOption | SectorOption | LoteOption | GrupoOption | LugarCompraOption
   >
+  readonly catalogoPadres: CatalogoPadresPort
 }
 
 const NO_DISPONIBLE_CATALOG: AnimalCatalogResult = {
@@ -294,6 +302,7 @@ export async function loadAnimalCatalogs(
   fincaId: string,
   ports: AnimalCatalogPorts,
   session?: SesionAutorizada | null,
+  excludedIds: readonly string[] = [],
 ): Promise<AnimalCatalogs> {
   const resolvedSession = session ?? (await getAuthorizedSession())
   const denied = denyAnimalRouteAccess(resolvedSession, fincaId, "ver")
@@ -308,6 +317,8 @@ export async function loadAnimalCatalogs(
       lote: NO_DISPONIBLE_CATALOG,
       grupo: NO_DISPONIBLE_CATALOG,
       lugarCompra: NO_DISPONIBLE_CATALOG,
+      madre: NO_DISPONIBLE_CATALOG,
+      padre: NO_DISPONIBLE_CATALOG,
     }
   }
 
@@ -321,6 +332,8 @@ export async function loadAnimalCatalogs(
     loteSettled,
     grupoSettled,
     lugarCompraSettled,
+    madreSettled,
+    padreSettled,
   ] = await Promise.allSettled([
     loadAnimalSexoCatalog(ports.catalogoGlobal),
     listarCatalogoRaza(
@@ -346,6 +359,8 @@ export async function loadAnimalCatalogs(
       fincaId,
       ports.catalogoFinca as CatalogoFincaPort<"lugarCompra", LugarCompraOption>,
     ),
+    ports.catalogoPadres.listarMadres(fincaId, excludedIds),
+    ports.catalogoPadres.listarPadres(fincaId, excludedIds),
   ])
 
   return {
@@ -358,6 +373,8 @@ export async function loadAnimalCatalogs(
     lote: mapUcSettled(loteSettled),
     grupo: mapUcSettled(grupoSettled),
     lugarCompra: mapUcSettled(lugarCompraSettled),
+    madre: mapComboboxSettled(madreSettled),
+    padre: mapComboboxSettled(padreSettled),
   }
 }
 
@@ -417,6 +434,27 @@ function mapColorSettled(
   }
 }
 
+function mapComboboxSettled(
+  settled: PromiseSettledResult<
+    readonly { readonly id: string; readonly codigo: string; readonly nombre: string | null }[]
+  >,
+): AnimalCatalogResult {
+  if (settled.status === "rejected") {
+    // biome-ignore lint/suspicious/noConsole: server-side catalog failure logging per design spec
+    console.warn("[loadAnimalCatalogs] parent catalog failed:", settled.reason)
+    return NO_DISPONIBLE_CATALOG
+  }
+  return {
+    tipo: "disponible",
+    options: settled.value.map((o) => ({
+      value: o.id,
+      label: o.nombre ? `${o.codigo} · ${o.nombre}` : o.codigo,
+      codigo: o.codigo,
+      nombre: o.nombre ?? "",
+    })),
+  }
+}
+
 function getConfiguredAnimalSexoCatalogPort(): CatalogoGlobalPort {
   return isAnimalE2eEnabled() ? createAnimalE2eCatalogoPort() : new DrizzleCatalogoGlobalAdapter(db)
 }
@@ -427,12 +465,14 @@ function getConfiguredAnimalCatalogPorts(): AnimalCatalogPorts {
       catalogoGlobal: createAnimalE2eCatalogoPort(),
       catalogoAnimalMaestro: createAnimalE2eCatalogoMaestroPort(),
       catalogoFinca: createAnimalE2eCatalogoFincaPort(),
+      catalogoPadres: createAnimalE2eCatalogoPadresPort(),
     }
   }
   return {
     catalogoGlobal: new DrizzleCatalogoGlobalAdapter(db),
     catalogoAnimalMaestro: new DrizzleCatalogoAnimalMaestroAdapter(db),
     catalogoFinca: new DrizzleCatalogoFincaAdapter(db),
+    catalogoPadres: new DrizzleCatalogoPadresAdapter(db),
   }
 }
 
@@ -862,7 +902,8 @@ export function createAnimalRuntimeHarness({
     ficha: (input: AnimalIdWebInput & { readonly cursorTimeline?: string }) =>
       runWithHarness((harness) => harness.ficha(input)),
     sexoCatalog: () => loadAnimalSexoCatalog(catalogoSexo),
-    allCatalogs: (fincaId: string) => loadAnimalCatalogs(fincaId, catalogPorts),
+    allCatalogs: (fincaId: string, excludedIds: readonly string[] = []) =>
+      loadAnimalCatalogs(fincaId, catalogPorts, undefined, excludedIds),
     create: (input: CreateAnimalWebInput) => runWithHarness((harness) => harness.create(input)),
     update: (input: UpdateAnimalWebInput) => runWithHarness((harness) => harness.update(input)),
     delete: (input: DeleteAnimalWebInput) => runWithHarness((harness) => harness.delete(input)),

@@ -53,6 +53,10 @@ export type {
   SectorOption,
   TablaFinca,
 } from "./puertos/catalogo-finca-port.js"
+export type {
+  CatalogoPadresPort,
+  ParentComboboxOption,
+} from "./puertos/catalogo-padres-port.js"
 export * from "./casos-uso/animales/index.js"
 export * from "./casos-uso/auth/index.js"
 export * from "./casos-uso/listar-catalogo-sexo.js"

@@ -4,15 +4,17 @@ import { useState } from "react"
 
 import {
   type AnimalCurrentLocation,
+  type AnimalFormCatalogOptions,
   type AnimalFormInitialValues,
   AnimalFormScreen,
 } from "@ganaweb/ui"
 import { createFileRoute } from "@tanstack/react-router"
-import { getAnimalFormCatalogOptions } from "../../../../../../lib/fixtures/animal-form-catalog.js"
 import { parseEsCONumber } from "../../../../../../lib/parsers/es-co-number.js"
 import {
+  type AnimalCatalogs,
   type AnimalSexoCatalog,
   type UpdateAnimalWebInput,
+  getAnimalCatalogsAction,
   getAnimalFichaAction,
   getAnimalSexoCatalogAction,
   updateAnimalAction,
@@ -22,11 +24,14 @@ import { Route as AppRoute } from "../../../../../_app.js"
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/$animalId/editar")({
   component: EditAnimalRoute,
   loader: async ({ params }) => {
-    const [data, sexoCatalog] = await Promise.all([
+    const [data, sexoCatalog, catalogs] = await Promise.all([
       loadEditAnimalInitialValues({ fincaId: params.fincaId, animalId: params.animalId }),
       getAnimalSexoCatalogAction(),
+      getAnimalCatalogsAction({
+        data: { fincaId: params.fincaId, excludedIds: [params.animalId] },
+      }),
     ])
-    return { ...data, sexoCatalog }
+    return { ...data, sexoCatalog, catalogs }
   },
 })
 
@@ -46,6 +51,7 @@ export interface EditAnimalLoaderData {
   readonly initialValues: AnimalFormInitialValues
   readonly currentLocation: AnimalCurrentLocation
   readonly sexoCatalog?: AnimalSexoCatalog
+  readonly catalogs?: AnimalCatalogs
 }
 
 /**
@@ -265,14 +271,52 @@ function readCanCreateCatalog(): boolean {
   }
 }
 
+/**
+ * Map the composite loader's AnimalCatalogs to the form's catalog option shape.
+ * Mirrors the function in nuevo.tsx — madre/padre carry {value, codigo, nombre}
+ * for the ComboboxBuscable.
+ */
+function catalogsToFormOptions(catalogs: AnimalCatalogs): AnimalFormCatalogOptions {
+  const extract = (catalog: {
+    tipo: string
+    options: readonly { value: string; label: string; meta?: { hex?: string } }[]
+  }) => (catalog.tipo === "disponible" ? catalog.options : [])
+  const extractParent = (catalog: {
+    tipo: string
+    options: readonly { value: string; codigo?: string; nombre?: string }[]
+  }) =>
+    catalog.tipo === "disponible"
+      ? catalog.options.map((o) => ({
+          value: o.value,
+          codigo: o.codigo ?? "",
+          nombre: o.nombre ?? "",
+        }))
+      : []
+  return {
+    sexo: extract(catalogs.sexo),
+    raza: extract(catalogs.raza),
+    color: extract(catalogs.color),
+    calidad: extract(catalogs.calidad),
+    potrero: extract(catalogs.potrero),
+    sector: extract(catalogs.sector),
+    lote: extract(catalogs.lote),
+    grupo: extract(catalogs.grupo),
+    lugarCompra: extract(catalogs.lugarCompra),
+    madre: extractParent(catalogs.madre),
+    padre: extractParent(catalogs.padre),
+  }
+}
+
 function EditAnimalRoute() {
   const { fincaId, animalId } = Route.useParams()
   const loaderData = Route.useLoaderData() as EditAnimalLoaderData
   const initialValues = loaderData.initialValues
   const currentLocation = loaderData.currentLocation
-  const catalogOptions = getAnimalFormCatalogOptions()
+  const catalogOptions: AnimalFormCatalogOptions = loaderData.catalogs
+    ? catalogsToFormOptions(loaderData.catalogs)
+    : {}
   const canCreateCatalog = readCanCreateCatalog()
-  const catalogOptionsConPermisos: typeof catalogOptions = {
+  const catalogOptionsConPermisos: AnimalFormCatalogOptions = {
     ...catalogOptions,
     sexo: loaderData.sexoCatalog?.tipo === "disponible" ? loaderData.sexoCatalog.options : [],
     canCreateCatalog: {
