@@ -17,7 +17,6 @@ function authorizedSession(overrides: Partial<SesionAutorizada> = {}): SesionAut
     nombre: "Admin GanaWeb",
     email: "admin@ganaweb.test",
     fincaActivaId: "finca-1",
-    fincaActivaNombre: "Finca 1",
     rol: "Administrador",
     permisos: [{ modulo: "usuarios", accion: "aprobar" }],
     ...overrides,
@@ -42,7 +41,6 @@ async function run() {
   assert.equal(protectedRouteRedirect(authorizedDecision()), null)
 
   assert.equal(canApproveUsers(authorizedSession(), "finca-1"), true)
-  assert.equal(authorizedSession().fincaActivaNombre, "Finca 1")
   assert.equal(canApproveUsers(authorizedSession(), "finca-2"), false)
   assert.equal(
     canApproveUsers(

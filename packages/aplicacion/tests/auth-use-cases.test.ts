@@ -82,7 +82,6 @@ describe("auth use cases", () => {
           nombre: "Ana Pérez",
           email: "ana@test.com",
           fincaActivaId: "finca-1",
-          fincaActivaNombre: "Finca 1",
           rol: "Administrador",
           permisos: [{ modulo: "usuarios", accion: "aprobar" }],
         },
@@ -93,9 +92,6 @@ describe("auth use cases", () => {
 
     expect(result.tipo).toBe("autorizado")
     expect(result).toMatchObject({ token: "token-claro", sesionId: "sesion-1" })
-    if (result.tipo === "autorizado") {
-      expect(result.sesion.fincaActivaNombre).toBe("Finca 1")
-    }
     expect(deps.repo.guardarIntentoLogin).toHaveBeenCalledWith(
       expect.objectContaining({ usuarioId: "usuario-1", exitoso: true }),
     )
@@ -165,7 +161,6 @@ describe("auth use cases", () => {
           nombre: "Operario",
           email: "op@test.com",
           fincaActivaId: "finca-1",
-          fincaActivaNombre: "Finca 1",
           rol: "Operario",
           permisos: [{ modulo: "animales", accion: "leer" }],
         },

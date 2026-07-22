@@ -22,7 +22,6 @@ function session(overrides: Partial<SesionAutorizada> = {}): SesionAutorizada {
     nombre: "Operario",
     email: "operario@ganaweb.test",
     fincaActivaId: "finca-1",
-    fincaActivaNombre: "Finca 1",
     rol: "Mayordomo",
     permisos: [
       { modulo: "animales", accion: "ver" },

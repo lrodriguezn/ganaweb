@@ -25,9 +25,6 @@ test.describe("animal CRUD web flow", () => {
     const codigo = isMobileViewport(page) ? "NV-E2E-M" : "NV-E2E-D"
     await page.goto("/fincas/finca-1/animales")
     await expect(animalListFrame(page).getByText("MT-122")).toBeVisible()
-    await expect(
-      page.getByRole("button", { name: /Finca Finca Demo E2E/ }),
-    ).toBeVisible()
 
     await expect(page.getByRole("button", { name: "Nuevo animal" })).toBeVisible()
     await page.goto("/fincas/finca-1/animales/nuevo")

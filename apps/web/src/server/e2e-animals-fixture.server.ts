@@ -43,7 +43,6 @@ export function getAnimalE2eSession(): SesionAutorizada {
     nombre: readonly ? "Lectura E2E" : "Operario E2E",
     email: readonly ? "lectura@ganaweb.test" : "operario@ganaweb.test",
     fincaActivaId: "finca-1",
-    fincaActivaNombre: "Finca Demo E2E",
     rol: readonly ? "Lectura" : "Mayordomo",
     permisos: readonly
       ? [{ modulo: "animales", accion: "ver" }]

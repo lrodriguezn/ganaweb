@@ -48,7 +48,6 @@ describe("animal sexo catalog boundary", () => {
           nombre: "Operario E2E",
           email: "operario@ganaweb.test",
           fincaActivaId: "finca-1",
-          fincaActivaNombre: "Finca 1",
           rol: "Mayordomo",
           permisos: [
             { modulo: "animales", accion: "crear" },
@@ -89,7 +88,6 @@ describe("animal sexo catalog boundary", () => {
           nombre: "Operario E2E",
           email: "operario@ganaweb.test",
           fincaActivaId: "finca-1",
-          fincaActivaNombre: "Finca 1",
           rol: "Mayordomo",
           permisos: [{ modulo: "animales", accion: "crear" }],
         }),
