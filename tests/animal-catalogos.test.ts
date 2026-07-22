@@ -31,6 +31,7 @@ const E2E_SESSION: SesionAutorizada = {
   nombre: "Operario E2E",
   email: "operario@ganaweb.test",
   fincaActivaId: "finca-esperanza",
+  fincaActivaNombre: "La Esperanza",
   rol: "Mayordomo",
   permisos: [
     { modulo: "animales", accion: "ver" },

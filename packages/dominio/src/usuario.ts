@@ -26,6 +26,7 @@ export type SesionAutorizada = Readonly<{
   nombre: string
   email: string
   fincaActivaId: string
+  fincaActivaNombre: string
   rol: string
   permisos: readonly PermisoUsuario[]
 }>
