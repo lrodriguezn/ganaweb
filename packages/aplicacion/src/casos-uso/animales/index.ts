@@ -376,6 +376,44 @@ async function persistirCreacionAnimal(
   })
 }
 
+async function validarDuplicadoAnimal(deps: AnimalUseCaseDeps, cmd: CrearAnimalCommand) {
+  const existente = await deps.animales.buscarPorCodigoYFinca(
+    cmd.datos.codigo.trim(),
+    cmd.sesion.fincaActivaId,
+  )
+  return validarCreacionAnimal({
+    ...cmd.datos,
+    fincaId: cmd.sesion.fincaActivaId,
+    existentes: existente ? [{ fincaId: existente.fincaId, codigo: existente.codigo }] : [],
+  })
+}
+
+async function validarUbicacionInicialAnimal(
+  deps: AnimalUseCaseDeps,
+  cmd: CrearAnimalCommand,
+): Promise<{ readonly tipo: "validacion"; readonly errores: unknown } | null> {
+  if (cmd.ubicacionInicial && deps.ubicaciones?.verificarPropiedadEnFinca) {
+    const erroresUbicacion = await deps.ubicaciones.verificarPropiedadEnFinca({
+      fincaId: cmd.sesion.fincaActivaId,
+      ...cmd.ubicacionInicial,
+    })
+    if (erroresUbicacion.length > 0) {
+      return { tipo: "validacion", errores: erroresUbicacion }
+    }
+  }
+  return null
+}
+
+function validarImagenesAnimal(
+  cmd: CrearAnimalCommand,
+): { readonly tipo: "validacion"; readonly errores: unknown } | null {
+  const validacionImagenes = validarImagenesAnimalMutation(cmd.imagenes ?? [])
+  if (!validacionImagenes.valido) {
+    return { tipo: "validacion", errores: validacionImagenes.errores }
+  }
+  return null
+}
+
 export function crearAnimal(deps: AnimalUseCaseDeps) {
   return async (
     cmd: CrearAnimalCommand,
@@ -392,35 +430,17 @@ export function crearAnimal(deps: AnimalUseCaseDeps) {
       }
     | { readonly tipo: "validacion"; readonly errores: unknown }
     | { readonly tipo: "transaccion_fallida"; readonly razon: string }
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: refactor pendiente — issue #62
   > => {
     if (!tienePermiso(cmd.sesion, "crear")) return { tipo: "no_autorizado" }
 
-    const existente = await deps.animales.buscarPorCodigoYFinca(
-      cmd.datos.codigo.trim(),
-      cmd.sesion.fincaActivaId,
-    )
-    const validacion = validarCreacionAnimal({
-      ...cmd.datos,
-      fincaId: cmd.sesion.fincaActivaId,
-      existentes: existente ? [{ fincaId: existente.fincaId, codigo: existente.codigo }] : [],
-    })
+    const validacion = await validarDuplicadoAnimal(deps, cmd)
     if (!validacion.valido) return { tipo: "validacion", errores: validacion.errores }
 
-    if (cmd.ubicacionInicial && deps.ubicaciones?.verificarPropiedadEnFinca) {
-      const erroresUbicacion = await deps.ubicaciones.verificarPropiedadEnFinca({
-        fincaId: cmd.sesion.fincaActivaId,
-        ...cmd.ubicacionInicial,
-      })
-      if (erroresUbicacion.length > 0) {
-        return { tipo: "validacion", errores: erroresUbicacion }
-      }
-    }
+    const errorUbicacion = await validarUbicacionInicialAnimal(deps, cmd)
+    if (errorUbicacion) return errorUbicacion
 
-    const validacionImagenes = validarImagenesAnimalMutation(cmd.imagenes ?? [])
-    if (!validacionImagenes.valido) {
-      return { tipo: "validacion", errores: validacionImagenes.errores }
-    }
+    const errorImagenes = validarImagenesAnimal(cmd)
+    if (errorImagenes) return errorImagenes
 
     const animalId = id("animal")
     const animal = crearAnimalPersistible({

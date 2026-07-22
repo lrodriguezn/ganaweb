@@ -658,33 +658,28 @@ function useMatchMedia(query: string): boolean {
   return matches
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: refactor pendiente — issue #62
-export function AnimalFormScreen({
+function useAnimalForm({
   mode,
-  formVariant = "create",
-  onSave,
-  onCancel,
   initialValues,
   catalogOptions,
-  currentLocation,
-  fieldErrors,
-  isSubmitting = false,
-  onOrigenChange,
   currentAnimalId,
-}: AnimalFormScreenProps) {
+  onOrigenChange,
+  onSave,
+  isSubmitting = false,
+}: {
+  mode?: "desktop" | "mobile"
+  initialValues?: AnimalFormInitialValues | undefined
+  catalogOptions?: AnimalFormCatalogOptions | undefined
+  currentAnimalId?: string
+  onOrigenChange?: (origen: OrigenKey) => void
+  onSave: (formData: FormData) => void | Promise<void>
+  isSubmitting?: boolean
+}) {
   const mediaMatches = useMatchMedia("(min-width: 768px)")
   const mobile = mode === "mobile" || (mode === undefined && !mediaMatches)
-  // PR 2a: the form is fully controlled for the v1.3 fields that drive
-  // conditional rendering (`origen`) or require post-action state changes
-  // (the `Estimar por edad` shortcut must append `[fecha estimada]` to
-  // `comentarios`). All other fields stay uncontrolled — they read from
-  // the hidden native inputs the primitives already serialise.
   const initialOrigen: OrigenKey =
     initialValues?.origen === "comprado" ? "comprado" : "nacido_en_finca"
   const [origen, setOrigen] = useState<OrigenKey>(initialOrigen)
-  // PR 2a (CA-UI-007): a flip counter ensures the conditional block's
-  // `key` changes on every flip, so React re-mounts the block and the
-  // abandoned uncontrolled inputs revert to their `defaultValue`.
   const [origenFlipCount, setOrigenFlipCount] = useState(0)
   const [fechaNacimiento, setFechaNacimiento] = useState<string>(
     initialValues?.fechaNacimiento ?? "",
@@ -697,10 +692,6 @@ export function AnimalFormScreen({
     setIsHydrated(true)
   }, [])
 
-  // Bifurcation: if the caller provided a custom `catalogOptions.origen`
-  // (e.g. a non-spec list like the PR 3 fixture shipped), render the
-  // origen as a labeled combobox for backwards compat. Otherwise render
-  // it as the v1.3 `PillsSegmentadas` (radiogroup, 2 options).
   const useComboboxOrigen = catalogOptions?.origen !== undefined
 
   const handleOrigenChange = (next: string) => {
@@ -739,6 +730,69 @@ export function AnimalFormScreen({
     void onSave(new FormData(form))
   }
   const isComprado = origen === "comprado"
+
+  return {
+    mobile,
+    origen,
+    origenFlipCount,
+    fechaNacimiento,
+    fechaCompra,
+    comentarios,
+    isHydrated,
+    useComboboxOrigen,
+    handleOrigenChange,
+    handleEstimar,
+    fields,
+    formId,
+    submitForm,
+    isComprado,
+    setFechaNacimiento,
+    setFechaCompra,
+    setComentarios,
+  }
+}
+
+export function AnimalFormScreen({
+  mode,
+  formVariant = "create",
+  onSave,
+  onCancel,
+  initialValues,
+  catalogOptions,
+  currentLocation,
+  fieldErrors,
+  isSubmitting = false,
+  onOrigenChange,
+  currentAnimalId,
+}: AnimalFormScreenProps) {
+  const {
+    mobile,
+    origen,
+    origenFlipCount,
+    fechaNacimiento,
+    fechaCompra,
+    comentarios,
+    isHydrated,
+    useComboboxOrigen,
+    handleOrigenChange,
+    handleEstimar,
+    fields,
+    formId,
+    submitForm,
+    isComprado,
+    setFechaNacimiento,
+    setFechaCompra,
+    setComentarios,
+  } = useAnimalForm({
+    mode,
+    initialValues,
+    catalogOptions,
+    currentAnimalId,
+    onOrigenChange,
+    onSave,
+    isSubmitting,
+  })
+
   return (
     <section
       data-testid={mobile ? "op-f-400233" : "op-f-400191"}
@@ -897,131 +951,147 @@ interface RenderFieldContext {
   setComentarios: React.Dispatch<React.SetStateAction<string>>
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: refactor pendiente — issue #62
-function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) {
+type FieldRenderer = (field: AnimalFormField, ctx: RenderFieldContext) => React.ReactNode
+
+function renderSexoField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
+  const sexo = catalogOptions?.sexo ?? []
+  return (
+    <CatalogSelectField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      defaultValue={
+        sexo.some((option) => option.value === "1")
+          ? String(initialValues?.sexoKey ?? 1)
+          : undefined
+      }
+      options={sexo}
+      disabledWhenEmpty
+      fieldErrors={fieldErrors}
+    />
+  )
+}
+
+function renderOrigenField(field: AnimalFormField, ctx: RenderFieldContext) {
   const {
     initialValues,
     catalogOptions,
-    fieldErrors,
-    origen,
-    fechaNacimiento,
     handleOrigenChange,
-    handleEstimar,
     useComboboxOrigen,
-    setFechaNacimiento,
+    origen,
+    fieldErrors,
   } = ctx
-
-  if (field.name === "sexoKey") {
-    const sexo = catalogOptions?.sexo ?? []
+  if (useComboboxOrigen) {
     return (
       <CatalogSelectField
         key={field.name}
         label={field.label}
         name={field.name}
-        defaultValue={
-          sexo.some((option) => option.value === "1")
-            ? String(initialValues?.sexoKey ?? 1)
-            : undefined
-        }
-        options={sexo}
-        disabledWhenEmpty
+        defaultValue={initialValues?.origen}
+        options={catalogOptions?.origen ?? []}
         fieldErrors={fieldErrors}
       />
     )
   }
+  return (
+    <OrigenField
+      key={field.name}
+      label={field.label}
+      value={origen}
+      onChange={handleOrigenChange}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
 
-  if (field.name === "origen") {
-    if (useComboboxOrigen) {
-      return (
-        <CatalogSelectField
-          key={field.name}
-          label={field.label}
-          name={field.name}
-          defaultValue={initialValues?.origen}
-          options={catalogOptions?.origen ?? []}
-          fieldErrors={fieldErrors}
-        />
-      )
-    }
-    return (
-      <OrigenField
-        key={field.name}
-        label={field.label}
-        value={origen}
-        onChange={handleOrigenChange}
-        fieldErrors={fieldErrors}
-      />
-    )
-  }
+function renderFechaNacimientoField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { fechaNacimiento, setFechaNacimiento, handleEstimar, fieldErrors } = ctx
+  return (
+    <FechaNacimientoField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      value={fechaNacimiento}
+      onChange={setFechaNacimiento}
+      onEstimar={handleEstimar}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
 
-  if (field.name === "fechaNacimiento") {
-    return (
-      <FechaNacimientoField
-        key={field.name}
-        label={field.label}
-        name={field.name}
-        value={fechaNacimiento}
-        onChange={setFechaNacimiento}
-        onEstimar={handleEstimar}
-        fieldErrors={fieldErrors}
-      />
-    )
-  }
+function renderCatalogWithCreateField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
+  const name = field.name as "raza" | "color" | "calidad"
+  return (
+    <SelectConCreacionField
+      key={name}
+      label={field.label}
+      name={name}
+      options={(catalogOptions?.[name] as readonly SelectOption[] | undefined) ?? []}
+      canCreate={
+        name === "calidad"
+          ? false
+          : (catalogOptions?.canCreateCatalog?.[name as "raza" | "color"] ?? false)
+      }
+      defaultValue={
+        (initialValues as Record<string, string | undefined> | undefined)?.[`${name}Id`] ??
+        undefined
+      }
+      fieldErrors={fieldErrors}
+    />
+  )
+}
 
-  if (field.name === "raza" || field.name === "color" || field.name === "calidad") {
-    return (
-      <SelectConCreacionField
-        key={field.name}
-        label={field.label}
-        name={field.name}
-        options={
-          (catalogOptions?.[field.name as "raza" | "color" | "calidad"] as
-            | readonly SelectOption[]
-            | undefined) ?? []
-        }
-        canCreate={
-          field.name === "calidad"
-            ? false
-            : (catalogOptions?.canCreateCatalog?.[field.name as "raza" | "color"] ?? false)
-        }
-        defaultValue={
-          (initialValues as Record<string, string | undefined> | undefined)?.[`${field.name}Id`] ??
-          undefined
-        }
-        fieldErrors={fieldErrors}
-      />
-    )
-  }
+function renderLugarCompraField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
+  return (
+    <SelectConCreacionField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      options={catalogOptions?.lugarCompra ?? []}
+      canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
+      defaultValue={initialValues?.lugarCompraId}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
 
-  if (field.name === "lugarCompra") {
-    return (
-      <SelectConCreacionField
-        key={field.name}
-        label={field.label}
-        name={field.name}
-        options={catalogOptions?.lugarCompra ?? []}
-        canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
-        defaultValue={initialValues?.lugarCompraId}
-        fieldErrors={fieldErrors}
-      />
-    )
-  }
-
+function renderLocationField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
   const locationField = LOCATION_FIELDS.find((location) => location.name === field.name)
-  if (locationField) {
-    return (
-      <CatalogSelectField
-        key={field.name}
-        label={field.label}
-        name={field.name}
-        defaultValue={initialValues?.[field.name as keyof AnimalFormInitialValues]?.toString()}
-        options={(catalogOptions?.[locationField.optionsKey] ?? []) as readonly SelectOption[]}
-        fieldErrors={fieldErrors}
-      />
-    )
-  }
+  if (!locationField) return null
+  return (
+    <CatalogSelectField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      defaultValue={initialValues?.[field.name as keyof AnimalFormInitialValues]?.toString()}
+      options={(catalogOptions?.[locationField.optionsKey] ?? []) as readonly SelectOption[]}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
 
-  return <Field key={field.name} {...field} fieldErrors={fieldErrors} />
+const FIELD_RENDERERS: Record<string, FieldRenderer> = {
+  sexoKey: renderSexoField,
+  origen: renderOrigenField,
+  fechaNacimiento: renderFechaNacimientoField,
+  raza: renderCatalogWithCreateField,
+  color: renderCatalogWithCreateField,
+  calidad: renderCatalogWithCreateField,
+  lugarCompra: renderLugarCompraField,
+  potreroId: renderLocationField,
+  sectorId: renderLocationField,
+  loteId: renderLocationField,
+  grupoId: renderLocationField,
+}
+
+function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const renderer = FIELD_RENDERERS[field.name]
+  if (renderer) return renderer(field, ctx)
+  return <Field key={field.name} {...field} fieldErrors={ctx.fieldErrors} />
 }
 
 /**
