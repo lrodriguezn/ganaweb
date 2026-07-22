@@ -1688,7 +1688,13 @@ function formatEsCONumeric(raw: string): string {
   const cleaned = raw.replace(/[^\d,]/g, "")
   const commaIdx = cleaned.indexOf(",")
   const integer = commaIdx === -1 ? cleaned : cleaned.slice(0, commaIdx)
-  const decimal = commaIdx === -1 ? "" : cleaned.slice(commaIdx + 1).replace(/,/g, "").slice(0, 2)
+  const decimal =
+    commaIdx === -1
+      ? ""
+      : cleaned
+          .slice(commaIdx + 1)
+          .replace(/,/g, "")
+          .slice(0, 2)
 
   // 2. Format integer part with dots as thousand separators
   const formattedInt = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
