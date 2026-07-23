@@ -340,3 +340,36 @@ describe("DatePicker BUG-004 — tokenized calendar styling", () => {
     expect(years).not.toContain("2020")
   })
 })
+
+describe("DatePicker footerChildren slot (CA-UI-013)", () => {
+  it("renders NO footer block inside the popover when footerChildren is omitted (backward compat)", async () => {
+    const user = userEvent.setup()
+    render(<DatePicker name="fecha" value="" onChange={() => {}} />)
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    const dialog = screen.getByRole("dialog")
+    // No border-t element should exist inside the popover
+    const footerEl = dialog.querySelector(".border-t")
+    expect(footerEl).toBeNull()
+  })
+
+  it("renders the footer slot inside the popover when footerChildren is provided", async () => {
+    const user = userEvent.setup()
+    render(
+      <DatePicker
+        name="fechaNacimiento"
+        value=""
+        onChange={() => {}}
+        footerChildren={<span>Estimar por edad</span>}
+      />,
+    )
+    await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
+
+    const dialog = screen.getByRole("dialog")
+    // The footer should be wrapped in a border-t container
+    const footerEl = dialog.querySelector(".border-t")
+    expect(footerEl).not.toBeNull()
+    expect(footerEl).toHaveClass("p-3")
+    expect(footerEl).toHaveTextContent("Estimar por edad")
+  })
+})
