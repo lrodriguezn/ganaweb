@@ -77,7 +77,7 @@ describe("animal use cases", () => {
 
     const result = await crearAnimal(d)({
       sesion: { ...sesionCrear, permisos: [] },
-      datos: { codigo: "MT-122", nombre: "Lucera", sexoKey: 1 },
+      datos: { codigo: "MT-122", nombre: "Lucera", sexoKey: 1, tipoExplotacionId: "te-leche" },
     })
 
     expect(result).toEqual({ tipo: "no_autorizado" })
@@ -90,7 +90,7 @@ describe("animal use cases", () => {
 
     const result = await crearAnimal(d)({
       sesion: sesionCrear,
-      datos: { codigo: " MT-122 ", nombre: "Lucera", sexoKey: 1 },
+      datos: { codigo: " MT-122 ", nombre: "Lucera", sexoKey: 1, tipoExplotacionId: "te-leche" },
     })
 
     expect(result).toEqual({ tipo: "creado", animalId: expect.any(String) })
@@ -106,7 +106,7 @@ describe("animal use cases", () => {
 
     const result = await crearAnimal(d)({
       sesion: sesionCrear,
-      datos: { codigo: "MT-131", nombre: "Estrella", sexoKey: 1 },
+      datos: { codigo: "MT-131", nombre: "Estrella", sexoKey: 1, tipoExplotacionId: "te-leche" },
       ubicacionInicial: { potreroId: "potrero-1", sectorId: "sector-1", loteId: "lote-1" },
       pesoInicial: { pesoKg: 342, fecha: new Date("2026-07-13T00:00:00Z") },
       imagenes: [
@@ -146,7 +146,7 @@ describe("animal use cases", () => {
 
     const result = await crearAnimal(d)({
       sesion: sesionCrear,
-      datos: { codigo: "MT-125", nombre: "Nube", sexoKey: 1 },
+      datos: { codigo: "MT-125", nombre: "Nube", sexoKey: 1, tipoExplotacionId: "te-leche" },
       imagenes: [{ id: "blob-fail", mimeType: "image/webp", bytes: 120_000 }],
     })
 
@@ -185,7 +185,7 @@ describe("animal use cases", () => {
 
     const result = await crearAnimal(d)({
       sesion: sesionCrear,
-      datos: { codigo: "MT-123", nombre: "Aurora", sexoKey: 1 },
+      datos: { codigo: "MT-123", nombre: "Aurora", sexoKey: 1, tipoExplotacionId: "te-leche" },
       imagenes: [{ id: "blob-1", mimeType: "image/webp", bytes: 900_000 }],
     })
 
@@ -212,7 +212,7 @@ describe("animal use cases", () => {
     await expect(
       crearAnimal(unsupported)({
         sesion: sesionCrear,
-        datos: { codigo: "MT-126", nombre: "Nube", sexoKey: 1 },
+        datos: { codigo: "MT-126", nombre: "Nube", sexoKey: 1, tipoExplotacionId: "te-leche" },
         imagenes: [{ id: "blob-pdf", mimeType: "application/pdf", bytes: 10_000 }],
       }),
     ).resolves.toEqual({
@@ -232,7 +232,7 @@ describe("animal use cases", () => {
     await expect(
       crearAnimal(overLimit)({
         sesion: sesionCrear,
-        datos: { codigo: "MT-127", nombre: "Luna", sexoKey: 1 },
+        datos: { codigo: "MT-127", nombre: "Luna", sexoKey: 1, tipoExplotacionId: "te-leche" },
         imagenes: sixImages,
       }),
     ).resolves.toEqual({
@@ -251,6 +251,7 @@ describe("animal use cases", () => {
         codigo: "MT-128",
         nombre: "Bella",
         sexoKey: 1,
+        tipoExplotacionId: "te-leche",
         fechaNacimiento: new Date("2026-07-10T00:00:00Z"),
         fechaCompra: new Date("2026-07-15T00:00:00Z"),
       },
