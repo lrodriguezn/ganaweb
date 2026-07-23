@@ -302,6 +302,8 @@ function catalogsToFormOptions(catalogs: AnimalCatalogs): AnimalFormCatalogOptio
     lote: extract(catalogs.lote),
     grupo: extract(catalogs.grupo),
     lugarCompra: extract(catalogs.lugarCompra),
+    hierro: extract(catalogs.hierro),
+    propietario: extract(catalogs.propietario),
     madre: extractParent(catalogs.madre),
     padre: extractParent(catalogs.padre),
   }
