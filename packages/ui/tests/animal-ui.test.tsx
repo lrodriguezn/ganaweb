@@ -1310,4 +1310,83 @@ describe("PR3 animal UI OpenPencil parity", () => {
       })
     })
   })
+
+  describe("WU-3: 4-section layout restructure", () => {
+    it("renders exactly 4 <section> elements with uppercase headers in order", () => {
+      render(
+        <AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />,
+      )
+      const form = document.querySelector("form")
+      expect(form).not.toBeNull()
+      const sections = form?.querySelectorAll(":scope > fieldset > section")
+      expect(sections?.length).toBe(4)
+
+      // Headers should be uppercase with correct titles
+      const headers = form?.querySelectorAll("h2")
+      expect(headers?.length).toBeGreaterThanOrEqual(4)
+      const headerTexts = Array.from(headers ?? []).map((h) => h.textContent?.trim())
+      expect(headerTexts).toContain("IDENTIFICACIÓN")
+      expect(headerTexts).toContain("CARACTERÍSTICAS")
+      expect(headerTexts).toContain("ORIGEN")
+      expect(headerTexts).toContain("UBICACIÓN")
+    })
+
+    it("uses per-section grids (no global grid-cols-2 on the form)", () => {
+      render(
+        <AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />,
+      )
+      const form = document.querySelector("form")
+      expect(form).not.toBeNull()
+      // The form element itself should NOT have grid-cols-2
+      const formClass = form?.className ?? ""
+      expect(formClass).not.toContain("grid-cols-2")
+
+      // Section grids are on inner divs — check all descendant grid classes
+      const allClasses = Array.from(form?.querySelectorAll("*") ?? []).map(
+        (el) => el.className,
+      )
+      const allClassesStr = allClasses.join(" ")
+      // IDENTIFICACIÓN section has grid with 1.4fr
+      expect(allClassesStr).toContain("1.4fr")
+      // UBICACIÓN section has 4-column grid
+      expect(allClassesStr).toContain("1fr_1fr_1fr_1fr")
+    })
+
+    it("constrains the card to max-w-[720px] (not max-w-3xl)", () => {
+      render(
+        <AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />,
+      )
+      const form = document.querySelector("form")
+      expect(form).not.toBeNull()
+      const formClass = form?.className ?? ""
+      expect(formClass).toContain("max-w-[720px]")
+      expect(formClass).not.toContain("max-w-3xl")
+    })
+
+    it("preserves all existing form field labels within the sections", () => {
+      render(
+        <AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />,
+      )
+      // All fields still present
+      for (const label of [
+        "Código *",
+        "Nombre",
+        "Nº de arete",
+        "Sexo",
+        "Raza",
+        "Fecha de nacimiento",
+        "Color",
+        "Calidad",
+        "Origen",
+        "Madre",
+        "Padre",
+        "Potrero",
+        "Sector",
+        "Lote",
+        "Grupo",
+      ]) {
+        expect(screen.getByLabelText(label)).toBeInTheDocument()
+      }
+    })
+  })
 })

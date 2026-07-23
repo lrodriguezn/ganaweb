@@ -28,6 +28,7 @@ import { type PillsOption, PillsSegmentadas } from "../primitives/pills-segmenta
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../primitives/select"
 import { SelectConCreacion } from "../primitives/select-con-creacion"
 import { BottomNav } from "./bottom-nav"
+import { DETAIL_FIELD_NAMES, SECTION_LAYOUT, sectionFor } from "./animal-crud-infra"
 import { EmptyState } from "./empty-state"
 import { CategoriaBadge, EstadoAnimalBadge, EstadoBadge, SaludBadge } from "./estado-badge"
 import { MetricCard } from "./metric-card"
@@ -824,6 +825,29 @@ export function AnimalFormScreen({
     isSubmitting,
   })
 
+  const ctx: RenderFieldContext = {
+    initialValues,
+    catalogOptions,
+    fieldErrors,
+    origen,
+    fechaNacimiento,
+    comentarios,
+    handleOrigenChange,
+    handleEstimar,
+    useComboboxOrigen,
+    currentAnimalId,
+    setFechaNacimiento,
+    setComentarios,
+  }
+
+  const renderFieldByName = (name: string, context: RenderFieldContext): React.ReactNode => {
+    const fieldDef =
+      FORM_FIELDS.find((f) => f.name === name) ??
+      LOCATION_FIELDS.find((f) => f.name === name)
+    if (!fieldDef) return null
+    return renderAnimalFormField(fieldDef, context)
+  }
+
   return (
     <section
       data-testid={mobile ? "op-f-400233" : "op-f-400191"}
@@ -833,7 +857,7 @@ export function AnimalFormScreen({
       <header
         className={cn(
           "h-14 border-b bg-card px-4 flex items-center",
-          !mobile && "max-w-3xl mx-auto rounded-t-card border w-full",
+          !mobile && "max-w-[720px] mx-auto rounded-t-card border w-full",
         )}
       >
         <h1 className="text-title font-semibold">Nuevo animal</h1>
@@ -843,105 +867,129 @@ export function AnimalFormScreen({
         onSubmit={submitForm}
         aria-busy={!isHydrated || isSubmitting}
         className={cn(
-          "bg-card border-x p-4 grid gap-4",
-          mobile ? "pb-28" : "max-w-3xl mx-auto grid-cols-2 border rounded-b-card w-full",
+          "bg-card border-x p-4 space-y-6",
+          mobile ? "pb-28" : "max-w-[720px] mx-auto border rounded-b-card w-full",
         )}
       >
         <fieldset disabled={!isHydrated || isSubmitting} className="contents">
           <input type="hidden" name="versionLeida" value="1" />
-          {fields.map((field) =>
-            renderAnimalFormField(field, {
-              initialValues,
-              catalogOptions,
-              fieldErrors,
-              origen,
-              fechaNacimiento,
-              comentarios,
-              handleOrigenChange,
-              handleEstimar,
-              useComboboxOrigen,
-              currentAnimalId,
-              setFechaNacimiento,
-              setComentarios,
-            }),
-          )}
-          {/*
-          PR 2a (CA-UI-007 + CA-CRE-002): the conditional block is keyed
-          on `origen` so flipping the pill unmounts the abandoned block.
-          Typed values in the abandoned block are discarded (their
-          hidden inputs disappear from the DOM and therefore from
-          FormData). Wrapping each branch in a `<div key={origen}>`
-          ensures both directions of the flip remount.
-        */}
-          {formVariant !== "delete" ? (
-            <div data-conditional={origen} className="col-span-full grid gap-4">
-              {isComprado ? (
-                <PurchaseBlock
-                  key={`purchase-${origen}-${origenFlipCount}`}
-                  initialValues={initialValues}
-                  catalogOptions={catalogOptions}
-                  fieldErrors={fieldErrors}
-                  fechaCompra={fechaCompra}
-                  fechaNacimiento={fechaNacimiento}
-                  onFechaCompraChange={setFechaCompra}
-                />
-              ) : (
-                <ParentsBlock
-                  key={`parents-${origen}-${origenFlipCount}`}
-                  initialValues={initialValues}
-                  catalogOptions={catalogOptions}
-                  fieldErrors={fieldErrors}
-                  currentAnimalId={currentAnimalId}
-                  showPadre={true}
-                />
-              )}
+
+          {/* ─── IDENTIFICACIÓN ─── */}
+          <section aria-labelledby="identificacion-heading">
+            <h2
+              id="identificacion-heading"
+              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+            >
+              IDENTIFICACIÓN
+            </h2>
+            <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1.4fr_1fr]")}>
+              {renderFieldByName("codigo", ctx)}
+              {renderFieldByName("nombre", ctx)}
+              {renderFieldByName("codigoArete", ctx)}
             </div>
-          ) : null}
-          {/*
-          Comentarios lives outside the conditional block so it stays
-          visible in both modes. The Estimar por edad shortcut appends
-          the `[fecha estimada]` tag here.
-        */}
-          <div className="col-span-full">
-            <Field
-              key="comentarios"
-              label="Comentarios"
-              name="comentarios"
-              value={comentarios}
-              onChange={setComentarios}
-              fieldErrors={fieldErrors}
-            />
-          </div>
-          {formVariant === "create"
-            ? LOCATION_FIELDS.map((field) =>
-                renderAnimalFormField(field, {
-                  initialValues,
-                  catalogOptions,
-                  fieldErrors,
-                  origen,
-                  fechaNacimiento,
-                  comentarios,
-                  handleOrigenChange,
-                  handleEstimar,
-                  useComboboxOrigen,
-                  currentAnimalId,
-                  setFechaNacimiento,
-                  setComentarios,
-                }),
-              )
-            : renderCurrentLocation(currentLocation)}
+          </section>
+
+          {/* ─── CARACTERÍSTICAS ─── */}
+          <section aria-labelledby="caracteristicas-heading">
+            <h2
+              id="caracteristicas-heading"
+              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+            >
+              CARACTERÍSTICAS
+            </h2>
+            <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr_1.2fr]")}>
+              {renderFieldByName("sexoKey", ctx)}
+              {renderFieldByName("raza", ctx)}
+              {renderFieldByName("fechaNacimiento", ctx)}
+            </div>
+            <div className={cn("grid gap-3 mt-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
+              {renderFieldByName("color", ctx)}
+              {renderFieldByName("calidad", ctx)}
+            </div>
+          </section>
+
+          {/* ─── ORIGEN ─── */}
+          <section aria-labelledby="origen-heading">
+            <h2
+              id="origen-heading"
+              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+            >
+              ORIGEN
+            </h2>
+            <div className={cn("gap-3", mobile ? "flex flex-col" : "flex items-start gap-3")}>
+              <div className={mobile ? "w-full" : "w-[260px] shrink-0"}>
+                {renderFieldByName("origen", ctx)}
+              </div>
+              {formVariant !== "delete" ? (
+                <div
+                  key={origen}
+                  className={cn("grid gap-3 flex-1", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}
+                >
+                  {isComprado ? (
+                    <PurchaseBlock
+                      key={`purchase-${origen}-${origenFlipCount}`}
+                      initialValues={initialValues}
+                      catalogOptions={catalogOptions}
+                      fieldErrors={fieldErrors}
+                      fechaCompra={fechaCompra}
+                      fechaNacimiento={fechaNacimiento}
+                      onFechaCompraChange={setFechaCompra}
+                    />
+                  ) : (
+                    <ParentsBlock
+                      key={`parents-${origen}-${origenFlipCount}`}
+                      initialValues={initialValues}
+                      catalogOptions={catalogOptions}
+                      fieldErrors={fieldErrors}
+                      currentAnimalId={currentAnimalId}
+                      showPadre={true}
+                    />
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          {/* ─── UBICACIÓN ─── */}
+          <section aria-labelledby="ubicacion-heading">
+            <h2
+              id="ubicacion-heading"
+              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+            >
+              UBICACIÓN
+            </h2>
+            {formVariant === "create" ? (
+              <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr_1fr_1fr]")}>
+                {LOCATION_FIELDS.map((field) => renderFieldByName(field.name, ctx))}
+              </div>
+            ) : (
+              renderCurrentLocation(currentLocation)
+            )}
+          </section>
+
           {mobile && (
             <p className="rounded-card bg-info-100 text-info-600 p-3 text-support">
               ¿No encuentras la raza? Créala sin salir del formulario.
             </p>
           )}
+
+          {/* Temporary: Comentarios will move to the collapsible in WU-4 */}
+          <Field
+            key="comentarios"
+            label="Comentarios"
+            name="comentarios"
+            value={comentarios}
+            onChange={setComentarios}
+            fieldErrors={fieldErrors}
+          />
+
           <footer
             data-sticky-save="true"
             className={cn(
               "border-t bg-card p-4 flex items-center gap-2 z-40",
               mobile
                 ? "fixed inset-x-0 bottom-0 min-h-20"
-                : "col-span-full -mx-4 -mb-4 border-x border-b rounded-b-card justify-end",
+                : "-mx-4 -mb-4 border-x border-b rounded-b-card justify-end",
             )}
           >
             <p className="mr-auto text-caption text-info-600">Se sincronizará al recuperar señal</p>
@@ -1535,7 +1583,7 @@ function OrigenField({
   const errorId = `${id}-error`
   const errorMessage = fieldErrors?.origen
   return (
-    <div className="space-y-1.5 col-span-full">
+    <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <PillsSegmentadas
         id={id}
@@ -1586,7 +1634,7 @@ function FechaNacimientoField({
   const errorId = `${id}-error`
   const errorMessage = fieldErrors?.[name]
   return (
-    <div className="space-y-1.5 col-span-full">
+    <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <div className="flex flex-wrap items-start gap-2">
         <DatePicker
