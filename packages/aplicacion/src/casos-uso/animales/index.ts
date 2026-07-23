@@ -191,6 +191,11 @@ interface CrearAnimalCommand {
     readonly raza?: string | null
     readonly madreId?: string | null
     readonly padreId?: string | null
+    readonly calidadId?: string | null
+    readonly precioCompra?: number | null
+    readonly pesoCompra?: number | null
+    readonly comentarios?: string | null
+    readonly codigoArete?: string | null
   }
   readonly imagenes?: readonly {
     readonly id: string
@@ -332,6 +337,11 @@ function crearAnimalPersistible(input: {
   readonly madreId?: string | null
   readonly padreId?: string | null
   readonly categoriaReproductiva?: string | null
+  readonly calidadId?: string | null
+  readonly precioCompra?: number | null
+  readonly pesoCompra?: number | null
+  readonly comentarios?: string | null
+  readonly codigoArete?: string | null
 }) {
   const sexo = input.sexoKey === 1 ? "hembra" : input.sexoKey === 0 ? "macho" : "pajuela"
   const epochSeconds = (date: Date | null | undefined) =>
@@ -355,6 +365,11 @@ function crearAnimalPersistible(input: {
     madreId: input.madreId ?? null,
     padreId: input.padreId ?? null,
     categoriaReproductiva: input.categoriaReproductiva ?? null,
+    calidadAnimalId: input.calidadId ?? null,
+    precioCompra: input.precioCompra ?? null,
+    pesoCompra: input.pesoCompra ?? null,
+    comentarios: input.comentarios ?? null,
+    codigoArete: input.codigoArete ?? null,
   } as const
 }
 
@@ -469,6 +484,11 @@ export function crearAnimal(deps: AnimalUseCaseDeps) {
       madreId: cmd.datos.madreId ?? null,
       padreId: cmd.datos.padreId ?? null,
       categoriaReproductiva: validacion.valor.categoriaReproductiva,
+      calidadId: cmd.datos.calidadId ?? null,
+      precioCompra: cmd.datos.precioCompra ?? null,
+      pesoCompra: cmd.datos.pesoCompra ?? null,
+      comentarios: cmd.datos.comentarios ?? null,
+      codigoArete: cmd.datos.codigoArete ?? null,
     })
     let imagenesPendientes: ImagenPendienteAnimal[] = []
 

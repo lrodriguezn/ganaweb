@@ -139,6 +139,8 @@ export interface CreateAnimalWebInput {
     readonly padreId?: string
     readonly precioCompra?: number
     readonly pesoCompra?: number
+    readonly comentarios?: string
+    readonly codigoArete?: string
   }
   readonly imagenes?: readonly {
     readonly id: string
@@ -497,6 +499,11 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   raza?: string | null
   madreId?: string | null
   padreId?: string | null
+  calidadId?: string | null
+  precioCompra?: number | null
+  pesoCompra?: number | null
+  comentarios?: string | null
+  codigoArete?: string | null
 } {
   return {
     codigo: datos.codigo,
@@ -508,6 +515,11 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
     ...(datos.colorId ? { color: datos.colorId } : {}),
     ...(datos.madreId ? { madreId: datos.madreId } : {}),
     ...(datos.padreId ? { padreId: datos.padreId } : {}),
+    ...(datos.calidadId ? { calidadId: datos.calidadId } : {}),
+    ...(datos.precioCompra !== undefined ? { precioCompra: datos.precioCompra } : {}),
+    ...(datos.pesoCompra !== undefined ? { pesoCompra: datos.pesoCompra } : {}),
+    ...(datos.comentarios ? { comentarios: datos.comentarios } : {}),
+    ...(datos.codigoArete ? { codigoArete: datos.codigoArete } : {}),
   }
 }
 

@@ -33,6 +33,8 @@ export interface CreateAnimalWebInput {
     readonly padreId?: string
     readonly precioCompra?: number
     readonly pesoCompra?: number
+    readonly comentarios?: string
+    readonly codigoArete?: string
   }
   readonly imagenes?: readonly {
     readonly id: string

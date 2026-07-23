@@ -584,6 +584,7 @@ export interface AnimalFormInitialValues {
   precioCompra?: string
   pesoCompra?: string
   comentarios?: string
+  codigoArete?: string
   potreroId?: string
   sectorId?: string
   loteId?: string
@@ -619,7 +620,7 @@ const ORIGEN_OPTIONS: readonly { value: OrigenKey; label: string }[] = [
 const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Código *", name: "codigo", required: true },
   { label: "Nombre", name: "nombre", required: true },
-  { label: "Nº de arete", name: "arete" },
+  { label: "Nº de arete", name: "codigoArete" },
   { label: "Sexo", name: "sexoKey" },
   { label: "Raza", name: "raza" },
   { label: "Fecha de nacimiento", name: "fechaNacimiento" },
