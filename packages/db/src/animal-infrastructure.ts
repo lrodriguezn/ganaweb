@@ -78,6 +78,8 @@ function mapAnimalResumen(row: typeof animales.$inferSelect): AnimalResumen {
     sexo: sexoFromKey(row.sexoKey),
     estadoActual: estadoFromKey(row.estadoAnimalKey),
     salud: saludFromKey(row.saludAnimalKey),
+    fechaNacimiento: row.fechaNacimiento,
+    fechaCompra: row.fechaCompra,
   }
 }
 
