@@ -447,6 +447,70 @@ export function crearAuditoriaEliminacionAnimal(input: AuditoriaEliminacionAnima
   })
 }
 
+function toAnimalRowExtended(extra: {
+  readonly razaId?: string | null
+  readonly colorId?: string | null
+  readonly madreId?: string | null
+  readonly padreId?: string | null
+  readonly categoriaReproductiva?: string | null
+  readonly calidadAnimalId?: string | null
+  readonly precioCompra?: number | null
+  readonly pesoCompra?: number | null
+  readonly comentarios?: string | null
+  readonly codigoArete?: string | null
+}) {
+  return {
+    razaId: extra.razaId ?? null,
+    colorId: extra.colorId ?? null,
+    madreId: extra.madreId ?? null,
+    padreId: extra.padreId ?? null,
+    categoriaReproductiva: extra.categoriaReproductiva ?? null,
+    calidadAnimalId: extra.calidadAnimalId ?? null,
+    precioCompra: extra.precioCompra ?? null,
+    pesoCompra: extra.pesoCompra ?? null,
+    comentarios: extra.comentarios ?? null,
+    codigoArete: extra.codigoArete ?? null,
+  }
+}
+
+function toAnimalRow(
+  animal: AnimalResumen,
+  extra: {
+    readonly usuarioCreadoPor?: string
+    readonly creadoEn?: Date
+    readonly version?: number
+    readonly activo?: boolean
+    readonly razaId?: string | null
+    readonly colorId?: string | null
+    readonly madreId?: string | null
+    readonly padreId?: string | null
+    readonly categoriaReproductiva?: string | null
+    readonly calidadAnimalId?: string | null
+    readonly precioCompra?: number | null
+    readonly pesoCompra?: number | null
+    readonly comentarios?: string | null
+    readonly codigoArete?: string | null
+  },
+): typeof animales.$inferInsert {
+  return {
+    id: animal.id,
+    fincaId: animal.fincaId,
+    codigo: animal.codigo,
+    nombre: animal.nombreAnimal ?? "",
+    sexoKey: sexoKeyFromSexo(animal.sexo),
+    estadoAnimalKey:
+      animal.estadoActual === "activo" ? 0 : animal.estadoActual === "vendido" ? 1 : 2,
+    saludAnimalKey: animal.salud === "enfermo" ? 1 : 0,
+    activo: extra.activo === false ? 0 : 1,
+    usuarioCreadoPor: extra.usuarioCreadoPor,
+    createdAt: extra.creadoEn,
+    version: extra.version ?? 1,
+    fechaNacimiento: animal.fechaNacimiento ?? null,
+    fechaCompra: animal.fechaCompra ?? null,
+    ...toAnimalRowExtended(extra),
+  }
+}
+
 export class DrizzleAnimalRepository implements AnimalRepositoryPort {
   constructor(private readonly db: DbClient) {}
 
@@ -494,45 +558,55 @@ export class DrizzleAnimalRepository implements AnimalRepositoryPort {
       readonly comentarios?: string | null
       readonly codigoArete?: string | null
     }
-    await currentDb(this.db)
-      .insert(animales)
-      .values({
-        id: animal.id,
-        fincaId: animal.fincaId,
-        codigo: animal.codigo,
-        nombre: animal.nombreAnimal ?? "",
-        sexoKey: sexoKeyFromSexo(animal.sexo),
-        estadoAnimalKey:
-          animal.estadoActual === "activo" ? 0 : animal.estadoActual === "vendido" ? 1 : 2,
-        saludAnimalKey: animal.salud === "enfermo" ? 1 : 0,
-        activo: persistible.activo === false ? 0 : 1,
-        usuarioCreadoPor: persistible.usuarioCreadoPor,
-        createdAt: persistible.creadoEn,
-        version: persistible.version ?? 1,
-        fechaNacimiento: persistible.fechaNacimiento ?? null,
-        fechaCompra: persistible.fechaCompra ?? null,
-        razaId: persistible.razaId ?? null,
-        colorId: persistible.colorId ?? null,
-        madreId: persistible.madreId ?? null,
-        padreId: persistible.padreId ?? null,
-        categoriaReproductiva: persistible.categoriaReproductiva ?? null,
-        calidadAnimalId: persistible.calidadAnimalId ?? null,
-        precioCompra: persistible.precioCompra ?? null,
-        pesoCompra: persistible.pesoCompra ?? null,
-        comentarios: persistible.comentarios ?? null,
-        codigoArete: persistible.codigoArete ?? null,
-      })
+    await currentDb(this.db).insert(animales).values(toAnimalRow(animal, persistible))
   }
 
   async actualizar(
     animalId: string,
     fincaId: string,
-    cambios: { readonly codigo?: string; readonly versionLeida: number },
+    cambios: {
+      readonly versionLeida: number
+      readonly codigo?: string
+      readonly nombre?: string
+      readonly sexoKey?: 0 | 1 | 2
+      readonly fechaNacimiento?: number | null
+      readonly fechaCompra?: number | null
+      readonly razaId?: string | null
+      readonly colorId?: string | null
+      readonly calidadAnimalId?: string | null
+      readonly precioCompra?: number | null
+      readonly pesoCompra?: number | null
+      readonly madreId?: string | null
+      readonly padreId?: string | null
+      readonly comentarios?: string | null
+      readonly codigoArete?: string | null
+      readonly categoriaReproductiva?: string | null
+    },
   ): Promise<void> {
     await currentDb(this.db)
       .update(animales)
       .set({
         ...(cambios.codigo ? { codigo: cambios.codigo.trim() } : {}),
+        ...(cambios.nombre !== undefined ? { nombre: cambios.nombre } : {}),
+        ...(cambios.sexoKey !== undefined ? { sexoKey: cambios.sexoKey } : {}),
+        ...(cambios.fechaNacimiento !== undefined
+          ? { fechaNacimiento: cambios.fechaNacimiento }
+          : {}),
+        ...(cambios.fechaCompra !== undefined ? { fechaCompra: cambios.fechaCompra } : {}),
+        ...(cambios.razaId !== undefined ? { razaId: cambios.razaId } : {}),
+        ...(cambios.colorId !== undefined ? { colorId: cambios.colorId } : {}),
+        ...(cambios.calidadAnimalId !== undefined
+          ? { calidadAnimalId: cambios.calidadAnimalId }
+          : {}),
+        ...(cambios.precioCompra !== undefined ? { precioCompra: cambios.precioCompra } : {}),
+        ...(cambios.pesoCompra !== undefined ? { pesoCompra: cambios.pesoCompra } : {}),
+        ...(cambios.madreId !== undefined ? { madreId: cambios.madreId } : {}),
+        ...(cambios.padreId !== undefined ? { padreId: cambios.padreId } : {}),
+        ...(cambios.comentarios !== undefined ? { comentarios: cambios.comentarios } : {}),
+        ...(cambios.codigoArete !== undefined ? { codigoArete: cambios.codigoArete } : {}),
+        ...(cambios.categoriaReproductiva !== undefined
+          ? { categoriaReproductiva: cambios.categoriaReproductiva }
+          : {}),
         version: cambios.versionLeida + 1,
         updatedAt: new Date(),
       })

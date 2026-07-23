@@ -55,6 +55,8 @@ export interface UpdateAnimalWebInput {
   readonly animalId: string
   readonly cambios: {
     readonly codigo?: string
+    readonly nombre?: string
+    readonly sexoKey?: string | 0 | 1 | 2
     readonly versionLeida: number
     /**
      * v1.3 (PR 2b) — extended edit fields. The form emits the same 11
@@ -76,6 +78,8 @@ export interface UpdateAnimalWebInput {
     readonly padreId?: string
     readonly precioCompra?: number
     readonly pesoCompra?: number
+    readonly comentarios?: string
+    readonly codigoArete?: string
   }
 }
 

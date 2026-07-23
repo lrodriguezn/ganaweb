@@ -18,6 +18,25 @@ import type { AnimalResumen, EstadoAnimal } from "@ganaweb/dominio"
 
 export type { AnimalResumen }
 
+export interface AnimalUpdateCambios {
+  readonly versionLeida: number
+  readonly codigo?: string
+  readonly nombre?: string
+  readonly sexoKey?: 0 | 1 | 2
+  readonly fechaNacimiento?: number | null
+  readonly fechaCompra?: number | null
+  readonly razaId?: string | null
+  readonly colorId?: string | null
+  readonly calidadAnimalId?: string | null
+  readonly precioCompra?: number | null
+  readonly pesoCompra?: number | null
+  readonly madreId?: string | null
+  readonly padreId?: string | null
+  readonly comentarios?: string | null
+  readonly codigoArete?: string | null
+  readonly categoriaReproductiva?: string | null
+}
+
 export interface AnimalRegistro {
   readonly id: string
   readonly fincaId: string
@@ -58,11 +77,7 @@ export interface AnimalRepositoryPort {
    */
   guardar(animal: AnimalResumen): Promise<void>
 
-  actualizar?(
-    animalId: string,
-    fincaId: string,
-    cambios: { readonly codigo?: string; readonly versionLeida: number },
-  ): Promise<void>
+  actualizar?(animalId: string, fincaId: string, cambios: AnimalUpdateCambios): Promise<void>
 
   inactivar?(animalId: string, fincaId: string): Promise<void>
 

@@ -120,6 +120,20 @@ export interface DatosActualizacionAnimal {
     readonly codigo?: string
     readonly versionLeida: number
     readonly versionActual: number
+    readonly nombre?: string
+    readonly sexoKey?: SexoKey
+    readonly fechaNacimiento?: number | null
+    readonly fechaCompra?: number | null
+    readonly razaId?: string | null
+    readonly colorId?: string | null
+    readonly calidadAnimalId?: string | null
+    readonly precioCompra?: number | null
+    readonly pesoCompra?: number | null
+    readonly madreId?: string | null
+    readonly padreId?: string | null
+    readonly comentarios?: string | null
+    readonly codigoArete?: string | null
+    readonly categoriaReproductiva?: string | null
     readonly estadoAnimalKey?: number
     readonly saludAnimalKey?: number
     readonly potreroId?: string | null

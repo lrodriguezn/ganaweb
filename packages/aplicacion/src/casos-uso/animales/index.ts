@@ -11,7 +11,10 @@ export type { ErrorValidacionAnimal }
 import type { EntradaOutbox } from "@ganaweb/sync"
 import type { ArchivoAnimalPort, ColaBinariosPort } from "../../puertos/animal-media-port.js"
 import type { AnimalReferenceCheckerPort } from "../../puertos/animal-reference-checker-port.js"
-import type { AnimalRepositoryPort } from "../../puertos/animal-repository-port.js"
+import type {
+  AnimalRepositoryPort,
+  AnimalUpdateCambios,
+} from "../../puertos/animal-repository-port.js"
 import type { TimelineAnimalPort } from "../../puertos/animal-timeline-port.js"
 import type { OutboxPort } from "../../puertos/outbox-port.js"
 import type { TransaccionPort } from "../../puertos/transaccion-port.js"
@@ -439,6 +442,48 @@ function validarImagenesAnimal(
   return null
 }
 
+function buildCrearAnimalInput(
+  cmd: CrearAnimalCommand,
+  animalId: string,
+  validacion: {
+    readonly valor: {
+      readonly codigo: string
+      readonly nombre: string
+      readonly sexoKey: 0 | 1 | 2
+      readonly version: number
+      readonly activo: boolean
+      readonly color?: string | null | undefined
+      readonly raza?: string | null | undefined
+      readonly categoriaReproductiva: "novilla" | "no_aplica"
+    }
+  },
+) {
+  const { valor } = validacion
+  const { datos } = cmd
+  return {
+    animalId,
+    fincaId: cmd.sesion.fincaActivaId,
+    usuarioId: cmd.sesion.usuarioId,
+    codigo: valor.codigo,
+    nombre: valor.nombre,
+    sexoKey: valor.sexoKey,
+    version: valor.version,
+    activo: valor.activo,
+    fechaNacimiento: datos.fechaNacimiento ?? null,
+    fechaCompra: datos.fechaCompra ?? null,
+    color: valor.color ?? null,
+    raza: valor.raza ?? null,
+    madreId: datos.madreId ?? null,
+    padreId: datos.padreId ?? null,
+    categoriaReproductiva: valor.categoriaReproductiva,
+    calidadId: datos.calidadId ?? null,
+    precioCompra: datos.precioCompra ?? null,
+    pesoCompra: datos.pesoCompra ?? null,
+    comentarios: datos.comentarios ?? null,
+    codigoArete: datos.codigoArete ?? null,
+  }
+}
+
 export function crearAnimal(deps: AnimalUseCaseDeps) {
   return async (
     cmd: CrearAnimalCommand,
@@ -468,28 +513,7 @@ export function crearAnimal(deps: AnimalUseCaseDeps) {
     if (errorImagenes) return errorImagenes
 
     const animalId = id("animal")
-    const animal = crearAnimalPersistible({
-      animalId,
-      fincaId: cmd.sesion.fincaActivaId,
-      usuarioId: cmd.sesion.usuarioId,
-      codigo: validacion.valor.codigo,
-      nombre: validacion.valor.nombre,
-      sexoKey: validacion.valor.sexoKey,
-      version: validacion.valor.version,
-      activo: validacion.valor.activo,
-      fechaNacimiento: cmd.datos.fechaNacimiento ?? null,
-      fechaCompra: cmd.datos.fechaCompra ?? null,
-      color: validacion.valor.color ?? null,
-      raza: validacion.valor.raza ?? null,
-      madreId: cmd.datos.madreId ?? null,
-      padreId: cmd.datos.padreId ?? null,
-      categoriaReproductiva: validacion.valor.categoriaReproductiva,
-      calidadId: cmd.datos.calidadId ?? null,
-      precioCompra: cmd.datos.precioCompra ?? null,
-      pesoCompra: cmd.datos.pesoCompra ?? null,
-      comentarios: cmd.datos.comentarios ?? null,
-      codigoArete: cmd.datos.codigoArete ?? null,
-    })
+    const animal = crearAnimalPersistible(buildCrearAnimalInput(cmd, animalId, validacion))
     let imagenesPendientes: ImagenPendienteAnimal[] = []
 
     try {
@@ -615,7 +639,7 @@ export function actualizarAnimal(deps: AnimalUseCaseDeps) {
   return async (cmd: {
     readonly sesion: SesionAnimal
     readonly animalId: string
-    readonly cambios: { readonly codigo?: string; readonly versionLeida: number }
+    readonly cambios: AnimalUpdateCambios
   }) => {
     if (!tienePermiso(cmd.sesion, "editar")) return { tipo: "no_autorizado" } as const
     const animal = await deps.animales.obtenerPorIdYFinca?.(cmd.animalId, cmd.sesion.fincaActivaId)
