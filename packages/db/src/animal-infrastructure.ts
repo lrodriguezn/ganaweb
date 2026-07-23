@@ -483,6 +483,11 @@ export class DrizzleAnimalRepository implements AnimalRepositoryPort {
       readonly creadoEn?: Date
       readonly version?: number
       readonly activo?: boolean
+      readonly razaId?: string | null
+      readonly colorId?: string | null
+      readonly madreId?: string | null
+      readonly padreId?: string | null
+      readonly categoriaReproductiva?: string | null
     }
     await currentDb(this.db)
       .insert(animales)
@@ -501,6 +506,11 @@ export class DrizzleAnimalRepository implements AnimalRepositoryPort {
         version: persistible.version ?? 1,
         fechaNacimiento: persistible.fechaNacimiento ?? null,
         fechaCompra: persistible.fechaCompra ?? null,
+        razaId: persistible.razaId ?? null,
+        colorId: persistible.colorId ?? null,
+        madreId: persistible.madreId ?? null,
+        padreId: persistible.padreId ?? null,
+        categoriaReproductiva: persistible.categoriaReproductiva ?? null,
       })
   }
 
