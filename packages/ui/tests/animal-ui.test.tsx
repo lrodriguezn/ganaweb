@@ -402,10 +402,10 @@ describe("PR3 animal UI OpenPencil parity", () => {
       />,
     )
     expect(screen.getByRole("combobox", { name: "Sexo" })).toBeDisabled()
-    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("No disponible")
+    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("Sexo")
   })
 
-  it("shows a safe unavailable label for missing CA-UI-001/003 catalog values", () => {
+  it("shows the field label as placeholder when catalog values are missing (CA-UI-001/003)", () => {
     render(
       <AnimalFormScreen
         mode="desktop"
@@ -416,11 +416,11 @@ describe("PR3 animal UI OpenPencil parity", () => {
       />,
     )
 
-    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("No disponible")
+    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("Origen")
     expect(screen.queryByText("origen-legacy")).not.toBeInTheDocument()
   })
 
-  it("falls back to 'No disponible' for create-mode location selectors when catalog options are missing (CA-UI-001/003/005)", async () => {
+  it("shows field label as placeholder for create-mode location selectors when catalog options are missing (CA-UI-001/003/005)", async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
 
@@ -435,7 +435,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
 
     for (const label of ["Potrero", "Sector", "Lote", "Grupo"] as const) {
-      expect(screen.getByRole("combobox", { name: label })).toHaveTextContent("No disponible")
+      expect(screen.getByRole("combobox", { name: label })).toHaveTextContent(label)
     }
 
     await user.type(screen.getByLabelText("Código *"), "NV-46")
