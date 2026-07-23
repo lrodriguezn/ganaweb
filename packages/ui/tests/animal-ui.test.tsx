@@ -1389,4 +1389,107 @@ describe("PR3 animal UI OpenPencil parity", () => {
       }
     })
   })
+
+  describe("WU-4: Collapsible 'Detalles adicionales'", () => {
+    it("is closed on create with no count suffix", () => {
+      render(
+        <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
+      )
+      const trigger = screen.getByRole("button", { name: /Detalles adicionales/i })
+      expect(trigger).toBeInTheDocument()
+      // Trigger text should NOT contain a count suffix
+      expect(trigger.textContent).not.toMatch(/con datos/)
+      // The content should be collapsed — detail fields hidden (forceMounted)
+      const rfidInput = screen.queryByLabelText("RFID")
+      if (rfidInput) {
+        // With forceMount, element is in DOM but hidden via data-state="closed"
+        expect(rfidInput.closest('[data-state="closed"]')).not.toBeNull()
+      }
+    })
+
+    it("auto-opens on edit when detail fields have data, with count badge", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialValues={{
+            codigoRfid: "RFID-123",
+            propietarioId: "prop-1",
+            comentarios: "Some notes",
+          }}
+        />,
+      )
+      const trigger = screen.getByRole("button", { name: /Detalles adicionales/i })
+      // Should show count badge
+      expect(trigger.textContent).toMatch(/3 con datos/)
+      // Content should be visible (collapsible is open)
+      expect(screen.getByLabelText("Comentarios")).toBeInTheDocument()
+    })
+
+    it("forces open when a detail field has a validation error", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          fieldErrors={{ codigoRfid: "RFID inválido" }}
+        />,
+      )
+      // Collapsible should be forced open
+      expect(screen.getByLabelText("RFID")).toBeInTheDocument()
+      // Error should be visible
+      expect(screen.getByText("RFID inválido")).toBeInTheDocument()
+    })
+
+    it("excludes esDeMonta from count when sexoKey !== 0 (Hembra)", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialValues={{
+            sexoKey: 1, // Hembra
+            esDeMonta: true,
+            comentarios: "test",
+          }}
+        />,
+      )
+      const trigger = screen.getByRole("button", { name: /Detalles adicionales/i })
+      // esDeMonta should NOT be counted for Hembra → only comentarios counts
+      expect(trigger.textContent).toMatch(/1 con datos/)
+    })
+
+    it("hides esDeMonta switch when sexoKey is not 0 (Macho)", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialValues={{ sexoKey: 1 }} // Hembra
+          fieldErrors={{ esDeMonta: "dummy" }} // force open
+        />,
+      )
+      // esDeMonta switch should NOT be in the DOM
+      expect(screen.queryByLabelText("Es de monta")).not.toBeInTheDocument()
+    })
+
+    it("shows esDeMonta switch when sexoKey is 0 (Macho)", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialValues={{ sexoKey: 0 }} // Macho
+          fieldErrors={{ codigoRfid: "dummy" }} // force open
+        />,
+      )
+      expect(screen.getByLabelText("Es de monta")).toBeInTheDocument()
+    })
+  })
 })

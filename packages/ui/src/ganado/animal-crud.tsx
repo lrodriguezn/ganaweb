@@ -15,11 +15,12 @@ import {
   Search,
   X,
 } from "lucide-react"
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
 import type * as React from "react"
 
 import { cn } from "../lib/utils"
 import { Button } from "../primitives/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../primitives/collapsible"
 import { ComboboxBuscable, type ComboboxOption } from "../primitives/combobox-buscable"
 import { DatePicker } from "../primitives/date-picker"
 import { Input } from "../primitives/input"
@@ -848,6 +849,61 @@ export function AnimalFormScreen({
     return renderAnimalFormField(fieldDef, context)
   }
 
+  // ─── Collapsible "Detalles adicionales" state machine ───
+  const hasDetailData = useMemo(() => {
+    if (formVariant !== "edit" || !initialValues) return false
+    const sexoKey = initialValues.sexoKey ?? 1
+    return Array.from(DETAIL_FIELD_NAMES).some((name) => {
+      // Exclude esDeMonta from count when not Macho
+      if (name === "esDeMonta" && sexoKey !== 0) return false
+      const val = initialValues[name as keyof AnimalFormInitialValues]
+      if (val === undefined || val === null || val === "" || val === false) return false
+      return true
+    })
+  }, [formVariant, initialValues])
+
+  const detailCount = useMemo(() => {
+    if (!initialValues) return 0
+    const sexoKey = initialValues.sexoKey ?? 1
+    return Array.from(DETAIL_FIELD_NAMES).reduce((count, name) => {
+      if (name === "esDeMonta" && sexoKey !== 0) return count
+      const val = initialValues[name as keyof AnimalFormInitialValues]
+      if (val === undefined || val === null || val === "" || val === false) return count
+      return count + 1
+    }, 0)
+  }, [initialValues])
+
+  const detailFieldErrors = useMemo(() => {
+    if (!fieldErrors) return {}
+    const result: Record<string, string> = {}
+    for (const name of DETAIL_FIELD_NAMES) {
+      if (fieldErrors[name]) result[name] = fieldErrors[name]
+    }
+    return result
+  }, [fieldErrors])
+
+  const [collapsibleOpen, setCollapsibleOpen] = useState(
+    formVariant === "edit" && hasDetailData,
+  )
+
+  // Force open when a detail field has a validation error (CA-UI-010)
+  useEffect(() => {
+    if (Object.keys(detailFieldErrors).length > 0 && !collapsibleOpen) {
+      setCollapsibleOpen(true)
+      // Focus the first errored field
+      const firstErrorName = Object.keys(detailFieldErrors)[0]
+      if (firstErrorName) {
+        const el = document.getElementsByName(firstErrorName)[0]
+        if (el) {
+          el.scrollIntoView({ block: "nearest" })
+        }
+      }
+    }
+  }, [JSON.stringify(detailFieldErrors)])
+
+  const sexoKey = initialValues?.sexoKey ?? 1
+  const showEsDeMonta = sexoKey === 0
+
   return (
     <section
       data-testid={mobile ? "op-f-400233" : "op-f-400191"}
@@ -973,15 +1029,55 @@ export function AnimalFormScreen({
             </p>
           )}
 
-          {/* Temporary: Comentarios will move to the collapsible in WU-4 */}
-          <Field
-            key="comentarios"
-            label="Comentarios"
-            name="comentarios"
-            value={comentarios}
-            onChange={setComentarios}
-            fieldErrors={fieldErrors}
-          />
+          {/* ─── DETALLES ADICIONALES (Collapsible) ─── */}
+          <Collapsible open={collapsibleOpen} onOpenChange={setCollapsibleOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground py-2 flex items-center gap-2"
+              >
+                <span aria-hidden="true">{collapsibleOpen ? "▾" : "▸"}</span>
+                Detalles adicionales
+                {detailCount > 0 && (
+                  <span className="text-caption text-muted-foreground font-normal normal-case">
+                    · {detailCount} con datos
+                  </span>
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent forceMount className="space-y-4 pt-2 data-[state=closed]:hidden">
+              {/* Row 1: RFID + Tipo explotación + Propietario + Hierro */}
+              <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
+                {renderFieldByName("codigoRfid", ctx)}
+                {renderFieldByName("tipoExplotacionId", ctx)}
+                {renderFieldByName("propietarioId", ctx)}
+                {renderFieldByName("hierroId", ctx)}
+              </div>
+
+              {/* Row 2: Nº pezones */}
+              <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
+                {renderFieldByName("numeroPezones", ctx)}
+              </div>
+
+              {/* Row 3: Switches row */}
+              <div className="flex flex-wrap gap-4">
+                {renderFieldByName("tatuado", ctx)}
+                {renderFieldByName("herrado", ctx)}
+                {renderFieldByName("descornado", ctx)}
+                {showEsDeMonta ? renderFieldByName("esDeMonta", ctx) : null}
+              </div>
+
+              {/* Row 4: Comentarios full-width */}
+              <Field
+                key="comentarios"
+                label="Comentarios"
+                name="comentarios"
+                value={comentarios}
+                onChange={setComentarios}
+                fieldErrors={fieldErrors}
+              />
+            </CollapsibleContent>
+          </Collapsible>
 
           <footer
             data-sticky-save="true"
