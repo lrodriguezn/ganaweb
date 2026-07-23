@@ -29,7 +29,7 @@ import { type PillsOption, PillsSegmentadas } from "../primitives/pills-segmenta
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../primitives/select"
 import { SelectConCreacion } from "../primitives/select-con-creacion"
 import { BottomNav } from "./bottom-nav"
-import { DETAIL_FIELD_NAMES, SECTION_LAYOUT, sectionFor } from "./animal-crud-infra"
+import { DETAIL_FIELD_NAMES, SECTION_LAYOUT, sectionFor, useOnlineStatus } from "./animal-crud-infra"
 import { EmptyState } from "./empty-state"
 import { CategoriaBadge, EstadoAnimalBadge, EstadoBadge, SaludBadge } from "./estado-badge"
 import { MetricCard } from "./metric-card"
@@ -883,6 +883,9 @@ export function AnimalFormScreen({
   const sexoKey = initialValues?.sexoKey ?? 1
   const showEsDeMonta = sexoKey === 0
 
+  // CA-UI-005: sync hint is offline-only
+  const isOnline = useOnlineStatus()
+
   return (
     <section
       data-testid={mobile ? "op-f-400233" : "op-f-400191"}
@@ -1079,9 +1082,11 @@ export function AnimalFormScreen({
                 : "-mx-4 -mb-4 border-x border-b rounded-b-card justify-end",
             )}
           >
-            <p className="mr-auto text-caption text-info-600">
-              Se sincronizará al recuperar señal
-            </p>
+            {!isOnline && (
+              <p className="mr-auto text-caption text-info-600">
+                Se sincronizará al recuperar señal
+              </p>
+            )}
             {!mobile && (
               <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
                 Cancelar
@@ -1316,7 +1321,6 @@ function renderTipoExplotacionField(field: AnimalFormField, ctx: RenderFieldCont
       name={field.name}
       defaultValue={initialValues?.tipoExplotacionId}
       options={(catalogOptions?.tipoExplotacion ?? []) as readonly SelectOption[]}
-      required
       fieldErrors={fieldErrors}
     />
   )
@@ -1776,25 +1780,83 @@ function FechaNacimientoField({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <div className="flex flex-wrap items-start gap-2">
-        <DatePicker
-          id={id}
-          name={name}
-          value={value}
-          onChange={onChange}
-          maxDate={new Date()}
-          className="flex-1 min-w-[200px]"
-          {...(errorMessage
-            ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
-            : {})}
-        />
-        <EstimarPorEdad onApply={onEstimar} />
-      </div>
+      <DatePicker
+        id={id}
+        name={name}
+        value={value}
+        onChange={onChange}
+        maxDate={new Date()}
+        footerChildren={
+          <EstimarPorEdadInline onApply={onEstimar} />
+        }
+        {...(errorMessage
+          ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
+          : {})}
+      />
       {errorMessage ? (
         <p id={errorId} role="alert" className="text-caption text-danger-600">
           {errorMessage}
         </p>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Inline "Estimar por edad" link rendered inside the DatePicker popover
+ * footer (CA-UI-013). Shows a text link that toggles to an age input +
+ * Aplicar button. Applying sets the estimated date via onApply.
+ */
+function EstimarPorEdadInline({ onApply }: { onApply: (iso: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [age, setAge] = useState("3")
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className="text-caption text-primary underline-offset-2 hover:underline"
+        onClick={() => setEditing(true)}
+      >
+        ¿No sabes la fecha? Estimar por edad
+      </button>
+    )
+  }
+
+  const handleApply = () => {
+    const years = Number.parseInt(age, 10)
+    if (Number.isFinite(years) && years >= 0) {
+      const estimated = new Date()
+      estimated.setFullYear(estimated.getFullYear() - years)
+      onApply(format(estimated, "yyyy-MM-dd"))
+    }
+    setEditing(false)
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="estimar-edad-input">Años</Label>
+      <Input
+        id="estimar-edad-input"
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={30}
+        value={age}
+        onChange={(event) => setAge(event.target.value)}
+        className="min-h-[--h-touch]"
+      />
+      <p className="text-caption text-muted-foreground">
+        Se calculará la fecha de nacimiento restando los años a hoy.
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
+          Cancelar
+        </Button>
+        <Button type="button" onClick={handleApply}>
+          Aplicar
+        </Button>
+      </div>
     </div>
   )
 }

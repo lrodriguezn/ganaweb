@@ -207,7 +207,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(
       screen.getByText("¿No encuentras la raza? Créala sin salir del formulario."),
     ).toBeInTheDocument()
-    expect(screen.getByText("Se sincronizará al recuperar señal")).toBeInTheDocument()
+    expect(screen.queryByText("Se sincronizará al recuperar señal")).not.toBeInTheDocument()
     expect(screen.getByRole("contentinfo")).toHaveAttribute("data-sticky-save", "true")
     // Same omit-by-default pin on the mobile layout — alert markup must not render
     // when the create route does not supply fieldErrors.
@@ -877,11 +877,12 @@ describe("PR3 animal UI OpenPencil parity", () => {
       <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
     )
 
-    // The 'Estimar por edad' affordance is an inline button next to the fechaNacimiento DatePicker.
-    const estimarBtn = screen.getByRole("button", { name: /Estimar por edad/i })
-    await user.click(estimarBtn)
+    // Open the DatePicker popover to find the "Estimar por edad" link in the footer
+    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+    const estimarLink = await screen.findByRole("button", { name: /Estimar por edad/i })
+    await user.click(estimarLink)
 
-    // A tiny popover with an age input appears
+    // The age input appears inside the popover footer
     const ageInput = await screen.findByRole("spinbutton", { name: /a[ñn]os/i })
     await user.clear(ageInput)
     await user.type(ageInput, "3")
@@ -1534,6 +1535,65 @@ describe("PR3 animal UI OpenPencil parity", () => {
       expect(footer).toHaveAttribute("data-sticky-save", "true")
       // Primary button text includes "animal" on mobile
       expect(screen.getByRole("button", { name: /Guardar animal/ })).toBeInTheDocument()
+    })
+  })
+
+  describe("WU-6: Fixes (sync hint, required, estimar)", () => {
+    it("hides sync hint when online, shows it when offline (CA-UI-005)", async () => {
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+      // By default online → hint hidden
+      expect(screen.queryByText("Se sincronizará al recuperar señal")).not.toBeInTheDocument()
+
+      // Go offline → hint visible
+      await act(async () => {
+        window.dispatchEvent(new Event("offline"))
+      })
+      expect(screen.getByText("Se sincronizará al recuperar señal")).toBeInTheDocument()
+
+      // Come back online → hint hidden again
+      await act(async () => {
+        window.dispatchEvent(new Event("online"))
+      })
+      expect(screen.queryByText("Se sincronizará al recuperar señal")).not.toBeInTheDocument()
+    })
+
+    it("Tipo de explotación has NO asterisk and NO aria-required (CA-UI-014)", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          catalogOptions={{
+            tipoExplotacion: [{ value: "t1", label: "Lechería" }],
+          }}
+          fieldErrors={{ codigoRfid: "dummy" }} // force collapsible open
+        />,
+      )
+      const trigger = screen.getByRole("combobox", { name: "Tipo de explotación" })
+      expect(trigger).toBeInTheDocument()
+      expect(trigger).not.toHaveAttribute("aria-required", "true")
+      // Label should NOT have an asterisk
+      const label = trigger.closest(".space-y-1\\.5")?.querySelector("label")
+      expect(label?.textContent).not.toMatch(/\*/)
+    })
+
+    it("renders 'Estimar por edad' link inside DatePicker popover footer, NOT as sibling button (CA-UI-013)", async () => {
+      const user = userEvent.setup()
+      render(
+        <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
+      )
+      // There should be NO standalone "Estimar por edad" button outside the popover
+      const estimarButtons = screen.queryAllByRole("button", { name: /Estimar por edad/i })
+      expect(estimarButtons).toHaveLength(0)
+
+      // Open the DatePicker popover
+      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+      // The "Estimar por edad" link should be inside the popover footer
+      const dialog = screen.getByRole("dialog")
+      const footerEl = dialog.querySelector(".border-t")
+      expect(footerEl).not.toBeNull()
+      expect(footerEl).toHaveTextContent("Estimar por edad")
     })
   })
 })
