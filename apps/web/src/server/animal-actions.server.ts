@@ -19,6 +19,7 @@ import type {
   SectorOption,
   SesionAnimal,
   SesionAutorizada,
+  TipoExplotacionOption,
 } from "@ganaweb/aplicacion"
 import {
   actualizarAnimal,
@@ -28,6 +29,7 @@ import {
   listarCatalogoColor,
   listarCatalogoRaza,
   listarCatalogoSexo,
+  listarCatalogoTipoExplotacion,
   listarGruposPorFinca,
   listarHierrosPorFinca,
   listarLotesPorFinca,
@@ -293,6 +295,7 @@ export interface AnimalCatalogs {
   readonly raza: AnimalCatalogResult
   readonly color: AnimalCatalogResult
   readonly calidad: AnimalCatalogResult
+  readonly tipoExplotacion: AnimalCatalogResult
   readonly potrero: AnimalCatalogResult
   readonly sector: AnimalCatalogResult
   readonly lote: AnimalCatalogResult
@@ -307,8 +310,8 @@ export interface AnimalCatalogs {
 export interface AnimalCatalogPorts {
   readonly catalogoGlobal: CatalogoGlobalPort
   readonly catalogoAnimalMaestro: CatalogoAnimalMaestroPort<
-    "raza" | "color" | "calidad",
-    RazaOption | ColorOption | CalidadOption
+    "raza" | "color" | "calidad" | "tipoExplotacion",
+    RazaOption | ColorOption | CalidadOption | TipoExplotacionOption
   >
   readonly catalogoFinca: CatalogoFincaPort<
     "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
@@ -348,6 +351,7 @@ export async function loadAnimalCatalogs(
       raza: NO_DISPONIBLE_CATALOG,
       color: NO_DISPONIBLE_CATALOG,
       calidad: NO_DISPONIBLE_CATALOG,
+      tipoExplotacion: NO_DISPONIBLE_CATALOG,
       potrero: NO_DISPONIBLE_CATALOG,
       sector: NO_DISPONIBLE_CATALOG,
       lote: NO_DISPONIBLE_CATALOG,
@@ -365,6 +369,7 @@ export async function loadAnimalCatalogs(
     razaSettled,
     colorSettled,
     calidadSettled,
+    tipoExplotacionSettled,
     potreroSettled,
     sectorSettled,
     loteSettled,
@@ -384,6 +389,12 @@ export async function loadAnimalCatalogs(
     ),
     listarCatalogoCalidad(
       ports.catalogoAnimalMaestro as CatalogoAnimalMaestroPort<"calidad", CalidadOption>,
+    ),
+    listarCatalogoTipoExplotacion(
+      ports.catalogoAnimalMaestro as CatalogoAnimalMaestroPort<
+        "tipoExplotacion",
+        TipoExplotacionOption
+      >,
     ),
     listarPotrerosPorFinca(
       fincaId,
@@ -416,6 +427,7 @@ export async function loadAnimalCatalogs(
     raza: mapUcSettled(razaSettled),
     color: mapColorSettled(colorSettled),
     calidad: mapUcSettled(calidadSettled),
+    tipoExplotacion: mapUcSettled(tipoExplotacionSettled),
     potrero: mapUcSettled(potreroSettled),
     sector: mapUcSettled(sectorSettled),
     lote: mapUcSettled(loteSettled),
