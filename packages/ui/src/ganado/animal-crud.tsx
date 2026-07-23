@@ -634,6 +634,13 @@ const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Color", name: "color" },
   { label: "Calidad", name: "calidad" },
   { label: "Origen", name: "origen" },
+  { label: "RFID", name: "codigoRfid" },
+  { label: "Tipo de explotación", name: "tipoExplotacionId" },
+  { label: "Tatuado", name: "tatuado" },
+  { label: "Herrado", name: "herrado" },
+  { label: "Descornado", name: "descornado" },
+  { label: "Es de monta", name: "esDeMonta" },
+  { label: "Nº de pezones", name: "numeroPezones" },
 ]
 
 const LOCATION_FIELDS: readonly (AnimalFormField & {
@@ -723,6 +730,11 @@ function useAnimalForm({
           "Raza",
           "Fecha de nacimiento",
           "Origen",
+          "RFID",
+          "Tatuado",
+          "Herrado",
+          "Descornado",
+          "Es de monta",
           "Potrero",
           "Sector",
           "Lote",
@@ -1082,6 +1094,69 @@ function renderLocationField(field: AnimalFormField, ctx: RenderFieldContext) {
   )
 }
 
+function renderBooleanField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, fieldErrors } = ctx
+  const defaultValue = initialValues?.[field.name as keyof AnimalFormInitialValues]
+  const checked = defaultValue === true || defaultValue === "true"
+  const id = field.label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")
+  const errorId = `${id}-error`
+  const errorMessage = fieldErrors?.[field.name]
+
+  return (
+    <div className="space-y-1.5" key={field.name}>
+      <Label htmlFor={id}>{field.label}</Label>
+      <div className="flex items-center gap-2 min-h-[--h-touch]">
+        <input type="hidden" name={field.name} value={checked ? "true" : "false"} />
+        <button
+          type="button"
+          id={id}
+          role="switch"
+          aria-checked={checked}
+          onClick={(e) => {
+            const hidden = (e.currentTarget.parentElement as HTMLElement).querySelector(
+              "input[type=hidden]",
+            ) as HTMLInputElement
+            const next = hidden.value !== "true"
+            hidden.value = String(next)
+            ;(e.currentTarget as HTMLElement).setAttribute("aria-checked", String(next))
+            e.currentTarget.classList.toggle("bg-primary", next)
+            e.currentTarget.classList.toggle("bg-input", !next)
+          }}
+          className={`h-6 w-11 rounded-full border-2 border-transparent transition-colors ${
+            checked ? "bg-primary" : "bg-input"
+          }`}
+        >
+          <span
+            className={`block h-5 w-5 rounded-full bg-background shadow-sm transition-transform ${
+              checked ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
+      {errorMessage ? (
+        <p id={errorId} role="alert" className="text-caption text-danger-600">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function renderNumericFormField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, fieldErrors } = ctx
+  const defaultValue =
+    initialValues?.[field.name as keyof AnimalFormInitialValues]?.toString() ?? ""
+  return (
+    <NumericField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      defaultValue={defaultValue}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
+
 const FIELD_RENDERERS: Record<string, FieldRenderer> = {
   sexoKey: renderSexoField,
   origen: renderOrigenField,
@@ -1094,6 +1169,11 @@ const FIELD_RENDERERS: Record<string, FieldRenderer> = {
   sectorId: renderLocationField,
   loteId: renderLocationField,
   grupoId: renderLocationField,
+  tatuado: renderBooleanField,
+  herrado: renderBooleanField,
+  descornado: renderBooleanField,
+  esDeMonta: renderBooleanField,
+  numeroPezones: renderNumericFormField,
 }
 
 function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) {
@@ -1883,6 +1963,50 @@ export function AnimalDesktopScreen({
   )
 }
 
+function DatosAnimal({ animal }: { animal: AnimalListItem }) {
+  return (
+    <div className="space-y-1 text-support">
+      <p>
+        <span className="font-medium">Código:</span> {animal.codigoAnimal}
+      </p>
+      {animal.nombreAnimal && (
+        <p>
+          <span className="font-medium">Nombre:</span> {animal.nombreAnimal}
+        </p>
+      )}
+      {animal.codigoRfid && (
+        <p>
+          <span className="font-medium">RFID:</span> {animal.codigoRfid}
+        </p>
+      )}
+      {animal.tipoExplotacionId && (
+        <p>
+          <span className="font-medium">Tipo explotación:</span> {animal.tipoExplotacionId}
+        </p>
+      )}
+      {animal.numeroPezones != null && (
+        <p>
+          <span className="font-medium">Nº pezones:</span> {animal.numeroPezones}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+        <span className="text-caption text-muted-foreground">
+          Tatuado: {animal.tatuado ? "✅" : "—"}
+        </span>
+        <span className="text-caption text-muted-foreground">
+          Herrado: {animal.herrado ? "✅" : "—"}
+        </span>
+        <span className="text-caption text-muted-foreground">
+          Descornado: {animal.descornado ? "✅" : "—"}
+        </span>
+        <span className="text-caption text-muted-foreground">
+          Monta: {animal.esDeMonta ? "✅" : "—"}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export interface AnimalFichaDesktopScreenProps {
   animal: AnimalListItem
   timeline: AnimalTimelineItem[]
@@ -1910,7 +2034,9 @@ export function AnimalFichaDesktopScreen({
         canCreateEvents
       />
       <div className="grid grid-cols-[1fr_1.2fr] gap-4">
-        <InfoCard title="Datos">Código {animal.codigoAnimal}</InfoCard>
+        <InfoCard title="Datos">
+          <DatosAnimal animal={animal} />
+        </InfoCard>
         {genealogy ? (
           <AnimalGenealogy {...genealogy} />
         ) : (
@@ -1967,6 +2093,7 @@ export function AnimalFichaMobileScreen({
         <div role="tablist" aria-label="Secciones de ficha" className="flex gap-2 overflow-x-auto">
           {[
             { label: "Timeline", selected: true },
+            { label: "Datos", selected: false },
             { label: "Fotos", selected: false },
             { label: "Genealogía", selected: false },
           ].map((tab) => (
@@ -1987,6 +2114,9 @@ export function AnimalFichaMobileScreen({
           ) : (
             <p className="text-support text-muted-foreground">Sin eventos registrados.</p>
           )}
+        </InfoCard>
+        <InfoCard title="Datos">
+          <DatosAnimal animal={animal} />
         </InfoCard>
         {genealogy && <AnimalGenealogy {...genealogy} />}
       </main>

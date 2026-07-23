@@ -587,9 +587,10 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
 
     expect(screen.getByTestId("op-frame-0232")).toHaveAccessibleName("04 Ficha Animal · Mobile")
-    expect(screen.getByText("MT-122")).toBeInTheDocument()
+    expect(screen.getAllByText("MT-122").length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText("3 años")).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "Timeline" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tab", { name: "Datos" })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "Fotos" })).toBeInTheDocument()
     expect(screen.getByText("Foto agregada")).toBeInTheDocument()
     expect(screen.getByRole("navigation", { name: "Navegación inferior" })).toBeInTheDocument()
