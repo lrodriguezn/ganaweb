@@ -738,6 +738,7 @@ function useAnimalForm({
           "Fecha de nacimiento",
           "Origen",
           "RFID",
+          "Tipo de explotación",
           "Tatuado",
           "Herrado",
           "Descornado",
