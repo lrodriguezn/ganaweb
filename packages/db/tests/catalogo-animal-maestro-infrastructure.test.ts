@@ -1,7 +1,12 @@
 import { getTableName } from "drizzle-orm"
 import { describe, expect, it } from "vitest"
 import { DrizzleCatalogoAnimalMaestroAdapter } from "../src/catalogo-animal-maestro-infrastructure.js"
-import { configCalidadAnimal, configColores, configRazas } from "../src/schema/index.js"
+import {
+  configCalidadAnimal,
+  configColores,
+  configRazas,
+  configTiposExplotacion,
+} from "../src/schema/index.js"
 
 type RazaRow = {
   id: string
@@ -100,6 +105,44 @@ const activeColor: ColorRow = {
   activo: 1,
 }
 
+type TipoExplotacionRow = {
+  id: string
+  nombre: string
+  activo: number
+}
+
+function fakeTipoExplotacionDb(rows: readonly TipoExplotacionRow[]) {
+  let whereCalled = false
+  let orderedBy = false
+  const sortedRows = [...rows].sort((a, b) => a.nombre.localeCompare(b.nombre, "es-CO"))
+  return {
+    select: () => ({
+      from: (table: unknown) => {
+        expect(getTableName(table as never)).toBe("config_tipos_explotacion")
+        return {
+          where: () => {
+            whereCalled = true
+            return {
+              orderBy: () => {
+                orderedBy = true
+                return Promise.resolve(sortedRows)
+              },
+            }
+          },
+          orderBy: () => {
+            orderedBy = true
+            return Promise.resolve(sortedRows)
+          },
+        }
+      },
+    }),
+    assertNoActiveFilter: () => {
+      expect(whereCalled).toBe(false)
+      expect(orderedBy).toBe(true)
+    },
+  }
+}
+
 describe("DrizzleCatalogoAnimalMaestroAdapter", () => {
   it("reads only active raza rows sorted by nombre and maps to RazaOption DTO", async () => {
     const db = fakeDb([activeRaza])
@@ -140,5 +183,22 @@ describe("DrizzleCatalogoAnimalMaestroAdapter", () => {
       },
     ])
     db.assertActiveColorQuery()
+  })
+
+  it("reads all tipoExplotacion rows (no activo filter) sorted by nombre and maps to CatalogoMaestroOption", async () => {
+    const db = fakeTipoExplotacionDb([
+      { id: "te-leche", nombre: "Leche", activo: 1 },
+      { id: "te-cria", nombre: "Cría", activo: 0 },
+    ])
+
+    const result = await new DrizzleCatalogoAnimalMaestroAdapter(db as never).listarActivos(
+      "tipoExplotacion",
+    )
+
+    expect(result).toEqual([
+      { id: "te-cria", nombre: "Cría", activo: false },
+      { id: "te-leche", nombre: "Leche", activo: true },
+    ])
+    db.assertNoActiveFilter()
   })
 })
