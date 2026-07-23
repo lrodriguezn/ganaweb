@@ -44,6 +44,13 @@ export interface AnimalResumen {
   /** epoch seconds (UTC) — null si no aplica. PR Slice D2: persistencia. */
   fechaNacimiento?: number | null
   fechaCompra?: number | null
+  codigoRfid?: string | null
+  tipoExplotacionId?: string | null
+  tatuado?: boolean | null
+  herrado?: boolean | null
+  descornado?: boolean | null
+  esDeMonta?: boolean | null
+  numeroPezones?: number | null
 }
 
 export interface EventoTimeline {

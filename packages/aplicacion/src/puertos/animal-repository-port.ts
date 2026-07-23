@@ -35,6 +35,13 @@ export interface AnimalUpdateCambios {
   readonly comentarios?: string | null
   readonly codigoArete?: string | null
   readonly categoriaReproductiva?: string | null
+  readonly codigoRfid?: string | null
+  readonly tipoExplotacionId?: string | null
+  readonly tatuado?: boolean
+  readonly herrado?: boolean
+  readonly descornado?: boolean
+  readonly esDeMonta?: boolean | null
+  readonly numeroPezones?: number | null
 }
 
 export interface AnimalRegistro {
@@ -51,9 +58,15 @@ export interface AnimalRegistro {
   readonly loteId?: string
   readonly usuarioCreadoPor: string
   readonly creadoEn: Date
-  /** epoch seconds (UTC) — null si no aplica. PR Slice D2: persistencia. */
   readonly fechaNacimiento?: number | null
   readonly fechaCompra?: number | null
+  readonly codigoRfid?: string | null
+  readonly tipoExplotacionId?: string | null
+  readonly tatuado?: boolean
+  readonly herrado?: boolean
+  readonly descornado?: boolean
+  readonly esDeMonta?: boolean | null
+  readonly numeroPezones?: number | null
 }
 
 export interface AnimalRepositoryPort {

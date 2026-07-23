@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks"
 import type {
   AnimalRegistro,
   AnimalRepositoryPort,
+  AnimalUpdateCambios,
   AnimalUseCaseDeps,
   ArchivoAnimalPort,
   ColaBinariosPort,
@@ -80,6 +81,13 @@ function mapAnimalResumen(row: typeof animales.$inferSelect): AnimalResumen {
     salud: saludFromKey(row.saludAnimalKey),
     fechaNacimiento: row.fechaNacimiento,
     fechaCompra: row.fechaCompra,
+    codigoRfid: row.codigoRfid,
+    tipoExplotacionId: row.tipoExplotacionId,
+    tatuado: row.tatuado,
+    herrado: row.herrado,
+    descornado: row.descornado,
+    esDeMonta: row.esDeMonta === 1,
+    numeroPezones: row.numeroPezones,
   }
 }
 
@@ -100,6 +108,13 @@ function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegistro {
     creadoEn: row.createdAt,
     fechaNacimiento: row.fechaNacimiento,
     fechaCompra: row.fechaCompra,
+    codigoRfid: row.codigoRfid,
+    tipoExplotacionId: row.tipoExplotacionId,
+    tatuado: row.tatuado,
+    herrado: row.herrado,
+    descornado: row.descornado,
+    esDeMonta: row.esDeMonta === 1,
+    numeroPezones: row.numeroPezones,
   }
 }
 
@@ -447,6 +462,7 @@ export function crearAuditoriaEliminacionAnimal(input: AuditoriaEliminacionAnima
   })
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional DB columns
 function toAnimalRowExtended(extra: {
   readonly razaId?: string | null
   readonly colorId?: string | null
@@ -458,6 +474,13 @@ function toAnimalRowExtended(extra: {
   readonly pesoCompra?: number | null
   readonly comentarios?: string | null
   readonly codigoArete?: string | null
+  readonly codigoRfid?: string | null
+  readonly tipoExplotacionId?: string | null
+  readonly tatuado?: boolean
+  readonly herrado?: boolean
+  readonly descornado?: boolean
+  readonly esDeMonta?: boolean | null
+  readonly numeroPezones?: number | null
 }) {
   return {
     razaId: extra.razaId ?? null,
@@ -470,6 +493,13 @@ function toAnimalRowExtended(extra: {
     pesoCompra: extra.pesoCompra ?? null,
     comentarios: extra.comentarios ?? null,
     codigoArete: extra.codigoArete ?? null,
+    codigoRfid: extra.codigoRfid ?? null,
+    tipoExplotacionId: extra.tipoExplotacionId ?? null,
+    tatuado: extra.tatuado ?? false,
+    herrado: extra.herrado ?? false,
+    descornado: extra.descornado ?? false,
+    esDeMonta: extra.esDeMonta === true ? 1 : extra.esDeMonta === false ? 0 : null,
+    numeroPezones: extra.numeroPezones ?? null,
   }
 }
 
@@ -490,6 +520,13 @@ function toAnimalRow(
     readonly pesoCompra?: number | null
     readonly comentarios?: string | null
     readonly codigoArete?: string | null
+    readonly codigoRfid?: string | null
+    readonly tipoExplotacionId?: string | null
+    readonly tatuado?: boolean
+    readonly herrado?: boolean
+    readonly descornado?: boolean
+    readonly esDeMonta?: boolean | null
+    readonly numeroPezones?: number | null
   },
 ): typeof animales.$inferInsert {
   return {
@@ -509,6 +546,38 @@ function toAnimalRow(
     fechaCompra: animal.fechaCompra ?? null,
     ...toAnimalRowExtended(extra),
   }
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: conditional set builder with many optional fields
+function buildUpdateSet(cambios: AnimalUpdateCambios) {
+  const set: Record<string, unknown> = {
+    version: cambios.versionLeida + 1,
+    updatedAt: new Date(),
+  }
+  if (cambios.codigo) set.codigo = cambios.codigo.trim()
+  if (cambios.nombre !== undefined) set.nombre = cambios.nombre
+  if (cambios.sexoKey !== undefined) set.sexoKey = cambios.sexoKey
+  if (cambios.fechaNacimiento !== undefined) set.fechaNacimiento = cambios.fechaNacimiento
+  if (cambios.fechaCompra !== undefined) set.fechaCompra = cambios.fechaCompra
+  if (cambios.razaId !== undefined) set.razaId = cambios.razaId
+  if (cambios.colorId !== undefined) set.colorId = cambios.colorId
+  if (cambios.calidadAnimalId !== undefined) set.calidadAnimalId = cambios.calidadAnimalId
+  if (cambios.precioCompra !== undefined) set.precioCompra = cambios.precioCompra
+  if (cambios.pesoCompra !== undefined) set.pesoCompra = cambios.pesoCompra
+  if (cambios.madreId !== undefined) set.madreId = cambios.madreId
+  if (cambios.padreId !== undefined) set.padreId = cambios.padreId
+  if (cambios.comentarios !== undefined) set.comentarios = cambios.comentarios
+  if (cambios.codigoArete !== undefined) set.codigoArete = cambios.codigoArete
+  if (cambios.categoriaReproductiva !== undefined)
+    set.categoriaReproductiva = cambios.categoriaReproductiva
+  if (cambios.codigoRfid !== undefined) set.codigoRfid = cambios.codigoRfid
+  if (cambios.tipoExplotacionId !== undefined) set.tipoExplotacionId = cambios.tipoExplotacionId
+  if (cambios.tatuado !== undefined) set.tatuado = cambios.tatuado
+  if (cambios.herrado !== undefined) set.herrado = cambios.herrado
+  if (cambios.descornado !== undefined) set.descornado = cambios.descornado
+  if (cambios.esDeMonta !== undefined) set.esDeMonta = cambios.esDeMonta ? 1 : 0
+  if (cambios.numeroPezones !== undefined) set.numeroPezones = cambios.numeroPezones
+  return set
 }
 
 export class DrizzleAnimalRepository implements AnimalRepositoryPort {
@@ -557,59 +626,21 @@ export class DrizzleAnimalRepository implements AnimalRepositoryPort {
       readonly pesoCompra?: number | null
       readonly comentarios?: string | null
       readonly codigoArete?: string | null
+      readonly codigoRfid?: string | null
+      readonly tipoExplotacionId?: string | null
+      readonly tatuado?: boolean
+      readonly herrado?: boolean
+      readonly descornado?: boolean
+      readonly esDeMonta?: boolean | null
+      readonly numeroPezones?: number | null
     }
     await currentDb(this.db).insert(animales).values(toAnimalRow(animal, persistible))
   }
 
-  async actualizar(
-    animalId: string,
-    fincaId: string,
-    cambios: {
-      readonly versionLeida: number
-      readonly codigo?: string
-      readonly nombre?: string
-      readonly sexoKey?: 0 | 1 | 2
-      readonly fechaNacimiento?: number | null
-      readonly fechaCompra?: number | null
-      readonly razaId?: string | null
-      readonly colorId?: string | null
-      readonly calidadAnimalId?: string | null
-      readonly precioCompra?: number | null
-      readonly pesoCompra?: number | null
-      readonly madreId?: string | null
-      readonly padreId?: string | null
-      readonly comentarios?: string | null
-      readonly codigoArete?: string | null
-      readonly categoriaReproductiva?: string | null
-    },
-  ): Promise<void> {
+  async actualizar(animalId: string, fincaId: string, cambios: AnimalUpdateCambios): Promise<void> {
     await currentDb(this.db)
       .update(animales)
-      .set({
-        ...(cambios.codigo ? { codigo: cambios.codigo.trim() } : {}),
-        ...(cambios.nombre !== undefined ? { nombre: cambios.nombre } : {}),
-        ...(cambios.sexoKey !== undefined ? { sexoKey: cambios.sexoKey } : {}),
-        ...(cambios.fechaNacimiento !== undefined
-          ? { fechaNacimiento: cambios.fechaNacimiento }
-          : {}),
-        ...(cambios.fechaCompra !== undefined ? { fechaCompra: cambios.fechaCompra } : {}),
-        ...(cambios.razaId !== undefined ? { razaId: cambios.razaId } : {}),
-        ...(cambios.colorId !== undefined ? { colorId: cambios.colorId } : {}),
-        ...(cambios.calidadAnimalId !== undefined
-          ? { calidadAnimalId: cambios.calidadAnimalId }
-          : {}),
-        ...(cambios.precioCompra !== undefined ? { precioCompra: cambios.precioCompra } : {}),
-        ...(cambios.pesoCompra !== undefined ? { pesoCompra: cambios.pesoCompra } : {}),
-        ...(cambios.madreId !== undefined ? { madreId: cambios.madreId } : {}),
-        ...(cambios.padreId !== undefined ? { padreId: cambios.padreId } : {}),
-        ...(cambios.comentarios !== undefined ? { comentarios: cambios.comentarios } : {}),
-        ...(cambios.codigoArete !== undefined ? { codigoArete: cambios.codigoArete } : {}),
-        ...(cambios.categoriaReproductiva !== undefined
-          ? { categoriaReproductiva: cambios.categoriaReproductiva }
-          : {}),
-        version: cambios.versionLeida + 1,
-        updatedAt: new Date(),
-      })
+      .set(buildUpdateSet(cambios))
       .where(
         and(
           eq(animales.id, animalId),

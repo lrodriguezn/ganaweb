@@ -585,6 +585,13 @@ export interface AnimalFormInitialValues {
   pesoCompra?: string
   comentarios?: string
   codigoArete?: string
+  codigoRfid?: string
+  tipoExplotacionId?: string
+  tatuado?: boolean
+  herrado?: boolean
+  descornado?: boolean
+  esDeMonta?: boolean
+  numeroPezones?: number
   potreroId?: string
   sectorId?: string
   loteId?: string

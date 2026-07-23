@@ -35,6 +35,13 @@ export interface CreateAnimalWebInput {
     readonly pesoCompra?: number
     readonly comentarios?: string
     readonly codigoArete?: string
+    readonly codigoRfid?: string
+    readonly tipoExplotacionId?: string
+    readonly tatuado?: boolean
+    readonly herrado?: boolean
+    readonly descornado?: boolean
+    readonly esDeMonta?: boolean
+    readonly numeroPezones?: number
   }
   readonly imagenes?: readonly {
     readonly id: string
@@ -80,6 +87,13 @@ export interface UpdateAnimalWebInput {
     readonly pesoCompra?: number
     readonly comentarios?: string
     readonly codigoArete?: string
+    readonly codigoRfid?: string
+    readonly tipoExplotacionId?: string
+    readonly tatuado?: boolean
+    readonly herrado?: boolean
+    readonly descornado?: boolean
+    readonly esDeMonta?: boolean
+    readonly numeroPezones?: number
   }
 }
 

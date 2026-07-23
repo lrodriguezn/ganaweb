@@ -199,6 +199,13 @@ interface CrearAnimalCommand {
     readonly pesoCompra?: number | null
     readonly comentarios?: string | null
     readonly codigoArete?: string | null
+    readonly codigoRfid?: string | null
+    readonly tipoExplotacionId?: string | null
+    readonly tatuado?: boolean | null
+    readonly herrado?: boolean | null
+    readonly descornado?: boolean | null
+    readonly esDeMonta?: boolean | null
+    readonly numeroPezones?: number | null
   }
   readonly imagenes?: readonly {
     readonly id: string
@@ -324,6 +331,7 @@ async function registrarImagenesPendientesAnimal(
   return imagenesPendientes
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional DB columns
 function crearAnimalPersistible(input: {
   readonly animalId: string
   readonly fincaId: string
@@ -345,6 +353,13 @@ function crearAnimalPersistible(input: {
   readonly pesoCompra?: number | null
   readonly comentarios?: string | null
   readonly codigoArete?: string | null
+  readonly codigoRfid?: string | null
+  readonly tipoExplotacionId?: string | null
+  readonly tatuado?: boolean | null
+  readonly herrado?: boolean | null
+  readonly descornado?: boolean | null
+  readonly esDeMonta?: boolean | null
+  readonly numeroPezones?: number | null
 }) {
   const sexo = input.sexoKey === 1 ? "hembra" : input.sexoKey === 0 ? "macho" : "pajuela"
   const epochSeconds = (date: Date | null | undefined) =>
@@ -373,6 +388,13 @@ function crearAnimalPersistible(input: {
     pesoCompra: input.pesoCompra ?? null,
     comentarios: input.comentarios ?? null,
     codigoArete: input.codigoArete ?? null,
+    codigoRfid: input.codigoRfid ?? null,
+    tipoExplotacionId: input.tipoExplotacionId ?? null,
+    tatuado: input.tatuado ?? null,
+    herrado: input.herrado ?? null,
+    descornado: input.descornado ?? null,
+    esDeMonta: input.esDeMonta ?? null,
+    numeroPezones: input.numeroPezones ?? null,
   } as const
 }
 
@@ -442,6 +464,7 @@ function validarImagenesAnimal(
   return null
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional DB columns
 function buildCrearAnimalInput(
   cmd: CrearAnimalCommand,
   animalId: string,
@@ -481,6 +504,13 @@ function buildCrearAnimalInput(
     pesoCompra: datos.pesoCompra ?? null,
     comentarios: datos.comentarios ?? null,
     codigoArete: datos.codigoArete ?? null,
+    codigoRfid: datos.codigoRfid ?? null,
+    tipoExplotacionId: datos.tipoExplotacionId ?? null,
+    tatuado: datos.tatuado ?? null,
+    herrado: datos.herrado ?? null,
+    descornado: datos.descornado ?? null,
+    esDeMonta: datos.esDeMonta ?? null,
+    numeroPezones: datos.numeroPezones ?? null,
   }
 }
 
