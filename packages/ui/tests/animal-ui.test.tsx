@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs"
 import { renderToString } from "react-dom/server"
 
-import { cleanup, render, screen, within } from "@testing-library/react"
+import { act, cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -18,6 +18,12 @@ import {
   AnimalListMobile,
   AnimalTimeline,
 } from "../src"
+import {
+  DETAIL_FIELD_NAMES,
+  SECTION_LAYOUT,
+  sectionFor,
+  useOnlineStatus,
+} from "../src/ganado/animal-crud-infra"
 
 const animal = {
   id: "a-1",
@@ -1194,6 +1200,114 @@ describe("PR3 animal UI OpenPencil parity", () => {
       const markup = renderToString(<AnimalFormScreen onSave={vi.fn()} onCancel={vi.fn()} />)
       expect(markup).toContain("op-f-400191")
       expect(markup).toContain("20 Nuevo Animal · Desktop")
+    })
+  })
+
+  describe("WU-2: support infrastructure (useOnlineStatus, SECTION_LAYOUT, sectionFor, DETAIL_FIELD_NAMES)", () => {
+    describe("useOnlineStatus hook", () => {
+      it("returns true by default (online) and flips to false on 'offline' event", async () => {
+        function Harness() {
+          const online = useOnlineStatus()
+          return <span data-testid="online-status">{String(online)}</span>
+        }
+        render(<Harness />)
+        expect(screen.getByTestId("online-status")).toHaveTextContent("true")
+
+        // Simulate offline event
+        await act(async () => {
+          window.dispatchEvent(new Event("offline"))
+        })
+        expect(screen.getByTestId("online-status")).toHaveTextContent("false")
+      })
+
+      it("flips back to true on 'online' event after going offline", async () => {
+        function Harness() {
+          const online = useOnlineStatus()
+          return <span data-testid="online-status">{String(online)}</span>
+        }
+        render(<Harness />)
+        // Go offline
+        await act(async () => {
+          window.dispatchEvent(new Event("offline"))
+        })
+        expect(screen.getByTestId("online-status")).toHaveTextContent("false")
+        // Come back online
+        await act(async () => {
+          window.dispatchEvent(new Event("online"))
+        })
+        expect(screen.getByTestId("online-status")).toHaveTextContent("true")
+      })
+    })
+
+    describe("SECTION_LAYOUT config", () => {
+      it("has exactly 5 entries with correct ids and titles", () => {
+        expect(SECTION_LAYOUT).toHaveLength(5)
+        expect(SECTION_LAYOUT.map((s) => s.id)).toEqual([
+          "identificacion",
+          "caracteristicas",
+          "origen",
+          "ubicacion",
+          "detalles",
+        ])
+        expect(SECTION_LAYOUT[0]?.title).toBe("Identificación")
+        expect(SECTION_LAYOUT[4]?.title).toBe("Detalles adicionales")
+      })
+
+      it("assigns gridClasses for non-collapsible sections and kind='collapsible' for detalles", () => {
+        const identificacion = SECTION_LAYOUT.find((s) => s.id === "identificacion")
+        expect(identificacion?.gridClasses).toContain("1fr")
+        expect(identificacion?.gridClasses).toContain("1.4fr")
+
+        const detalles = SECTION_LAYOUT.find((s) => s.id === "detalles")
+        expect(detalles?.kind).toBe("collapsible")
+      })
+    })
+
+    describe("sectionFor resolver", () => {
+      it("maps 'codigo' to 'identificacion' and 'sexoKey' to 'caracteristicas'", () => {
+        expect(sectionFor("codigo")).toBe("identificacion")
+        expect(sectionFor("nombre")).toBe("identificacion")
+        expect(sectionFor("codigoArete")).toBe("identificacion")
+        expect(sectionFor("sexoKey")).toBe("caracteristicas")
+        expect(sectionFor("raza")).toBe("caracteristicas")
+      })
+
+      it("maps 'origen' to 'origen' and location fields to 'ubicacion'", () => {
+        expect(sectionFor("origen")).toBe("origen")
+        expect(sectionFor("potreroId")).toBe("ubicacion")
+        expect(sectionFor("sectorId")).toBe("ubicacion")
+        expect(sectionFor("loteId")).toBe("ubicacion")
+        expect(sectionFor("grupoId")).toBe("ubicacion")
+      })
+
+      it("maps detail fields to 'detalles'", () => {
+        expect(sectionFor("codigoRfid")).toBe("detalles")
+        expect(sectionFor("tipoExplotacionId")).toBe("detalles")
+        expect(sectionFor("propietarioId")).toBe("detalles")
+        expect(sectionFor("comentarios")).toBe("detalles")
+      })
+    })
+
+    describe("DETAIL_FIELD_NAMES set", () => {
+      it("contains all fields rendered inside the collapsible block", () => {
+        expect(DETAIL_FIELD_NAMES.has("codigoRfid")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("tipoExplotacionId")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("propietarioId")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("hierroId")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("numeroPezones")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("tatuado")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("herrado")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("descornado")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("esDeMonta")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("comentarios")).toBe(true)
+      })
+
+      it("does NOT contain non-detail fields", () => {
+        expect(DETAIL_FIELD_NAMES.has("codigo")).toBe(false)
+        expect(DETAIL_FIELD_NAMES.has("sexoKey")).toBe(false)
+        expect(DETAIL_FIELD_NAMES.has("origen")).toBe(false)
+        expect(DETAIL_FIELD_NAMES.has("potreroId")).toBe(false)
+      })
     })
   })
 })
