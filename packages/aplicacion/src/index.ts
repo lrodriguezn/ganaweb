@@ -43,6 +43,7 @@ export type {
   ColorOption,
   RazaOption,
   TablaMaestro,
+  TipoExplotacionOption,
 } from "./puertos/catalogo-animal-maestro-port.js"
 export type {
   CatalogoFincaOption,
@@ -66,6 +67,7 @@ export * from "./casos-uso/listar-catalogo-sexo.js"
 export * from "./casos-uso/listar-catalogo-raza.js"
 export * from "./casos-uso/listar-catalogo-color.js"
 export * from "./casos-uso/listar-catalogo-calidad.js"
+export * from "./casos-uso/listar-catalogo-tipo-explotacion.js"
 export * from "./casos-uso/listar-potreros-por-finca.js"
 export * from "./casos-uso/listar-sectores-por-finca.js"
 export * from "./casos-uso/listar-lotes-por-finca.js"
