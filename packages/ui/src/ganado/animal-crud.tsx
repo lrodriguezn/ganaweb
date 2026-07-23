@@ -735,6 +735,7 @@ function useAnimalForm({
           "Herrado",
           "Descornado",
           "Es de monta",
+          "Nº de pezones",
           "Potrero",
           "Sector",
           "Lote",
