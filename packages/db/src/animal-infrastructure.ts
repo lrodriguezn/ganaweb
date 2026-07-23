@@ -88,6 +88,9 @@ function mapAnimalResumen(row: typeof animales.$inferSelect): AnimalResumen {
     descornado: row.descornado,
     esDeMonta: row.esDeMonta === 1,
     numeroPezones: row.numeroPezones,
+    calidadAnimalId: row.calidadAnimalId,
+    hierroId: row.hierroId,
+    propietarioId: row.propietarioId,
   }
 }
 
@@ -115,6 +118,9 @@ function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegistro {
     descornado: row.descornado,
     esDeMonta: row.esDeMonta === 1,
     numeroPezones: row.numeroPezones,
+    calidadAnimalId: row.calidadAnimalId,
+    hierroId: row.hierroId,
+    propietarioId: row.propietarioId,
   }
 }
 
@@ -470,6 +476,8 @@ function toAnimalRowExtended(extra: {
   readonly padreId?: string | null
   readonly categoriaReproductiva?: string | null
   readonly calidadAnimalId?: string | null
+  readonly hierroId?: string | null
+  readonly propietarioId?: string | null
   readonly precioCompra?: number | null
   readonly pesoCompra?: number | null
   readonly comentarios?: string | null
@@ -489,6 +497,8 @@ function toAnimalRowExtended(extra: {
     padreId: extra.padreId ?? null,
     categoriaReproductiva: extra.categoriaReproductiva ?? null,
     calidadAnimalId: extra.calidadAnimalId ?? null,
+    hierroId: extra.hierroId ?? null,
+    propietarioId: extra.propietarioId ?? null,
     precioCompra: extra.precioCompra ?? null,
     pesoCompra: extra.pesoCompra ?? null,
     comentarios: extra.comentarios ?? null,
@@ -516,6 +526,8 @@ function toAnimalRow(
     readonly padreId?: string | null
     readonly categoriaReproductiva?: string | null
     readonly calidadAnimalId?: string | null
+    readonly hierroId?: string | null
+    readonly propietarioId?: string | null
     readonly precioCompra?: number | null
     readonly pesoCompra?: number | null
     readonly comentarios?: string | null
@@ -562,6 +574,8 @@ function buildUpdateSet(cambios: AnimalUpdateCambios) {
   if (cambios.razaId !== undefined) set.razaId = cambios.razaId
   if (cambios.colorId !== undefined) set.colorId = cambios.colorId
   if (cambios.calidadAnimalId !== undefined) set.calidadAnimalId = cambios.calidadAnimalId
+  if (cambios.hierroId !== undefined) set.hierroId = cambios.hierroId
+  if (cambios.propietarioId !== undefined) set.propietarioId = cambios.propietarioId
   if (cambios.precioCompra !== undefined) set.precioCompra = cambios.precioCompra
   if (cambios.pesoCompra !== undefined) set.pesoCompra = cambios.pesoCompra
   if (cambios.madreId !== undefined) set.madreId = cambios.madreId
@@ -622,6 +636,8 @@ export class DrizzleAnimalRepository implements AnimalRepositoryPort {
       readonly padreId?: string | null
       readonly categoriaReproductiva?: string | null
       readonly calidadAnimalId?: string | null
+      readonly hierroId?: string | null
+      readonly propietarioId?: string | null
       readonly precioCompra?: number | null
       readonly pesoCompra?: number | null
       readonly comentarios?: string | null

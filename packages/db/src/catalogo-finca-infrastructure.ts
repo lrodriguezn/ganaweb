@@ -2,15 +2,25 @@ import type {
   CatalogoFincaOption,
   CatalogoFincaPort,
   GrupoOption,
+  HierroOption,
   LoteOption,
   LugarCompraOption,
   PotreroOption,
+  PropietarioOption,
   SectorOption,
   TablaFinca,
 } from "@ganaweb/aplicacion"
 import { and, eq } from "drizzle-orm"
 import type { DbClient } from "./client.js"
-import { grupos, lotes, lugaresCompras, potreros, sectores } from "./schema/index.js"
+import {
+  grupos,
+  hierros,
+  lotes,
+  lugaresCompras,
+  potreros,
+  propietarios,
+  sectores,
+} from "./schema/index.js"
 
 /**
  * Drizzle adapter for finca-scoped animal master catalogs.
@@ -33,6 +43,8 @@ export class DrizzleCatalogoFincaAdapter
   async listarPorFinca(fincaId: string, tabla: "lote"): Promise<readonly LoteOption[]>
   async listarPorFinca(fincaId: string, tabla: "grupo"): Promise<readonly GrupoOption[]>
   async listarPorFinca(fincaId: string, tabla: "lugarCompra"): Promise<readonly LugarCompraOption[]>
+  async listarPorFinca(fincaId: string, tabla: "hierro"): Promise<readonly HierroOption[]>
+  async listarPorFinca(fincaId: string, tabla: "propietario"): Promise<readonly PropietarioOption[]>
   async listarPorFinca(
     fincaId: string,
     tabla: TablaFinca,
@@ -48,6 +60,10 @@ export class DrizzleCatalogoFincaAdapter
         return this.listarGrupos(fincaId)
       case "lugarCompra":
         return this.listarLugaresCompra(fincaId)
+      case "hierro":
+        return this.listarHierros(fincaId)
+      case "propietario":
+        return this.listarPropietarios(fincaId)
       default:
         return []
     }
@@ -158,6 +174,44 @@ export class DrizzleCatalogoFincaAdapter
       fincaId: row.fincaId,
       activo: row.activo === 1,
       direccion: row.ubicacion,
+    }))
+  }
+
+  private async listarHierros(fincaId: string): Promise<readonly HierroOption[]> {
+    const rows = await this.db
+      .select({
+        id: hierros.id,
+        fincaId: hierros.fincaId,
+        nombre: hierros.nombre,
+        activo: hierros.activo,
+      })
+      .from(hierros)
+      .where(and(eq(hierros.activo, 1), eq(hierros.fincaId, fincaId)))
+      .orderBy(hierros.nombre)
+    return rows.map((row) => ({
+      id: row.id,
+      nombre: row.nombre,
+      fincaId: row.fincaId,
+      activo: row.activo === 1,
+    }))
+  }
+
+  private async listarPropietarios(fincaId: string): Promise<readonly PropietarioOption[]> {
+    const rows = await this.db
+      .select({
+        id: propietarios.id,
+        fincaId: propietarios.fincaId,
+        nombre: propietarios.nombre,
+        activo: propietarios.activo,
+      })
+      .from(propietarios)
+      .where(and(eq(propietarios.activo, 1), eq(propietarios.fincaId, fincaId)))
+      .orderBy(propietarios.nombre)
+    return rows.map((row) => ({
+      id: row.id,
+      nombre: row.nombre,
+      fincaId: row.fincaId,
+      activo: row.activo === 1,
     }))
   }
 }

@@ -28,6 +28,8 @@ export interface CreateAnimalWebInput {
     readonly razaId?: string
     readonly colorId?: string
     readonly calidadId?: string
+    readonly hierroId?: string
+    readonly propietarioId?: string
     readonly lugarCompraId?: string
     readonly madreId?: string
     readonly padreId?: string
@@ -80,6 +82,8 @@ export interface UpdateAnimalWebInput {
     readonly razaId?: string
     readonly colorId?: string
     readonly calidadId?: string
+    readonly hierroId?: string
+    readonly propietarioId?: string
     readonly lugarCompraId?: string
     readonly madreId?: string
     readonly padreId?: string

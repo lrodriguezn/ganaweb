@@ -86,6 +86,9 @@ function toAnimalResumen(animal: AnimalRegistro): AnimalResumen {
     salud: "sano",
     fechaNacimiento: animal.fechaNacimiento ?? null,
     fechaCompra: animal.fechaCompra ?? null,
+    calidadAnimalId: animal.calidadAnimalId ?? null,
+    hierroId: animal.hierroId ?? null,
+    propietarioId: animal.propietarioId ?? null,
   }
 }
 
@@ -291,7 +294,7 @@ export function createAnimalE2eCatalogoMaestroPort(): CatalogoAnimalMaestroPort<
  * Returns seeded potrero/sector/lote/grupo/lugarCompra data for the test finca (finca-1).
  */
 export function createAnimalE2eCatalogoFincaPort(): CatalogoFincaPort<
-  "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
+  "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
   CatalogoFincaOption
 > {
   const fincaId = "finca-1"
@@ -342,12 +345,16 @@ export function createAnimalE2eCatalogoFincaPort(): CatalogoFincaPort<
           return grupos
         case "lugarCompra":
           return lugaresCompra
+        case "hierro":
+          return [{ id: "hierro-h1", nombre: "Hierro 1", fincaId, activo: true }]
+        case "propietario":
+          return [{ id: "prop-1", nombre: "Propietario 1", fincaId, activo: true }]
         default:
           return []
       }
     },
   } as CatalogoFincaPort<
-    "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
+    "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
     CatalogoFincaOption
   >
 }

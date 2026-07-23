@@ -567,6 +567,8 @@ export interface AnimalFormCatalogOptions {
   sector?: readonly SelectOption[]
   lote?: readonly SelectOption[]
   grupo?: readonly SelectOption[]
+  hierro?: readonly SelectOption[]
+  propietario?: readonly SelectOption[]
   canCreateCatalog?: CanCreateCatalog
 }
 
@@ -578,6 +580,8 @@ export interface AnimalFormInitialValues {
   razaId?: string
   colorId?: string
   calidadId?: string
+  hierroId?: string
+  propietarioId?: string
   lugarCompraId?: string
   madreId?: string
   padreId?: string
@@ -641,6 +645,8 @@ const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Descornado", name: "descornado" },
   { label: "Es de monta", name: "esDeMonta" },
   { label: "Nº de pezones", name: "numeroPezones" },
+  { label: "Hierro", name: "hierroId" },
+  { label: "Propietario", name: "propietarioId" },
 ]
 
 const LOCATION_FIELDS: readonly (AnimalFormField & {
@@ -736,6 +742,8 @@ function useAnimalForm({
           "Descornado",
           "Es de monta",
           "Nº de pezones",
+          "Hierro",
+          "Propietario",
           "Potrero",
           "Sector",
           "Lote",
@@ -1095,6 +1103,34 @@ function renderLocationField(field: AnimalFormField, ctx: RenderFieldContext) {
   )
 }
 
+function renderHierroField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
+  return (
+    <CatalogSelectField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      defaultValue={initialValues?.hierroId}
+      options={(catalogOptions?.hierro ?? []) as readonly SelectOption[]}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
+
+function renderPropietarioField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
+  return (
+    <CatalogSelectField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      defaultValue={initialValues?.propietarioId}
+      options={(catalogOptions?.propietario ?? []) as readonly SelectOption[]}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
+
 function renderBooleanField(field: AnimalFormField, ctx: RenderFieldContext) {
   const { initialValues, fieldErrors } = ctx
   const defaultValue = initialValues?.[field.name as keyof AnimalFormInitialValues]
@@ -1170,6 +1206,8 @@ const FIELD_RENDERERS: Record<string, FieldRenderer> = {
   sectorId: renderLocationField,
   loteId: renderLocationField,
   grupoId: renderLocationField,
+  hierroId: renderHierroField,
+  propietarioId: renderPropietarioField,
   tatuado: renderBooleanField,
   herrado: renderBooleanField,
   descornado: renderBooleanField,
@@ -1988,6 +2026,21 @@ function DatosAnimal({ animal }: { animal: AnimalListItem }) {
       {animal.numeroPezones != null && (
         <p>
           <span className="font-medium">Nº pezones:</span> {animal.numeroPezones}
+        </p>
+      )}
+      {animal.hierroId && (
+        <p>
+          <span className="font-medium">Hierro:</span> {animal.hierroId}
+        </p>
+      )}
+      {animal.propietarioId && (
+        <p>
+          <span className="font-medium">Propietario:</span> {animal.propietarioId}
+        </p>
+      )}
+      {animal.calidadAnimalId && (
+        <p>
+          <span className="font-medium">Calidad:</span> {animal.calidadAnimalId}
         </p>
       )}
       <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
