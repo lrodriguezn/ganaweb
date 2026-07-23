@@ -656,8 +656,6 @@ const LOCATION_FIELDS: readonly (AnimalFormField & {
   { label: "Sector", name: "sectorId", optionsKey: "sector" },
   { label: "Lote", name: "loteId", optionsKey: "lote" },
   { label: "Grupo", name: "grupoId", optionsKey: "grupo" },
-  { label: "Hierro", name: "hierroId", optionsKey: "hierro" },
-  { label: "Propietario", name: "propietarioId", optionsKey: "propietario" },
 ]
 
 /**
@@ -1105,6 +1103,34 @@ function renderLocationField(field: AnimalFormField, ctx: RenderFieldContext) {
   )
 }
 
+function renderHierroField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
+  return (
+    <CatalogSelectField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      defaultValue={initialValues?.hierroId}
+      options={(catalogOptions?.hierro ?? []) as readonly SelectOption[]}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
+
+function renderPropietarioField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
+  return (
+    <CatalogSelectField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      defaultValue={initialValues?.propietarioId}
+      options={(catalogOptions?.propietario ?? []) as readonly SelectOption[]}
+      fieldErrors={fieldErrors}
+    />
+  )
+}
+
 function renderBooleanField(field: AnimalFormField, ctx: RenderFieldContext) {
   const { initialValues, fieldErrors } = ctx
   const defaultValue = initialValues?.[field.name as keyof AnimalFormInitialValues]
@@ -1180,8 +1206,8 @@ const FIELD_RENDERERS: Record<string, FieldRenderer> = {
   sectorId: renderLocationField,
   loteId: renderLocationField,
   grupoId: renderLocationField,
-  hierroId: renderLocationField,
-  propietarioId: renderLocationField,
+  hierroId: renderHierroField,
+  propietarioId: renderPropietarioField,
   tatuado: renderBooleanField,
   herrado: renderBooleanField,
   descornado: renderBooleanField,
