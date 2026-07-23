@@ -1448,7 +1448,7 @@ function CatalogSelectField({
     ? []
     : hasDefaultLabel || !defaultValue
       ? options
-      : [{ value: defaultValue, label: "No disponible" }, ...options]
+      : [{ value: defaultValue, label }, ...options]
   const selectProps = unavailable
     ? {}
     : defaultValue === undefined
@@ -1465,7 +1465,7 @@ function CatalogSelectField({
           className="min-h-[--h-touch]"
           {...triggerProps}
         >
-          {unavailable ? "No disponible" : <SelectValue placeholder="No disponible" />}
+          {unavailable ? label : <SelectValue placeholder={label} />}
         </SelectTrigger>
         <SelectContent>
           {renderedOptions.map((option) => (
