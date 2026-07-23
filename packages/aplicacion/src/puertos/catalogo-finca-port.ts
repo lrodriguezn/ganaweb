@@ -39,7 +39,14 @@ export interface HierroOption extends CatalogoFincaOption {}
 
 export interface PropietarioOption extends CatalogoFincaOption {}
 
-export type TablaFinca = "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario"
+export type TablaFinca =
+  | "potrero"
+  | "sector"
+  | "lote"
+  | "grupo"
+  | "lugarCompra"
+  | "hierro"
+  | "propietario"
 
 export interface CatalogoFincaPort<
   TTabla extends string = TablaFinca,

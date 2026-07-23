@@ -346,13 +346,9 @@ export function createAnimalE2eCatalogoFincaPort(): CatalogoFincaPort<
         case "lugarCompra":
           return lugaresCompra
         case "hierro":
-          return [
-            { id: "hierro-h1", nombre: "Hierro 1", fincaId, activo: true },
-          ]
+          return [{ id: "hierro-h1", nombre: "Hierro 1", fincaId, activo: true }]
         case "propietario":
-          return [
-            { id: "prop-1", nombre: "Propietario 1", fincaId, activo: true },
-          ]
+          return [{ id: "prop-1", nombre: "Propietario 1", fincaId, activo: true }]
         default:
           return []
       }

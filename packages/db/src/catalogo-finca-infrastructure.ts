@@ -12,7 +12,15 @@ import type {
 } from "@ganaweb/aplicacion"
 import { and, eq } from "drizzle-orm"
 import type { DbClient } from "./client.js"
-import { grupos, hierros, lotes, lugaresCompras, potreros, propietarios, sectores } from "./schema/index.js"
+import {
+  grupos,
+  hierros,
+  lotes,
+  lugaresCompras,
+  potreros,
+  propietarios,
+  sectores,
+} from "./schema/index.js"
 
 /**
  * Drizzle adapter for finca-scoped animal master catalogs.
@@ -171,19 +179,39 @@ export class DrizzleCatalogoFincaAdapter
 
   private async listarHierros(fincaId: string): Promise<readonly HierroOption[]> {
     const rows = await this.db
-      .select({ id: hierros.id, fincaId: hierros.fincaId, nombre: hierros.nombre, activo: hierros.activo })
+      .select({
+        id: hierros.id,
+        fincaId: hierros.fincaId,
+        nombre: hierros.nombre,
+        activo: hierros.activo,
+      })
       .from(hierros)
       .where(and(eq(hierros.activo, 1), eq(hierros.fincaId, fincaId)))
       .orderBy(hierros.nombre)
-    return rows.map((row) => ({ id: row.id, nombre: row.nombre, fincaId: row.fincaId, activo: row.activo === 1 }))
+    return rows.map((row) => ({
+      id: row.id,
+      nombre: row.nombre,
+      fincaId: row.fincaId,
+      activo: row.activo === 1,
+    }))
   }
 
   private async listarPropietarios(fincaId: string): Promise<readonly PropietarioOption[]> {
     const rows = await this.db
-      .select({ id: propietarios.id, fincaId: propietarios.fincaId, nombre: propietarios.nombre, activo: propietarios.activo })
+      .select({
+        id: propietarios.id,
+        fincaId: propietarios.fincaId,
+        nombre: propietarios.nombre,
+        activo: propietarios.activo,
+      })
       .from(propietarios)
       .where(and(eq(propietarios.activo, 1), eq(propietarios.fincaId, fincaId)))
       .orderBy(propietarios.nombre)
-    return rows.map((row) => ({ id: row.id, nombre: row.nombre, fincaId: row.fincaId, activo: row.activo === 1 }))
+    return rows.map((row) => ({
+      id: row.id,
+      nombre: row.nombre,
+      fincaId: row.fincaId,
+      activo: row.activo === 1,
+    }))
   }
 }

@@ -312,7 +312,13 @@ export interface AnimalCatalogPorts {
   >
   readonly catalogoFinca: CatalogoFincaPort<
     "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
-    PotreroOption | SectorOption | LoteOption | GrupoOption | LugarCompraOption | HierroOption | PropietarioOption
+    | PotreroOption
+    | SectorOption
+    | LoteOption
+    | GrupoOption
+    | LugarCompraOption
+    | HierroOption
+    | PropietarioOption
   >
   readonly catalogoPadres: CatalogoPadresPort
 }
@@ -720,6 +726,7 @@ function toAnimalSession(session: SesionAutorizada): SesionAnimal {
   }
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional DB columns
 function toAnimalListItem(animal: AnimalRegistro): AnimalListItem {
   return {
     id: animal.id,

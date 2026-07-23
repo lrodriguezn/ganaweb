@@ -88,6 +88,7 @@ function createFincaPort(options?: {
 > {
   const targetFincaId = options?.fincaId ?? "finca-esperanza"
   return {
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: mock dispatcher with one branch per tabla
     async listarPorFinca(fincaId, tabla) {
       if (fincaId !== targetFincaId) return []
       if (tabla === "potrero") {
