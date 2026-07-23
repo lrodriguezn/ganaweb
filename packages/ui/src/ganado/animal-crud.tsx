@@ -6,7 +6,6 @@ import { es } from "date-fns/locale"
 import {
   AlertTriangle,
   Baby,
-  Calculator,
   Camera,
   ChevronRight,
   ImagePlus,
@@ -1158,12 +1157,12 @@ function renderSexoField(field: AnimalFormField, ctx: RenderFieldContext) {
             if (hidden) hidden.value = next
           }}
           options={
-            sexOptions.length >= 2
-              ? (sexOptions as unknown as [PillsOption, PillsOption, ...PillsOption[]])
-              : ([
+            (sexOptions.length >= 2
+              ? sexOptions.slice(0, 2)
+              : [
                   { value: "0", label: "Macho" },
                   { value: "1", label: "Hembra" },
-                ] as unknown as [PillsOption, PillsOption, ...PillsOption[]])
+                ]) as unknown as readonly [PillsOption, PillsOption]
           }
           label={field.label}
           {...(fieldErrors?.[field.name]
@@ -1902,70 +1901,6 @@ function FechaCompraField({
         </p>
       ) : null}
     </div>
-  )
-}
-
-/**
- * PR 2a — "Estimar por edad" popover.
- *
- * CA-CRE-004: this is NOT a primitive (see design.md Open Q5). It
- * layers a Radix Popover on top of the existing DatePicker and uses
- * the parent's `onEstimar` callback to write the ISO date and the
- * `[fecha estimada]` tag back into form state.
- */
-function EstimarPorEdad({ onApply }: { onApply: (iso: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const [age, setAge] = useState("3")
-  const handleApply = () => {
-    const years = Number.parseInt(age, 10)
-    if (Number.isFinite(years) && years >= 0) {
-      const estimated = new Date()
-      estimated.setFullYear(estimated.getFullYear() - years)
-      onApply(format(estimated, "yyyy-MM-dd"))
-    }
-    setOpen(false)
-  }
-  return (
-    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-      <PopoverPrimitive.Trigger asChild>
-        <Button type="button" variant="secondary" className="min-h-[--h-touch] shrink-0">
-          <Calculator className="size-4" aria-hidden="true" />
-          Estimar por edad
-        </Button>
-      </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content
-          align="end"
-          sideOffset={6}
-          className="z-50 w-64 rounded-control border bg-popover p-3 text-popover-foreground shadow-md"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="estimar-edad-input">Años</Label>
-            <Input
-              id="estimar-edad-input"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={30}
-              value={age}
-              onChange={(event) => setAge(event.target.value)}
-              className="min-h-[--h-touch]"
-            />
-            <p className="text-caption text-muted-foreground">
-              Se calculará la fecha de nacimiento restando los años a hoy.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="button" onClick={handleApply}>
-                Aplicar
-              </Button>
-            </div>
-          </div>
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </PopoverPrimitive.Root>
   )
 }
 
