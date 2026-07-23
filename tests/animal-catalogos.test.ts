@@ -83,7 +83,7 @@ function createFincaPort(options?: {
   fincaId?: string
   potreroError?: boolean
 }): CatalogoFincaPort<
-  "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
+  "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
   CatalogoFincaOption
 > {
   const targetFincaId = options?.fincaId ?? "finca-esperanza"
@@ -117,10 +117,20 @@ function createFincaPort(options?: {
           { id: "lc-esp-feria", nombre: "Feria local", fincaId, activo: true },
         ] as CatalogoFincaOption[]
       }
+      if (tabla === "hierro") {
+        return [
+          { id: "hierro-1", nombre: "Hierro 1", fincaId, activo: true },
+        ] as CatalogoFincaOption[]
+      }
+      if (tabla === "propietario") {
+        return [
+          { id: "prop-1", nombre: "Propietario 1", fincaId, activo: true },
+        ] as CatalogoFincaOption[]
+      }
       return []
     },
   } as CatalogoFincaPort<
-    "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
+    "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
     CatalogoFincaOption
   >
 }
@@ -182,7 +192,7 @@ afterEach(() => {
 })
 
 describe("loadAnimalCatalogs server loader composition", () => {
-  it("composes all 11 catalogs and returns them as disponible with mapped options", async () => {
+  it("composes all 13 catalogs and returns them as disponible with mapped options", async () => {
     const ports: AnimalCatalogPorts = {
       catalogoGlobal: createGlobalPort(),
       catalogoAnimalMaestro: createMaestroPort(),
@@ -202,6 +212,8 @@ describe("loadAnimalCatalogs server loader composition", () => {
     expect(result.lote.tipo).toBe("disponible")
     expect(result.grupo.tipo).toBe("disponible")
     expect(result.lugarCompra.tipo).toBe("disponible")
+    expect(result.hierro.tipo).toBe("disponible")
+    expect(result.propietario.tipo).toBe("disponible")
     expect(result.madre.tipo).toBe("disponible")
     expect(result.padre.tipo).toBe("disponible")
 
@@ -255,6 +267,8 @@ describe("loadAnimalCatalogs server loader composition", () => {
     expect(result.lote.tipo).toBe("no_disponible")
     expect(result.grupo.tipo).toBe("no_disponible")
     expect(result.lugarCompra.tipo).toBe("no_disponible")
+    expect(result.hierro.tipo).toBe("no_disponible")
+    expect(result.propietario.tipo).toBe("no_disponible")
     expect(result.madre.tipo).toBe("no_disponible")
     expect(result.padre.tipo).toBe("no_disponible")
   })
@@ -281,6 +295,8 @@ describe("loadAnimalCatalogs server loader composition", () => {
     expect(result.lote.tipo).toBe("disponible")
     expect(result.grupo.tipo).toBe("disponible")
     expect(result.lugarCompra.tipo).toBe("disponible")
+    expect(result.hierro.tipo).toBe("disponible")
+    expect(result.propietario.tipo).toBe("disponible")
     expect(result.madre.tipo).toBe("disponible")
     expect(result.padre.tipo).toBe("disponible")
   })
@@ -303,14 +319,14 @@ describe("loadAnimalCatalogs server loader composition", () => {
       RazaOption | ColorOption | CalidadOption
     >
     const failingFinca: CatalogoFincaPort<
-      "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
+      "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
       CatalogoFincaOption
     > = {
       async listarPorFinca() {
         throw new Error("DB offline")
       },
     } as CatalogoFincaPort<
-      "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
+      "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
       CatalogoFincaOption
     >
     const failingPadres: CatalogoPadresPort = {
@@ -342,6 +358,8 @@ describe("loadAnimalCatalogs server loader composition", () => {
       "lote",
       "grupo",
       "lugarCompra",
+      "hierro",
+      "propietario",
       "madre",
       "padre",
     ] as const) {

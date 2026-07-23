@@ -10,9 +10,11 @@ import type {
   CatalogoPadresPort,
   ColorOption,
   GrupoOption,
+  HierroOption,
   LoteOption,
   LugarCompraOption,
   PotreroOption,
+  PropietarioOption,
   RazaOption,
   SectorOption,
   SesionAnimal,
@@ -27,9 +29,11 @@ import {
   listarCatalogoRaza,
   listarCatalogoSexo,
   listarGruposPorFinca,
+  listarHierrosPorFinca,
   listarLotesPorFinca,
   listarLugaresCompraPorFinca,
   listarPotrerosPorFinca,
+  listarPropietariosPorFinca,
   listarSectoresPorFinca,
   obtenerFichaAnimal,
   reactivarAnimal,
@@ -134,6 +138,8 @@ export interface CreateAnimalWebInput {
     readonly razaId?: string
     readonly colorId?: string
     readonly calidadId?: string
+    readonly hierroId?: string
+    readonly propietarioId?: string
     readonly lugarCompraId?: string
     readonly madreId?: string
     readonly padreId?: string
@@ -179,6 +185,8 @@ export interface UpdateAnimalWebInput {
     readonly razaId?: string
     readonly colorId?: string
     readonly calidadId?: string
+    readonly hierroId?: string
+    readonly propietarioId?: string
     readonly lugarCompraId?: string
     readonly madreId?: string
     readonly padreId?: string
@@ -290,6 +298,8 @@ export interface AnimalCatalogs {
   readonly lote: AnimalCatalogResult
   readonly grupo: AnimalCatalogResult
   readonly lugarCompra: AnimalCatalogResult
+  readonly hierro: AnimalCatalogResult
+  readonly propietario: AnimalCatalogResult
   readonly madre: AnimalCatalogResult
   readonly padre: AnimalCatalogResult
 }
@@ -301,8 +311,8 @@ export interface AnimalCatalogPorts {
     RazaOption | ColorOption | CalidadOption
   >
   readonly catalogoFinca: CatalogoFincaPort<
-    "potrero" | "sector" | "lote" | "grupo" | "lugarCompra",
-    PotreroOption | SectorOption | LoteOption | GrupoOption | LugarCompraOption
+    "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
+    PotreroOption | SectorOption | LoteOption | GrupoOption | LugarCompraOption | HierroOption | PropietarioOption
   >
   readonly catalogoPadres: CatalogoPadresPort
 }
@@ -337,6 +347,8 @@ export async function loadAnimalCatalogs(
       lote: NO_DISPONIBLE_CATALOG,
       grupo: NO_DISPONIBLE_CATALOG,
       lugarCompra: NO_DISPONIBLE_CATALOG,
+      hierro: NO_DISPONIBLE_CATALOG,
+      propietario: NO_DISPONIBLE_CATALOG,
       madre: NO_DISPONIBLE_CATALOG,
       padre: NO_DISPONIBLE_CATALOG,
     }
@@ -352,6 +364,8 @@ export async function loadAnimalCatalogs(
     loteSettled,
     grupoSettled,
     lugarCompraSettled,
+    hierroSettled,
+    propietarioSettled,
     madreSettled,
     padreSettled,
   ] = await Promise.allSettled([
@@ -379,6 +393,14 @@ export async function loadAnimalCatalogs(
       fincaId,
       ports.catalogoFinca as CatalogoFincaPort<"lugarCompra", LugarCompraOption>,
     ),
+    listarHierrosPorFinca(
+      fincaId,
+      ports.catalogoFinca as CatalogoFincaPort<"hierro", HierroOption>,
+    ),
+    listarPropietariosPorFinca(
+      fincaId,
+      ports.catalogoFinca as CatalogoFincaPort<"propietario", PropietarioOption>,
+    ),
     ports.catalogoPadres.listarMadres(fincaId, excludedIds),
     ports.catalogoPadres.listarPadres(fincaId, excludedIds),
   ])
@@ -393,6 +415,8 @@ export async function loadAnimalCatalogs(
     lote: mapUcSettled(loteSettled),
     grupo: mapUcSettled(grupoSettled),
     lugarCompra: mapUcSettled(lugarCompraSettled),
+    hierro: mapUcSettled(hierroSettled),
+    propietario: mapUcSettled(propietarioSettled),
     madre: mapComboboxSettled(madreSettled),
     padre: mapComboboxSettled(padreSettled),
   }
@@ -519,6 +543,8 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   madreId?: string | null
   padreId?: string | null
   calidadId?: string | null
+  hierroId?: string | null
+  propietarioId?: string | null
   precioCompra?: number | null
   pesoCompra?: number | null
   comentarios?: string | null
@@ -542,6 +568,8 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
     ...(datos.madreId ? { madreId: datos.madreId } : {}),
     ...(datos.padreId ? { padreId: datos.padreId } : {}),
     ...(datos.calidadId ? { calidadId: datos.calidadId } : {}),
+    ...(datos.hierroId ? { hierroId: datos.hierroId } : {}),
+    ...(datos.propietarioId ? { propietarioId: datos.propietarioId } : {}),
     ...(datos.precioCompra !== undefined ? { precioCompra: datos.precioCompra } : {}),
     ...(datos.pesoCompra !== undefined ? { pesoCompra: datos.pesoCompra } : {}),
     ...(datos.comentarios ? { comentarios: datos.comentarios } : {}),
@@ -593,6 +621,8 @@ function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
   readonly razaId?: string | null
   readonly colorId?: string | null
   readonly calidadAnimalId?: string | null
+  readonly hierroId?: string | null
+  readonly propietarioId?: string | null
   readonly precioCompra?: number | null
   readonly pesoCompra?: number | null
   readonly madreId?: string | null
@@ -623,6 +653,8 @@ function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
     ...(cambios.razaId ? { razaId: cambios.razaId } : {}),
     ...(cambios.colorId ? { colorId: cambios.colorId } : {}),
     ...(cambios.calidadId ? { calidadAnimalId: cambios.calidadId } : {}),
+    ...(cambios.hierroId ? { hierroId: cambios.hierroId } : {}),
+    ...(cambios.propietarioId ? { propietarioId: cambios.propietarioId } : {}),
     ...(cambios.precioCompra !== undefined ? { precioCompra: cambios.precioCompra } : {}),
     ...(cambios.pesoCompra !== undefined ? { pesoCompra: cambios.pesoCompra } : {}),
     ...(cambios.madreId ? { madreId: cambios.madreId } : {}),
@@ -706,6 +738,9 @@ function toAnimalListItem(animal: AnimalRegistro): AnimalListItem {
     descornado: animal.descornado ?? null,
     esDeMonta: animal.esDeMonta ?? null,
     numeroPezones: animal.numeroPezones ?? null,
+    calidadAnimalId: animal.calidadAnimalId ?? null,
+    hierroId: animal.hierroId ?? null,
+    propietarioId: animal.propietarioId ?? null,
   }
 }
 

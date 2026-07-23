@@ -28,6 +28,8 @@ export interface AnimalUpdateCambios {
   readonly razaId?: string | null
   readonly colorId?: string | null
   readonly calidadAnimalId?: string | null
+  readonly hierroId?: string | null
+  readonly propietarioId?: string | null
   readonly precioCompra?: number | null
   readonly pesoCompra?: number | null
   readonly madreId?: string | null
@@ -67,6 +69,9 @@ export interface AnimalRegistro {
   readonly descornado?: boolean
   readonly esDeMonta?: boolean | null
   readonly numeroPezones?: number | null
+  readonly calidadAnimalId?: string | null
+  readonly hierroId?: string | null
+  readonly propietarioId?: string | null
 }
 
 export interface AnimalRepositoryPort {

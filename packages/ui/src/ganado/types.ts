@@ -51,6 +51,9 @@ export interface AnimalResumen {
   descornado?: boolean | null
   esDeMonta?: boolean | null
   numeroPezones?: number | null
+  calidadAnimalId?: string | null
+  hierroId?: string | null
+  propietarioId?: string | null
 }
 
 export interface EventoTimeline {

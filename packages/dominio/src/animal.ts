@@ -36,6 +36,9 @@ export interface AnimalResumen {
   readonly descornado?: boolean | null
   readonly esDeMonta?: boolean | null
   readonly numeroPezones?: number | null
+  readonly calidadAnimalId?: string | null
+  readonly hierroId?: string | null
+  readonly propietarioId?: string | null
 }
 
 export type SexoKey = 0 | 1 | 2
@@ -105,6 +108,9 @@ export interface DatosCreacionAnimal {
   readonly descornado?: boolean | null
   readonly esDeMonta?: boolean | null
   readonly numeroPezones?: number | null
+  readonly calidadAnimalId?: string | null
+  readonly hierroId?: string | null
+  readonly propietarioId?: string | null
   readonly existentes: readonly AnimalParaValidacion[]
 }
 
@@ -127,6 +133,9 @@ export interface AnimalValidado {
   readonly descornado?: boolean | undefined
   readonly esDeMonta?: boolean | null | undefined
   readonly numeroPezones?: number | null | undefined
+  readonly calidadAnimalId?: string | null | undefined
+  readonly hierroId?: string | null | undefined
+  readonly propietarioId?: string | null | undefined
 }
 
 export interface ResumenReferenciasAnimal {
@@ -148,6 +157,8 @@ export interface DatosActualizacionAnimal {
     readonly razaId?: string | null
     readonly colorId?: string | null
     readonly calidadAnimalId?: string | null
+    readonly hierroId?: string | null
+    readonly propietarioId?: string | null
     readonly precioCompra?: number | null
     readonly pesoCompra?: number | null
     readonly madreId?: string | null
