@@ -22,6 +22,7 @@ export type {
   AnimalRegistro,
   AnimalRepositoryPort,
   AnimalResumen,
+  AnimalUpdateCambios,
 } from "./puertos/animal-repository-port.js"
 export type { ErrorValidacionAnimal } from "./casos-uso/animales/index.js"
 export type { AnimalReferenceCheckerPort } from "./puertos/animal-reference-checker-port.js"

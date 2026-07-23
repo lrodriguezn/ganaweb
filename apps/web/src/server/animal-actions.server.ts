@@ -154,6 +154,8 @@ export interface UpdateAnimalWebInput {
   readonly animalId: string
   readonly cambios: {
     readonly codigo?: string
+    readonly nombre?: string
+    readonly sexoKey?: string | 0 | 1 | 2
     readonly versionLeida: number
     /**
      * v1.3 (PR 2b) — extended edit fields. The form emits the same 11 keys
@@ -175,6 +177,8 @@ export interface UpdateAnimalWebInput {
     readonly padreId?: string
     readonly precioCompra?: number
     readonly pesoCompra?: number
+    readonly comentarios?: string
+    readonly codigoArete?: string
   }
 }
 
@@ -542,13 +546,52 @@ async function normalizarSexoKeyParaCreacion(
  * the spec mandates; a future PR will extend the dominio to accept
  * them. Mirrors the create route's `pickCreateAnimalDatos` pattern.
  */
+
+function normalizeSexoKey(value: string | 0 | 1 | 2 | null | undefined): 0 | 1 | 2 | undefined {
+  if (value === undefined || value === null || value === "") return undefined
+  if (typeof value === "number") return value as 0 | 1 | 2
+  const parsed = Number.parseInt(value, 10)
+  return parsed === 0 || parsed === 1 || parsed === 2 ? (parsed as 0 | 1 | 2) : undefined
+}
+
 function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
   readonly codigo?: string
+  readonly nombre?: string
+  readonly sexoKey?: 0 | 1 | 2
+  readonly fechaNacimiento?: number | null
+  readonly fechaCompra?: number | null
+  readonly razaId?: string | null
+  readonly colorId?: string | null
+  readonly calidadAnimalId?: string | null
+  readonly precioCompra?: number | null
+  readonly pesoCompra?: number | null
+  readonly madreId?: string | null
+  readonly padreId?: string | null
+  readonly comentarios?: string | null
+  readonly codigoArete?: string | null
   readonly versionLeida: number
 } {
+  const sexoKey = normalizeSexoKey(cambios.sexoKey)
   return {
     versionLeida: cambios.versionLeida,
     ...(cambios.codigo ? { codigo: cambios.codigo } : {}),
+    ...(cambios.nombre ? { nombre: cambios.nombre } : {}),
+    ...(sexoKey !== undefined ? { sexoKey } : {}),
+    ...(cambios.fechaNacimiento
+      ? { fechaNacimiento: Math.floor(new Date(cambios.fechaNacimiento).getTime() / 1000) }
+      : {}),
+    ...(cambios.fechaCompra
+      ? { fechaCompra: Math.floor(new Date(cambios.fechaCompra).getTime() / 1000) }
+      : {}),
+    ...(cambios.razaId ? { razaId: cambios.razaId } : {}),
+    ...(cambios.colorId ? { colorId: cambios.colorId } : {}),
+    ...(cambios.calidadId ? { calidadAnimalId: cambios.calidadId } : {}),
+    ...(cambios.precioCompra !== undefined ? { precioCompra: cambios.precioCompra } : {}),
+    ...(cambios.pesoCompra !== undefined ? { pesoCompra: cambios.pesoCompra } : {}),
+    ...(cambios.madreId ? { madreId: cambios.madreId } : {}),
+    ...(cambios.padreId ? { padreId: cambios.padreId } : {}),
+    ...(cambios.comentarios ? { comentarios: cambios.comentarios } : {}),
+    ...(cambios.codigoArete ? { codigoArete: cambios.codigoArete } : {}),
   }
 }
 
