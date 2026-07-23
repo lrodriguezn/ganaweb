@@ -656,6 +656,8 @@ const LOCATION_FIELDS: readonly (AnimalFormField & {
   { label: "Sector", name: "sectorId", optionsKey: "sector" },
   { label: "Lote", name: "loteId", optionsKey: "lote" },
   { label: "Grupo", name: "grupoId", optionsKey: "grupo" },
+  { label: "Hierro", name: "hierroId", optionsKey: "hierro" },
+  { label: "Propietario", name: "propietarioId", optionsKey: "propietario" },
 ]
 
 /**
