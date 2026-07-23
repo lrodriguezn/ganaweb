@@ -375,10 +375,12 @@ describe("PR3 animal UI OpenPencil parity", () => {
         />
       </>,
     )
-    const sexoControls = screen.getAllByRole("combobox", { name: "Sexo" })
-    expect(sexoControls).toHaveLength(2)
-    expect(sexoControls[0]).not.toHaveAttribute("id", sexoControls[1]?.id)
-    const firstSexo = sexoControls[0]
+    // Desktop renders Sexo as a combobox (Select), mobile as a radiogroup (PillsSegmentadas)
+    const sexoComboboxes = screen.getAllByRole("combobox", { name: "Sexo" })
+    expect(sexoComboboxes).toHaveLength(1) // only desktop
+    const sexoRadiogroups = screen.getAllByRole("radiogroup", { name: "Sexo" })
+    expect(sexoRadiogroups).toHaveLength(1) // only mobile
+    const firstSexo = sexoComboboxes[0]
     if (!firstSexo) throw new Error("first sexo control expected")
     await user.click(firstSexo)
     await user.click(screen.getByRole("option", { name: "Macho" }))
@@ -1490,6 +1492,48 @@ describe("PR3 animal UI OpenPencil parity", () => {
         />,
       )
       expect(screen.getByLabelText("Es de monta")).toBeInTheDocument()
+    })
+  })
+
+  describe("WU-5: Mobile parity", () => {
+    it("renders Sexo as PillsSegmentadas on mobile (not Select)", () => {
+      render(
+        <AnimalFormScreen
+          mode="mobile"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          catalogOptions={{
+            sexo: [
+              { value: "0", label: "Macho" },
+              { value: "1", label: "Hembra" },
+            ],
+          }}
+        />,
+      )
+      // On mobile, Sexo should be a radiogroup (PillsSegmentadas)
+      expect(screen.getByRole("radiogroup", { name: "Sexo" })).toBeInTheDocument()
+      // No combobox for Sexo on mobile
+      expect(screen.queryByRole("combobox", { name: "Sexo" })).not.toBeInTheDocument()
+    })
+
+    it("renders mobile ✕ close button in header calling onCancel", async () => {
+      const user = userEvent.setup()
+      const onCancel = vi.fn()
+      render(
+        <AnimalFormScreen mode="mobile" onSave={vi.fn()} onCancel={onCancel} />,
+      )
+      const closeBtn = screen.getByRole("button", { name: /cerrar/i })
+      expect(closeBtn).toBeInTheDocument()
+      await user.click(closeBtn)
+      expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it("renders sticky full-width footer with 'Guardar animal' on mobile", () => {
+      render(<AnimalFormScreen mode="mobile" onSave={vi.fn()} onCancel={vi.fn()} />)
+      const footer = screen.getByRole("contentinfo")
+      expect(footer).toHaveAttribute("data-sticky-save", "true")
+      // Primary button text includes "animal" on mobile
+      expect(screen.getByRole("button", { name: /Guardar animal/ })).toBeInTheDocument()
     })
   })
 })

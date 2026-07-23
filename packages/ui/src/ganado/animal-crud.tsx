@@ -730,31 +730,9 @@ function useAnimalForm({
     setComentarios((prev) => (prev ? `${prev} [fecha estimada]` : "[fecha estimada]"))
   }
 
-  const fields = mobile
-    ? FORM_FIELDS.filter((field) =>
-        [
-          "Código *",
-          "Nombre",
-          "Sexo",
-          "Raza",
-          "Fecha de nacimiento",
-          "Origen",
-          "RFID",
-          "Tipo de explotación",
-          "Tatuado",
-          "Herrado",
-          "Descornado",
-          "Es de monta",
-          "Nº de pezones",
-          "Hierro",
-          "Propietario",
-          "Potrero",
-          "Sector",
-          "Lote",
-          "Grupo",
-        ].includes(field.label),
-      )
-    : FORM_FIELDS
+  // WU-5: mobile shows ALL the same fields as desktop (same JSX, cn()-driven layout).
+  // No field filter — the spec requires parity (§3.5.6, issue #59).
+  const fields = FORM_FIELDS
   const formId = `animal-form-${currentAnimalId ?? "new"}`
   const submitForm = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -839,6 +817,7 @@ export function AnimalFormScreen({
     currentAnimalId,
     setFechaNacimiento,
     setComentarios,
+    mobile,
   }
 
   const renderFieldByName = (name: string, context: RenderFieldContext): React.ReactNode => {
@@ -914,9 +893,21 @@ export function AnimalFormScreen({
         className={cn(
           "h-14 border-b bg-card px-4 flex items-center",
           !mobile && "max-w-[720px] mx-auto rounded-t-card border w-full",
+          mobile && "justify-between",
         )}
       >
         <h1 className="text-title font-semibold">Nuevo animal</h1>
+        {mobile && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Cerrar"
+            onClick={onCancel}
+          >
+            <X className="size-5" />
+          </Button>
+        )}
       </header>
       <form
         id={formId}
@@ -1088,10 +1079,14 @@ export function AnimalFormScreen({
                 : "-mx-4 -mb-4 border-x border-b rounded-b-card justify-end",
             )}
           >
-            <p className="mr-auto text-caption text-info-600">Se sincronizará al recuperar señal</p>
-            <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
-              Cancelar
-            </Button>
+            <p className="mr-auto text-caption text-info-600">
+              Se sincronizará al recuperar señal
+            </p>
+            {!mobile && (
+              <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+                Cancelar
+              </Button>
+            )}
             {/*
             PR 2a (CA-UI-006): "min-w-[120px]" preserves button width when
             the label flips between "Guardar" and "Guardando…".
@@ -1100,9 +1095,9 @@ export function AnimalFormScreen({
               type="submit"
               disabled={isSubmitting}
               aria-busy={isSubmitting}
-              className="min-w-[120px]"
+              className={cn("min-w-[120px]", mobile && "w-full")}
             >
-              {isSubmitting ? "Guardando…" : "Guardar"}
+              {isSubmitting ? "Guardando…" : mobile ? "Guardar animal" : "Guardar"}
             </Button>
           </footer>
         </fieldset>
@@ -1124,13 +1119,62 @@ interface RenderFieldContext {
   currentAnimalId?: string | undefined
   setFechaNacimiento: (value: string) => void
   setComentarios: React.Dispatch<React.SetStateAction<string>>
+  mobile: boolean
 }
 
 type FieldRenderer = (field: AnimalFormField, ctx: RenderFieldContext) => React.ReactNode
 
 function renderSexoField(field: AnimalFormField, ctx: RenderFieldContext) {
-  const { initialValues, catalogOptions, fieldErrors } = ctx
+  const { initialValues, catalogOptions, fieldErrors, mobile } = ctx
   const sexo = catalogOptions?.sexo ?? []
+
+  // Mobile: render as PillsSegmentadas (full-width radio group)
+  if (mobile) {
+    const selectedValue =
+      sexo.some((option) => option.value === "1")
+        ? String(initialValues?.sexoKey ?? 1)
+        : undefined
+    const sexOptions: readonly PillsOption[] = sexo.map((o) => ({
+      value: o.value,
+      label: o.label,
+    }))
+    return (
+      <div className="space-y-1.5" key={field.name}>
+        <Label htmlFor={`sexo-${field.name}`}>{field.label}</Label>
+        <input type="hidden" name={field.name} value={selectedValue ?? "1"} />
+        <PillsSegmentadas
+          id={`sexo-${field.name}`}
+          name={field.name}
+          value={selectedValue ?? "1"}
+          onChange={(next) => {
+            const hidden = document.querySelector(
+              `input[type=hidden][name="${field.name}"]`,
+            ) as HTMLInputElement | null
+            if (hidden) hidden.value = next
+          }}
+          options={
+            sexOptions.length >= 2
+              ? (sexOptions as unknown as [PillsOption, PillsOption, ...PillsOption[]])
+              : ([
+                  { value: "0", label: "Macho" },
+                  { value: "1", label: "Hembra" },
+                ] as unknown as [PillsOption, PillsOption, ...PillsOption[]])
+          }
+          label={field.label}
+          {...(fieldErrors?.[field.name]
+            ? { "aria-invalid": "true" as const }
+            : {})}
+        />
+        {fieldErrors?.[field.name] ? (
+          <p role="alert" className="text-caption text-danger-600">
+            {fieldErrors[field.name]}
+          </p>
+        ) : null}
+      </div>
+    )
+  }
+
+  // Desktop: render as CatalogSelectField (combobox)
   return (
     <CatalogSelectField
       key={field.name}
