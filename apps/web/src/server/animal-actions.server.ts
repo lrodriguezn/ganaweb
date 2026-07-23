@@ -141,6 +141,13 @@ export interface CreateAnimalWebInput {
     readonly pesoCompra?: number
     readonly comentarios?: string
     readonly codigoArete?: string
+    readonly codigoRfid?: string
+    readonly tipoExplotacionId?: string
+    readonly tatuado?: boolean
+    readonly herrado?: boolean
+    readonly descornado?: boolean
+    readonly esDeMonta?: boolean
+    readonly numeroPezones?: number
   }
   readonly imagenes?: readonly {
     readonly id: string
@@ -179,6 +186,13 @@ export interface UpdateAnimalWebInput {
     readonly pesoCompra?: number
     readonly comentarios?: string
     readonly codigoArete?: string
+    readonly codigoRfid?: string
+    readonly tipoExplotacionId?: string
+    readonly tatuado?: boolean
+    readonly herrado?: boolean
+    readonly descornado?: boolean
+    readonly esDeMonta?: boolean
+    readonly numeroPezones?: number
   }
 }
 
@@ -493,6 +507,7 @@ function hasAnimalPermission(
   )
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional DB columns
 function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   codigo: string
   nombre: string
@@ -508,6 +523,13 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   pesoCompra?: number | null
   comentarios?: string | null
   codigoArete?: string | null
+  codigoRfid?: string | null
+  tipoExplotacionId?: string | null
+  tatuado?: boolean | null
+  herrado?: boolean | null
+  descornado?: boolean | null
+  esDeMonta?: boolean | null
+  numeroPezones?: number | null
 } {
   return {
     codigo: datos.codigo,
@@ -524,6 +546,13 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
     ...(datos.pesoCompra !== undefined ? { pesoCompra: datos.pesoCompra } : {}),
     ...(datos.comentarios ? { comentarios: datos.comentarios } : {}),
     ...(datos.codigoArete ? { codigoArete: datos.codigoArete } : {}),
+    ...(datos.codigoRfid ? { codigoRfid: datos.codigoRfid } : {}),
+    ...(datos.tipoExplotacionId ? { tipoExplotacionId: datos.tipoExplotacionId } : {}),
+    ...(datos.tatuado !== undefined ? { tatuado: datos.tatuado } : {}),
+    ...(datos.herrado !== undefined ? { herrado: datos.herrado } : {}),
+    ...(datos.descornado !== undefined ? { descornado: datos.descornado } : {}),
+    ...(datos.esDeMonta !== undefined ? { esDeMonta: datos.esDeMonta } : {}),
+    ...(datos.numeroPezones !== undefined ? { numeroPezones: datos.numeroPezones } : {}),
   }
 }
 
@@ -554,6 +583,7 @@ function normalizeSexoKey(value: string | 0 | 1 | 2 | null | undefined): 0 | 1 |
   return parsed === 0 || parsed === 1 || parsed === 2 ? (parsed as 0 | 1 | 2) : undefined
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional DB columns
 function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
   readonly codigo?: string
   readonly nombre?: string
@@ -569,6 +599,13 @@ function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
   readonly padreId?: string | null
   readonly comentarios?: string | null
   readonly codigoArete?: string | null
+  readonly codigoRfid?: string | null
+  readonly tipoExplotacionId?: string | null
+  readonly tatuado?: boolean
+  readonly herrado?: boolean
+  readonly descornado?: boolean
+  readonly esDeMonta?: boolean | null
+  readonly numeroPezones?: number | null
   readonly versionLeida: number
 } {
   const sexoKey = normalizeSexoKey(cambios.sexoKey)
@@ -592,6 +629,13 @@ function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
     ...(cambios.padreId ? { padreId: cambios.padreId } : {}),
     ...(cambios.comentarios ? { comentarios: cambios.comentarios } : {}),
     ...(cambios.codigoArete ? { codigoArete: cambios.codigoArete } : {}),
+    ...(cambios.codigoRfid ? { codigoRfid: cambios.codigoRfid } : {}),
+    ...(cambios.tipoExplotacionId ? { tipoExplotacionId: cambios.tipoExplotacionId } : {}),
+    ...(cambios.tatuado !== undefined ? { tatuado: cambios.tatuado } : {}),
+    ...(cambios.herrado !== undefined ? { herrado: cambios.herrado } : {}),
+    ...(cambios.descornado !== undefined ? { descornado: cambios.descornado } : {}),
+    ...(cambios.esDeMonta !== undefined ? { esDeMonta: cambios.esDeMonta } : {}),
+    ...(cambios.numeroPezones !== undefined ? { numeroPezones: cambios.numeroPezones } : {}),
   }
 }
 
@@ -655,6 +699,13 @@ function toAnimalListItem(animal: AnimalRegistro): AnimalListItem {
     categoriaReproductiva: animal.sexoKey === 1 ? "novilla" : "no_aplica",
     fechaNacimiento: animal.fechaNacimiento ?? null,
     fechaCompra: animal.fechaCompra ?? null,
+    codigoRfid: animal.codigoRfid ?? null,
+    tipoExplotacionId: animal.tipoExplotacionId ?? null,
+    tatuado: animal.tatuado ?? null,
+    herrado: animal.herrado ?? null,
+    descornado: animal.descornado ?? null,
+    esDeMonta: animal.esDeMonta ?? null,
+    numeroPezones: animal.numeroPezones ?? null,
   }
 }
 

@@ -29,6 +29,13 @@ export interface AnimalResumen {
   /** epoch seconds (UTC) — null si no aplica. PR Slice D2: persistencia. */
   readonly fechaNacimiento?: number | null
   readonly fechaCompra?: number | null
+  readonly codigoRfid?: string | null
+  readonly tipoExplotacionId?: string | null
+  readonly tatuado?: boolean | null
+  readonly herrado?: boolean | null
+  readonly descornado?: boolean | null
+  readonly esDeMonta?: boolean | null
+  readonly numeroPezones?: number | null
 }
 
 export type SexoKey = 0 | 1 | 2
@@ -91,6 +98,13 @@ export interface DatosCreacionAnimal {
   readonly fechaCompra?: Date | null
   readonly madreId?: string | null
   readonly padreId?: string | null
+  readonly codigoRfid?: string | null
+  readonly tipoExplotacionId?: string | null
+  readonly tatuado?: boolean | null
+  readonly herrado?: boolean | null
+  readonly descornado?: boolean | null
+  readonly esDeMonta?: boolean | null
+  readonly numeroPezones?: number | null
   readonly existentes: readonly AnimalParaValidacion[]
 }
 
@@ -106,6 +120,13 @@ export interface AnimalValidado {
   readonly estadoAnimalKey: 0
   readonly saludAnimalKey: 0
   readonly categoriaReproductiva: "novilla" | "no_aplica"
+  readonly codigoRfid?: string | null | undefined
+  readonly tipoExplotacionId?: string | null | undefined
+  readonly tatuado?: boolean | undefined
+  readonly herrado?: boolean | undefined
+  readonly descornado?: boolean | undefined
+  readonly esDeMonta?: boolean | null | undefined
+  readonly numeroPezones?: number | null | undefined
 }
 
 export interface ResumenReferenciasAnimal {
@@ -134,6 +155,13 @@ export interface DatosActualizacionAnimal {
     readonly comentarios?: string | null
     readonly codigoArete?: string | null
     readonly categoriaReproductiva?: string | null
+    readonly codigoRfid?: string | null
+    readonly tipoExplotacionId?: string | null
+    readonly tatuado?: boolean
+    readonly herrado?: boolean
+    readonly descornado?: boolean
+    readonly esDeMonta?: boolean | null
+    readonly numeroPezones?: number | null
     readonly estadoAnimalKey?: number
     readonly saludAnimalKey?: number
     readonly potreroId?: string | null
