@@ -259,4 +259,20 @@ test.describe("PR-5: catalog selects with real DB data", () => {
       .evaluate((el) => new FormData(el as HTMLFormElement).get("potreroId"))
     expect(formDataValue).toBe("potrero-norte")
   })
+
+  test("tipoExplotacion: select from maestro catalog → FormData carries canonical id", async ({
+    page,
+  }) => {
+    await page.goto("/fincas/finca-1/animales/nuevo")
+    const form = animalFormFrame(page)
+
+    const tipoExpTrigger = form.locator("button[id^='tipo-de-explotacion']")
+    await tipoExpTrigger.click()
+    await page.getByRole("option", { name: "Leche" }).click()
+
+    const formDataValue = await form
+      .locator("form")
+      .evaluate((el) => new FormData(el as HTMLFormElement).get("tipoExplotacion"))
+    expect(formDataValue).toBe("te-leche")
+  })
 })

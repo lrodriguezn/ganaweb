@@ -5,10 +5,16 @@ import type {
   ColorOption,
   RazaOption,
   TablaMaestro,
+  TipoExplotacionOption,
 } from "@ganaweb/aplicacion"
 import { eq } from "drizzle-orm"
 import type { DbClient } from "./client.js"
-import { configCalidadAnimal, configColores, configRazas } from "./schema/index.js"
+import {
+  configCalidadAnimal,
+  configColores,
+  configRazas,
+  configTiposExplotacion,
+} from "./schema/index.js"
 
 /**
  * Drizzle adapter for global (non-finca-scoped) animal master catalogs.
@@ -26,6 +32,7 @@ export class DrizzleCatalogoAnimalMaestroAdapter
   async listarActivos(tabla: "raza"): Promise<readonly RazaOption[]>
   async listarActivos(tabla: "color"): Promise<readonly ColorOption[]>
   async listarActivos(tabla: "calidad"): Promise<readonly CalidadOption[]>
+  async listarActivos(tabla: "tipoExplotacion"): Promise<readonly TipoExplotacionOption[]>
   async listarActivos(tabla: TablaMaestro): Promise<readonly CatalogoMaestroOption[]> {
     switch (tabla) {
       case "raza":
@@ -34,6 +41,8 @@ export class DrizzleCatalogoAnimalMaestroAdapter
         return this.listarColores()
       case "calidad":
         return this.listarCalidades()
+      case "tipoExplotacion":
+        return this.listarTiposExplotacion()
       default:
         return []
     }
@@ -93,6 +102,23 @@ export class DrizzleCatalogoAnimalMaestroAdapter
       .from(configCalidadAnimal)
       .where(eq(configCalidadAnimal.activo, 1))
       .orderBy(configCalidadAnimal.nombre)
+
+    return rows.map((row) => ({
+      id: row.id,
+      nombre: row.nombre,
+      activo: row.activo === 1,
+    }))
+  }
+
+  private async listarTiposExplotacion(): Promise<readonly TipoExplotacionOption[]> {
+    const rows = await this.db
+      .select({
+        id: configTiposExplotacion.id,
+        nombre: configTiposExplotacion.nombre,
+        activo: configTiposExplotacion.activo,
+      })
+      .from(configTiposExplotacion)
+      .orderBy(configTiposExplotacion.nombre)
 
     return rows.map((row) => ({
       id: row.id,

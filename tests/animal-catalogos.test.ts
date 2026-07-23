@@ -11,6 +11,7 @@ import type {
   ParentComboboxOption,
   RazaOption,
   SesionAutorizada,
+  TipoExplotacionOption,
 } from "@ganaweb/aplicacion"
 import {
   type AnimalCatalogPorts,
@@ -50,8 +51,8 @@ function createMaestroPort(options?: {
   razaError?: boolean
   colorError?: boolean
 }): CatalogoAnimalMaestroPort<
-  "raza" | "color" | "calidad",
-  RazaOption | ColorOption | CalidadOption
+  "raza" | "color" | "calidad" | "tipoExplotacion",
+  RazaOption | ColorOption | CalidadOption | TipoExplotacionOption
 > {
   return {
     async listarActivos(tabla) {
@@ -71,11 +72,17 @@ function createMaestroPort(options?: {
       if (tabla === "calidad") {
         return [{ id: "cal-excelente", nombre: "Excelente", activo: true }] as CalidadOption[]
       }
+      if (tabla === "tipoExplotacion") {
+        return [
+          { id: "te-leche", nombre: "Leche", activo: true },
+          { id: "te-cria", nombre: "Cría", activo: false },
+        ] as TipoExplotacionOption[]
+      }
       return []
     },
   } as CatalogoAnimalMaestroPort<
-    "raza" | "color" | "calidad",
-    RazaOption | ColorOption | CalidadOption
+    "raza" | "color" | "calidad" | "tipoExplotacion",
+    RazaOption | ColorOption | CalidadOption | TipoExplotacionOption
   >
 }
 
@@ -203,11 +210,12 @@ describe("loadAnimalCatalogs server loader composition", () => {
 
     const result: AnimalCatalogs = await loadAnimalCatalogs("finca-esperanza", ports, E2E_SESSION)
 
-    // All 11 catalogs should be "disponible"
+    // All 13 catalogs should be "disponible"
     expect(result.sexo.tipo).toBe("disponible")
     expect(result.raza.tipo).toBe("disponible")
     expect(result.color.tipo).toBe("disponible")
     expect(result.calidad.tipo).toBe("disponible")
+    expect(result.tipoExplotacion.tipo).toBe("disponible")
     expect(result.potrero.tipo).toBe("disponible")
     expect(result.sector.tipo).toBe("disponible")
     expect(result.lote.tipo).toBe("disponible")
@@ -263,6 +271,7 @@ describe("loadAnimalCatalogs server loader composition", () => {
     expect(result.raza.tipo).toBe("no_disponible")
     expect(result.color.tipo).toBe("no_disponible")
     expect(result.calidad.tipo).toBe("no_disponible")
+    expect(result.tipoExplotacion.tipo).toBe("no_disponible")
     expect(result.potrero.tipo).toBe("no_disponible")
     expect(result.sector.tipo).toBe("no_disponible")
     expect(result.lote.tipo).toBe("no_disponible")
@@ -291,6 +300,7 @@ describe("loadAnimalCatalogs server loader composition", () => {
     expect(result.sexo.tipo).toBe("disponible")
     expect(result.color.tipo).toBe("disponible")
     expect(result.calidad.tipo).toBe("disponible")
+    expect(result.tipoExplotacion.tipo).toBe("disponible")
     expect(result.potrero.tipo).toBe("disponible")
     expect(result.sector.tipo).toBe("disponible")
     expect(result.lote.tipo).toBe("disponible")
@@ -309,15 +319,15 @@ describe("loadAnimalCatalogs server loader composition", () => {
       },
     }
     const failingMaestro: CatalogoAnimalMaestroPort<
-      "raza" | "color" | "calidad",
-      RazaOption | ColorOption | CalidadOption
+      "raza" | "color" | "calidad" | "tipoExplotacion",
+      RazaOption | ColorOption | CalidadOption | TipoExplotacionOption
     > = {
       async listarActivos() {
         throw new Error("DB offline")
       },
     } as CatalogoAnimalMaestroPort<
-      "raza" | "color" | "calidad",
-      RazaOption | ColorOption | CalidadOption
+      "raza" | "color" | "calidad" | "tipoExplotacion",
+      RazaOption | ColorOption | CalidadOption | TipoExplotacionOption
     >
     const failingFinca: CatalogoFincaPort<
       "potrero" | "sector" | "lote" | "grupo" | "lugarCompra" | "hierro" | "propietario",
@@ -354,6 +364,7 @@ describe("loadAnimalCatalogs server loader composition", () => {
       "raza",
       "color",
       "calidad",
+      "tipoExplotacion",
       "potrero",
       "sector",
       "lote",

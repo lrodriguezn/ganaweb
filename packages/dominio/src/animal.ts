@@ -249,6 +249,11 @@ function validarCamposMinimos(
   if (datos.sexoKey !== 0 && datos.sexoKey !== 1 && datos.sexoKey !== 2) {
     errores.push(error("sexo_key", "CA-CRE-001", "El sexo es obligatorio."))
   }
+  if (!datos.tipoExplotacionId || datos.tipoExplotacionId.length === 0) {
+    errores.push(
+      error("tipo_explotacion_id", "CA-CRE-001", "El tipo de explotación es obligatorio."),
+    )
+  }
   return errores
 }
 
@@ -364,6 +369,13 @@ export function validarActualizacionAnimal(
     errores.push(
       error("codigo", "CA-UPD-001", "El código no se puede cambiar: el animal tiene referencias."),
     )
+  }
+  if (datos.cambios.tipoExplotacionId !== undefined) {
+    if (!datos.cambios.tipoExplotacionId || datos.cambios.tipoExplotacionId.length === 0) {
+      errores.push(
+        error("tipo_explotacion_id", "CA-CRE-001", "El tipo de explotación es obligatorio."),
+      )
+    }
   }
   return errores.length > 0
     ? { valido: false, errores }

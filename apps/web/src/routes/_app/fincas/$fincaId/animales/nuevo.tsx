@@ -71,6 +71,7 @@ export function buildCreateAnimalInputFromFormData(
   const razaId = optionalText(formData, "raza")
   const colorId = optionalText(formData, "color")
   const calidadId = optionalText(formData, "calidad")
+  const tipoExplotacionId = optionalText(formData, "tipoExplotacion")
   const lugarCompraId = optionalText(formData, "lugarCompra")
   const madreId = optionalText(formData, "madreId")
   const padreId = optionalText(formData, "padreId")
@@ -93,6 +94,7 @@ export function buildCreateAnimalInputFromFormData(
       ...(razaId ? { razaId } : {}),
       ...(colorId ? { colorId } : {}),
       ...(calidadId ? { calidadId } : {}),
+      ...(tipoExplotacionId ? { tipoExplotacionId } : {}),
       ...(lugarCompraId ? { lugarCompraId } : {}),
       ...(madreId ? { madreId } : {}),
       ...(padreId ? { padreId } : {}),
@@ -113,6 +115,7 @@ const CAMPO_TO_FIELD_KEY: Record<string, string> = {
   raza: "raza",
   color: "color",
   calidad: "calidad",
+  tipo_explotacion_id: "tipoExplotacionId",
   lugar_compra: "lugarCompra",
   precio_compra: "precioCompra",
   peso_compra: "pesoCompra",
@@ -191,6 +194,7 @@ function catalogsToFormOptions(catalogs: AnimalCatalogs): AnimalFormCatalogOptio
     raza: extract(catalogs.raza),
     color: extract(catalogs.color),
     calidad: extract(catalogs.calidad),
+    tipoExplotacion: extract(catalogs.tipoExplotacion),
     potrero: extract(catalogs.potrero),
     sector: extract(catalogs.sector),
     lote: extract(catalogs.lote),

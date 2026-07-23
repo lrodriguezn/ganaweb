@@ -560,6 +560,7 @@ export interface AnimalFormCatalogOptions {
   raza?: readonly SelectOptionWithCreate[]
   color?: readonly SelectOptionWithCreate[]
   calidad?: readonly SelectOption[]
+  tipoExplotacion?: readonly SelectOption[]
   lugarCompra?: readonly SelectOptionWithCreate[]
   madre?: readonly ComboboxOption[]
   padre?: readonly ComboboxOption[]
@@ -737,6 +738,7 @@ function useAnimalForm({
           "Fecha de nacimiento",
           "Origen",
           "RFID",
+          "Tipo de explotación",
           "Tatuado",
           "Herrado",
           "Descornado",
@@ -1117,6 +1119,21 @@ function renderHierroField(field: AnimalFormField, ctx: RenderFieldContext) {
   )
 }
 
+function renderTipoExplotacionField(field: AnimalFormField, ctx: RenderFieldContext) {
+  const { initialValues, catalogOptions, fieldErrors } = ctx
+  return (
+    <CatalogSelectField
+      key={field.name}
+      label={field.label}
+      name={field.name}
+      defaultValue={initialValues?.tipoExplotacionId}
+      options={(catalogOptions?.tipoExplotacion ?? []) as readonly SelectOption[]}
+      required
+      fieldErrors={fieldErrors}
+    />
+  )
+}
+
 function renderPropietarioField(field: AnimalFormField, ctx: RenderFieldContext) {
   const { initialValues, catalogOptions, fieldErrors } = ctx
   return (
@@ -1208,6 +1225,7 @@ const FIELD_RENDERERS: Record<string, FieldRenderer> = {
   grupoId: renderLocationField,
   hierroId: renderHierroField,
   propietarioId: renderPropietarioField,
+  tipoExplotacionId: renderTipoExplotacionField,
   tatuado: renderBooleanField,
   herrado: renderBooleanField,
   descornado: renderBooleanField,
@@ -1425,6 +1443,7 @@ function CatalogSelectField({
   defaultValue,
   options,
   disabledWhenEmpty = false,
+  required = false,
   fieldErrors,
 }: {
   label: string
@@ -1432,6 +1451,7 @@ function CatalogSelectField({
   defaultValue?: string | undefined
   options: readonly SelectOption[]
   disabledWhenEmpty?: boolean
+  required?: boolean
   fieldErrors?: Record<string, string> | undefined
 }) {
   const id = `${label.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}-${useId()}`
@@ -1457,12 +1477,16 @@ function CatalogSelectField({
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {required ? <span aria-hidden="true"> *</span> : null}
+      </Label>
       <Select {...selectProps}>
         <SelectTrigger
           id={id}
           disabled={unavailable}
           className="min-h-[--h-touch]"
+          aria-required={required ? "true" : undefined}
           {...triggerProps}
         >
           {unavailable ? label : <SelectValue placeholder={label} />}

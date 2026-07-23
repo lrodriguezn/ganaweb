@@ -18,7 +18,7 @@ import {
 const resumenSinReferencias = { eventCount: 0, offspringCount: 0, blocksCodeChange: false }
 
 describe("CA-CRE: validación de creación de animal", () => {
-  it("rechaza campos mínimos faltantes: codigo, nombre y sexo_key", () => {
+  it("rechaza campos mínimos faltantes: codigo, nombre, sexo_key y tipo_explotacion_id", () => {
     const resultado = validarCreacionAnimal({
       codigo: "   ",
       nombre: "",
@@ -33,6 +33,7 @@ describe("CA-CRE: validación de creación de animal", () => {
         expect.objectContaining({ campo: "codigo", regla: "CA-CRE-001" }),
         expect.objectContaining({ campo: "nombre", regla: "CA-CRE-001" }),
         expect.objectContaining({ campo: "sexo_key", regla: "CA-CRE-001" }),
+        expect.objectContaining({ campo: "tipo_explotacion_id", regla: "CA-CRE-001" }),
       ]),
     })
   })
@@ -43,6 +44,7 @@ describe("CA-CRE: validación de creación de animal", () => {
       nombre: "Lucera",
       sexoKey: 1,
       fincaId: "finca-1",
+      tipoExplotacionId: "te-leche",
       existentes: [],
     })
 
@@ -67,6 +69,7 @@ describe("CA-CRE: validación de creación de animal", () => {
       nombre: "Hembra",
       sexoKey: 1,
       fincaId: "finca-1",
+      tipoExplotacionId: "te-leche",
       existentes: [],
     })
     const macho = validarCreacionAnimal({
@@ -74,6 +77,7 @@ describe("CA-CRE: validación de creación de animal", () => {
       nombre: "Macho",
       sexoKey: 0,
       fincaId: "finca-1",
+      tipoExplotacionId: "te-leche",
       existentes: [],
     })
 
@@ -96,6 +100,7 @@ describe("CA-CRE: validación de creación de animal", () => {
       sexoKey: 0,
       fincaId: "finca-1",
       madreId: "animal-macho",
+      tipoExplotacionId: "te-leche",
       existentes: [
         { id: "animal-macho", fincaId: "finca-1", codigo: "M-1", sexoKey: 0 },
         { id: "hembra-otra", fincaId: "finca-2", codigo: "H-1", sexoKey: 1 },
@@ -115,6 +120,7 @@ describe("CA-CRE: validación de creación de animal", () => {
       sexoKey: 1,
       fincaId: "finca-1",
       tipoIngreso: "comprado",
+      tipoExplotacionId: "te-leche",
       existentes: [],
     })
 
@@ -122,6 +128,37 @@ describe("CA-CRE: validación de creación de animal", () => {
       valido: false,
       errores: [expect.objectContaining({ campo: "fecha_compra", regla: "CA-CRE-002" })],
     })
+  })
+
+  it("rechaza tipoExplotacionId vacío con CA-CRE-001 en creación", () => {
+    const resultado = validarCreacionAnimal({
+      codigo: "MT-200",
+      nombre: "Sin Tipo Explotación",
+      sexoKey: 1,
+      fincaId: "finca-1",
+      tipoExplotacionId: "",
+      existentes: [],
+    })
+
+    expect(resultado.valido).toBe(false)
+    expect(resultado.errores).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ campo: "tipo_explotacion_id", regla: "CA-CRE-001" }),
+      ]),
+    )
+  })
+
+  it("acepta tipoExplotacionId no vacío en creación sin error CA-CRE-001", () => {
+    const resultado = validarCreacionAnimal({
+      codigo: "MT-201",
+      nombre: "Con Tipo Explotación",
+      sexoKey: 1,
+      fincaId: "finca-1",
+      tipoExplotacionId: "te-leche",
+      existentes: [],
+    })
+
+    expect(resultado.valido).toBe(true)
   })
 })
 
@@ -190,6 +227,25 @@ describe("CA-UPD/DEL/IMG/TL: reglas puras del animal", () => {
       valido: false,
       errores: [expect.objectContaining({ campo: "codigo", regla: "CA-DEL-009" })],
     })
+  })
+
+  it("rechaza tipoExplotacionId vacío con CA-CRE-001 en actualización", () => {
+    const resultado = validarActualizacionAnimal({
+      codigoActual: "MT-122",
+      cambios: {
+        versionLeida: 1,
+        versionActual: 1,
+        tipoExplotacionId: "",
+      },
+      referencias: resumenSinReferencias,
+    })
+
+    expect(resultado.valido).toBe(false)
+    expect(resultado.errores).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ campo: "tipo_explotacion_id", regla: "CA-CRE-001" }),
+      ]),
+    )
   })
 
   it("permite eliminación física por autoservicio solo online, reciente y sin referencias", () => {

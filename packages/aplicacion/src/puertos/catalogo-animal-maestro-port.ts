@@ -28,7 +28,9 @@ export interface ColorOption extends CatalogoMaestroOption {
 
 export interface CalidadOption extends CatalogoMaestroOption {}
 
-export type TablaMaestro = "raza" | "color" | "calidad"
+export type TipoExplotacionOption = CatalogoMaestroOption
+
+export type TablaMaestro = "raza" | "color" | "calidad" | "tipoExplotacion"
 
 export interface CatalogoAnimalMaestroPort<
   TTabla extends string = TablaMaestro,
