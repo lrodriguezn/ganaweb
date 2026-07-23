@@ -17,6 +17,7 @@ import type {
   RazaOption,
   SectorOption,
   SesionAutorizada,
+  TipoExplotacionOption,
 } from "@ganaweb/aplicacion"
 import { getRequestHeader } from "@tanstack/react-start/server"
 
@@ -231,8 +232,8 @@ export function createAnimalE2eDeps(): AnimalUseCaseDeps {
  * Returns seeded raza/color/calidad data matching the DB seed canonical IDs.
  */
 export function createAnimalE2eCatalogoMaestroPort(): CatalogoAnimalMaestroPort<
-  "raza" | "color" | "calidad",
-  RazaOption | ColorOption | CalidadOption
+  "raza" | "color" | "calidad" | "tipoExplotacion",
+  RazaOption | ColorOption | CalidadOption | TipoExplotacionOption
 > {
   const razas: readonly RazaOption[] = [
     {
@@ -269,6 +270,11 @@ export function createAnimalE2eCatalogoMaestroPort(): CatalogoAnimalMaestroPort<
     { id: "cal-excelente", nombre: "Excelente", activo: true },
     { id: "cal-bueno", nombre: "Bueno", activo: true },
   ]
+  const tiposExplotacion: readonly TipoExplotacionOption[] = [
+    { id: "te-leche", nombre: "Leche", activo: true },
+    { id: "te-cria", nombre: "Cría", activo: true },
+    { id: "te-doble", nombre: "Doble Propósito", activo: true },
+  ]
 
   return {
     async listarActivos(tabla) {
@@ -279,13 +285,15 @@ export function createAnimalE2eCatalogoMaestroPort(): CatalogoAnimalMaestroPort<
           return colores
         case "calidad":
           return calidades
+        case "tipoExplotacion":
+          return tiposExplotacion
         default:
           return []
       }
     },
   } as CatalogoAnimalMaestroPort<
-    "raza" | "color" | "calidad",
-    RazaOption | ColorOption | CalidadOption
+    "raza" | "color" | "calidad" | "tipoExplotacion",
+    RazaOption | ColorOption | CalidadOption | TipoExplotacionOption
   >
 }
 
