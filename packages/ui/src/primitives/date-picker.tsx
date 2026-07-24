@@ -132,6 +132,13 @@ export interface DatePickerProps {
   "aria-invalid"?: "true" | "false" | boolean
   "aria-describedby"?: string
   className?: string
+  /**
+   * Optional slot rendered below the calendar inside the popover
+   * (separated by `border-t p-3`). Used by FechaNacimientoField to
+   * embed "Estimar por edad" inside the popover (CA-UI-013).
+   * Default undefined — existing consumers unaffected.
+   */
+  footerChildren?: React.ReactNode
 }
 
 export function DatePicker({
@@ -146,6 +153,7 @@ export function DatePicker({
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedby,
   className,
+  footerChildren,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const effectiveMin = minDate ? startOfDay(minDate) : undefined
@@ -206,6 +214,7 @@ export function DatePicker({
               classNames={CALENDAR_CLASSNAMES}
               components={{ DayButton: TokenDayButton }}
             />
+            {footerChildren ? <div className="border-t p-3">{footerChildren}</div> : null}
           </PopoverPrimitive.Content>
         </PopoverPrimitive.Portal>
       </PopoverPrimitive.Root>

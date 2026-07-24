@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs"
 import { renderToString } from "react-dom/server"
 
-import { cleanup, render, screen, within } from "@testing-library/react"
+import { act, cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -18,6 +18,12 @@ import {
   AnimalListMobile,
   AnimalTimeline,
 } from "../src"
+import {
+  DETAIL_FIELD_NAMES,
+  SECTION_LAYOUT,
+  sectionFor,
+  useOnlineStatus,
+} from "../src/ganado/animal-crud-infra"
 
 const animal = {
   id: "a-1",
@@ -170,12 +176,12 @@ describe("PR3 animal UI OpenPencil parity", () => {
       "Código *",
       "Nombre",
       "Nº de arete",
-      "Sexo",
+      "Sexo *",
       "Raza",
-      "Fecha de nacimiento",
+      "Fecha de nacimiento *",
       "Color",
       "Calidad",
-      "Origen",
+      "Origen *",
       "Madre",
       "Padre",
       "Potrero",
@@ -201,7 +207,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(
       screen.getByText("¿No encuentras la raza? Créala sin salir del formulario."),
     ).toBeInTheDocument()
-    expect(screen.getByText("Se sincronizará al recuperar señal")).toBeInTheDocument()
+    expect(screen.queryByText("Se sincronizará al recuperar señal")).not.toBeInTheDocument()
     expect(screen.getByRole("contentinfo")).toHaveAttribute("data-sticky-save", "true")
     // Same omit-by-default pin on the mobile layout — alert markup must not render
     // when the create route does not supply fieldErrors.
@@ -291,7 +297,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
 
     // Sexo is rendered via CatalogSelectField (Radix Select). The trigger carries the
     // aria-invalid / aria-describedby wiring — the alert <p> lives next to it.
-    const sexoTrigger = screen.getByRole("combobox", { name: "Sexo" })
+    const sexoTrigger = screen.getByRole("combobox", { name: "Sexo *" })
     expect(sexoTrigger).toHaveAttribute("aria-invalid", "true")
     const describedBy = sexoTrigger.getAttribute("aria-describedby")
     expect(describedBy).toBeTruthy()
@@ -322,13 +328,13 @@ describe("PR3 animal UI OpenPencil parity", () => {
       />,
     )
 
-    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("Hembra")
-    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("Compra externa")
+    expect(screen.getByRole("combobox", { name: "Sexo *" })).toHaveTextContent("Hembra")
+    expect(screen.getByRole("combobox", { name: "Origen *" })).toHaveTextContent("Compra externa")
     expect(screen.queryByText(/^1$/)).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText("Código *"), "NV-43")
     await user.type(screen.getByLabelText("Nombre"), "Novilla 43")
-    await user.click(screen.getByRole("combobox", { name: "Sexo" }))
+    await user.click(screen.getByRole("combobox", { name: "Sexo *" }))
     expect(screen.getByRole("option", { name: "Macho" })).toBeInTheDocument()
     expect(screen.getByRole("option", { name: "Hembra" })).toBeInTheDocument()
     expect(screen.getByRole("option", { name: "Pajuela" })).toBeInTheDocument()
@@ -369,10 +375,12 @@ describe("PR3 animal UI OpenPencil parity", () => {
         />
       </>,
     )
-    const sexoControls = screen.getAllByRole("combobox", { name: "Sexo" })
-    expect(sexoControls).toHaveLength(2)
-    expect(sexoControls[0]).not.toHaveAttribute("id", sexoControls[1]?.id)
-    const firstSexo = sexoControls[0]
+    // CA-UI-025: Sexo renders as combobox on BOTH desktop and mobile
+    const sexoComboboxes = screen.getAllByRole("combobox", { name: "Sexo *" })
+    expect(sexoComboboxes).toHaveLength(2) // desktop + mobile
+    const sexoRadiogroups = screen.queryAllByRole("radiogroup", { name: "Sexo *" })
+    expect(sexoRadiogroups).toHaveLength(0) // no radiogroup in either mode
+    const firstSexo = sexoComboboxes[0]
     if (!firstSexo) throw new Error("first sexo control expected")
     await user.click(firstSexo)
     await user.click(screen.getByRole("option", { name: "Macho" }))
@@ -401,8 +409,8 @@ describe("PR3 animal UI OpenPencil parity", () => {
         catalogOptions={{ sexo: [] }}
       />,
     )
-    expect(screen.getByRole("combobox", { name: "Sexo" })).toBeDisabled()
-    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("Sexo")
+    expect(screen.getByRole("combobox", { name: "Sexo *" })).toBeDisabled()
+    expect(screen.getByRole("combobox", { name: "Sexo *" })).toHaveTextContent("Sexo *")
   })
 
   it("shows the field label as placeholder when catalog values are missing (CA-UI-001/003)", () => {
@@ -416,7 +424,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       />,
     )
 
-    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("Origen")
+    expect(screen.getByRole("combobox", { name: "Origen *" })).toHaveTextContent("Origen")
     expect(screen.queryByText("origen-legacy")).not.toBeInTheDocument()
   })
 
@@ -622,9 +630,9 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
 
     // fechaNacimiento is a DatePicker — trigger is a button labelled by the "Fecha de nacimiento" <Label htmlFor>.
-    const fechaTrigger = screen.getByRole("button", { name: "Fecha de nacimiento" })
+    const fechaTrigger = screen.getByRole("button", { name: "Fecha de nacimiento *" })
     expect(fechaTrigger).toBeInTheDocument()
-    expect(screen.queryByRole("textbox", { name: "Fecha de nacimiento" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "Fecha de nacimiento *" })).not.toBeInTheDocument()
 
     // Raza / Color are SelectConCreacion (combobox role) with label association.
     expect(screen.getByRole("combobox", { name: "Raza" })).toBeInTheDocument()
@@ -637,16 +645,16 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(calidadCombobox).toBeInTheDocument()
 
     // Origen is a PillsSegmentadas — radiogroup with 2 options, not a combobox.
-    const origenGroup = screen.getByRole("radiogroup", { name: "Origen" })
+    const origenGroup = screen.getByRole("radiogroup", { name: "Origen *" })
     expect(origenGroup).toBeInTheDocument()
     expect(screen.getByRole("radio", { name: "Nacido en finca" })).toBeInTheDocument()
     expect(screen.getByRole("radio", { name: "Comprado" })).toBeInTheDocument()
-    expect(screen.queryByRole("combobox", { name: "Origen" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("combobox", { name: "Origen *" })).not.toBeInTheDocument()
 
     // Default origen = nacido_en_finca → parents visible, purchase fields not.
     expect(screen.getByRole("combobox", { name: "Madre" })).toBeInTheDocument()
     expect(screen.getByRole("combobox", { name: "Padre" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Fecha de nacimiento" })).toBeInTheDocument() // only fechaNacimiento trigger
+    expect(screen.queryByRole("button", { name: "Fecha de nacimiento *" })).toBeInTheDocument() // only fechaNacimiento trigger
     expect(screen.queryByRole("combobox", { name: "Lugar de compra" })).not.toBeInTheDocument()
   })
 
@@ -755,7 +763,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
 
     // Default: nacido_en_finca → purchase fields NOT visible
-    expect(screen.queryByRole("button", { name: "Fecha de nacimiento" })).toBeInTheDocument() // only fechaNacimiento
+    expect(screen.queryByRole("button", { name: "Fecha de nacimiento *" })).toBeInTheDocument() // only fechaNacimiento
     expect(screen.queryByLabelText("Fecha de compra")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("Precio")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("Peso compra")).not.toBeInTheDocument()
@@ -817,7 +825,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       <AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />,
     )
 
-    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
     await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
     await user.click(screen.getByRole("radio", { name: "Comprado" }))
     await user.click(screen.getByRole("button", { name: "Fecha de compra" }))
@@ -869,11 +877,12 @@ describe("PR3 animal UI OpenPencil parity", () => {
       <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
     )
 
-    // The 'Estimar por edad' affordance is an inline button next to the fechaNacimiento DatePicker.
-    const estimarBtn = screen.getByRole("button", { name: /Estimar por edad/i })
-    await user.click(estimarBtn)
+    // Open the DatePicker popover to find the "Estimar por edad" link in the footer
+    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
+    const estimarLink = await screen.findByRole("button", { name: /Estimar por edad/i })
+    await user.click(estimarLink)
 
-    // A tiny popover with an age input appears
+    // The age input appears inside the popover footer
     const ageInput = await screen.findByRole("spinbutton", { name: /a[ñn]os/i })
     await user.clear(ageInput)
     await user.type(ageInput, "3")
@@ -907,7 +916,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       />,
     )
 
-    const trigger = screen.getByRole("button", { name: "Fecha de nacimiento" })
+    const trigger = screen.getByRole("button", { name: "Fecha de nacimiento *" })
     expect(trigger).toHaveAttribute("aria-invalid", "true")
     const describedBy = trigger.getAttribute("aria-describedby")
     expect(describedBy).toBeTruthy()
@@ -1128,7 +1137,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       await user.type(screen.getByLabelText("Comentarios"), "animal enfermo")
 
       // Set fechaNacimiento via DatePicker
-      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
       await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
 
       // Flip viewport to mobile
@@ -1140,7 +1149,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
 
       // State must survive the re-render
       expect(screen.getByLabelText("Comentarios")).toHaveValue("animal enfermo")
-      expect(screen.getByRole("button", { name: "Fecha de nacimiento" })).toHaveTextContent(
+      expect(screen.getByRole("button", { name: "Fecha de nacimiento *" })).toHaveTextContent(
         "10/07/2026",
       )
     })
@@ -1194,6 +1203,401 @@ describe("PR3 animal UI OpenPencil parity", () => {
       const markup = renderToString(<AnimalFormScreen onSave={vi.fn()} onCancel={vi.fn()} />)
       expect(markup).toContain("op-f-400191")
       expect(markup).toContain("20 Nuevo Animal · Desktop")
+    })
+  })
+
+  describe("WU-2: support infrastructure (useOnlineStatus, SECTION_LAYOUT, sectionFor, DETAIL_FIELD_NAMES)", () => {
+    describe("useOnlineStatus hook", () => {
+      it("returns true by default (online) and flips to false on 'offline' event", async () => {
+        function Harness() {
+          const online = useOnlineStatus()
+          return <span data-testid="online-status">{String(online)}</span>
+        }
+        render(<Harness />)
+        expect(screen.getByTestId("online-status")).toHaveTextContent("true")
+
+        // Simulate offline event
+        await act(async () => {
+          window.dispatchEvent(new Event("offline"))
+        })
+        expect(screen.getByTestId("online-status")).toHaveTextContent("false")
+      })
+
+      it("flips back to true on 'online' event after going offline", async () => {
+        function Harness() {
+          const online = useOnlineStatus()
+          return <span data-testid="online-status">{String(online)}</span>
+        }
+        render(<Harness />)
+        // Go offline
+        await act(async () => {
+          window.dispatchEvent(new Event("offline"))
+        })
+        expect(screen.getByTestId("online-status")).toHaveTextContent("false")
+        // Come back online
+        await act(async () => {
+          window.dispatchEvent(new Event("online"))
+        })
+        expect(screen.getByTestId("online-status")).toHaveTextContent("true")
+      })
+    })
+
+    describe("SECTION_LAYOUT config", () => {
+      it("has exactly 5 entries with correct ids and titles", () => {
+        expect(SECTION_LAYOUT).toHaveLength(5)
+        expect(SECTION_LAYOUT.map((s) => s.id)).toEqual([
+          "identificacion",
+          "caracteristicas",
+          "origen",
+          "ubicacion",
+          "detalles",
+        ])
+        expect(SECTION_LAYOUT[0]?.title).toBe("Identificación")
+        expect(SECTION_LAYOUT[4]?.title).toBe("Detalles adicionales")
+      })
+
+      it("assigns gridClasses for non-collapsible sections and kind='collapsible' for detalles", () => {
+        const identificacion = SECTION_LAYOUT.find((s) => s.id === "identificacion")
+        expect(identificacion?.gridClasses).toContain("1fr")
+        expect(identificacion?.gridClasses).toContain("1.4fr")
+
+        const detalles = SECTION_LAYOUT.find((s) => s.id === "detalles")
+        expect(detalles?.kind).toBe("collapsible")
+      })
+    })
+
+    describe("sectionFor resolver", () => {
+      it("maps 'codigo' to 'identificacion' and 'sexoKey' to 'caracteristicas'", () => {
+        expect(sectionFor("codigo")).toBe("identificacion")
+        expect(sectionFor("nombre")).toBe("identificacion")
+        expect(sectionFor("codigoArete")).toBe("identificacion")
+        expect(sectionFor("sexoKey")).toBe("caracteristicas")
+        expect(sectionFor("raza")).toBe("caracteristicas")
+      })
+
+      it("maps 'origen' to 'origen' and location fields to 'ubicacion'", () => {
+        expect(sectionFor("origen")).toBe("origen")
+        expect(sectionFor("potreroId")).toBe("ubicacion")
+        expect(sectionFor("sectorId")).toBe("ubicacion")
+        expect(sectionFor("loteId")).toBe("ubicacion")
+        expect(sectionFor("grupoId")).toBe("ubicacion")
+      })
+
+      it("maps detail fields to 'detalles'", () => {
+        expect(sectionFor("codigoRfid")).toBe("detalles")
+        expect(sectionFor("tipoExplotacionId")).toBe("detalles")
+        expect(sectionFor("propietarioId")).toBe("detalles")
+        expect(sectionFor("comentarios")).toBe("detalles")
+      })
+    })
+
+    describe("DETAIL_FIELD_NAMES set", () => {
+      it("contains all fields rendered inside the collapsible block", () => {
+        expect(DETAIL_FIELD_NAMES.has("codigoRfid")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("tipoExplotacionId")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("propietarioId")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("hierroId")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("numeroPezones")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("tatuado")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("herrado")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("descornado")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("esDeMonta")).toBe(true)
+        expect(DETAIL_FIELD_NAMES.has("comentarios")).toBe(true)
+      })
+
+      it("does NOT contain non-detail fields", () => {
+        expect(DETAIL_FIELD_NAMES.has("codigo")).toBe(false)
+        expect(DETAIL_FIELD_NAMES.has("sexoKey")).toBe(false)
+        expect(DETAIL_FIELD_NAMES.has("origen")).toBe(false)
+        expect(DETAIL_FIELD_NAMES.has("potreroId")).toBe(false)
+      })
+    })
+  })
+
+  describe("WU-3: 4-section layout restructure", () => {
+    it("renders exactly 3 <section> elements with uppercase headers in order (UBICACIÓN is now Collapsible per CA-UI-019)", () => {
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+      const form = document.querySelector("form")
+      expect(form).not.toBeNull()
+      const sections = form?.querySelectorAll(":scope > fieldset > section")
+      expect(sections?.length).toBe(3) // IDENTIFICACIÓN, CARACTERÍSTICAS, ORIGEN (UBICACIÓN → Collapsible)
+
+      // Headers should be uppercase with correct titles
+      const headers = form?.querySelectorAll(
+        ":scope > fieldset > section h2, :scope > fieldset button[type='button']",
+      )
+      expect(headers?.length).toBeGreaterThanOrEqual(4)
+      const headerTexts = Array.from(headers ?? []).map((h) => h.textContent?.trim())
+      expect(headerTexts).toContain("IDENTIFICACIÓN")
+      expect(headerTexts).toContain("CARACTERÍSTICAS")
+      expect(headerTexts).toContain("ORIGEN")
+      // UBICACIÓN header is inside CollapsibleTrigger button
+      const ubicacionHeader = Array.from(headers ?? []).find(
+        (h) => h.textContent?.includes("UBICACIÓN") || h.textContent?.includes("Ubicación"),
+      )
+      expect(ubicacionHeader).toBeDefined()
+    })
+
+    it("uses per-section grids (no global grid-cols-2 on the form)", () => {
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+      const form = document.querySelector("form")
+      expect(form).not.toBeNull()
+      // The form element itself should NOT have grid-cols-2
+      const formClass = form?.className ?? ""
+      expect(formClass).not.toContain("grid-cols-2")
+
+      // Section grids are on inner divs — check all descendant grid classes
+      const allClasses = Array.from(form?.querySelectorAll("*") ?? []).map((el) => el.className)
+      const allClassesStr = allClasses.join(" ")
+      // IDENTIFICACIÓN section has grid with 1.4fr
+      expect(allClassesStr).toContain("1.4fr")
+      // CA-UI-019: UBICACIÓN has 2-column grid (not 4-column)
+      expect(allClassesStr).toContain("1fr_1fr")
+    })
+
+    it("constrains the card to max-w-[720px] (not max-w-3xl)", () => {
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+      const form = document.querySelector("form")
+      expect(form).not.toBeNull()
+      const formClass = form?.className ?? ""
+      expect(formClass).toContain("max-w-[720px]")
+      expect(formClass).not.toContain("max-w-3xl")
+    })
+
+    it("preserves all existing form field labels within the sections", () => {
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+      // All fields still present
+      for (const label of [
+        "Código *",
+        "Nombre",
+        "Nº de arete",
+        "Sexo *",
+        "Raza",
+        "Fecha de nacimiento *",
+        "Color",
+        "Calidad",
+        "Origen *",
+        "Madre",
+        "Padre",
+        "Potrero",
+        "Sector",
+        "Lote",
+        "Grupo",
+      ]) {
+        expect(screen.getByLabelText(label)).toBeInTheDocument()
+      }
+    })
+  })
+
+  describe("WU-4: Collapsible 'Detalles adicionales'", () => {
+    it("is closed on create with no count suffix", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      )
+      const trigger = screen.getByRole("button", { name: /Detalles adicionales/i })
+      expect(trigger).toBeInTheDocument()
+      // Trigger text should NOT contain a count suffix
+      expect(trigger.textContent).not.toMatch(/con datos/)
+      // The content should be collapsed — detail fields hidden (forceMounted)
+      const rfidInput = screen.queryByLabelText("RFID")
+      if (rfidInput) {
+        // With forceMount, element is in DOM but hidden via data-state="closed"
+        expect(rfidInput.closest('[data-state="closed"]')).not.toBeNull()
+      }
+    })
+
+    it("auto-opens on edit when detail fields have data, with count badge", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialValues={{
+            codigoRfid: "RFID-123",
+            propietarioId: "prop-1",
+            comentarios: "Some notes",
+          }}
+        />,
+      )
+      const trigger = screen.getByRole("button", { name: /Detalles adicionales/i })
+      // Should show count badge
+      expect(trigger.textContent).toMatch(/3 con datos/)
+      // Content should be visible (collapsible is open)
+      expect(screen.getByLabelText("Comentarios")).toBeInTheDocument()
+    })
+
+    it("forces open when a detail field has a validation error", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          fieldErrors={{ codigoRfid: "RFID inválido" }}
+        />,
+      )
+      // Collapsible should be forced open
+      expect(screen.getByLabelText("RFID")).toBeInTheDocument()
+      // Error should be visible
+      expect(screen.getByText("RFID inválido")).toBeInTheDocument()
+    })
+
+    it("excludes esDeMonta from count when sexoKey !== 0 (Hembra)", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialValues={{
+            sexoKey: 1, // Hembra
+            esDeMonta: true,
+            comentarios: "test",
+          }}
+        />,
+      )
+      const trigger = screen.getByRole("button", { name: /Detalles adicionales/i })
+      // esDeMonta should NOT be counted for Hembra → only comentarios counts
+      expect(trigger.textContent).toMatch(/1 con datos/)
+    })
+
+    it("hides esDeMonta switch when sexoKey is not 0 (Macho)", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialValues={{ sexoKey: 1 }} // Hembra
+          fieldErrors={{ esDeMonta: "dummy" }} // force open
+        />,
+      )
+      // esDeMonta switch should NOT be in the DOM
+      expect(screen.queryByLabelText("Es de monta")).not.toBeInTheDocument()
+    })
+
+    it("shows esDeMonta switch when sexoKey is 0 (Macho)", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialValues={{ sexoKey: 0 }} // Macho
+          fieldErrors={{ codigoRfid: "dummy" }} // force open
+        />,
+      )
+      expect(screen.getByLabelText("Es de monta")).toBeInTheDocument()
+    })
+  })
+
+  describe("WU-5: Mobile parity", () => {
+    it("renders Sexo as combobox (Select) also on mobile per CA-UI-025", () => {
+      render(
+        <AnimalFormScreen
+          mode="mobile"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          catalogOptions={{
+            sexo: [
+              { value: "0", label: "Macho" },
+              { value: "1", label: "Hembra" },
+            ],
+          }}
+        />,
+      )
+      // CA-UI-025: Sexo stays as dropdown on BOTH desktop and mobile
+      expect(screen.getByRole("combobox", { name: "Sexo *" })).toBeInTheDocument()
+      // No radiogroup for Sexo on either mode
+      expect(screen.queryByRole("radiogroup", { name: "Sexo *" })).not.toBeInTheDocument()
+    })
+
+    it("renders mobile ✕ close button in header calling onCancel", async () => {
+      const user = userEvent.setup()
+      const onCancel = vi.fn()
+      render(<AnimalFormScreen mode="mobile" onSave={vi.fn()} onCancel={onCancel} />)
+      const closeBtn = screen.getByRole("button", { name: /cerrar/i })
+      expect(closeBtn).toBeInTheDocument()
+      await user.click(closeBtn)
+      expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it("renders sticky full-width footer with 'Guardar animal' on mobile", () => {
+      render(<AnimalFormScreen mode="mobile" onSave={vi.fn()} onCancel={vi.fn()} />)
+      const footer = screen.getByRole("contentinfo")
+      expect(footer).toHaveAttribute("data-sticky-save", "true")
+      // Primary button text includes "animal" on mobile
+      expect(screen.getByRole("button", { name: /Guardar animal/ })).toBeInTheDocument()
+    })
+  })
+
+  describe("WU-6: Fixes (sync hint, required, estimar)", () => {
+    it("hides sync hint when online, shows it when offline (CA-UI-005)", async () => {
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+      // By default online → hint hidden
+      expect(screen.queryByText("Se sincronizará al recuperar señal")).not.toBeInTheDocument()
+
+      // Go offline → hint visible
+      await act(async () => {
+        window.dispatchEvent(new Event("offline"))
+      })
+      expect(screen.getByText("Se sincronizará al recuperar señal")).toBeInTheDocument()
+
+      // Come back online → hint hidden again
+      await act(async () => {
+        window.dispatchEvent(new Event("online"))
+      })
+      expect(screen.queryByText("Se sincronizará al recuperar señal")).not.toBeInTheDocument()
+    })
+
+    it("Tipo de explotación has NO asterisk and NO aria-required (CA-UI-014)", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          catalogOptions={{
+            tipoExplotacion: [{ value: "t1", label: "Lechería" }],
+          }}
+          fieldErrors={{ codigoRfid: "dummy" }} // force collapsible open
+        />,
+      )
+      const trigger = screen.getByRole("combobox", { name: "Tipo de explotación" })
+      expect(trigger).toBeInTheDocument()
+      expect(trigger).not.toHaveAttribute("aria-required", "true")
+      // Label should NOT have an asterisk
+      const label = trigger.closest(".space-y-1\\.5")?.querySelector("label")
+      expect(label?.textContent).not.toMatch(/\*/)
+    })
+
+    it("renders 'Estimar por edad' link inside DatePicker popover footer, NOT as sibling button (CA-UI-013)", async () => {
+      const user = userEvent.setup()
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      )
+      // There should be NO standalone "Estimar por edad" button outside the popover
+      const estimarButtons = screen.queryAllByRole("button", { name: /Estimar por edad/i })
+      expect(estimarButtons).toHaveLength(0)
+
+      // Open the DatePicker popover
+      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
+      // The "Estimar por edad" link should be inside the popover footer
+      const dialog = screen.getByRole("dialog")
+      const footerEl = dialog.querySelector(".border-t")
+      expect(footerEl).not.toBeNull()
+      expect(footerEl).toHaveTextContent("Estimar por edad")
     })
   })
 })
