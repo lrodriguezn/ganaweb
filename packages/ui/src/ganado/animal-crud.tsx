@@ -27,8 +27,13 @@ import { Label } from "../primitives/label"
 import { type PillsOption, PillsSegmentadas } from "../primitives/pills-segmentadas"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../primitives/select"
 import { SelectConCreacion } from "../primitives/select-con-creacion"
+import {
+  DETAIL_FIELD_NAMES,
+  SECTION_LAYOUT,
+  sectionFor,
+  useOnlineStatus,
+} from "./animal-crud-infra"
 import { BottomNav } from "./bottom-nav"
-import { DETAIL_FIELD_NAMES, SECTION_LAYOUT, sectionFor, useOnlineStatus } from "./animal-crud-infra"
 import { EmptyState } from "./empty-state"
 import { CategoriaBadge, EstadoAnimalBadge, EstadoBadge, SaludBadge } from "./estado-badge"
 import { MetricCard } from "./metric-card"
@@ -632,14 +637,14 @@ const ORIGEN_OPTIONS: readonly { value: OrigenKey; label: string }[] = [
  */
 const FORM_FIELDS: readonly AnimalFormField[] = [
   { label: "Código *", name: "codigo", required: true },
-  { label: "Nombre", name: "nombre", required: true },
+  { label: "Nombre", name: "nombre" },
   { label: "Nº de arete", name: "codigoArete" },
-  { label: "Sexo", name: "sexoKey" },
+  { label: "Sexo *", name: "sexoKey" },
   { label: "Raza", name: "raza" },
-  { label: "Fecha de nacimiento", name: "fechaNacimiento" },
+  { label: "Fecha de nacimiento *", name: "fechaNacimiento" },
   { label: "Color", name: "color" },
   { label: "Calidad", name: "calidad" },
-  { label: "Origen", name: "origen" },
+  { label: "Origen *", name: "origen" },
   { label: "RFID", name: "codigoRfid" },
   { label: "Tipo de explotación", name: "tipoExplotacionId" },
   { label: "Tatuado", name: "tatuado" },
@@ -786,7 +791,6 @@ export function AnimalFormScreen({
     useComboboxOrigen,
     handleOrigenChange,
     handleEstimar,
-    fields,
     formId,
     submitForm,
     isComprado,
@@ -821,8 +825,7 @@ export function AnimalFormScreen({
 
   const renderFieldByName = (name: string, context: RenderFieldContext): React.ReactNode => {
     const fieldDef =
-      FORM_FIELDS.find((f) => f.name === name) ??
-      LOCATION_FIELDS.find((f) => f.name === name)
+      FORM_FIELDS.find((f) => f.name === name) ?? LOCATION_FIELDS.find((f) => f.name === name)
     if (!fieldDef) return null
     return renderAnimalFormField(fieldDef, context)
   }
@@ -860,9 +863,7 @@ export function AnimalFormScreen({
     return result
   }, [fieldErrors])
 
-  const [collapsibleOpen, setCollapsibleOpen] = useState(
-    formVariant === "edit" && hasDetailData,
-  )
+  const [collapsibleOpen, setCollapsibleOpen] = useState(formVariant === "edit" && hasDetailData)
 
   // Force open when a detail field has a validation error (CA-UI-010)
   useEffect(() => {
@@ -900,13 +901,7 @@ export function AnimalFormScreen({
       >
         <h1 className="text-title font-semibold">Nuevo animal</h1>
         {mobile && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Cerrar"
-            onClick={onCancel}
-          >
+          <Button type="button" variant="ghost" size="icon" aria-label="Cerrar" onClick={onCancel}>
             <X className="size-5" />
           </Button>
         )}
@@ -972,7 +967,10 @@ export function AnimalFormScreen({
               {formVariant !== "delete" ? (
                 <div
                   key={origen}
-                  className={cn("grid gap-3 flex-1", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}
+                  className={cn(
+                    "grid gap-3 flex-1",
+                    mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]",
+                  )}
                 >
                   {isComprado ? (
                     <PurchaseBlock
@@ -1008,7 +1006,9 @@ export function AnimalFormScreen({
               UBICACIÓN
             </h2>
             {formVariant === "create" ? (
-              <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr_1fr_1fr]")}>
+              <div
+                className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr_1fr_1fr]")}
+              >
                 {LOCATION_FIELDS.map((field) => renderFieldByName(field.name, ctx))}
               </div>
             ) : (
@@ -1134,10 +1134,9 @@ function renderSexoField(field: AnimalFormField, ctx: RenderFieldContext) {
 
   // Mobile: render as PillsSegmentadas (full-width radio group)
   if (mobile) {
-    const selectedValue =
-      sexo.some((option) => option.value === "1")
-        ? String(initialValues?.sexoKey ?? 1)
-        : undefined
+    const selectedValue = sexo.some((option) => option.value === "1")
+      ? String(initialValues?.sexoKey ?? 1)
+      : undefined
     const sexOptions: readonly PillsOption[] = sexo.map((o) => ({
       value: o.value,
       label: o.label,
@@ -1165,9 +1164,7 @@ function renderSexoField(field: AnimalFormField, ctx: RenderFieldContext) {
                 ]) as unknown as readonly [PillsOption, PillsOption]
           }
           label={field.label}
-          {...(fieldErrors?.[field.name]
-            ? { "aria-invalid": "true" as const }
-            : {})}
+          {...(fieldErrors?.[field.name] ? { "aria-invalid": "true" as const } : {})}
         />
         {fieldErrors?.[field.name] ? (
           <p role="alert" className="text-caption text-danger-600">
@@ -1785,12 +1782,8 @@ function FechaNacimientoField({
         value={value}
         onChange={onChange}
         maxDate={new Date()}
-        footerChildren={
-          <EstimarPorEdadInline onApply={onEstimar} />
-        }
-        {...(errorMessage
-          ? { "aria-invalid": "true" as const, "aria-describedby": errorId }
-          : {})}
+        footerChildren={<EstimarPorEdadInline onApply={onEstimar} />}
+        {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
       />
       {errorMessage ? (
         <p id={errorId} role="alert" className="text-caption text-danger-600">

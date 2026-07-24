@@ -176,12 +176,12 @@ describe("PR3 animal UI OpenPencil parity", () => {
       "Código *",
       "Nombre",
       "Nº de arete",
-      "Sexo",
+      "Sexo *",
       "Raza",
-      "Fecha de nacimiento",
+      "Fecha de nacimiento *",
       "Color",
       "Calidad",
-      "Origen",
+      "Origen *",
       "Madre",
       "Padre",
       "Potrero",
@@ -297,7 +297,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
 
     // Sexo is rendered via CatalogSelectField (Radix Select). The trigger carries the
     // aria-invalid / aria-describedby wiring — the alert <p> lives next to it.
-    const sexoTrigger = screen.getByRole("combobox", { name: "Sexo" })
+    const sexoTrigger = screen.getByRole("combobox", { name: "Sexo *" })
     expect(sexoTrigger).toHaveAttribute("aria-invalid", "true")
     const describedBy = sexoTrigger.getAttribute("aria-describedby")
     expect(describedBy).toBeTruthy()
@@ -328,13 +328,13 @@ describe("PR3 animal UI OpenPencil parity", () => {
       />,
     )
 
-    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("Hembra")
-    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("Compra externa")
+    expect(screen.getByRole("combobox", { name: "Sexo *" })).toHaveTextContent("Hembra")
+    expect(screen.getByRole("combobox", { name: "Origen *" })).toHaveTextContent("Compra externa")
     expect(screen.queryByText(/^1$/)).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText("Código *"), "NV-43")
     await user.type(screen.getByLabelText("Nombre"), "Novilla 43")
-    await user.click(screen.getByRole("combobox", { name: "Sexo" }))
+    await user.click(screen.getByRole("combobox", { name: "Sexo *" }))
     expect(screen.getByRole("option", { name: "Macho" })).toBeInTheDocument()
     expect(screen.getByRole("option", { name: "Hembra" })).toBeInTheDocument()
     expect(screen.getByRole("option", { name: "Pajuela" })).toBeInTheDocument()
@@ -376,9 +376,9 @@ describe("PR3 animal UI OpenPencil parity", () => {
       </>,
     )
     // Desktop renders Sexo as a combobox (Select), mobile as a radiogroup (PillsSegmentadas)
-    const sexoComboboxes = screen.getAllByRole("combobox", { name: "Sexo" })
+    const sexoComboboxes = screen.getAllByRole("combobox", { name: "Sexo *" })
     expect(sexoComboboxes).toHaveLength(1) // only desktop
-    const sexoRadiogroups = screen.getAllByRole("radiogroup", { name: "Sexo" })
+    const sexoRadiogroups = screen.getAllByRole("radiogroup", { name: "Sexo *" })
     expect(sexoRadiogroups).toHaveLength(1) // only mobile
     const firstSexo = sexoComboboxes[0]
     if (!firstSexo) throw new Error("first sexo control expected")
@@ -409,8 +409,8 @@ describe("PR3 animal UI OpenPencil parity", () => {
         catalogOptions={{ sexo: [] }}
       />,
     )
-    expect(screen.getByRole("combobox", { name: "Sexo" })).toBeDisabled()
-    expect(screen.getByRole("combobox", { name: "Sexo" })).toHaveTextContent("Sexo")
+    expect(screen.getByRole("combobox", { name: "Sexo *" })).toBeDisabled()
+    expect(screen.getByRole("combobox", { name: "Sexo *" })).toHaveTextContent("Sexo *")
   })
 
   it("shows the field label as placeholder when catalog values are missing (CA-UI-001/003)", () => {
@@ -424,7 +424,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       />,
     )
 
-    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("Origen")
+    expect(screen.getByRole("combobox", { name: "Origen *" })).toHaveTextContent("Origen")
     expect(screen.queryByText("origen-legacy")).not.toBeInTheDocument()
   })
 
@@ -630,9 +630,9 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
 
     // fechaNacimiento is a DatePicker — trigger is a button labelled by the "Fecha de nacimiento" <Label htmlFor>.
-    const fechaTrigger = screen.getByRole("button", { name: "Fecha de nacimiento" })
+    const fechaTrigger = screen.getByRole("button", { name: "Fecha de nacimiento *" })
     expect(fechaTrigger).toBeInTheDocument()
-    expect(screen.queryByRole("textbox", { name: "Fecha de nacimiento" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "Fecha de nacimiento *" })).not.toBeInTheDocument()
 
     // Raza / Color are SelectConCreacion (combobox role) with label association.
     expect(screen.getByRole("combobox", { name: "Raza" })).toBeInTheDocument()
@@ -645,16 +645,16 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(calidadCombobox).toBeInTheDocument()
 
     // Origen is a PillsSegmentadas — radiogroup with 2 options, not a combobox.
-    const origenGroup = screen.getByRole("radiogroup", { name: "Origen" })
+    const origenGroup = screen.getByRole("radiogroup", { name: "Origen *" })
     expect(origenGroup).toBeInTheDocument()
     expect(screen.getByRole("radio", { name: "Nacido en finca" })).toBeInTheDocument()
     expect(screen.getByRole("radio", { name: "Comprado" })).toBeInTheDocument()
-    expect(screen.queryByRole("combobox", { name: "Origen" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("combobox", { name: "Origen *" })).not.toBeInTheDocument()
 
     // Default origen = nacido_en_finca → parents visible, purchase fields not.
     expect(screen.getByRole("combobox", { name: "Madre" })).toBeInTheDocument()
     expect(screen.getByRole("combobox", { name: "Padre" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Fecha de nacimiento" })).toBeInTheDocument() // only fechaNacimiento trigger
+    expect(screen.queryByRole("button", { name: "Fecha de nacimiento *" })).toBeInTheDocument() // only fechaNacimiento trigger
     expect(screen.queryByRole("combobox", { name: "Lugar de compra" })).not.toBeInTheDocument()
   })
 
@@ -763,7 +763,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
 
     // Default: nacido_en_finca → purchase fields NOT visible
-    expect(screen.queryByRole("button", { name: "Fecha de nacimiento" })).toBeInTheDocument() // only fechaNacimiento
+    expect(screen.queryByRole("button", { name: "Fecha de nacimiento *" })).toBeInTheDocument() // only fechaNacimiento
     expect(screen.queryByLabelText("Fecha de compra")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("Precio")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("Peso compra")).not.toBeInTheDocument()
@@ -825,7 +825,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       <AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />,
     )
 
-    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
     await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
     await user.click(screen.getByRole("radio", { name: "Comprado" }))
     await user.click(screen.getByRole("button", { name: "Fecha de compra" }))
@@ -878,7 +878,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
 
     // Open the DatePicker popover to find the "Estimar por edad" link in the footer
-    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
     const estimarLink = await screen.findByRole("button", { name: /Estimar por edad/i })
     await user.click(estimarLink)
 
@@ -916,7 +916,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       />,
     )
 
-    const trigger = screen.getByRole("button", { name: "Fecha de nacimiento" })
+    const trigger = screen.getByRole("button", { name: "Fecha de nacimiento *" })
     expect(trigger).toHaveAttribute("aria-invalid", "true")
     const describedBy = trigger.getAttribute("aria-describedby")
     expect(describedBy).toBeTruthy()
@@ -1137,7 +1137,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       await user.type(screen.getByLabelText("Comentarios"), "animal enfermo")
 
       // Set fechaNacimiento via DatePicker
-      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
       await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
 
       // Flip viewport to mobile
@@ -1149,7 +1149,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
 
       // State must survive the re-render
       expect(screen.getByLabelText("Comentarios")).toHaveValue("animal enfermo")
-      expect(screen.getByRole("button", { name: "Fecha de nacimiento" })).toHaveTextContent(
+      expect(screen.getByRole("button", { name: "Fecha de nacimiento *" })).toHaveTextContent(
         "10/07/2026",
       )
     })
@@ -1316,9 +1316,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
 
   describe("WU-3: 4-section layout restructure", () => {
     it("renders exactly 4 <section> elements with uppercase headers in order", () => {
-      render(
-        <AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />,
-      )
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
       const form = document.querySelector("form")
       expect(form).not.toBeNull()
       const sections = form?.querySelectorAll(":scope > fieldset > section")
@@ -1335,9 +1333,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     })
 
     it("uses per-section grids (no global grid-cols-2 on the form)", () => {
-      render(
-        <AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />,
-      )
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
       const form = document.querySelector("form")
       expect(form).not.toBeNull()
       // The form element itself should NOT have grid-cols-2
@@ -1345,9 +1341,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
       expect(formClass).not.toContain("grid-cols-2")
 
       // Section grids are on inner divs — check all descendant grid classes
-      const allClasses = Array.from(form?.querySelectorAll("*") ?? []).map(
-        (el) => el.className,
-      )
+      const allClasses = Array.from(form?.querySelectorAll("*") ?? []).map((el) => el.className)
       const allClassesStr = allClasses.join(" ")
       // IDENTIFICACIÓN section has grid with 1.4fr
       expect(allClassesStr).toContain("1.4fr")
@@ -1356,9 +1350,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     })
 
     it("constrains the card to max-w-[720px] (not max-w-3xl)", () => {
-      render(
-        <AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />,
-      )
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
       const form = document.querySelector("form")
       expect(form).not.toBeNull()
       const formClass = form?.className ?? ""
@@ -1367,20 +1359,18 @@ describe("PR3 animal UI OpenPencil parity", () => {
     })
 
     it("preserves all existing form field labels within the sections", () => {
-      render(
-        <AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />,
-      )
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
       // All fields still present
       for (const label of [
         "Código *",
         "Nombre",
         "Nº de arete",
-        "Sexo",
+        "Sexo *",
         "Raza",
-        "Fecha de nacimiento",
+        "Fecha de nacimiento *",
         "Color",
         "Calidad",
-        "Origen",
+        "Origen *",
         "Madre",
         "Padre",
         "Potrero",
@@ -1396,7 +1386,12 @@ describe("PR3 animal UI OpenPencil parity", () => {
   describe("WU-4: Collapsible 'Detalles adicionales'", () => {
     it("is closed on create with no count suffix", () => {
       render(
-        <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+        />,
       )
       const trigger = screen.getByRole("button", { name: /Detalles adicionales/i })
       expect(trigger).toBeInTheDocument()
@@ -1512,17 +1507,15 @@ describe("PR3 animal UI OpenPencil parity", () => {
         />,
       )
       // On mobile, Sexo should be a radiogroup (PillsSegmentadas)
-      expect(screen.getByRole("radiogroup", { name: "Sexo" })).toBeInTheDocument()
+      expect(screen.getByRole("radiogroup", { name: "Sexo *" })).toBeInTheDocument()
       // No combobox for Sexo on mobile
-      expect(screen.queryByRole("combobox", { name: "Sexo" })).not.toBeInTheDocument()
+      expect(screen.queryByRole("combobox", { name: "Sexo *" })).not.toBeInTheDocument()
     })
 
     it("renders mobile ✕ close button in header calling onCancel", async () => {
       const user = userEvent.setup()
       const onCancel = vi.fn()
-      render(
-        <AnimalFormScreen mode="mobile" onSave={vi.fn()} onCancel={onCancel} />,
-      )
+      render(<AnimalFormScreen mode="mobile" onSave={vi.fn()} onCancel={onCancel} />)
       const closeBtn = screen.getByRole("button", { name: /cerrar/i })
       expect(closeBtn).toBeInTheDocument()
       await user.click(closeBtn)
@@ -1581,14 +1574,19 @@ describe("PR3 animal UI OpenPencil parity", () => {
     it("renders 'Estimar por edad' link inside DatePicker popover footer, NOT as sibling button (CA-UI-013)", async () => {
       const user = userEvent.setup()
       render(
-        <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="create"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+        />,
       )
       // There should be NO standalone "Estimar por edad" button outside the popover
       const estimarButtons = screen.queryAllByRole("button", { name: /Estimar por edad/i })
       expect(estimarButtons).toHaveLength(0)
 
       // Open the DatePicker popover
-      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento" }))
+      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
       // The "Estimar por edad" link should be inside the popover footer
       const dialog = screen.getByRole("dialog")
       const footerEl = dialog.querySelector(".border-t")

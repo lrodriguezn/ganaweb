@@ -5,18 +5,14 @@ import { useEffect, useState } from "react"
  * CA-UI-005: the sync hint in the footer renders only when offline.
  */
 export function useOnlineStatus(): boolean {
-  const [online, setOnline] = useState(
-    typeof navigator === "undefined" ? true : navigator.onLine,
-  )
+  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine)
 
   useEffect(() => {
     if (typeof window === "undefined") return
     const handleOnline = () => setOnline(true)
     const handleOffline = () => setOnline(false)
     // Sync with current state on mount
-    setOnline(
-      typeof navigator === "undefined" ? true : navigator.onLine,
-    )
+    setOnline(typeof navigator === "undefined" ? true : navigator.onLine)
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
     return () => {

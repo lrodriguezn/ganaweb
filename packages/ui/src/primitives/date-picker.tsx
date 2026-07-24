@@ -214,9 +214,7 @@ export function DatePicker({
               classNames={CALENDAR_CLASSNAMES}
               components={{ DayButton: TokenDayButton }}
             />
-            {footerChildren ? (
-              <div className="border-t p-3">{footerChildren}</div>
-            ) : null}
+            {footerChildren ? <div className="border-t p-3">{footerChildren}</div> : null}
           </PopoverPrimitive.Content>
         </PopoverPrimitive.Portal>
       </PopoverPrimitive.Root>
