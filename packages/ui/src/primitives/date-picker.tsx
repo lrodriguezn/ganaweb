@@ -168,7 +168,7 @@ export function DatePicker({
   const display = toDisplayDate(value)
 
   return (
-    <span className={cn("inline-flex flex-col gap-1", className)}>
+    <span className={cn("inline-flex w-full flex-col gap-1", className)}>
       <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
         <PopoverPrimitive.Trigger asChild>
           <Button
