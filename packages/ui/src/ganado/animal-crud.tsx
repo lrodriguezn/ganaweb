@@ -783,7 +783,6 @@ export function AnimalFormScreen({
   const {
     mobile,
     origen,
-    origenFlipCount,
     fechaNacimiento,
     fechaCompra,
     comentarios,
@@ -883,6 +882,66 @@ export function AnimalFormScreen({
   const sexoKey = initialValues?.sexoKey ?? 1
   const showEsDeMonta = sexoKey === 0
 
+  // ─── UBICACIÓN collapsible state (CA-UI-019 / CA-UI-020) ───
+  const ubicacionHasValues = useMemo(() => {
+    if (formVariant === "edit" && currentLocation) {
+      return Boolean(
+        currentLocation.potrero ||
+          currentLocation.sector ||
+          currentLocation.lote ||
+          currentLocation.grupo,
+      )
+    }
+    if (!initialValues) return false
+    return Boolean(
+      initialValues.potreroId ||
+        initialValues.sectorId ||
+        initialValues.loteId ||
+        initialValues.grupoId,
+    )
+  }, [formVariant, currentLocation, initialValues])
+
+  const ubicacionSummary = useMemo(() => {
+    if (formVariant === "edit" && currentLocation) {
+      const parts = [
+        currentLocation.potrero,
+        currentLocation.sector,
+        currentLocation.lote,
+        currentLocation.grupo,
+      ].filter(Boolean)
+      return parts.length > 0 ? parts.join(" · ") : "sin asignar"
+    }
+    return "sin asignar"
+  }, [formVariant, currentLocation])
+
+  const ubicacionFieldErrors = useMemo(() => {
+    if (!fieldErrors) return {}
+    const locNames = ["potreroId", "sectorId", "loteId", "grupoId"]
+    const result: Record<string, string> = {}
+    for (const name of locNames) {
+      if (fieldErrors[name]) result[name] = fieldErrors[name]
+    }
+    return result
+  }, [fieldErrors])
+
+  const [ubicacionOpen, setUbicacionOpen] = useState(
+    formVariant === "edit" ? ubicacionHasValues : false,
+  )
+
+  // Force open UBICACIÓN when a location field has a validation error (CA-UI-020 → CA-UI-010)
+  useEffect(() => {
+    if (Object.keys(ubicacionFieldErrors).length > 0 && !ubicacionOpen) {
+      setUbicacionOpen(true)
+      const firstErrorName = Object.keys(ubicacionFieldErrors)[0]
+      if (firstErrorName) {
+        const el = document.getElementsByName(firstErrorName)[0]
+        if (el) {
+          el.scrollIntoView({ block: "nearest" })
+        }
+      }
+    }
+  }, [JSON.stringify(ubicacionFieldErrors)])
+
   // CA-UI-005: sync hint is offline-only
   const isOnline = useOnlineStatus()
 
@@ -960,61 +1019,102 @@ export function AnimalFormScreen({
             >
               ORIGEN
             </h2>
-            <div className={cn("gap-3", mobile ? "flex flex-col" : "flex items-start gap-3")}>
+            <div className={cn("gap-3", mobile ? "space-y-3" : "flex items-start gap-3")}>
               <div className={mobile ? "w-full" : "w-[260px] shrink-0"}>
                 {renderFieldByName("origen", ctx)}
               </div>
               {formVariant !== "delete" ? (
+                // CA-UI-021 · Panel contenedor — único hijo, remontado por key={origen}
+                // CA-UI-023 · Altura estable: min-h-[148px] cubre el modo más alto (2 filas)
                 <div
                   key={origen}
                   className={cn(
-                    "grid gap-3 flex-1",
+                    "rounded-card bg-muted/40 p-4 grid gap-3 flex-1 min-h-[148px]",
                     mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]",
                   )}
                 >
                   {isComprado ? (
-                    <PurchaseBlock
-                      key={`purchase-${origen}-${origenFlipCount}`}
-                      initialValues={initialValues}
-                      catalogOptions={catalogOptions}
-                      fieldErrors={fieldErrors}
-                      fechaCompra={fechaCompra}
-                      fechaNacimiento={fechaNacimiento}
-                      onFechaCompraChange={setFechaCompra}
-                    />
+                    // CA-UI-022 · Comprado: Fecha compra · Precio / Peso compra · Lugar
+                    <>
+                      <FechaCompraField
+                        value={fechaCompra}
+                        minDate={
+                          fechaNacimiento ? new Date(`${fechaNacimiento}T00:00:00`) : undefined
+                        }
+                        onChange={setFechaCompra}
+                        fieldErrors={fieldErrors}
+                      />
+                      <NumericField
+                        label="Precio"
+                        name="precioCompra"
+                        defaultValue={initialValues?.precioCompra}
+                        fieldErrors={fieldErrors}
+                      />
+                      <NumericField
+                        label="Peso compra"
+                        name="pesoCompra"
+                        defaultValue={initialValues?.pesoCompra}
+                        fieldErrors={fieldErrors}
+                      />
+                      <SelectConCreacionField
+                        label="Lugar de compra"
+                        name="lugarCompra"
+                        options={catalogOptions?.lugarCompra ?? []}
+                        canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
+                        defaultValue={initialValues?.lugarCompraId}
+                        fieldErrors={fieldErrors}
+                      />
+                    </>
                   ) : (
-                    <ParentsBlock
-                      key={`parents-${origen}-${origenFlipCount}`}
-                      initialValues={initialValues}
-                      catalogOptions={catalogOptions}
-                      fieldErrors={fieldErrors}
-                      currentAnimalId={currentAnimalId}
-                      showPadre={true}
-                    />
+                    // CA-UI-022 · Nacido en finca: Madre · Padre
+                    <>
+                      <ComboboxField
+                        label="Madre"
+                        name="madreId"
+                        options={catalogOptions?.madre ?? []}
+                        defaultValue={initialValues?.madreId}
+                        excludedIds={currentAnimalId ? [currentAnimalId] : []}
+                        fieldErrors={fieldErrors}
+                      />
+                      <ComboboxField
+                        label="Padre"
+                        name="padreId"
+                        options={catalogOptions?.padre ?? []}
+                        defaultValue={initialValues?.padreId}
+                        fieldErrors={fieldErrors}
+                      />
+                    </>
                   )}
                 </div>
               ) : null}
             </div>
           </section>
 
-          {/* ─── UBICACIÓN ─── */}
-          <section aria-labelledby="ubicacion-heading">
-            <h2
-              id="ubicacion-heading"
-              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mb-3"
-            >
-              UBICACIÓN
-            </h2>
-            {formVariant === "create" ? (
-              <div
-                className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr_1fr_1fr]")}
+          {/* ─── UBICACIÓN (Collapsible, CA-UI-019/020) ─── */}
+          <Collapsible open={ubicacionOpen} onOpenChange={setUbicacionOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground py-2 flex items-center gap-2"
               >
-                {LOCATION_FIELDS.map((field) => renderFieldByName(field.name, ctx))}
-              </div>
-            ) : (
-              renderCurrentLocation(currentLocation)
-            )}
-          </section>
+                <span aria-hidden="true">{ubicacionOpen ? "▾" : "▸"}</span>
+                Ubicación
+                <span className="text-caption text-muted-foreground font-normal normal-case">
+                  · {ubicacionSummary}
+                </span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent forceMount className="pt-2 data-[state=closed]:hidden">
+              {formVariant === "create" ? (
+                // CA-UI-019: 2 dropdowns por fila (1fr 1fr), no 4 en una fila
+                <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
+                  {LOCATION_FIELDS.map((field) => renderFieldByName(field.name, ctx))}
+                </div>
+              ) : (
+                renderCurrentLocation(currentLocation)
+              )}
+            </CollapsibleContent>
+          </Collapsible>
 
           {mobile && (
             <p className="rounded-card bg-info-100 text-info-600 p-3 text-support">
@@ -1129,53 +1229,10 @@ interface RenderFieldContext {
 type FieldRenderer = (field: AnimalFormField, ctx: RenderFieldContext) => React.ReactNode
 
 function renderSexoField(field: AnimalFormField, ctx: RenderFieldContext) {
-  const { initialValues, catalogOptions, fieldErrors, mobile } = ctx
+  const { initialValues, catalogOptions, fieldErrors } = ctx
   const sexo = catalogOptions?.sexo ?? []
 
-  // Mobile: render as PillsSegmentadas (full-width radio group)
-  if (mobile) {
-    const selectedValue = sexo.some((option) => option.value === "1")
-      ? String(initialValues?.sexoKey ?? 1)
-      : undefined
-    const sexOptions: readonly PillsOption[] = sexo.map((o) => ({
-      value: o.value,
-      label: o.label,
-    }))
-    return (
-      <div className="space-y-1.5" key={field.name}>
-        <Label htmlFor={`sexo-${field.name}`}>{field.label}</Label>
-        <input type="hidden" name={field.name} value={selectedValue ?? "1"} />
-        <PillsSegmentadas
-          id={`sexo-${field.name}`}
-          name={field.name}
-          value={selectedValue ?? "1"}
-          onChange={(next) => {
-            const hidden = document.querySelector(
-              `input[type=hidden][name="${field.name}"]`,
-            ) as HTMLInputElement | null
-            if (hidden) hidden.value = next
-          }}
-          options={
-            (sexOptions.length >= 2
-              ? sexOptions.slice(0, 2)
-              : [
-                  { value: "0", label: "Macho" },
-                  { value: "1", label: "Hembra" },
-                ]) as unknown as readonly [PillsOption, PillsOption]
-          }
-          label={field.label}
-          {...(fieldErrors?.[field.name] ? { "aria-invalid": "true" as const } : {})}
-        />
-        {fieldErrors?.[field.name] ? (
-          <p role="alert" className="text-caption text-danger-600">
-            {fieldErrors[field.name]}
-          </p>
-        ) : null}
-      </div>
-    )
-  }
-
-  // Desktop: render as CatalogSelectField (combobox)
+  // CA-UI-025: Sexo uses dropdown on BOTH desktop and mobile.
   return (
     <CatalogSelectField
       key={field.name}
@@ -1425,103 +1482,6 @@ function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) 
   const renderer = FIELD_RENDERERS[field.name]
   if (renderer) return renderer(field, ctx)
   return <Field key={field.name} {...field} fieldErrors={ctx.fieldErrors} />
-}
-
-/**
- * Purchase block — rendered when `origen === "comprado"`.
- *
- * CA-UI-007: when the user flips origen back to "nacido_en_finca", this
- * entire block unmounts (the parent `<div key={origen}>` re-mounts) and
- * every typed value is discarded.
- */
-function PurchaseBlock({
-  initialValues,
-  catalogOptions,
-  fieldErrors,
-  fechaCompra,
-  fechaNacimiento,
-  onFechaCompraChange,
-}: {
-  initialValues?: AnimalFormInitialValues | undefined
-  catalogOptions?: AnimalFormCatalogOptions | undefined
-  fieldErrors?: Record<string, string> | undefined
-  fechaCompra: string
-  fechaNacimiento: string
-  onFechaCompraChange: (value: string) => void
-}) {
-  return (
-    <>
-      <FechaCompraField
-        value={fechaCompra}
-        minDate={fechaNacimiento ? new Date(`${fechaNacimiento}T00:00:00`) : undefined}
-        onChange={onFechaCompraChange}
-        fieldErrors={fieldErrors}
-      />
-      <NumericField
-        label="Precio"
-        name="precioCompra"
-        defaultValue={initialValues?.precioCompra}
-        fieldErrors={fieldErrors}
-      />
-      <NumericField
-        label="Peso compra"
-        name="pesoCompra"
-        defaultValue={initialValues?.pesoCompra}
-        fieldErrors={fieldErrors}
-      />
-      <SelectConCreacionField
-        label="Lugar de compra"
-        name="lugarCompra"
-        options={catalogOptions?.lugarCompra ?? []}
-        canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
-        defaultValue={initialValues?.lugarCompraId}
-        fieldErrors={fieldErrors}
-      />
-    </>
-  )
-}
-
-/**
- * Parents block — rendered when `origen === "nacido_en_finca"`.
- *
- * CA-CRE-003: `excludedIds` filters the current animal out so it cannot
- * be set as its own parent. The mobile form omits `padre` per the
- * existing PR 3 mobile filter.
- */
-function ParentsBlock({
-  initialValues,
-  catalogOptions,
-  fieldErrors,
-  currentAnimalId,
-  showPadre,
-}: {
-  initialValues?: AnimalFormInitialValues | undefined
-  catalogOptions?: AnimalFormCatalogOptions | undefined
-  fieldErrors?: Record<string, string> | undefined
-  currentAnimalId?: string | undefined
-  showPadre: boolean
-}) {
-  return (
-    <>
-      <ComboboxField
-        label="Madre"
-        name="madreId"
-        options={catalogOptions?.madre ?? []}
-        defaultValue={initialValues?.madreId}
-        excludedIds={currentAnimalId ? [currentAnimalId] : []}
-        fieldErrors={fieldErrors}
-      />
-      {showPadre ? (
-        <ComboboxField
-          label="Padre"
-          name="padreId"
-          options={catalogOptions?.padre ?? []}
-          defaultValue={initialValues?.padreId}
-          fieldErrors={fieldErrors}
-        />
-      ) : null}
-    </>
-  )
 }
 
 function renderCurrentLocation(currentLocation?: AnimalCurrentLocation) {

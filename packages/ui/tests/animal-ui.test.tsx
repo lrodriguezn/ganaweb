@@ -375,11 +375,11 @@ describe("PR3 animal UI OpenPencil parity", () => {
         />
       </>,
     )
-    // Desktop renders Sexo as a combobox (Select), mobile as a radiogroup (PillsSegmentadas)
+    // CA-UI-025: Sexo renders as combobox on BOTH desktop and mobile
     const sexoComboboxes = screen.getAllByRole("combobox", { name: "Sexo *" })
-    expect(sexoComboboxes).toHaveLength(1) // only desktop
-    const sexoRadiogroups = screen.getAllByRole("radiogroup", { name: "Sexo *" })
-    expect(sexoRadiogroups).toHaveLength(1) // only mobile
+    expect(sexoComboboxes).toHaveLength(2) // desktop + mobile
+    const sexoRadiogroups = screen.queryAllByRole("radiogroup", { name: "Sexo *" })
+    expect(sexoRadiogroups).toHaveLength(0) // no radiogroup in either mode
     const firstSexo = sexoComboboxes[0]
     if (!firstSexo) throw new Error("first sexo control expected")
     await user.click(firstSexo)
@@ -1315,21 +1315,27 @@ describe("PR3 animal UI OpenPencil parity", () => {
   })
 
   describe("WU-3: 4-section layout restructure", () => {
-    it("renders exactly 4 <section> elements with uppercase headers in order", () => {
+    it("renders exactly 3 <section> elements with uppercase headers in order (UBICACIÓN is now Collapsible per CA-UI-019)", () => {
       render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
       const form = document.querySelector("form")
       expect(form).not.toBeNull()
       const sections = form?.querySelectorAll(":scope > fieldset > section")
-      expect(sections?.length).toBe(4)
+      expect(sections?.length).toBe(3) // IDENTIFICACIÓN, CARACTERÍSTICAS, ORIGEN (UBICACIÓN → Collapsible)
 
       // Headers should be uppercase with correct titles
-      const headers = form?.querySelectorAll("h2")
+      const headers = form?.querySelectorAll(
+        ":scope > fieldset > section h2, :scope > fieldset button[type='button']",
+      )
       expect(headers?.length).toBeGreaterThanOrEqual(4)
       const headerTexts = Array.from(headers ?? []).map((h) => h.textContent?.trim())
       expect(headerTexts).toContain("IDENTIFICACIÓN")
       expect(headerTexts).toContain("CARACTERÍSTICAS")
       expect(headerTexts).toContain("ORIGEN")
-      expect(headerTexts).toContain("UBICACIÓN")
+      // UBICACIÓN header is inside CollapsibleTrigger button
+      const ubicacionHeader = Array.from(headers ?? []).find(
+        (h) => h.textContent?.includes("UBICACIÓN") || h.textContent?.includes("Ubicación"),
+      )
+      expect(ubicacionHeader).toBeDefined()
     })
 
     it("uses per-section grids (no global grid-cols-2 on the form)", () => {
@@ -1345,8 +1351,8 @@ describe("PR3 animal UI OpenPencil parity", () => {
       const allClassesStr = allClasses.join(" ")
       // IDENTIFICACIÓN section has grid with 1.4fr
       expect(allClassesStr).toContain("1.4fr")
-      // UBICACIÓN section has 4-column grid
-      expect(allClassesStr).toContain("1fr_1fr_1fr_1fr")
+      // CA-UI-019: UBICACIÓN has 2-column grid (not 4-column)
+      expect(allClassesStr).toContain("1fr_1fr")
     })
 
     it("constrains the card to max-w-[720px] (not max-w-3xl)", () => {
@@ -1492,7 +1498,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
   })
 
   describe("WU-5: Mobile parity", () => {
-    it("renders Sexo as PillsSegmentadas on mobile (not Select)", () => {
+    it("renders Sexo as combobox (Select) also on mobile per CA-UI-025", () => {
       render(
         <AnimalFormScreen
           mode="mobile"
@@ -1506,10 +1512,10 @@ describe("PR3 animal UI OpenPencil parity", () => {
           }}
         />,
       )
-      // On mobile, Sexo should be a radiogroup (PillsSegmentadas)
-      expect(screen.getByRole("radiogroup", { name: "Sexo *" })).toBeInTheDocument()
-      // No combobox for Sexo on mobile
-      expect(screen.queryByRole("combobox", { name: "Sexo *" })).not.toBeInTheDocument()
+      // CA-UI-025: Sexo stays as dropdown on BOTH desktop and mobile
+      expect(screen.getByRole("combobox", { name: "Sexo *" })).toBeInTheDocument()
+      // No radiogroup for Sexo on either mode
+      expect(screen.queryByRole("radiogroup", { name: "Sexo *" })).not.toBeInTheDocument()
     })
 
     it("renders mobile ✕ close button in header calling onCancel", async () => {
