@@ -2,6 +2,45 @@
 
 > **SDD phase**: verify — executed against `master` (8 commits ahead of `origin/master`).
 > **Test runner**: `pnpm turbo test` (strict TDD mode).
+> **Result**: **PASS** (re-verify 2026-07-24, commit `9282924`).
+
+## Re-verify (2026-07-24, commit `9282924`)
+
+Previous verify found 1 CRITICAL (CA-UI-014 missing `*` on Sexo / Origen / Fecha de nacimiento), 1 WARNING (unused `fields` destructure blocking lint), and 4 auto-fixable format errors. Commit `9282924` addressed all of them:
+
+| Finding | Before | After | Evidence |
+|---|---|---|---|
+| **CRITICAL** CA-UI-014 `*` on Sexo | `"Sexo"` | `"Sexo *"` | `animal-crud.tsx:642` |
+| **CRITICAL** CA-UI-014 `*` on Origen | `"Origen"` | `"Origen *"` | `animal-crud.tsx:647` |
+| **CRITICAL** CA-UI-014 `*` on Fecha de nacimiento | `"Fecha de nacimiento"` | `"Fecha de nacimiento *"` | `animal-crud.tsx:644` |
+| Nombre not required (per CA-UI-014) | had `required: true` | removed | `animal-crud.tsx:640` — no `required` key, no `*` |
+| **WARNING 1** unused `fields` destructure | lint error at line 789 | destructure removed | `biome check` → 0 errors |
+| **SUGGESTION 1** biome format (4 files) | 4 format errors | resolved via `biome check --write` | `biome check` → 0 errors |
+| Test label updates | tests used non-asterisked labels | updated to `"Sexo *"`, `"Origen *"`, `"Fecha de nacimiento *"` | `animal-ui.test.tsx:179,181,184` |
+
+### Re-verify results
+
+| Command | Result | Evidence |
+|---|---|---|
+| `pnpm turbo test` | **PASS** | 410/410 (15 test files @ganaweb/ui + 1 test file @ganaweb/web). 60 tests in `animal-ui.test.tsx`, 17 in `date-picker.test.tsx`. 13 turbo tasks successful. |
+| `pnpm turbo typecheck` | **PASS** | 13/13 tasks successful. |
+| `pnpm exec biome check packages/ui/src/ganado/animal-crud.tsx …` | **PASS** (warnings only) | 0 errors. 4 pre-existing warnings: 1× `noExcessiveCognitiveComplexity` (37 > 15) on `AnimalFormScreen`, 3× `useExhaustiveDependencies` on the `JSON.stringify(detailFieldErrors)` effect (intentional pattern). All carry over from the previous report's WARNING 1 & 2. |
+
+### Coverage matrix delta
+
+Spec scenario #3 (asterisk only on required fields per CA-UI-014) — previously **FAIL — CRITICAL** — is now **PASS**. The `animal-ui.test.tsx:179-185` label-presence test asserts the new `*`-suffixed labels for Sexo / Origen / Fecha de nacimiento, and the negative test at line 1560 (`"Tipo de explotación has NO asterisk"`) continues to pass. No other spec scenarios regressed.
+
+### Verdict
+
+- [x] Ready for archive
+- [ ] Needs fixes
+
+The 4 remaining biome warnings are pre-existing (not introduced by this change) and are documented in the original report's WARNING 1 (complexity) and WARNING 2 (`useExhaustiveDependencies`); they do not block archive. Task T-303 (focus assertion) and T-503 (10-theme sweep) remain in their original state (deferred/manual) per the original report.
+
+---
+
+## Original verify (2026-07-23, commit `5d5ed30`)
+
 > **Result**: **FAIL** — one CRITICAL spec violation + 3 WARNINGs + 2 SUGGESTIONs.
 
 ## Test Suite
