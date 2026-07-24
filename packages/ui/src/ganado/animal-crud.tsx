@@ -981,7 +981,7 @@ export function AnimalFormScreen({
           <section aria-labelledby="identificacion-heading">
             <h2
               id="identificacion-heading"
-              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2"
             >
               IDENTIFICACIÓN
             </h2>
@@ -996,7 +996,7 @@ export function AnimalFormScreen({
           <section aria-labelledby="caracteristicas-heading">
             <h2
               id="caracteristicas-heading"
-              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2"
             >
               CARACTERÍSTICAS
             </h2>
@@ -1015,7 +1015,7 @@ export function AnimalFormScreen({
           <section aria-labelledby="origen-heading">
             <h2
               id="origen-heading"
-              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2"
             >
               ORIGEN
             </h2>
@@ -1025,11 +1025,11 @@ export function AnimalFormScreen({
               </div>
               {formVariant !== "delete" ? (
                 // CA-UI-021 · Panel contenedor — único hijo, remontado por key={origen}
-                // CA-UI-023 · Altura estable: min-h-[148px] cubre el modo más alto (2 filas)
+                // CA-UI-023 · Altura estable: min-h-[160px] cubre el modo más alto (2 filas)
                 <div
                   key={origen}
                   className={cn(
-                    "rounded-card bg-muted/40 p-4 grid gap-3 flex-1 min-h-[148px]",
+                    "rounded-card bg-muted p-4 grid gap-3 flex-1 min-h-[160px]",
                     mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]",
                   )}
                 >
@@ -1095,7 +1095,7 @@ export function AnimalFormScreen({
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground py-2 flex items-center gap-2"
+                className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2 py-0 flex items-center gap-2"
               >
                 <span aria-hidden="true">{ubicacionOpen ? "▾" : "▸"}</span>
                 Ubicación
@@ -1127,7 +1127,7 @@ export function AnimalFormScreen({
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground py-2 flex items-center gap-2"
+                className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2 py-0 flex items-center gap-2"
               >
                 <span aria-hidden="true">{collapsibleOpen ? "▾" : "▸"}</span>
                 Detalles adicionales
@@ -1138,7 +1138,7 @@ export function AnimalFormScreen({
                 )}
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent forceMount className="space-y-4 pt-2 data-[state=closed]:hidden">
+            <CollapsibleContent forceMount className="space-y-4 pt-2 pb-4 data-[state=closed]:hidden">
               {/* Row 1: RFID + Tipo explotación + Propietario + Hierro */}
               <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
                 {renderFieldByName("codigoRfid", ctx)}
@@ -1547,14 +1547,17 @@ function Field({
   if (onChange) {
     return (
       <div className="space-y-1.5">
-        <Label htmlFor={id}>{label}</Label>
+        <Label htmlFor={id} className="text-support font-normal text-muted-foreground">
+          {label.replace(/\s\*$/, "")}
+          {label.endsWith(" *") && <span className="text-danger"> *</span>}
+        </Label>
         <Input
           id={id}
           name={name}
           required={required}
           value={value ?? ""}
           onChange={(event) => onChange(event.target.value)}
-          className="min-h-[--h-touch]"
+          className="h-10 min-h-[--h-touch]"
           {...inputProps}
         />
         {errorMessage ? (
@@ -1567,13 +1570,16 @@ function Field({
   }
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="text-support font-normal text-muted-foreground">
+        {label.replace(/\s\*$/, "")}
+        {label.endsWith(" *") && <span className="text-danger"> *</span>}
+      </Label>
       <Input
         id={id}
         name={name}
         required={required}
         defaultValue={defaultValue}
-        className="min-h-[--h-touch]"
+        className="h-10 min-h-[--h-touch]"
         {...inputProps}
       />
       {errorMessage ? (
