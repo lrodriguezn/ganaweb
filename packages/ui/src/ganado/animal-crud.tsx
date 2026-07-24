@@ -1138,7 +1138,10 @@ export function AnimalFormScreen({
                 )}
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent forceMount className="space-y-4 pt-2 pb-4 data-[state=closed]:hidden">
+            <CollapsibleContent
+              forceMount
+              className="space-y-4 pt-2 pb-4 data-[state=closed]:hidden"
+            >
               {/* Row 1: RFID + Tipo explotación + Propietario + Hierro */}
               <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
                 {renderFieldByName("codigoRfid", ctx)}
