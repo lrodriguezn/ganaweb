@@ -2,6 +2,8 @@
 
 import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { useState } from "react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -98,7 +100,18 @@ describe("DatePicker primitive", () => {
 
     await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
 
-    const future = await screen.findByRole("button", { name: /, 25 de julio de 2026/ })
+    // Use tomorrow relative to the current date so the test is robust regardless
+    // of when it runs. The DatePicker defaults `maxDate` to today (RN-002), so any
+    // day strictly after today must be disabled. Hardcoding a fixed future date
+    // (e.g. "25 de julio de 2026") makes the test fail on the day that date
+    // stops being in the future. See BUG-TEST-001.
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowLabel = format(tomorrow, "EEEE, d 'de' MMMM 'de' yyyy", {
+      locale: es,
+    })
+
+    const future = await screen.findByRole("button", { name: tomorrowLabel })
     expect(future).toBeDisabled()
 
     await user.click(future)
