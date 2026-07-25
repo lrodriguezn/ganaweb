@@ -624,7 +624,7 @@ type AnimalFormField = {
 }
 
 const ORIGEN_OPTIONS: readonly { value: OrigenKey; label: string }[] = [
-  { value: "nacido_en_finca", label: "Nacido en finca" },
+  { value: "nacido_en_finca", label: "Finca" },
   { value: "comprado", label: "Comprado" },
 ]
 
@@ -1066,7 +1066,7 @@ export function AnimalFormScreen({
                       />
                     </>
                   ) : (
-                    // CA-UI-022 · Nacido en finca: Madre · Padre
+                    // CA-UI-022 · Finca: Madre · Padre
                     <>
                       <ComboboxField
                         label="Madre"
