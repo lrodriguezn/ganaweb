@@ -71,7 +71,7 @@ del usuario (PE-002/PE-003). El `fincaId` de la URL nunca se confía.
 |---|---|---|
 | `codigo` | **Sí** | Único por finca, comparación case-insensitive y sin espacios extremos (CA-CRE-001). Máx 20 chars |
 | `sexo_key` | **Sí** | 0=Macho, 1=Hembra, 2=Pajuela (config_key_values) |
-| `tipo_ingreso_id` | **Sí** | 0=Nacido en finca, 1=Comprado |
+| `tipo_ingreso_id` | **Sí** | 0=Finca, 1=Comprado |
 | `fecha_nacimiento` | **Sí** si nacido en finca | No futura (RN-002). Si comprado y se desconoce: estimable (ver 3.2) |
 | `fecha_compra` | **Sí** si comprado | No futura; ≥ fecha_nacimiento si ambas existen |
 | `finca_id` | **Sí** (implícito) | La finca activa; jamás editable después |
@@ -156,9 +156,9 @@ serie de terneros).
 | Color | **SelectConCreacion** | `config_colores` activo=1 | Cada opción con swatch del `codigo` hex junto al nombre |
 | Calidad | **Select** | `config_calidad_animal` activo=1 | — |
 | Apto para monta | **Switch** (`es_de_monta`, integer 0/1) | — | Visible SOLO si sexo=Macho (CA-UI-008). Default 0. Marca al toro reproductor: RN-011 valida contra este flag |
-| Origen * | **Pills segmentadas** (2) | tipo_ingreso 0/1 | "Nacido en finca" / "Comprado" — controla la visibilidad condicional CA-CRE-002. JAMÁS input ni select |
-| Madre | **Combobox buscable** | `animales`: sexo=Hembra, misma finca, activo=1, EN_FINCA | Opciones "código · nombre"; excluye al propio animal; visible solo en "Nacido en finca" |
-| Padre | **Combobox buscable** + toggle Monta/IA | machos `es_de_monta` o `codigo_pajuela` | Visible solo en "Nacido en finca" |
+| Origen * | **Pills segmentadas** (2) | tipo_ingreso 0/1 | "Finca" / "Comprado" — controla la visibilidad condicional CA-CRE-002. JAMÁS input ni select |
+| Madre | **Combobox buscable** | `animales`: sexo=Hembra, misma finca, activo=1, EN_FINCA | Opciones "código · nombre"; excluye al propio animal; visible solo en "Finca" |
+| Padre | **Combobox buscable** + toggle Monta/IA | machos `es_de_monta` o `codigo_pajuela` | Visible solo en "Finca" |
 | Fecha de compra * / Precio / Peso compra / Lugar | DatePicker · Input numérico es-CO · Input numérico · SelectConCreacion `lugares_compras` | — | Visibles SOLO en "Comprado" (CA-CRE-002) |
 | Potrero | **Select** | `potreros` finca activa, activo=1 | **CUATRO selects SEPARADOS** — jamás un campo combinado |
 | Sector | **Select** | `sectores` finca activa, activo=1 | Independiente del potrero (sin cascada: `sectores` solo tiene `finca_id` en el esquema) |

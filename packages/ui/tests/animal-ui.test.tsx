@@ -647,7 +647,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     // Origen is a PillsSegmentadas — radiogroup with 2 options, not a combobox.
     const origenGroup = screen.getByRole("radiogroup", { name: "Origen *" })
     expect(origenGroup).toBeInTheDocument()
-    expect(screen.getByRole("radio", { name: "Nacido en finca" })).toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: "Finca" })).toBeInTheDocument()
     expect(screen.getByRole("radio", { name: "Comprado" })).toBeInTheDocument()
     expect(screen.queryByRole("combobox", { name: "Origen *" })).not.toBeInTheDocument()
 
@@ -799,7 +799,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     await user.type(precio, "1500,75")
 
     // Switch back to nacido_en_finca
-    await user.click(screen.getByRole("radio", { name: "Nacido en finca" }))
+    await user.click(screen.getByRole("radio", { name: "Finca" }))
 
     // Switch to comprado again — the previous value should NOT be there
     await user.click(screen.getByRole("radio", { name: "Comprado" }))

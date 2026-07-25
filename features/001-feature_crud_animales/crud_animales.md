@@ -48,7 +48,7 @@ del usuario (PE-002/PE-003). El `fincaId` de la URL nunca se confía.
 |---|---|---|
 | `codigo` | **Sí** | Único por finca, comparación case-insensitive y sin espacios extremos (CA-CRE-001). Máx 20 chars |
 | `sexo_key` | **Sí** | 0=Macho, 1=Hembra, 2=Pajuela (config_key_values) |
-| `tipo_ingreso_id` | **Sí** | 0=Nacido en finca, 1=Comprado |
+| `tipo_ingreso_id` | **Sí** | 0=Finca, 1=Comprado |
 | `fecha_nacimiento` | **Sí** si nacido en finca | No futura (RN-002). Si comprado y se desconoce: estimable (ver 3.2) |
 | `fecha_compra` | **Sí** si comprado | No futura; ≥ fecha_nacimiento si ambas existen |
 | `finca_id` | **Sí** (implícito) | La finca activa; jamás editable después |
