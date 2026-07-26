@@ -1,282 +1,235 @@
-# Issues de GitHub — Listado de Animales Desktop
+# Issues de GitHub — Listado de Animales Desktop (v2.0)
 
-> Contenido listo para copiar/pegar en GitHub. La estrategia: **1 issue
-> épico** que enmarca la funcionalidad + **5 sub-issues** por capa, para que
-> el trabajo sea tomable y cerrable de forma independiente. El requisito
-> completo (`docs/requisito_listado_animales.md`) es la fuente de verdad;
-> los issues lo referencian por regla (LA-xxx), no lo copian entero.
->
-> Convención asumida: el `.md` del requisito vive en el repo en
-> `docs/requisito_listado_animales.md`. Ajusta la ruta si difiere.
+> Reorganizados según la revisión: **el contrato backend va primero** (todo
+> depende de él), la ruta del `.md` es la real, y las reglas antes huérfanas
+> (estados, densidad, navegación, rendimiento, a11y) tienen dueño.
+> Fuente de verdad: `features/feature-003-listado_animales-desktop/requisito_listado_animales.md`
+> (RF-ANIM-LIST v2.0). Los issues referencian por regla LA-xxx; no copian.
 
 ---
 
-═══════════════════════════════════════════════════════════════════
-## ISSUE ÉPICO
-═══════════════════════════════════════════════════════════════════
+## ÉPICA
 
-**Título**: `[Épica] Listado de Animales Desktop — tabla densa con filtros, paginación y exportación`
-
-**Labels**: `epic`, `feature`, `frontend`, `backend`, `módulo:animales`
-
-**Cuerpo**:
+**Título**: `[Épica] Listado de Animales Desktop — tabla densa (v2.0)`
+**Labels**: `epic`, `feature`, `módulo:animales`
 
 ```markdown
-## Contexto
-
-El listado desktop actual muestra 4 columnas (Código, Nombre, Estado,
-Ubicación) con Ubicación vacía — entrega menos información que la versión
-mobile y desaprovecha el ancho de pantalla. El ganadero no puede escanear
-su hato sin abrir cada ficha.
-
 ## Objetivo
+Tabla densa de análisis del hato: 30 columnas base visibles, filtros, orden,
+paginación server-side, exportación, offline y accesible.
 
-Convertir el listado en una **tabla densa de análisis del hato**: 30
-columnas del animal, filtros por columna, ordenamiento, paginación
-server-side y exportación (Excel/CSV/PDF).
+## Fuente de verdad
+📄 features/feature-003-listado_animales-desktop/requisito_listado_animales.md
+Decisión raíz cerrada: vista inicial = **30 columnas base** (§3). La matriz
+§3 manda sobre cualquier otro documento.
 
-## Especificación (fuente de verdad)
+## Orden de ejecución (los sub-issues NO son paralelos)
+El contrato backend es prerrequisito de todo lo demás.
+- [ ] #_ **1. Contrato de consulta backend** (§8, §3, §14) — base de todo
+- [ ] #_ 2. Tabla + columnas + estados (§3, §9, §12, §13) ← depende de 1
+- [ ] #_ 3. Filtros + buscador + orden (§4, §5) ← depende de 1 y 2
+- [ ] #_ 4. Paginación + selector de columnas + persistencia (§6, §7) ← dep 1,2
+- [ ] #_ 5. Exportación (§11) ← depende de 1
+- [ ] #_ 6. Offline (§10) ← depende de 1,2,3,4
 
-📄 `docs/requisito_listado_animales.md` (RF-ANIM-LIST v1.0, reglas LA-001..023)
+## Dependencias previas
+- Índices LA-101 (`animales(finca_id,activo,codigo)`, `pesos(animal_id,fecha desc)`).
+- Endpoint de preferencias UI para columnas (LA-031) si no existe.
+- `reportes:exportar` en el catálogo RBAC (LA-RBAC-03).
 
-**No dupliquen la spec en los sub-issues** — refiéranla por número de regla.
-Ante contradicción con la spec: reportar en el issue, no resolver en
-silencio (IA-001).
-
-## Alcance de la épica
-
-- [ ] #_ Tabla: 30 columnas con FK en texto legible (LA-001..003)
-- [ ] #_ Filtros por columna + buscador global (LA-004..007)
-- [ ] #_ Ordenamiento y selector de columnas (LA-008..010)
-- [ ] #_ Paginación server-side (LA-011..013)
-- [ ] #_ Exportación Excel/CSV/PDF (LA-014..019)
-
-## Fuera de alcance (v1.0)
-
-Multi-orden, reordenar columnas, scroll infinito (usamos paginación
-numerada). Candidatos a v1.1.
-
-## Dependencias
-
-- ⚠️ Falta `animales.lugar_compra_id → lugares_compras` (LA-002): la columna
-  "Lugar compra" queda vacía hasta esa migración. Ver sub-issue de tabla.
-- Índice `pesos(animal_id, fecha)` para "Peso último" sin penalizar la
-  paginación.
-- Confirmar si `reportes:exportar` es permiso separado de `animales:ver`.
-
-## Criterio de cierre de la épica
-
-Todos los sub-issues cerrados + los 9 criterios de aceptación de la spec
-(§10) verificados + render correcto en los 10 temas.
+## Cierre
+12 criterios de aceptación del §15 verificados en los 10 temas.
 ```
 
 ---
 
-═══════════════════════════════════════════════════════════════════
-## SUB-ISSUE 1 — Tabla y columnas
-═══════════════════════════════════════════════════════════════════
+## SUB-ISSUE 1 — Contrato de consulta backend (PRIMERO)
 
-**Título**: `Listado animales: tabla de 30 columnas con FK en texto legible`
-
-**Labels**: `feature`, `frontend`, `backend`, `módulo:animales`
-
-**Cuerpo**:
+**Título**: `Listado animales: contrato de consulta server-side (query + respuesta)`
+**Labels**: `feature`, `backend`, `módulo:animales`
 
 ```markdown
-Parte de #_ (épica listado animales).
-Spec: `docs/requisito_listado_animales.md` §3 (LA-001..003).
+Parte de #_ (épica). Prerrequisito de los sub-issues 2–6.
+Spec: requisito §3 (matriz), §8 (contrato), §14 (rendimiento), §2 (RBAC).
 
 ## Tareas
-
-- [ ] Query paginada que resuelve en servidor las FK a texto
-      (raza→nombre, potrero→nombre, sexo_key→"Hembra", etc.) — LA-001.
-- [ ] Render de las 30 columnas en el orden exacto de la spec §3, todas
-      visibles por defecto.
-- [ ] Columnas derivadas: Edad (de fecha_nacimiento) y Peso último (último
-      registro de tabla `pesos`) — LA-003.
-- [ ] Madre/Padre desdoblados en Código (directo) + Nombre (resuelto).
-- [ ] Badges: Salud siempre verde/rojo; categoría reproductiva con colores
-      de dominio; machos con `no_aplica` sin badge de categoría.
-- [ ] Densidad: filas 36–40px, header sticky, scroll horizontal con Código
-      y Nombre congeladas (LA-021).
-
-## ⚠️ Dependencia
-
-`animales` no tiene `lugar_compra_id`. La columna "Lugar compra" (col. 21)
-se incluye en el orden pero queda VACÍA hasta la migración
-`animales.lugar_compra_id → lugares_compras`. **No inventar el dato.**
-Abrir issue de migración aparte y enlazar.
+- [ ] Endpoint `GET /api/fincas/{fincaId}/animales` con params §8.1
+      (page, pageSize, sort, q, f.*), operadores contains/in/range/drange/bool.
+- [ ] Respuesta §8.2: data con FK resueltas a texto (LA-001), enum crudo para
+      badge, id; total + totalSinFiltro.
+- [ ] Resolución de las 37 columnas de §3 incluidas derivadas: Edad
+      (de fecha_nacimiento) y Peso último (máx fecha en `pesos`) — LA-003.
+- [ ] Lugar compra vía `lugar_compra_id → lugares_compras` (LA-002, existe).
+- [ ] Orden: solo keys permitidos (§3 col "Orden"); desempate `,id:asc`
+      siempre (LA-022/044).
+- [ ] Nulos como null (LA-042). Errores 400/403/500 (LA-043).
+- [ ] RBAC server-side: `animales:ver`; filtro por `usuarios_fincas` +
+      finca activa; finca ajena → 403 (LA-RBAC-01/04).
+- [ ] Índices LA-101; p95 < 400ms con 543 animales (LA-100).
+- [ ] Implementación LOCAL equivalente (mismo shape) contra la réplica para
+      offline (LA-060) — puede ser sub-tarea coordinada con #_ (offline).
 
 ## Criterios de aceptación
-
-- [ ] Las 30 columnas en el orden de §3; ningún id/número crudo visible.
-- [ ] MT-130 (macho) no muestra "Novilla"; MT-124 muestra "Enferma".
-- [ ] Render correcto en los 10 temas (solo tokens del sistema).
+- [ ] Un request con 3 filtros + sort + page devuelve exactamente la spec §8.2.
+- [ ] sort con campo no permitido → 400; finca ajena → 403.
+- [ ] Peso ASC ordena 89<289<412 con desempate estable (sin repetir filas al
+      paginar sobre valores iguales).
+- [ ] p95 < 400ms verificado en suite de carga.
 ```
 
 ---
 
-═══════════════════════════════════════════════════════════════════
-## SUB-ISSUE 2 — Filtros y buscador
-═══════════════════════════════════════════════════════════════════
+## SUB-ISSUE 2 — Tabla, columnas, estados y accesibilidad
 
-**Título**: `Listado animales: filtros por columna + buscador global`
-
-**Labels**: `feature`, `frontend`, `backend`, `módulo:animales`
-
-**Cuerpo**:
+**Título**: `Listado animales: tabla 30 columnas + estados + a11y`
+**Labels**: `feature`, `frontend`, `a11y`, `módulo:animales`
 
 ```markdown
-Parte de #_ (épica listado animales).
-Spec: `docs/requisito_listado_animales.md` §4 (LA-004..007).
+Parte de #_. Depende de #_ (contrato).
+Spec: §3, §9 (estados), §12 (diseño), §13 (a11y).
 
 ## Tareas
-
-- [ ] Fila de filtros bajo los encabezados, cada uno según tipo de columna:
-      dropdown (catálogos), texto "contiene", rango numérico, rango de
-      fechas, sí/no (flags) — LA-004.
-- [ ] Filtros combinables (AND); chips de filtros activos sobre la tabla
-      con "Limpiar todo", visibles al hacer scroll — LA-005.
-- [ ] Contador en vivo "N de TOTAL coinciden" + estado sin resultados
-      (LA-006).
-- [ ] Buscador global (código/nombre/arete/RFID) que coexiste con los
-      filtros (AND) — LA-007.
-- [ ] Los dropdowns cargan opciones desde la réplica local (offline).
+- [ ] Render de las 30 columnas base en orden §3; scroll horizontal; Código
+      y Nombre congeladas (LA-080). Filas 36–40px, header sticky (LA-081).
+- [ ] FK/key en texto; nulos "—"/"sin registrar" (LA-001/042).
+- [ ] Badges: Salud siempre verde/rojo; categoría con colores de dominio;
+      machos no_aplica sin badge (coordinar con BUG-DATA-001).
+- [ ] Estados §9: skeleton, finca vacía, sin resultados, error+reintento,
+      offline (LA-050..054).
+- [ ] Navegación desde fila → ficha 19 (LA-086).
+- [ ] A11y: tabla semántica, aria-sort, teclado, aria-live del contador,
+      foco visible (LA-090..095).
+- [ ] Solo tokens; correcto en los 10 temas (LA-085).
 
 ## Criterios de aceptación
-
-- [ ] Filtrar Salud=Enferma + Potrero=POT-1 → contador correcto y chips
-      visibles.
-- [ ] El buscador combina con los filtros de columna.
-- [ ] Sin resultados muestra el estado vacío de filtros, no una tabla en
-      blanco.
+- [ ] Las 30 columnas en orden §3; Código/Nombre no se pierden al scroll H.
+- [ ] Los 5 estados se ven según §9.
+- [ ] Teclado: ordenar con Enter en el header; abrir ficha con Enter en fila.
+- [ ] Render correcto en los 10 temas.
 ```
 
 ---
 
-═══════════════════════════════════════════════════════════════════
-## SUB-ISSUE 3 — Ordenamiento y selector de columnas
-═══════════════════════════════════════════════════════════════════
+## SUB-ISSUE 3 — Filtros, buscador y ordenamiento
 
-**Título**: `Listado animales: ordenamiento por columna + mostrar/ocultar columnas`
-
+**Título**: `Listado animales: filtros por columna + buscador + orden`
 **Labels**: `feature`, `frontend`, `módulo:animales`
 
-**Cuerpo**:
-
 ```markdown
-Parte de #_ (épica listado animales).
-Spec: `docs/requisito_listado_animales.md` §5-6 (LA-008..010).
+Parte de #_. Depende de #_ (contrato) y #_ (tabla).
+Spec: §4 (filtros), §5 (orden).
 
 ## Tareas
-
-- [ ] Clic en encabezado ordena; segundo clic invierte; indicador ▲/▼.
-      Numéricas/fechas por valor real, textos con locale es-CO — LA-008.
-- [ ] Botón "Columnas": checklist para ocultar/mostrar; Código y Nombre no
-      ocultables — LA-009.
-- [ ] Persistir selección de columnas por usuario+finca; botón
-      "Restablecer" vuelve al set completo — LA-010.
+- [ ] Fila de filtros por tipo (§3): contiene/in[]/rango núm/rango fecha/sí-no.
+- [ ] AND entre columnas y con buscador; chips + "Limpiar todo"; contador
+      "N de TOTAL" con aria-live (LA-010/011).
+- [ ] Buscador global OR sobre codigo/nombre/arete/rfid, debounce 300ms
+      (LA-012/103).
+- [ ] Cambiar filtro/buscador resetea a página 1 (LA-013).
+- [ ] Orden ASC→DESC→ninguno con aria-sort; default codigo ASC (LA-020/021).
 
 ## Criterios de aceptación
-
-- [ ] Ordenar por Peso ordena numéricamente (412 antes que 89 → correcto).
-- [ ] Ocultar "Raza" y recargar la página: sigue oculta.
-- [ ] Código y Nombre no pueden ocultarse.
+- [ ] Filtrar Salud=Enferma + Potrero=POT-1 → filas y contador coinciden.
+- [ ] Peso ASC 89<289<412.
+- [ ] Cambiar un filtro vuelve a página 1.
 ```
 
 ---
 
-═══════════════════════════════════════════════════════════════════
-## SUB-ISSUE 4 — Paginación server-side
-═══════════════════════════════════════════════════════════════════
+## SUB-ISSUE 4 — Paginación, selector de columnas y persistencia
 
-**Título**: `Listado animales: paginación server-side con filtros en URL`
-
+**Título**: `Listado animales: paginación + mostrar/ocultar columnas persistente`
 **Labels**: `feature`, `frontend`, `backend`, `módulo:animales`
 
-**Cuerpo**:
-
 ```markdown
-Parte de #_ (épica listado animales).
-Spec: `docs/requisito_listado_animales.md` §7 (LA-011..013).
+Parte de #_. Depende de #_ (contrato) y #_ (tabla).
+Spec: §6 (columnas), §7 (paginación), §8.1 (URL).
 
 ## Tareas
-
-- [ ] Endpoint/consulta que recibe página, tamaño, orden y filtros y
-      devuelve solo esa página + total. Nunca traer todo el hato — LA-011.
-- [ ] Controles: rango "Mostrando 1–25 de N", navegación numerada, selector
-      de tamaño 25/50/100 (default 25) — LA-012.
-- [ ] Filtros y orden en query params de la URL; se conservan al paginar y
-      permiten compartir/atrás — LA-013.
+- [ ] Paginación server-side 25/50/100 (default 25); "Mostrando X–Y de N"
+      (LA-032/033).
+- [ ] page/pageSize/sort/filtros en query params URL; atrás/compartir
+      funcionan; cambios de filtro/orden/size → page=1 (LA-034).
+- [ ] Selector "Columnas" (37); Código y Nombre no ocultables; "Restablecer"
+      → 30 base (LA-030).
+- [ ] Persistir columnas por usuario+finca vía endpoint de preferencias
+      (NO localStorage); primer ingreso = 30 base (LA-031).
 
 ## Criterios de aceptación
-
-- [ ] Con 543 animales, la red trae solo la página pedida (verificar en
-      Network que no llegan 543 filas).
-- [ ] Cambiar de página conserva filtros y orden.
-- [ ] La URL refleja el estado (pegar la URL en otra pestaña reproduce la
-      vista).
+- [ ] Con 543 animales, Network trae solo la página pedida.
+- [ ] Ocultar "Raza", recargar y cambiar de dispositivo: sigue oculta.
+- [ ] URL pegada en otra pestaña reproduce la vista.
 ```
 
 ---
 
-═══════════════════════════════════════════════════════════════════
 ## SUB-ISSUE 5 — Exportación
-═══════════════════════════════════════════════════════════════════
 
-**Título**: `Listado animales: exportar a Excel, CSV y PDF`
-
-**Labels**: `feature`, `frontend`, `backend`, `módulo:animales`
-
-**Cuerpo**:
+**Título**: `Listado animales: exportar Excel/CSV/PDF con límites y seguridad`
+**Labels**: `feature`, `backend`, `frontend`, `seguridad`, `módulo:animales`
 
 ```markdown
-Parte de #_ (épica listado animales).
-Spec: `docs/requisito_listado_animales.md` §8 (LA-014..019).
+Parte de #_. Depende de #_ (contrato).
+Spec: §11.
 
 ## Tareas
-
-- [ ] Exportar a Excel (.xlsx), CSV y PDF (apaisado) — LA-014.
-- [ ] Diálogo con dos alcances de columnas: "Vista actual" (visibles +
-      filtros) vs "Todas las columnas" — LA-015.
-- [ ] Exporta SIEMPRE el resultado filtrado completo, no solo la página
-      visible — LA-016.
-- [ ] PDF con "Todas las columnas": advertir que no caben legibles y
-      sugerir Excel; permitir continuar — LA-017.
-- [ ] Valores como texto legible (FK→nombre), fechas es-CO, booleanos
-      Sí/No, encabezados = nombres de columna — LA-018.
-- [ ] Generación en servidor con los mismos filtros/orden — LA-019.
-- [ ] Verificar permiso (`animales:ver` + `reportes:exportar` si aplica).
+- [ ] Export Excel/CSV/PDF apaisado (LA-070).
+- [ ] Diálogo vista actual (cols=) vs todas (37); filas = filtrado completo
+      (LA-071).
+- [ ] Generación server-side con mismos filtros/orden (LA-072).
+- [ ] Límite 50k filas → 413; timeout 30s (LA-073/074).
+- [ ] Neutralización CSV injection (prefijo `'` a `= + - @`/tab/CR; XLSX como
+      texto) — LA-075.
+- [ ] PDF "todas" advierte y sugiere Excel (LA-076).
+- [ ] Valores: FK texto, fechas es-CO, bool Sí/No, nulos vacíos (LA-077).
+- [ ] RBAC: ver+reportes:exportar; botón oculto sin permiso; finca
+      server-side (LA-RBAC-03/04, LA-078).
 
 ## Criterios de aceptación
-
-- [ ] Filtrar a 40 animales y exportar → el archivo tiene 40 filas (no 25).
-- [ ] "Todas las columnas" incluye las 30 + derivadas con FK en texto.
-- [ ] Excel/CSV/PDF abren correctamente; PDF avisa si se piden todas las
-      columnas.
+- [ ] Filtrar a 40 → archivo con 40 filas (no la página de 25).
+- [ ] Un nombre "=CMD()" sale neutralizado, no ejecutable.
+- [ ] Sin reportes:exportar, el botón no se renderiza.
 ```
 
 ---
 
-## Cómo usar esto en GitHub
+## SUB-ISSUE 6 — Offline
 
-1. Crea primero el **issue épico**; anota su número (ej. #42).
-2. Crea los 5 **sub-issues**; en cada uno reemplaza `#_` por `#42`.
-3. Vuelve al épico y reemplaza los `#_` de la lista de tareas por los
-   números reales de los sub-issues (GitHub los enlaza y muestra el
-   progreso automáticamente).
-4. Sube `requisito_listado_animales.md` a `docs/` en el repo — es la fuente
-   de verdad que todos los issues referencian.
-5. Opcional: agrupa la épica en un **Milestone** ("Listado animales v1.0")
-   o un **Project** para ver el tablero de avance.
+**Título**: `Listado animales: operación offline sobre réplica local`
+**Labels**: `feature`, `frontend`, `offline`, `módulo:animales`
 
-### Por qué así y no un issue gigante
+```markdown
+Parte de #_. Depende de #_ (contrato, incl. su implementación local) y 2/3/4.
+Spec: §10.
 
-- Un issue debe ser una unidad de trabajo tomable y cerrable. 23 reglas en
-  uno solo no se puede estimar ni repartir.
-- Los sub-issues permiten que frontend y backend, o varias sesiones de IA,
-  avancen en paralelo sin conflicto.
-- La spec `.md` versionada en el repo evita que el detalle se disperse en
-  comentarios de issues (que se pierden). Los issues son el "qué falta"; el
-  `.md` es el "cómo debe ser".
+## Tareas
+- [ ] Listado/buscador/filtros/orden/conteo/paginación sobre la réplica local
+      con el mismo request/response del contrato (LA-060).
+- [ ] Export deshabilitado offline + tooltip "Disponible con conexión"
+      (LA-061).
+- [ ] Banner "Sin conexión · datos locales"; revalidar al reconectar
+      (LA-054/062).
+- [ ] Columnas editables offline, sync al reconectar (LA-063).
+
+## Criterios de aceptación
+- [ ] En avión, la tabla lista, filtra, ordena y pagina desde la réplica.
+- [ ] El botón Exportar está deshabilitado con tooltip.
+- [ ] Al reconectar, la vista se revalida contra el servidor.
 ```
+
+---
+
+## Notas de la reorganización (respuesta a la revisión)
+
+1. **Ruta corregida**: los issues apuntan a
+   `features/feature-003-listado_animales-desktop/requisito_listado_animales.md`.
+2. **Dependencia real explícita**: el contrato backend (#1) es prerrequisito;
+   los issues 2–6 lo declaran. No son 5 issues paralelos como en v1.0.
+3. **Reglas antes huérfanas, ahora con dueño**: estados (LA-050..054) y a11y
+   (LA-090..095) → sub-issue 2; densidad/tokens (LA-081/085) → sub-issue 2;
+   navegación (LA-086) → sub-issue 2; rendimiento (LA-100..103) → sub-issue 1
+   (contrato) y 3 (debounce).
+4. **Lugar compra**: ya NO es migración pendiente — el esquema tiene
+   `lugar_compra_id` (verificado); es tarea normal del contrato (#1).
+5. **Ejemplo de orden corregido**: 89<289<412 en ASC (el "412 antes que 89"
+   solo valía en DESC).
