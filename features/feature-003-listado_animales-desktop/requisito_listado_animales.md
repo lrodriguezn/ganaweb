@@ -47,7 +47,7 @@ reafirma CA-UI-001).
 | 5 | Fecha nacimiento | `fecha_nacimiento` (epoch→fecha) | fecha | rango | ✓ |
 | 6 | Edad | derivada de `fecha_nacimiento` | número (años) | rango | ✓ |
 | 7 | Color | `color_id` → `config_colores.nombre` | catálogo | dropdown | ✓ |
-| 8 | Origen | `tipo_ingreso_key` → texto (Nacido/Comprado) | catálogo | dropdown | ✓ |
+| 8 | Origen | `tipo_ingreso_id` → texto (Nacido/Comprado) | catálogo | dropdown | ✓ |
 | 9 | Madre (Código) | `codigo_madre` | texto | contiene | ✓ |
 | 10 | Madre (Nombre) | `madre_id` → `animales.nombre` | texto (resuelto) | contiene | ✓ |
 | 11 | Padre (Código) | `codigo_padre` | texto | contiene | ✓ |
