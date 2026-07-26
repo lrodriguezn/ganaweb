@@ -1,317 +1,253 @@
-# GanaWeb — Requisito Funcional: Listado de Animales Desktop (RF-ANIM-LIST v2.1)
+# GanaWeb - Requisito funcional: Listado de Animales Desktop (RF-ANIM-LIST v2.1)
 
-> **v2.1** — sincroniza con el esquema final `0000_initial.sql`:
-> `tipo_ingreso_id` (no `_key`) y se deroga "Lugar compra" (sin FK en
-> `animales`). Base pasa de 30→29 columnas, total 37→36.
-> **v2.0** — reescritura que cerró las contradicciones de la revisión.
-> Decisión raíz confirmada con producto: **la vista inicial muestra las 30
-> columnas base** (denso). El diseño previo que mostraba 10 queda DEROGADO;
-> el `.op` debe actualizarse a 30 columnas con scroll horizontal y columnas
-> congeladas (§12).
->
-> Fuente de verdad única de columnas: la **matriz canónica §3**. Cualquier
-> otro documento (diseño, exportación, issues) se subordina a ella.
-> Reglas: **LA-xxx**. Ante contradicción con esta matriz: gana la matriz.
-> Ubicación en repo: `features/feature-003-listado_animales-desktop/requisito_listado_animales.md`
+> **Decisión v2.1:** entrega exclusivamente online. La fuente de verdad de las columnas es la matriz canónica de este documento: **36 columnas totales, 29 visibles por defecto y 7 opcionales**.
 
----
+## 1. Objetivo y alcance
 
-## 1. Problema y objetivo
+Implementar en `/fincas/$fincaId/animales` una tabla desktop densa para consultar, filtrar, ordenar, paginar y exportar animales mediante servicios del servidor.
 
-El listado desktop actual (4 columnas, Ubicación vacía) entrega menos
-información que la versión mobile. Objetivo: **tabla densa de análisis del
-hato** con las 30 columnas base visibles, filtros, orden, paginación
-server-side y exportación, construida sobre un **contrato de consulta único**
-(§8) del que dependen todas las capas.
+- La entrega es **online-only** y todas las operaciones dependen de servicios del servidor.
+- La vista inicial muestra 29 columnas base, en el orden de la matriz canónica.
+- `Código` y `Nombre` permanecen congeladas y no pueden ocultarse.
+- `Lugar compra` no forma parte de las 36 columnas ni de la exportación.
 
-## 2. Alcance y permisos (RBAC — cerrado)
+## 2. RBAC y seguridad
 
-- Pantalla: listado desktop `/fincas/$fincaId/animales`.
-- **LA-RBAC-01** — Ver listado/paginar/filtrar/ordenar: `animales:ver`.
-- **LA-RBAC-02** — Botón "Nuevo animal": visible solo con `animales:crear`;
-  sin el permiso NO se renderiza (no basta con deshabilitar).
-- **LA-RBAC-03** — Exportar (cualquier formato): requiere
-  **`animales:ver` + `reportes:exportar`**. Sin `reportes:exportar` el botón
-  Exportar no se renderiza. (Decisión cerrada: exportar es acción distinta
-  de ver.)
-- **LA-RBAC-04** — Toda consulta (listado y exportación) se filtra en
-  **servidor** por las fincas del usuario (`usuarios_fincas`) y por
-  `finca_id` = finca activa. El `fincaId` de la URL NUNCA se confía: si el
-  usuario no pertenece a esa finca → 403. Aplica a paginación y export.
+- **LA-RBAC-01:** listar, filtrar, ordenar y paginar requiere `animales:ver`.
+- **LA-RBAC-02:** `Nuevo animal` solo se renderiza con `animales:crear`.
+- **LA-RBAC-03:** `Exportar` solo se renderiza con `animales:ver` y `reportes:exportar`.
+- **LA-RBAC-04:** listado y exportación validan en servidor que el usuario pertenece a `fincaId` mediante `usuarios_fincas`. Una finca no autorizada responde 403.
+- **LA-RBAC-05:** ocultar botones es una regla de presentación; endpoint y exportación vuelven a validar permisos en servidor.
 
-## 3. Matriz canónica de columnas (FUENTE DE VERDAD)
+## 3. Matriz canónica de columnas
 
-**36 columnas**: **29 visibles por defecto** (orden fijo) + **7 ocultas
-activables**. "Edad" y "Peso último" son derivadas y ya están CONTADAS en
-sus grupos (no se suman aparte en exportación — corrige "30 + derivadas").
-Nota v2.1: "Lugar compra" quedó DEROGADA (el esquema no la vincula), por lo
-que las columnas base bajan de 30 a 29 y el total de 37 a 36.
+### 3.1 Convenciones del contrato
 
-Leyenda: **V**=visible por defecto. Todas exportables salvo nota.
+- `ordinal` define el orden visual y de exportación. `columnId` es el identificador estable usado en `cols` y preferencias.
+- `responseKey` identifica el campo del DTO de fila. Nunca se deriva de la etiqueta visible.
+- `filterKey` identifica `f.<filterKey>` en URL/API. `sortKey` identifica `sort=<sortKey>:<dir>`.
+- `filterValue` define el valor serializado. Los catálogos y enums filtran por ID/key estable; el texto legible solo se presenta en `label`.
+- `-` significa que la operación no está permitida para esa columna.
 
-| # | Columna | Campo/derivación | Tipo | V | Filtro | Orden (key API) |
-|---|---|---|---|:-:|---|---|
-| 1 | Código | `codigo` | texto | ✓ | contiene | `codigo` |
-| 2 | Nombre | `nombre` | texto | ✓ | contiene | `nombre` |
-| 3 | Sexo | `sexo_key`→texto | enum | ✓ | in[] | `sexo_key` |
-| 4 | Raza | `raza_id`→`config_razas.nombre` | catálogo | ✓ | in[] | `raza_nombre` |
-| 5 | Fecha nacimiento | `fecha_nacimiento` (epoch) | fecha | ✓ | rango fecha | `fecha_nacimiento` |
-| 6 | Edad | derivada de fecha_nacimiento | número | ✓ | rango núm | `fecha_nacimiento` (inv) |
-| 7 | Color | `color_id`→`config_colores.nombre` | catálogo | ✓ | in[] | `color_nombre` |
-| 8 | Origen | `tipo_ingreso_id`→texto | enum | ✓ | in[] | `tipo_ingreso_id` |
-| 9 | Madre (Cód.) | `codigo_madre` | texto | ✓ | contiene | `codigo_madre` |
-| 10 | Madre (Nom.) | `madre_id`→`animales.nombre` | texto | ✓ | contiene | `madre_nombre` |
-| 11 | Padre (Cód.) | `codigo_padre` | texto | ✓ | contiene | `codigo_padre` |
-| 12 | Padre (Nom.) | `padre_id`→`animales.nombre` | texto | ✓ | contiene | `padre_nombre` |
-| 13 | Propietario | `propietario_id`→`propietarios.nombre` | catálogo | ✓ | in[] | `propietario_nombre` |
-| 14 | Hierro | `hierro_id`→`hierros.nombre` | catálogo | ✓ | in[] | `hierro_nombre` |
-| 15 | Nº Pezones | `numero_pezones` | número | ✓ | rango núm | `numero_pezones` |
-| 16 | Calidad | `calidad_animal_id`→nombre | catálogo | ✓ | in[] | `calidad_nombre` |
-| 17 | Arete | `codigo_arete` | texto | ✓ | contiene | `codigo_arete` |
-| 18 | Fecha compra | `fecha_compra` (epoch) | fecha | ✓ | rango fecha | `fecha_compra` |
-| 19 | Precio | `precio_compra` | número | ✓ | rango núm | `precio_compra` |
-| 20 | Peso compra | `peso_compra` | número | ✓ | rango núm | `peso_compra` |
-| ~~21~~ | ~~Lugar compra~~ | **DEROGADA** — `animales` no tiene `lugar_compra_id` (LA-002) | — | — | — | — |
-| 22 | Tatuado | `tatuado` | bool | ✓ | sí/no | `tatuado` |
-| 23 | Herrado | `herrado` | bool | ✓ | sí/no | `herrado` |
-| 24 | Descornado | `descornado` | bool | ✓ | sí/no | `descornado` |
-| 25 | RFID | `codigo_rfid` | texto | ✓ | contiene | `codigo_rfid` |
-| 26 | Potrero | `potrero_id`→`potreros.nombre` | catálogo | ✓ | in[] | `potrero_nombre` |
-| 27 | Sector | `sector_id`→`sectores.nombre` | catálogo | ✓ | in[] | `sector_nombre` |
-| 28 | Lote | `lote_id`→`lotes.nombre` | catálogo | ✓ | in[] | `lote_nombre` |
-| 29 | Grupo | `grupo_id`→`grupos.nombre` | catálogo | ✓ | in[] | `grupo_nombre` |
-| 30 | Comentarios | `comentarios` | texto | ✓ | contiene | — (no ordenable) |
-| 31 | Salud | `salud_animal_key`→texto | enum | ✗ | in[] | `salud_animal_key` |
-| 32 | Categoría reprod. | `categoria_reproductiva` | enum | ✗ | in[] | `categoria_reproductiva` |
-| 33 | Estado | `estado_animal_key`→texto | enum | ✗ | in[] | `estado_animal_key` |
-| 34 | Peso último | máx(`pesos.fecha`)→`pesos.peso` | número | ✗ | rango núm | `peso_ultimo` |
-| 35 | QR | `codigo_qr` | texto | ✗ | contiene | `codigo_qr` |
-| 36 | Es de monta | `es_de_monta` | bool | ✗ | sí/no | `es_de_monta` |
-| 37 | Tipo explotación | `tipo_explotacion_id`→texto | catálogo | ✗ | in[] | `tipo_explotacion_nombre` |
+| ordinal | columnId | Etiqueta | responseKey | Tipo/nulabilidad | Visible | filterKey | filterValue | sortKey |
+|---:|---|---|---|---|:---:|---|---|---|
+| 1 | `codigo` | Código | `codigo` | `string` | Sí | `codigo` | texto | `codigo` |
+| 2 | `nombre` | Nombre | `nombre` | `string` | Sí | `nombre` | texto | `nombre` |
+| 3 | `sexo` | Sexo | `sexo` | `KeyLabel` | Sí | `sexoKey` | key | `sexoKey` |
+| 4 | `raza` | Raza | `raza` | `IdLabel?` | Sí | `razaId` | id | `razaLabel` |
+| 5 | `fechaNacimiento` | Fecha nacimiento | `fechaNacimiento` | `string?` ISO date | Sí | `fechaNacimiento` | fecha ISO | `fechaNacimiento` |
+| 6 | `edad` | Edad | `edadAnios` | `number?` derivada | Sí | `edadAnios` | decimal | `edadAnios` |
+| 7 | `color` | Color | `color` | `IdLabel?` | Sí | `colorId` | id | `colorLabel` |
+| 8 | `origen` | Origen | `origen` | `IdLabel?` | Sí | `tipoIngresoId` | id | `tipoIngresoId` |
+| 9 | `codigoMadre` | Madre (Cód.) | `codigoMadre` | `string?` | Sí | `codigoMadre` | texto | `codigoMadre` |
+| 10 | `nombreMadre` | Madre (Nom.) | `nombreMadre` | `string?` | Sí | `nombreMadre` | texto | `nombreMadre` |
+| 11 | `codigoPadre` | Padre (Cód.) | `codigoPadre` | `string?` | Sí | `codigoPadre` | texto | `codigoPadre` |
+| 12 | `nombrePadre` | Padre (Nom.) | `nombrePadre` | `string?` | Sí | `nombrePadre` | texto | `nombrePadre` |
+| 13 | `propietario` | Propietario | `propietario` | `IdLabel?` | Sí | `propietarioId` | id | `propietarioLabel` |
+| 14 | `hierro` | Hierro | `hierro` | `IdLabel?` | Sí | `hierroId` | id | `hierroLabel` |
+| 15 | `numeroPezones` | No. Pezones | `numeroPezones` | `number?` entero | Sí | `numeroPezones` | entero | `numeroPezones` |
+| 16 | `calidad` | Calidad | `calidad` | `IdLabel?` | Sí | `calidadAnimalId` | id | `calidadLabel` |
+| 17 | `arete` | Arete | `codigoArete` | `string?` | Sí | `codigoArete` | texto | `codigoArete` |
+| 18 | `fechaCompra` | Fecha compra | `fechaCompra` | `string?` ISO date | Sí | `fechaCompra` | fecha ISO | `fechaCompra` |
+| 19 | `precioCompra` | Precio | `precioCompra` | `number?` | Sí | `precioCompra` | decimal | `precioCompra` |
+| 20 | `pesoCompra` | Peso compra | `pesoCompraKg` | `number?` | Sí | `pesoCompraKg` | decimal | `pesoCompraKg` |
+| 21 | `tatuado` | Tatuado | `tatuado` | `boolean` | Sí | `tatuado` | boolean | `tatuado` |
+| 22 | `herrado` | Herrado | `herrado` | `boolean` | Sí | `herrado` | boolean | `herrado` |
+| 23 | `descornado` | Descornado | `descornado` | `boolean` | Sí | `descornado` | boolean | `descornado` |
+| 24 | `rfid` | RFID | `codigoRfid` | `string?` | Sí | `codigoRfid` | texto | `codigoRfid` |
+| 25 | `potrero` | Potrero | `potrero` | `IdLabel?` | Sí | `potreroId` | id | `potreroLabel` |
+| 26 | `sector` | Sector | `sector` | `IdLabel?` | Sí | `sectorId` | id | `sectorLabel` |
+| 27 | `lote` | Lote | `lote` | `IdLabel?` | Sí | `loteId` | id | `loteLabel` |
+| 28 | `grupo` | Grupo | `grupo` | `IdLabel?` | Sí | `grupoId` | id | `grupoLabel` |
+| 29 | `comentarios` | Comentarios | `comentarios` | `string?` | Sí | `comentarios` | texto | - |
+| 30 | `salud` | Salud | `salud` | `KeyLabel?` | No | `saludKey` | key | `saludKey` |
+| 31 | `categoriaReproductiva` | Categoría reprod. | `categoriaReproductiva` | `KeyLabel?` | No | `categoriaReproductivaKey` | key | `categoriaReproductivaKey` |
+| 32 | `estado` | Estado | `estado` | `KeyLabel?` | No | `estadoKey` | key | `estadoKey` |
+| 33 | `pesoUltimo` | Peso último | `pesoUltimo` | `PesoUltimo?` derivada | No | `pesoUltimoKg` | decimal | `pesoUltimoKg` |
+| 34 | `qr` | QR | `codigoQr` | `string?` | No | `codigoQr` | texto | `codigoQr` |
+| 35 | `esDeMonta` | Es de monta | `esDeMonta` | `boolean` | No | `esDeMonta` | boolean | `esDeMonta` |
+| 36 | `tipoExplotacion` | Tipo explotación | `tipoExplotacion` | `IdLabel?` | No | `tipoExplotacionId` | id | `tipoExplotacionLabel` |
 
-- **LA-001** — Toda FK/key se muestra y exporta como **texto legible**,
-  nunca id/número. Resolución server-side; el cliente recibe texto listo.
-- **LA-002 · Lugar de compra — DEROGADA (v2.1)** — El esquema NO tiene
-  `animales.lugar_compra_id`. La tabla `lugares_compras` existe como
-  catálogo pero ningún campo de `animales` la referencia. La columna se
-  RETIRA del listado y de la exportación. Si a futuro se agrega el vínculo
-  `animales.lugar_compra_id → lugares_compras(id)`, se reincorpora como
-  columna oculta activable. No inventar el dato mientras tanto.
-- **LA-003 · Derivadas** — Edad = años con 1 decimal desde
-  `fecha_nacimiento` a hoy. Peso último = `peso` del registro de mayor
-  `fecha` en `pesos` (no `peso_compra`). Ordenan por valor numérico real;
-  Edad ordena por `fecha_nacimiento` inverso (menor fecha = mayor edad).
-- **LA-004 · Nunca en la tabla** — `id`, `finca_id`, `usuario_creado_por`,
-  `created_at`, `updated_at`, `version`, `activo`, `ind_descartado`, y los
-  `_id`/`_key` en forma cruda.
+### 3.2 Resoluciones y derivadas
 
-## 4. Filtros
+- **LA-001:** relaciones y enums exponen el identificador estable y la etiqueta. La UI muestra `label`; filtros envían `id` o `key`.
+- **LA-002:** Edad se calcula en años con un decimal desde `fecha_nacimiento` hasta la fecha de consulta. Orden y filtro operan sobre el decimal derivado.
+- **LA-003:** Peso último es el registro de `pesos` con mayor `fecha` y desempate por `id`; usa `pesos.peso_kg`, no `peso_compra`.
+- **LA-004:** `tipo_ingreso_id` se resuelve contra `config_key_values` con `config_key = 'tipo_ingreso'`. Los IDs/keys conocidos `0` y `1` producen su etiqueta configurada. Un valor desconocido conserva `{id, label: "Desconocido (<id>)"}`; `null` produce `null`.
+- **LA-005:** nunca se presentan `finca_id`, auditoría, versión, `activo`, `ind_descartado` ni IDs/keys crudos como columnas independientes.
 
-- **LA-010** — Cada columna filtra según su "Tipo filtro" (§3): `contiene`
-  (texto, case-insensitive, sin acentos), `in[]` (multi-select), `rango núm`
-  (min/max inclusivos), `rango fecha` (desde/hasta), `sí/no` (tri-estado:
-  sí / no / cualquiera).
-- **LA-011** — Filtros combinan con **AND** entre columnas y con el buscador.
-  Chips de activos + "Limpiar todo"; contador "N de TOTAL" (TOTAL = hato de
-  la finca, no el filtrado).
-- **LA-012** — Buscador global (OR sobre `codigo`, `nombre`, `codigo_arete`,
-  `codigo_rfid`) coexiste con filtros de columna (AND).
-- **LA-013** — Cambiar filtro o buscador **resetea a página 1** (LA-032).
+### 3.3 Nota histórica
 
-## 5. Ordenamiento
+`Lugar compra` se evaluó y se retiró antes de v2.1 porque `animales` no tiene `lugar_compra_id`. Podrá proponerse en otra versión solo después de crear y aprobar esa relación de dominio. No es una columna activa, un campo del DTO ni una tarea de esta entrega.
 
-- **LA-020** — Clic en encabezado ordenable: ASC → DESC → sin orden. Indicador
-  ▲/▼ + `aria-sort`.
-- **LA-021** — Default: `codigo` ASC. Una columna de orden en v1.0.
-- **LA-022 · Desempate estable** — Todo orden lleva desempate secundario por
-  `id` ASC, para que la paginación no repita ni salte filas cuando hay
-  valores iguales (p. ej. muchas "Sanas").
-- **LA-023** — Numéricas/fechas por valor real; texto locale es-CO. Ejemplo:
-  Peso ASC → 89, 289, 412…; DESC → 520, 445, 412… (el ejemplo de v1.0 solo
-  era válido en DESC).
+## 4. Filtros, búsqueda y orden
 
-## 6. Selector de columnas
+- **LA-010:** texto usa `contains:<texto>` sin distinguir mayúsculas ni acentos; catálogos/enums usan `in:<id|key>,...`; números `range:<min>,<max>`; fechas `drange:<desde>,<hasta>`; booleanos `bool:true|false`.
+- **LA-011:** filtros de columna y buscador se combinan con AND. El buscador aplica OR a `codigo`, `nombre`, `codigo_arete` y `codigo_rfid`.
+- **LA-012:** chips permiten quitar filtros y `Limpiar todo` los elimina. Cambiar filtro, búsqueda, orden o tamaño vuelve a `page=1`.
+- **LA-020:** columnas ordenables recorren ASC, DESC y sin orden. El orden inicial es `codigo:asc`.
+- **LA-021:** todo orden añade `id:asc` como desempate estable. Texto usa ordenación `es-CO`; fechas y números usan su valor real.
 
-- **LA-030** — Botón "Columnas": checklist de las 36. **Código y Nombre no
-  ocultables**. Reordenar: fuera de alcance v1.0 (orden = §3).
-- **LA-031** — Selección persistida **por usuario + finca** (endpoint de
-  preferencias UI, NO localStorage — debe sobrevivir cambio de dispositivo).
-  "Restablecer" vuelve a las 29. Primer ingreso sin preferencia = 30 base.
+## 5. Selector y preferencias
 
-## 7. Paginación
+- **LA-030:** el selector contiene las 36 columnas: 29 activas y 7 opcionales. `Código` y `Nombre` no son ocultables. Reordenar queda fuera de alcance.
+- **LA-031:** el equipo backend es dueño del endpoint y almacenamiento de preferencias por `usuario + finca`; el equipo frontend es dueño de leer, guardar y restablecer. No se usa `localStorage`.
+- **LA-032:** sin preferencia, error al leerla o después de `Restablecer`, se aplican exactamente los 29 `columnId` visibles de la matriz.
 
-- **LA-032** — Server-side. Params: `page` (1-based), `pageSize` ∈ {25,50,100}
-  (default 25). Devuelve página + `total` (filtrado) + `totalSinFiltro`.
-- **LA-033** — Controles: "Mostrando X–Y de N", navegación numerada, selector
-  de tamaño. Numerada (no scroll infinito) — export predecible y total visible.
-- **LA-034** — `page`, `pageSize`, orden y filtros en **query params** (§8);
-  la URL reproduce la vista; atrás funciona. Cambiar filtros/orden/pageSize
-  resetea `page=1`.
+## 6. Contrato HTTP
 
-## 8. Contrato de consulta (API / URL) — bloqueante resuelto
+### 6.1 Solicitud
 
-### 8.1 Query params
-
-```
-GET /api/fincas/{fincaId}/animales
-  ?page=1&pageSize=25
-  &sort=codigo:asc                      // campo:dir; campos = col "Orden" §3
-  &q=MT-12                              // buscador global
-  &f.sexo_key=in:1,0                    // in[] → in:v1,v2
-  &f.raza_nombre=in:Brahman,Gyr
-  &f.edad=range:2,5                     // rango núm → range:min,max (inclusive)
-  &f.fecha_nacimiento=drange:2020-01-01,2024-12-31   // rango fecha ISO
-  &f.codigo=contains:MT
-  &f.tatuado=bool:true
-  &cols=codigo,nombre,sexo_key,...      // opcional (export "vista actual")
+```text
+GET /api/fincas/{fincaId}/animales?page=1&pageSize=25
+  &sort=codigo:asc&q=MT-12
+  &f.razaId=in:raza-uuid
+  &f.sexoKey=in:1
+  &f.edadAnios=range:2,5
+  &f.fechaNacimiento=drange:2020-01-01,2024-12-31
+  &cols=codigo,nombre,sexo,raza
 ```
 
-- Nombre de filtro = `f.` + el key de "Orden" de §3. Operadores:
-  `contains:`, `in:`, `range:`, `drange:`, `bool:`.
-- **LA-040** — Param o valor inválido → 400 `{error, campo, motivo}`; el
-  cliente lo ignora y muestra toast, sin romper la tabla.
+- `page` es 1-based; `pageSize` pertenece a `{25,50,100}` y vale 25 por defecto.
+- `sort` solo acepta `sortKey` no nulos de la matriz.
+- `f.*` solo acepta los `filterKey` y tipos declarados en la matriz.
+- `cols` solo acepta `columnId`, sin repetidos, y se usa para exportar la vista actual. No modifica el shape de la respuesta del listado.
 
-### 8.2 Respuesta
+### 6.2 DTO completo
 
-```json
-{
-  "data": [ { "id":"...", "codigo":"MT-120", "nombre":"Lucero",
-              "sexo":"Hembra", "raza":"Brahman", "edad":4.2,
-              "salud":"Sana", "categoria":"prenada" } ],
-  "page": 1, "pageSize": 25,
-  "total": 128, "totalSinFiltro": 543,
-  "sort": "codigo:asc"
-}
+```ts
+type IdLabel = { id: string; label: string };
+type KeyLabel = { key: string; label: string };
+type PesoUltimo = { pesoKg: number; fecha: string };
+
+type AnimalListadoRowDto = {
+  id: string;
+  codigo: string;
+  nombre: string;
+  sexo: KeyLabel;
+  raza: IdLabel | null;
+  fechaNacimiento: string | null;
+  edadAnios: number | null;
+  color: IdLabel | null;
+  origen: IdLabel | null;
+  codigoMadre: string | null;
+  nombreMadre: string | null;
+  codigoPadre: string | null;
+  nombrePadre: string | null;
+  propietario: IdLabel | null;
+  hierro: IdLabel | null;
+  numeroPezones: number | null;
+  calidad: IdLabel | null;
+  codigoArete: string | null;
+  fechaCompra: string | null;
+  precioCompra: number | null;
+  pesoCompraKg: number | null;
+  tatuado: boolean;
+  herrado: boolean;
+  descornado: boolean;
+  codigoRfid: string | null;
+  potrero: IdLabel | null;
+  sector: IdLabel | null;
+  lote: IdLabel | null;
+  grupo: IdLabel | null;
+  comentarios: string | null;
+  salud: KeyLabel | null;
+  categoriaReproductiva: KeyLabel | null;
+  estado: KeyLabel | null;
+  pesoUltimo: PesoUltimo | null;
+  codigoQr: string | null;
+  esDeMonta: boolean;
+  tipoExplotacion: IdLabel | null;
+};
+
+type AnimalListadoResponseDto = {
+  data: AnimalListadoRowDto[];
+  page: number;
+  pageSize: 25 | 50 | 100;
+  total: number;
+  totalSinFiltro: number;
+  sort: string | null;
+  cols: string[];
+};
+
+type ApiErrorDto = {
+  error: string;
+  campo: string | null;
+  motivo: string;
+  requestId: string;
+};
 ```
 
-- **LA-041** — Cada fila trae textos resueltos (LA-001), la clave cruda del
-  enum para el badge (`categoria`, `salud`) y el `id` para navegar.
-- **LA-042 · Nulos** — Campos nulos → `null`; el cliente pinta "—" (texto/
-  número) o "sin registrar" (relaciones). Nunca "null" literal ni 0 por
-  defecto en numéricos ausentes.
-- **LA-043 · Errores** — 400 (params), 403 (finca ajena/sin permiso), 500.
-  El cliente muestra estado de error con reintento (§9), nunca tabla vacía
-  silenciosa.
+- Fechas del DTO son ISO 8601. Valores ausentes son `null`; la UI presenta `-` o `Sin registrar`, nunca cero ni `null` literal.
+- `cols` devuelve los `columnId` efectivos y normalizados de la vista.
 
-### 8.3 Orden permitido
+### 6.3 Errores
 
-- **LA-044** — `sort` solo acepta los keys de "Orden" §3; otro → 400.
-  Desempate `,id:asc` implícito siempre (LA-022).
+- **LA-040 (400):** el frontend conserva la última tabla válida, elimina o sanea de la URL todos los parámetros indicados como inválidos por `campo`, vuelve a la página 1 cuando corresponda y muestra un toast. No reemplaza la tabla por un estado de error.
+- **LA-041 (403):** muestra estado de error `No tienes acceso a esta finca`, sin datos previos, con navegación segura de regreso.
+- **LA-042 (500/timeout de listado):** muestra estado de error con `Reintentar`. No presenta una tabla vacía silenciosa.
+- **LA-043:** backend devuelve `ApiErrorDto` para 400/403/500; frontend es dueño del comportamiento visual y del saneamiento de URL.
 
-## 9. Estados de la tabla (con dueño — bloqueante resuelto)
+## 7. Paginación y contador
 
-Responsabilidad del sub-issue de UI (§11), no "de nadie":
+- **LA-050:** la respuesta contiene la página pedida, `total` filtrado y `totalSinFiltro` de la finca.
+- **LA-051:** el encabezado muestra `N de TOTAL` usando `total` y `totalSinFiltro`. El pie muestra `Mostrando X-Y de N`, donde N es `total`.
+- **LA-052:** navegación numerada y selector 25/50/100; no hay scroll infinito.
 
-- **LA-050 · Cargando** — Skeleton de pageSize filas con columnas reales;
-  header visible. No spinner de pantalla completa.
-- **LA-051 · Finca vacía** — EmptyState "Aún no hay animales · + Registrar el
-  primero" (respeta `animales:crear`).
-- **LA-052 · Sin resultados** — "Ningún animal coincide · Limpiar filtros";
-  conserva la fila de filtros.
-- **LA-053 · Error** — Mensaje + "Reintentar"; distingue 403 ("No tienes
-  acceso a esta finca") de 500 ("Error del servidor").
-- **LA-054 · Offline** — Banner `info` "Sin conexión · datos locales" (§10).
+## 8. Estados de interfaz
 
-## 10. Comportamiento offline — bloqueante resuelto
+- **LA-060:** loading conserva encabezados y presenta skeletons de 36-40 px para la página solicitada.
+- **LA-061:** finca vacía (`totalSinFiltro = 0`) muestra `Aún no hay animales`; la acción de registro respeta RBAC.
+- **LA-062:** sin resultados (`total = 0`, `totalSinFiltro > 0`) conserva filtros y ofrece `Limpiar filtros`.
+- **LA-063:** 403 y error de servidor/timeout son estados diferenciados según §6.3.
 
-- **LA-060 · Funciona offline** — Listado, buscador, filtros, orden, conteo y
-  paginación operan sobre la **réplica local** (SQLite/OPFS del sync). La
-  consulta §8 tiene implementación local equivalente (mismo request/response);
-  la UI no distingue el origen salvo el banner LA-054.
-- **LA-061 · NO offline** — La **exportación** requiere servidor (LA-072) →
-  offline el botón Exportar se deshabilita con tooltip "Disponible con
-  conexión". Única degradación.
-- **LA-062 · Consistencia** — Offline, conteo y filtros reflejan la réplica
-  (puede ir por detrás del servidor); el banner lo comunica; al reconectar se
-  revalida.
-- **LA-063 · Columnas offline** — El set de columnas se cachea local; se puede
-  cambiar offline y sincroniza al reconectar (LA-031).
+## 9. Exportación
 
-## 11. Exportación (límites y seguridad — bloqueante resuelto)
+- **LA-070:** Excel, CSV y PDF apaisado se generan en servidor con los mismos filtros y orden.
+- **LA-071:** alcance `Vista actual` usa `cols`; `Todas` usa las 36 columnas. Se exporta el conjunto filtrado completo, no solo la página.
+- **LA-072:** máximo 50 000 filas. HTTP 413 pide afinar filtros; timeout de 30 s muestra un mensaje específico. El equipo frontend es dueño de ambos casos.
+- **LA-073:** valores que comiencen por `=`, `+`, `-`, `@`, tab o CR se neutralizan en CSV y se fuerzan a texto en XLSX.
+- **LA-074:** PDF con 36 columnas advierte que puede ser difícil de leer y recomienda Excel, permitiendo continuar.
+- **LA-075:** exportación aplica RBAC y aislamiento por finca en servidor.
+- **LA-076 (500 de exportación):** el frontend mantiene abierto el diálogo, muestra un mensaje no destructivo y ofrece `Reintentar`. El reintento conserva los filtros vigentes, el alcance de columnas y el formato seleccionados; no limpia la tabla ni presenta una descarga vacía.
 
-- **LA-070** — Formatos: Excel (.xlsx), CSV, PDF (apaisado).
-- **LA-071** — Alcance columnas: "Vista actual" (`cols=`) o "Todas" (37).
-  Filas: el **conjunto filtrado completo**, no la página.
-- **LA-072** — Generación **server-side** con los mismos filtros/orden.
-  Requiere conexión (LA-061).
-- **LA-073 · Límite** — Máximo **50 000 filas**; si excede → 413 y la UI pide
-  afinar filtros.
-- **LA-074 · Timeout** — 30 s; si excede → "La exportación tardó demasiado,
-  afina filtros". Export asíncrono: v1.1.
-- **LA-075 · CSV injection** — Todo valor que empiece por `= + - @` o tab/CR
-  se prefija con `'` en CSV y se fuerza a texto en XLSX, para impedir
-  ejecución de fórmulas. Aplica a nombres, comentarios y texto libre.
-- **LA-076 · PDF** — "Todas" en PDF advierte que 36 columnas no caben y sugiere
-  Excel; permite continuar (fuente reducida).
-- **LA-077 · Valores** — FK en texto, fechas es-CO, números con separador
-  local, bool "Sí/No", encabezados = §3, nulos vacíos.
-- **LA-078 · Seguridad** — Respeta RBAC (LA-RBAC-03) y filtro de finca
-  server-side (LA-RBAC-04); nunca exporta otra finca.
+## 10. Diseño, temas y accesibilidad
 
-## 12. Diseño / `.op` — bloqueante resuelto
+- **LA-080:** el `.op` representa las 29 columnas base reales, en orden, sobre lienzo interno ancho con scroll horizontal; `Código` y `Nombre` aparecen congeladas.
+- **LA-081:** filas y skeletons miden 36-40 px; encabezado sticky.
+- **LA-082:** filtros, datos, contador y paginación del diseño usan un mismo escenario.
+- **LA-083:** el `.op` incluye referencia de tabla, selector 36/29/7, exportación, advertencia PDF y estados loading, vacío, sin resultados, 403 y error de servidor.
+- **LA-084:** el `.op` usa variables/tokens y variantes visuales representativas. No constituye evidencia exhaustiva de los 10 temas.
+- **LA-085:** implementación y QA validan la interfaz en los 10 temas reales del sistema, incluyendo contraste AA.
+- **LA-090:** accesibilidad se verifica en código/tests: tabla semántica, encabezados con `scope`, `aria-sort`, teclado, foco visible, labels y anuncios `aria-live`. El diseño estático solo documenta intención.
+- **LA-091:** clic o Enter en una fila fuera de controles navega a la ficha del animal.
 
-El `.op` v1.0 (10 columnas, 44px, 3 temas con colores directos) queda
-DEROGADO. El nuevo debe demostrar:
+## 11. Rendimiento e índices
 
-- **LA-080** — Las **29 columnas base** en orden §3, con **scroll horizontal**
-  y **Código + Nombre congeladas**.
-- **LA-081** — Filas **36–40px** (no 44). Header sticky.
-- **LA-082** — Filtros y contador **coherentes con los datos** mostrados.
-- **LA-083** — Los **estados** §9 (skeleton, vacía, sin resultados, error,
-  offline) como pantallas propias.
-- **LA-084** — **Selector de columnas**, **diálogo de exportación** y
-  **advertencia PDF** como pantallas.
-- **LA-085 · Tokens** — Demostrar los **10 temas** vía tokens; nada de hex por
-  pantalla que no derive de un token.
-- **LA-086 · Navegación** — Clic en fila (fuera de controles) abre la ficha
-  (19); indicar el área activable.
+- **LA-100:** respuesta paginada p95 < 400 ms con el escenario de prueba acordado; búsqueda con debounce de 300 ms.
+- **LA-101 (existente):** el esquema actual ya aporta índices equivalentes a `animales(finca_id, activo)` y `pesos(animal_id, fecha)`.
+- **LA-102 (migración requerida):** backend/database debe crear y medir índices adicionales para el patrón final, como `animales(finca_id, activo, codigo)` y el índice que soporte peso último con desempate. No se declararán existentes hasta que la migración sea aplicada.
+- **LA-103:** joins y derivadas se resuelven en la consulta paginada, sin N+1.
 
-## 13. Accesibilidad — bloqueante resuelto
+## 12. Criterios de aceptación
 
-- **LA-090** — Tabla semántica (`<table>`/`role=grid`, `<th scope>`).
-- **LA-091** — `aria-sort` en el encabezado activo, sincronizado con ▲/▼.
-- **LA-092** — Teclado: Tab recorre controles; encabezados con Enter/Espacio;
-  filas con Enter (navega a ficha); foco visible siempre.
-- **LA-093** — Contador y cambios de estado por `aria-live=polite`.
-- **LA-094** — Filtros con label accesible; chips como botones con nombre
-  ("Quitar filtro Salud: Enferma").
-- **LA-095** — Contraste AA en los 10 temas (garantizado por tokens).
+1. Los tres artefactos declaran una entrega online-only con 29 columnas visibles y 36 totales.
+2. La tabla inicial muestra las 29 columnas base de §3, sin Categoría reprod. ni Peso último, con Código/Nombre congeladas y filas de 36-40 px.
+3. Cada columna usa los `columnId`, `responseKey`, `filterKey`, `sortKey` y `filterValue` exactos de la matriz.
+4. Filtros de catálogo/envío usan ID/key estable y la UI presenta labels.
+5. El DTO implementa las 36 columnas, derivadas, nulabilidad, paginación, errores y `cols`.
+6. Un 400 conserva la última tabla válida, sanea la URL y muestra toast; 403/500/timeout muestran sus estados definidos.
+7. `tipo_ingreso_id` se resuelve contra `config_key_values.tipo_ingreso`; desconocidos usan el fallback definido.
+8. Selector y preferencias manejan 36 columnas, 29 activas y 7 opcionales, persistidas por usuario+finca.
+9. RBAC oculta acciones y vuelve a validar endpoint/exportación; finca ajena devuelve 403.
+10. Exportación aplica alcance, límites, seguridad CSV/XLSX y advertencia PDF; un HTTP 500 conserva filtros y selección, muestra un mensaje no destructivo y permite reintentar.
+11. Migraciones de índices requeridas tienen dueño y se miden antes de aceptar LA-100.
+12. Implementación y QA validan los 10 temas y la accesibilidad mediante código/tests; el `.op` es referencia representativa, no evidencia exhaustiva.
 
-## 14. Rendimiento — métricas verificables
+## 13. Dependencias y fuera de alcance
 
-- **LA-100** — Con 543 animales + filtros: respuesta paginada **< 400 ms**
-  p95, verificable en suite de carga.
-- **LA-101** — Índices: `animales(finca_id, activo, codigo)` y
-  `pesos(animal_id, fecha desc)` para "Peso último". Joins de texto en la
-  query paginada, no por fila.
-- **LA-102** — Página de 100×30 fluida: virtualización de filas si se
-  requiere; sin jank.
-- **LA-103** — Buscador con **debounce 300 ms**.
-
-## 15. Criterios de aceptación
-
-1. Vista inicial = 30 columnas base en orden §3, scroll horizontal, Código/
-   Nombre congeladas, filas 36–40px (LA-080/081).
-2. FK/key en texto en tabla y export; nulos "—"/"sin registrar" (LA-001/042).
-3. Filtros por tipo, AND, chips, contador; buscador combina; filtro resetea a
-   página 1 (LA-010..013/032).
-4. Orden con desempate por id; Peso ASC 89<289<412; aria-sort (LA-020..023/091).
-5. Contrato §8 exacto; 400/403/500 manejados; sort solo campos permitidos
-   (LA-040..044).
-6. Offline: listado/filtros/orden/conteo desde réplica; export deshabilitado
-   con tooltip; banner (LA-060..063).
-7. RBAC: "Nuevo animal" solo con crear; Exportar solo con ver+reportes:exportar;
-   finca ajena → 403 (LA-RBAC-01..04).
-8. Export: vista/todas y filtrado completo; límite 50k+413; timeout 30s;
-   neutralización CSV/XLSX; PDF advierte (LA-070..078).
-9. Estados skeleton/vacío/sin-resultados/error/offline (LA-050..054).
-10. A11y: tabla semántica, teclado, aria-sort, aria-live, foco (LA-090..095).
-11. Rendimiento: p95 < 400ms; índices; debounce 300ms (LA-100..103).
-12. `.op` con 30 columnas, estados, selector, export, tokens (LA-080..086).
-
-## 16. Dependencias / fuera de alcance
-
-- Multi-orden, reordenar columnas, export asíncrono: **v1.1**.
-- Índices LA-101: backend previo a medir LA-100.
-- Persistencia de columnas (LA-031): endpoint de preferencias UI; si no
-  existe, dependencia a crear (no localStorage).
+- **Backend/API:** endpoint de listado, DTO, validación, resolución de relaciones y endpoint/almacenamiento de preferencias.
+- **Backend/Database:** migración y medición de índices LA-102.
+- **Frontend:** tabla, RBAC visual, URL, preferencias y manejo de 400/403/413/500/timeouts.
+- **QA:** contrato, rendimiento, accesibilidad y validación en los 10 temas.
+- Fuera de alcance: Lugar compra, multiorden, reordenar columnas y exportación asíncrona.

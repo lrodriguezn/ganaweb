@@ -1,237 +1,199 @@
-# Issues de GitHub — Listado de Animales Desktop (v2.1)
+# Issues de GitHub - Listado de Animales Desktop (v2.1)
 
-> Reorganizados según la revisión: **el contrato backend va primero** (todo
-> depende de él), la ruta del `.md` es la real, y las reglas antes huérfanas
-> (estados, densidad, navegación, rendimiento, a11y) tienen dueño.
-> Fuente de verdad: `features/feature-003-listado_animales-desktop/requisito_listado_animales.md`
-> (RF-ANIM-LIST v2.0). Los issues referencian por regla LA-xxx; no copian.
+> Propuesta local; no crea issues en GitHub. Fuente de verdad: `requisito_listado_animales.md` v2.1.
 
----
+## Épica
 
-## ÉPICA
+**Título:** `[Épica] Listado de Animales Desktop - tabla analítica online (v2.1)`
 
-**Título**: `[Épica] Listado de Animales Desktop — tabla densa (v2.0)`
-**Labels**: `epic`, `feature`, `módulo:animales`
+**Dueño:** Product/Tech Lead
+
+**Labels:** `epic`, `feature`, `módulo:animales`
 
 ```markdown
 ## Objetivo
-Tabla densa de análisis del hato: 29 columnas base visibles, filtros, orden,
-paginación server-side, exportación, offline y accesible.
+Entregar online una tabla analítica con 29 columnas visibles, 36 totales,
+filtros, orden, paginación, preferencias y exportación server-side.
 
-## Fuente de verdad
-📄 features/feature-003-listado_animales-desktop/requisito_listado_animales.md
-Decisión raíz cerrada: vista inicial = **29 columnas base** (§3). La matriz
-§3 manda sobre cualquier otro documento.
-
-## Orden de ejecución (los sub-issues NO son paralelos)
-El contrato backend es prerrequisito de todo lo demás.
-- [ ] #_ **1. Contrato de consulta backend** (§8, §3, §14) — base de todo
-- [ ] #_ 2. Tabla + columnas + estados (§3, §9, §12, §13) ← depende de 1
-- [ ] #_ 3. Filtros + buscador + orden (§4, §5) ← depende de 1 y 2
-- [ ] #_ 4. Paginación + selector de columnas + persistencia (§6, §7) ← dep 1,2
-- [ ] #_ 5. Exportación (§11) ← depende de 1
-- [ ] #_ 6. Offline (§10) ← depende de 1,2,3,4
-
-## Dependencias previas
-- Índices LA-101 (`animales(finca_id,activo,codigo)`, `pesos(animal_id,fecha desc)`).
-- Endpoint de preferencias UI para columnas (LA-031) si no existe.
-- `reportes:exportar` en el catálogo RBAC (LA-RBAC-03).
+## Sub-issues y orden
+- [ ] 1. Contrato, DTO, consulta e índices - bloquea 2, 3, 4 y 5
+- [ ] 2. Tabla, estados, RBAC visual y accesibilidad - depende de 1
+- [ ] 3. Filtros, búsqueda, orden y URL - depende de 1 y 2
+- [ ] 4. Paginación, selector y preferencias - depende de 1 y 2
+- [ ] 5. Exportación - depende de 1
 
 ## Cierre
-12 criterios de aceptación del §15 verificados en los 10 temas.
+- [ ] Se cumplen los 12 criterios de aceptación de RF-ANIM-LIST v2.1.
+- [ ] QA valida los 10 temas del sistema en implementación; el .op no se usa
+      como evidencia exhaustiva de diez renders.
 ```
 
----
+## Sub-issue 1 - Contrato, DTO, consulta e índices
 
-## SUB-ISSUE 1 — Contrato de consulta backend (PRIMERO)
+**Título:** `Listado animales: implementar contrato server-side v2.1`
 
-**Título**: `Listado animales: contrato de consulta server-side (query + respuesta)`
-**Labels**: `feature`, `backend`, `módulo:animales`
+**Dueño:** Backend/API; Backend/Database para migraciones
+
+**Labels:** `feature`, `backend`, `database`, `módulo:animales`
 
 ```markdown
-Parte de #_ (épica). Prerrequisito de los sub-issues 2–6.
-Spec: requisito §3 (matriz), §8 (contrato), §14 (rendimiento), §2 (RBAC).
+## Alcance
+Implementar §3, §6 y §11 del requisito. Este issue bloquea el resto.
 
-## Tareas
-- [ ] Endpoint `GET /api/fincas/{fincaId}/animales` con params §8.1
-      (page, pageSize, sort, q, f.*), operadores contains/in/range/drange/bool.
-- [ ] Respuesta §8.2: data con FK resueltas a texto (LA-001), enum crudo para
-      badge, id; total + totalSinFiltro.
-- [ ] Resolución de las 37 columnas de §3 incluidas derivadas: Edad
-      (de fecha_nacimiento) y Peso último (máx fecha en `pesos`) — LA-003.
-- [ ] Origen vía `tipo_ingreso_id`→texto (NO `tipo_ingreso_key`; corregido v2.1).
-- [ ] NO incluir "Lugar compra": el esquema no tiene `lugar_compra_id` (LA-002 derogada).
-- [ ] Orden: solo keys permitidos (§3 col "Orden"); desempate `,id:asc`
-      siempre (LA-022/044).
-- [ ] Nulos como null (LA-042). Errores 400/403/500 (LA-043).
-- [ ] RBAC server-side: `animales:ver`; filtro por `usuarios_fincas` +
-      finca activa; finca ajena → 403 (LA-RBAC-01/04).
-- [ ] Índices LA-101; p95 < 400ms con 543 animales (LA-100).
-- [ ] Implementación LOCAL equivalente (mismo shape) contra la réplica para
-      offline (LA-060) — puede ser sub-tarea coordinada con #_ (offline).
+## Tareas Backend/API
+- [ ] GET /api/fincas/{fincaId}/animales con page, pageSize, sort, q, f.* y cols.
+- [ ] Aplicar la matriz de 36 columnas: columnId, responseKey, filterKey,
+      sortKey y filterValue son contratos independientes.
+- [ ] Implementar AnimalListadoRowDto, AnimalListadoResponseDto y ApiErrorDto
+      completos, con nulabilidad, derivadas, paginación y cols.
+- [ ] Filtrar catálogos/enums por ID/key; devolver pares ID/key + label.
+- [ ] Resolver tipo_ingreso_id en config_key_values donde
+      config_key='tipo_ingreso'; soportar keys 0/1 y fallback
+      "Desconocido (<id>)" para valores no reconocidos.
+- [ ] Calcular peso último desde pesos.peso_kg por mayor fecha y desempate por id.
+- [ ] Validar sort/filter/cols y responder 400 ApiErrorDto con campo accionable.
+- [ ] Aplicar animales:ver y usuarios_fincas; finca ajena devuelve 403.
+- [ ] Evitar N+1 y medir p95 < 400 ms.
 
-## Criterios de aceptación
-- [ ] Un request con 3 filtros + sort + page devuelve exactamente la spec §8.2.
-- [ ] sort con campo no permitido → 400; finca ajena → 403.
-- [ ] Peso ASC ordena 89<289<412 con desempate estable (sin repetir filas al
-      paginar sobre valores iguales).
-- [ ] p95 < 400ms verificado en suite de carga.
+## Tareas Backend/Database
+- [ ] Registrar como existentes solo los índices actuales equivalentes a
+      animales(finca_id, activo) y pesos(animal_id, fecha).
+- [ ] Crear migración para los índices adicionales de LA-102 y medir el plan
+      real antes de cerrar rendimiento.
+
+## Criterios
+- [ ] Un request con filtros de texto, catálogo y derivada devuelve el DTO exacto.
+- [ ] Los filtros de catálogo viajan por ID/key, nunca por label.
+- [ ] sort/filter/cols inválidos producen 400 con campo y motivo.
+- [ ] Peso ASC ordena 89 < 289 < 412 sin saltos al paginar.
+- [ ] Finca ajena produce 403 y no filtra datos de otra finca.
+- [ ] La suite prueba las 36 responseKey y su nulabilidad.
+- [ ] Migración y evidencia p95 quedan adjuntas al PR de implementación.
 ```
 
----
+## Sub-issue 2 - Tabla, estados, RBAC visual y accesibilidad
 
-## SUB-ISSUE 2 — Tabla, columnas, estados y accesibilidad
+**Título:** `Listado animales: tabla de 29 columnas, estados y accesibilidad`
 
-**Título**: `Listado animales: tabla 30 columnas + estados + a11y`
-**Labels**: `feature`, `frontend`, `a11y`, `módulo:animales`
+**Dueño:** Frontend; QA para accesibilidad y temas
+
+**Labels:** `feature`, `frontend`, `a11y`, `módulo:animales`
 
 ```markdown
-Parte de #_. Depende de #_ (contrato).
-Spec: §3, §9 (estados), §12 (diseño), §13 (a11y).
+## Tareas Frontend
+- [ ] Renderizar las 29 columnas base reales en orden; Categoría reprod. y
+      Peso último no aparecen inicialmente.
+- [ ] Usar scroll horizontal, Código/Nombre congeladas, header sticky y filas
+      y skeletons de 36-40 px.
+- [ ] Mostrar labels y nulos según contrato.
+- [ ] Implementar loading, finca vacía, sin resultados, 403 y error/timeout.
+- [ ] Conservar última tabla válida solo ante 400; para 403/500 usar estado.
+- [ ] Ocultar Nuevo animal sin animales:crear y Exportar sin
+      animales:ver + reportes:exportar.
+- [ ] Navegar a ficha con clic/Enter fuera de controles.
 
-## Tareas
-- [ ] Render de las 29 columnas base en orden §3; scroll horizontal; Código
-      y Nombre congeladas (LA-080). Filas 36–40px, header sticky (LA-081).
-- [ ] FK/key en texto; nulos "—"/"sin registrar" (LA-001/042).
-- [ ] Badges: Salud siempre verde/rojo; categoría con colores de dominio;
-      machos no_aplica sin badge (coordinar con BUG-DATA-001).
-- [ ] Estados §9: skeleton, finca vacía, sin resultados, error+reintento,
-      offline (LA-050..054).
-- [ ] Navegación desde fila → ficha 19 (LA-086).
-- [ ] A11y: tabla semántica, aria-sort, teclado, aria-live del contador,
-      foco visible (LA-090..095).
-- [ ] Solo tokens; correcto en los 10 temas (LA-085).
+## Tareas QA
+- [ ] Verificar tabla semántica, scope, aria-sort, teclado, foco, labels y aria-live.
+- [ ] Verificar contraste y comportamiento en los 10 temas reales del sistema.
 
-## Criterios de aceptación
-- [ ] Las 30 columnas en orden §3; Código/Nombre no se pierden al scroll H.
-- [ ] Los 5 estados se ven según §9.
-- [ ] Teclado: ordenar con Enter en el header; abrir ficha con Enter en fila.
-- [ ] Render correcto en los 10 temas.
+## Criterios
+- [ ] Se ven 29 encabezados/celdas reales en el lienzo desplazable.
+- [ ] Código y Nombre permanecen visibles al desplazar horizontalmente.
+- [ ] Los cinco estados se distinguen y no confunden 403 con lista vacía.
+- [ ] Las acciones RBAC no se renderizan sin permiso.
+- [ ] Tests automatizados y revisión manual cubren a11y; el .op solo documenta intención.
 ```
 
----
+## Sub-issue 3 - Filtros, búsqueda, orden y URL
 
-## SUB-ISSUE 3 — Filtros, buscador y ordenamiento
+**Título:** `Listado animales: filtros tipados, búsqueda, orden y URL recuperable`
 
-**Título**: `Listado animales: filtros por columna + buscador + orden`
-**Labels**: `feature`, `frontend`, `módulo:animales`
+**Dueño:** Frontend
+
+**Labels:** `feature`, `frontend`, `módulo:animales`
 
 ```markdown
-Parte de #_. Depende de #_ (contrato) y #_ (tabla).
-Spec: §4 (filtros), §5 (orden).
-
 ## Tareas
-- [ ] Fila de filtros por tipo (§3): contiene/in[]/rango núm/rango fecha/sí-no.
-- [ ] AND entre columnas y con buscador; chips + "Limpiar todo"; contador
-      "N de TOTAL" con aria-live (LA-010/011).
-- [ ] Buscador global OR sobre codigo/nombre/arete/rfid, debounce 300ms
-      (LA-012/103).
-- [ ] Cambiar filtro/buscador resetea a página 1 (LA-013).
-- [ ] Orden ASC→DESC→ninguno con aria-sort; default codigo ASC (LA-020/021).
+- [ ] Implementar operadores contains/in/range/drange/bool según filterValue.
+- [ ] Enviar IDs/keys de catálogos/enums y mostrar labels en controles/chips.
+- [ ] Combinar filtros con AND y búsqueda OR; debounce 300 ms.
+- [ ] Implementar chips, Limpiar todo y reset a page=1.
+- [ ] Implementar ASC/DESC/sin orden; default codigo:asc y aria-sort.
+- [ ] Sincronizar page, pageSize, sort, q, f.* y cols válidos con la URL.
+- [ ] Ante 400, conservar la última tabla válida, sanear/remover todos los
+      params señalados, ajustar page=1 cuando aplique y mostrar toast.
 
-## Criterios de aceptación
-- [ ] Filtrar Salud=Enferma + Potrero=POT-1 → filas y contador coinciden.
-- [ ] Peso ASC 89<289<412.
-- [ ] Cambiar un filtro vuelve a página 1.
+## Criterios
+- [ ] Raza se solicita como f.razaId=in:<id>, no como texto Brahman.
+- [ ] Una URL válida reproduce la vista al abrirse en otra pestaña.
+- [ ] Un param inválido desaparece de la URL sin borrar la última tabla válida.
+- [ ] Cambiar filtro, búsqueda, orden o pageSize vuelve a página 1.
 ```
 
----
+## Sub-issue 4 - Paginación, selector y preferencias
 
-## SUB-ISSUE 4 — Paginación, selector de columnas y persistencia
+**Título:** `Listado animales: paginación, 36 columnas y preferencias persistentes`
 
-**Título**: `Listado animales: paginación + mostrar/ocultar columnas persistente`
-**Labels**: `feature`, `frontend`, `backend`, `módulo:animales`
+**Dueño:** Backend/API para endpoint y almacenamiento; Frontend para integración
+
+**Labels:** `feature`, `backend`, `frontend`, `módulo:animales`
 
 ```markdown
-Parte de #_. Depende de #_ (contrato) y #_ (tabla).
-Spec: §6 (columnas), §7 (paginación), §8.1 (URL).
+## Tareas Backend/API
+- [ ] Crear endpoint y almacenamiento de preferencias por usuario + finca.
+- [ ] Validar columnId, deduplicar y normalizar el orden canónico.
+- [ ] Aplicar RBAC y aislamiento por usuario/finca.
 
-## Tareas
-- [ ] Paginación server-side 25/50/100 (default 25); "Mostrando X–Y de N"
-      (LA-032/033).
-- [ ] page/pageSize/sort/filtros en query params URL; atrás/compartir
-      funcionan; cambios de filtro/orden/size → page=1 (LA-034).
-- [ ] Selector "Columnas" (36); Código y Nombre no ocultables; "Restablecer"
-      → 29 base (LA-030).
-- [ ] Persistir columnas por usuario+finca vía endpoint de preferencias
-      (NO localStorage); primer ingreso = 29 base (LA-031).
+## Tareas Frontend
+- [ ] Paginación server-side 25/50/100, navegación numerada y contador coherente.
+- [ ] Selector de 36 columnas: 29 activas y 7 opcionales.
+- [ ] Impedir ocultar Código/Nombre; Restablecer aplica las 29 base.
+- [ ] Leer y guardar preferencias sin localStorage; fallo de lectura usa 29 base.
 
-## Criterios de aceptación
-- [ ] Con 543 animales, Network trae solo la página pedida.
-- [ ] Ocultar "Raza", recargar y cambiar de dispositivo: sigue oculta.
-- [ ] URL pegada en otra pestaña reproduce la vista.
+## Criterios
+- [ ] Con pageSize=25, "Mostrando 1-25 de 128" coincide con data y total.
+- [ ] El encabezado "128 de 543" coincide con total y totalSinFiltro.
+- [ ] Una preferencia se conserva al cambiar de dispositivo para el mismo usuario/finca.
+- [ ] IDs desconocidos o repetidos se rechazan/normalizan sin corromper preferencias.
 ```
 
----
+## Sub-issue 5 - Exportación y errores operativos
 
-## SUB-ISSUE 5 — Exportación
+**Título:** `Listado animales: exportar Excel/CSV/PDF con seguridad y límites`
 
-**Título**: `Listado animales: exportar Excel/CSV/PDF con límites y seguridad`
-**Labels**: `feature`, `backend`, `frontend`, `seguridad`, `módulo:animales`
+**Dueño:** Backend/API para generación; Frontend para diálogo y errores
+
+**Labels:** `feature`, `backend`, `frontend`, `seguridad`, `módulo:animales`
 
 ```markdown
-Parte de #_. Depende de #_ (contrato).
-Spec: §11.
+## Tareas Backend/API
+- [ ] Generar Excel, CSV y PDF con los mismos filtros/orden del listado.
+- [ ] Vista actual usa cols; Todas usa las 36 columnas; exportar todo el filtrado.
+- [ ] Aplicar límite 50 000 -> 413 y timeout 30 s.
+- [ ] Neutralizar CSV injection y forzar texto inseguro en XLSX.
+- [ ] Aplicar animales:ver + reportes:exportar y aislamiento por finca.
 
-## Tareas
-- [ ] Export Excel/CSV/PDF apaisado (LA-070).
-- [ ] Diálogo vista actual (cols=) vs todas (36); filas = filtrado completo
-      (LA-071).
-- [ ] Generación server-side con mismos filtros/orden (LA-072).
-- [ ] Límite 50k filas → 413; timeout 30s (LA-073/074).
-- [ ] Neutralización CSV injection (prefijo `'` a `= + - @`/tab/CR; XLSX como
-      texto) — LA-075.
-- [ ] PDF "todas" advierte y sugiere Excel (LA-076).
-- [ ] Valores: FK texto, fechas es-CO, bool Sí/No, nulos vacíos (LA-077).
-- [ ] RBAC: ver+reportes:exportar; botón oculto sin permiso; finca
-      server-side (LA-RBAC-03/04, LA-078).
+## Tareas Frontend
+- [ ] Implementar diálogo Vista actual/Todas y advertencia PDF para 36 columnas.
+- [ ] Manejar 400 saneando params y conservando última tabla válida.
+- [ ] Manejar 403 como acceso denegado, 413 pidiendo afinar filtros y timeout
+      con mensaje específico; no tratarlos como descarga vacía.
+- [ ] Manejar HTTP 500 manteniendo abierto el diálogo, con mensaje no destructivo
+      y Reintentar sin perder filtros, alcance de columnas ni formato seleccionados.
+- [ ] Ocultar Exportar cuando falte cualquiera de sus permisos.
 
-## Criterios de aceptación
-- [ ] Filtrar a 40 → archivo con 40 filas (no la página de 25).
-- [ ] Un nombre "=CMD()" sale neutralizado, no ejecutable.
-- [ ] Sin reportes:exportar, el botón no se renderiza.
+## Criterios
+- [ ] Un filtro con total=40 produce 40 filas aunque pageSize sea 25.
+- [ ] Un valor "=CMD()" no es ejecutable en CSV/XLSX.
+- [ ] Todas exporta exactamente 36 columnas; Vista actual respeta cols normalizado.
+- [ ] PDF muestra advertencia y permite continuar o cambiar a Excel.
+- [ ] Un test automatizado simula HTTP 500, verifica el mensaje y Reintentar, y
+      confirma que filtros, alcance de columnas y formato permanecen seleccionados.
+- [ ] Tests cubren 400, 403, 413 y timeout con el comportamiento asignado.
 ```
 
----
+## Dependencias y decisiones futuras
 
-## SUB-ISSUE 6 — Offline
-
-**Título**: `Listado animales: operación offline sobre réplica local`
-**Labels**: `feature`, `frontend`, `offline`, `módulo:animales`
-
-```markdown
-Parte de #_. Depende de #_ (contrato, incl. su implementación local) y 2/3/4.
-Spec: §10.
-
-## Tareas
-- [ ] Listado/buscador/filtros/orden/conteo/paginación sobre la réplica local
-      con el mismo request/response del contrato (LA-060).
-- [ ] Export deshabilitado offline + tooltip "Disponible con conexión"
-      (LA-061).
-- [ ] Banner "Sin conexión · datos locales"; revalidar al reconectar
-      (LA-054/062).
-- [ ] Columnas editables offline, sync al reconectar (LA-063).
-
-## Criterios de aceptación
-- [ ] En avión, la tabla lista, filtra, ordena y pagina desde la réplica.
-- [ ] El botón Exportar está deshabilitado con tooltip.
-- [ ] Al reconectar, la vista se revalida contra el servidor.
-```
-
----
-
-## Notas de la reorganización (respuesta a la revisión)
-
-1. **Ruta corregida**: los issues apuntan a
-   `features/feature-003-listado_animales-desktop/requisito_listado_animales.md`.
-2. **Dependencia real explícita**: el contrato backend (#1) es prerrequisito;
-   los issues 2–6 lo declaran. No son 5 issues paralelos como en v1.0.
-3. **Reglas antes huérfanas, ahora con dueño**: estados (LA-050..054) y a11y
-   (LA-090..095) → sub-issue 2; densidad/tokens (LA-081/085) → sub-issue 2;
-   navegación (LA-086) → sub-issue 2; rendimiento (LA-100..103) → sub-issue 1
-   (contrato) y 3 (debounce).
-4. **Lugar compra**: DEROGADA (v2.1) — el esquema NO tiene
-   `lugar_compra_id`; la columna se retira del listado y export. La base
-   baja de 30→29 columnas (36 en total). No implementar.
-5. **Ejemplo de orden corregido**: 89<289<412 en ASC (el "412 antes que 89"
-   solo valía en DESC).
+- `Lugar compra` queda fuera de alcance hasta que exista una relación de dominio aprobada desde `animales`; no es sub-issue de v2.1.
+- Multiorden, reordenamiento de columnas y exportación asíncrona requieren propuesta posterior.
+- No crear ni cerrar estos issues hasta sustituir `#_` por referencias reales durante la planificación de implementación.
