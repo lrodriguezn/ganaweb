@@ -269,7 +269,7 @@
               "x": 272,
               "y": 644,
               "width": 900,
-              "content": "◄ 13 de 30 columnas visibles · scroll horizontal para el resto · Código y Nombre quedan fijas ►",
+              "content": "◄ 13 de 29 columnas visibles · scroll horizontal para el resto · Código y Nombre quedan fijas ►",
               "fontFamily": "Inter",
               "fontSize": 8,
               "fontWeight": 400,
@@ -3521,7 +3521,7 @@
                           "x": 974,
                           "y": 12,
                           "width": 90,
-                          "content": "+17 más →",
+                          "content": "+16 más →",
                           "fontFamily": "Inter",
                           "fontSize": 9,
                           "fontWeight": 600,
@@ -11104,7 +11104,7 @@
                           "x": 974,
                           "y": 12,
                           "width": 90,
-                          "content": "+17 más →",
+                          "content": "+16 más →",
                           "fontFamily": "Inter",
                           "fontSize": 9,
                           "fontWeight": 600,
@@ -11963,7 +11963,7 @@
                   "x": 20,
                   "y": 466,
                   "width": 150,
-                  "content": "Restablecer (30)",
+                  "content": "Restablecer (29)",
                   "fontFamily": "Inter",
                   "fontSize": 10,
                   "fontWeight": 600,
@@ -12939,81 +12939,6 @@
                       "children": [
                         {
                           "id": "t-724",
-                          "type": "text",
-                          "name": "v",
-                          "x": 0,
-                          "y": 2,
-                          "width": 16,
-                          "content": "✓",
-                          "fontFamily": "Inter",
-                          "fontSize": 9,
-                          "fontWeight": 700,
-                          "fill": [
-                            {
-                              "type": "solid",
-                              "color": "#FFFFFF"
-                            }
-                          ],
-                          "textAlign": "center"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "id": "f-723",
-                  "type": "frame",
-                  "name": "it",
-                  "x": 200,
-                  "y": 351,
-                  "width": 172,
-                  "height": 24,
-                  "fill": [
-                    {
-                      "type": "solid",
-                      "color": "#FFFFFF"
-                    }
-                  ],
-                  "clipContent": false,
-                  "children": [
-                    {
-                      "id": "t-722",
-                      "type": "text",
-                      "name": "l",
-                      "x": 24,
-                      "y": 4,
-                      "width": 146,
-                      "content": "Lugar compra",
-                      "fontFamily": "Inter",
-                      "fontSize": 9,
-                      "fontWeight": 400,
-                      "fill": [
-                        {
-                          "type": "solid",
-                          "color": "#2B2620"
-                        }
-                      ],
-                      "textAlign": "left"
-                    },
-                    {
-                      "id": "f-721",
-                      "type": "frame",
-                      "name": "ck",
-                      "x": 0,
-                      "y": 2,
-                      "width": 16,
-                      "height": 16,
-                      "fill": [
-                        {
-                          "type": "solid",
-                          "color": "#2F6B3F"
-                        }
-                      ],
-                      "clipContent": true,
-                      "cornerRadius": 4,
-                      "children": [
-                        {
-                          "id": "t-720",
                           "type": "text",
                           "name": "v",
                           "x": 0,
@@ -14861,7 +14786,7 @@
                   "x": 20,
                   "y": 16,
                   "width": 300,
-                  "content": "Columnas visibles (30 de 37)",
+                  "content": "Columnas visibles (29 de 36)",
                   "fontFamily": "Inter",
                   "fontSize": 14,
                   "fontWeight": 600,
@@ -15422,7 +15347,7 @@
                   "x": 24,
                   "y": 232,
                   "width": 392,
-                  "content": "⚠ PDF con 37 columnas no cabe legible; se sugiere Excel.",
+                  "content": "⚠ PDF con 36 columnas no cabe legible; se sugiere Excel.",
                   "fontFamily": "Inter",
                   "fontSize": 8,
                   "fontWeight": 400,
@@ -15487,7 +15412,7 @@
                       "x": 10,
                       "y": 8,
                       "width": 164,
-                      "content": "○ Todas (37)",
+                      "content": "○ Todas (36)",
                       "fontFamily": "Inter",
                       "fontSize": 10,
                       "fontWeight": 400,
@@ -15535,7 +15460,7 @@
                       "x": 10,
                       "y": 8,
                       "width": 164,
-                      "content": "● Vista actual (30)",
+                      "content": "● Vista actual (29)",
                       "fontFamily": "Inter",
                       "fontSize": 10,
                       "fontWeight": 600,
@@ -16527,7 +16452,7 @@
               "x": 272,
               "y": 644,
               "width": 900,
-              "content": "◄ 13 de 30 columnas visibles · scroll horizontal para el resto · Código y Nombre quedan fijas ►",
+              "content": "◄ 13 de 29 columnas visibles · scroll horizontal para el resto · Código y Nombre quedan fijas ►",
               "fontFamily": "Inter",
               "fontSize": 8,
               "fontWeight": 400,
@@ -19779,7 +19704,7 @@
                           "x": 974,
                           "y": 12,
                           "width": 90,
-                          "content": "+17 más →",
+                          "content": "+16 más →",
                           "fontFamily": "Inter",
                           "fontSize": 9,
                           "fontWeight": 600,
@@ -27422,7 +27347,7 @@
                           "x": 974,
                           "y": 12,
                           "width": 90,
-                          "content": "+17 más →",
+                          "content": "+16 más →",
                           "fontFamily": "Inter",
                           "fontSize": 9,
                           "fontWeight": 600,
@@ -28301,7 +28226,7 @@
                   "x": 20,
                   "y": 466,
                   "width": 150,
-                  "content": "Restablecer (30)",
+                  "content": "Restablecer (29)",
                   "fontFamily": "Inter",
                   "fontSize": 10,
                   "fontWeight": 600,
@@ -29277,81 +29202,6 @@
                       "children": [
                         {
                           "id": "t-1573",
-                          "type": "text",
-                          "name": "v",
-                          "x": 0,
-                          "y": 2,
-                          "width": 16,
-                          "content": "✓",
-                          "fontFamily": "Inter",
-                          "fontSize": 9,
-                          "fontWeight": 700,
-                          "fill": [
-                            {
-                              "type": "solid",
-                              "color": "#FFFFFF"
-                            }
-                          ],
-                          "textAlign": "center"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "id": "f-1572",
-                  "type": "frame",
-                  "name": "it",
-                  "x": 200,
-                  "y": 351,
-                  "width": 172,
-                  "height": 24,
-                  "fill": [
-                    {
-                      "type": "solid",
-                      "color": "#FFFFFF"
-                    }
-                  ],
-                  "clipContent": false,
-                  "children": [
-                    {
-                      "id": "t-1571",
-                      "type": "text",
-                      "name": "l",
-                      "x": 24,
-                      "y": 4,
-                      "width": 146,
-                      "content": "Lugar compra",
-                      "fontFamily": "Inter",
-                      "fontSize": 9,
-                      "fontWeight": 400,
-                      "fill": [
-                        {
-                          "type": "solid",
-                          "color": "#0F172A"
-                        }
-                      ],
-                      "textAlign": "left"
-                    },
-                    {
-                      "id": "f-1570",
-                      "type": "frame",
-                      "name": "ck",
-                      "x": 0,
-                      "y": 2,
-                      "width": 16,
-                      "height": 16,
-                      "fill": [
-                        {
-                          "type": "solid",
-                          "color": "#0284C7"
-                        }
-                      ],
-                      "clipContent": true,
-                      "cornerRadius": 4,
-                      "children": [
-                        {
-                          "id": "t-1569",
                           "type": "text",
                           "name": "v",
                           "x": 0,
@@ -31199,7 +31049,7 @@
                   "x": 20,
                   "y": 16,
                   "width": 300,
-                  "content": "Columnas visibles (30 de 37)",
+                  "content": "Columnas visibles (29 de 36)",
                   "fontFamily": "Inter",
                   "fontSize": 14,
                   "fontWeight": 600,
@@ -31780,7 +31630,7 @@
                   "x": 24,
                   "y": 232,
                   "width": 392,
-                  "content": "⚠ PDF con 37 columnas no cabe legible; se sugiere Excel.",
+                  "content": "⚠ PDF con 36 columnas no cabe legible; se sugiere Excel.",
                   "fontFamily": "Inter",
                   "fontSize": 8,
                   "fontWeight": 400,
@@ -31845,7 +31695,7 @@
                       "x": 10,
                       "y": 8,
                       "width": 164,
-                      "content": "○ Todas (37)",
+                      "content": "○ Todas (36)",
                       "fontFamily": "Inter",
                       "fontSize": 10,
                       "fontWeight": 400,
@@ -31893,7 +31743,7 @@
                       "x": 10,
                       "y": 8,
                       "width": 164,
-                      "content": "● Vista actual (30)",
+                      "content": "● Vista actual (29)",
                       "fontFamily": "Inter",
                       "fontSize": 10,
                       "fontWeight": 600,
@@ -32895,7 +32745,7 @@
               "x": 272,
               "y": 644,
               "width": 900,
-              "content": "◄ 13 de 30 columnas visibles · scroll horizontal para el resto · Código y Nombre quedan fijas ►",
+              "content": "◄ 13 de 29 columnas visibles · scroll horizontal para el resto · Código y Nombre quedan fijas ►",
               "fontFamily": "Inter",
               "fontSize": 8,
               "fontWeight": 400,
@@ -36147,7 +35997,7 @@
                           "x": 974,
                           "y": 12,
                           "width": 90,
-                          "content": "+17 más →",
+                          "content": "+16 más →",
                           "fontFamily": "Inter",
                           "fontSize": 9,
                           "fontWeight": 600,
@@ -43790,7 +43640,7 @@
                           "x": 974,
                           "y": 12,
                           "width": 90,
-                          "content": "+17 más →",
+                          "content": "+16 más →",
                           "fontFamily": "Inter",
                           "fontSize": 9,
                           "fontWeight": 600,
@@ -44669,7 +44519,7 @@
                   "x": 20,
                   "y": 466,
                   "width": 150,
-                  "content": "Restablecer (30)",
+                  "content": "Restablecer (29)",
                   "fontFamily": "Inter",
                   "fontSize": 10,
                   "fontWeight": 600,
@@ -45645,81 +45495,6 @@
                       "children": [
                         {
                           "id": "t-2422",
-                          "type": "text",
-                          "name": "v",
-                          "x": 0,
-                          "y": 2,
-                          "width": 16,
-                          "content": "✓",
-                          "fontFamily": "Inter",
-                          "fontSize": 9,
-                          "fontWeight": 700,
-                          "fill": [
-                            {
-                              "type": "solid",
-                              "color": "#082F49"
-                            }
-                          ],
-                          "textAlign": "center"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "id": "f-2421",
-                  "type": "frame",
-                  "name": "it",
-                  "x": 200,
-                  "y": 351,
-                  "width": 172,
-                  "height": 24,
-                  "fill": [
-                    {
-                      "type": "solid",
-                      "color": "#0F172A"
-                    }
-                  ],
-                  "clipContent": false,
-                  "children": [
-                    {
-                      "id": "t-2420",
-                      "type": "text",
-                      "name": "l",
-                      "x": 24,
-                      "y": 4,
-                      "width": 146,
-                      "content": "Lugar compra",
-                      "fontFamily": "Inter",
-                      "fontSize": 9,
-                      "fontWeight": 400,
-                      "fill": [
-                        {
-                          "type": "solid",
-                          "color": "#F8FAFC"
-                        }
-                      ],
-                      "textAlign": "left"
-                    },
-                    {
-                      "id": "f-2419",
-                      "type": "frame",
-                      "name": "ck",
-                      "x": 0,
-                      "y": 2,
-                      "width": 16,
-                      "height": 16,
-                      "fill": [
-                        {
-                          "type": "solid",
-                          "color": "#38BDF8"
-                        }
-                      ],
-                      "clipContent": true,
-                      "cornerRadius": 4,
-                      "children": [
-                        {
-                          "id": "t-2418",
                           "type": "text",
                           "name": "v",
                           "x": 0,
@@ -47567,7 +47342,7 @@
                   "x": 20,
                   "y": 16,
                   "width": 300,
-                  "content": "Columnas visibles (30 de 37)",
+                  "content": "Columnas visibles (29 de 36)",
                   "fontFamily": "Inter",
                   "fontSize": 14,
                   "fontWeight": 600,
@@ -48148,7 +47923,7 @@
                   "x": 24,
                   "y": 232,
                   "width": 392,
-                  "content": "⚠ PDF con 37 columnas no cabe legible; se sugiere Excel.",
+                  "content": "⚠ PDF con 36 columnas no cabe legible; se sugiere Excel.",
                   "fontFamily": "Inter",
                   "fontSize": 8,
                   "fontWeight": 400,
@@ -48213,7 +47988,7 @@
                       "x": 10,
                       "y": 8,
                       "width": 164,
-                      "content": "○ Todas (37)",
+                      "content": "○ Todas (36)",
                       "fontFamily": "Inter",
                       "fontSize": 10,
                       "fontWeight": 400,
@@ -48261,7 +48036,7 @@
                       "x": 10,
                       "y": 8,
                       "width": 164,
-                      "content": "● Vista actual (30)",
+                      "content": "● Vista actual (29)",
                       "fontFamily": "Inter",
                       "fontSize": 10,
                       "fontWeight": 600,

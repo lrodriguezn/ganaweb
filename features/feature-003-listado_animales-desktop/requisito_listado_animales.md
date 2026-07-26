@@ -1,6 +1,9 @@
-# GanaWeb — Requisito Funcional: Listado de Animales Desktop (RF-ANIM-LIST v2.0)
+# GanaWeb — Requisito Funcional: Listado de Animales Desktop (RF-ANIM-LIST v2.1)
 
-> **v2.0** — reescritura que cierra las contradicciones de la revisión.
+> **v2.1** — sincroniza con el esquema final `0000_initial.sql`:
+> `tipo_ingreso_id` (no `_key`) y se deroga "Lugar compra" (sin FK en
+> `animales`). Base pasa de 30→29 columnas, total 37→36.
+> **v2.0** — reescritura que cerró las contradicciones de la revisión.
 > Decisión raíz confirmada con producto: **la vista inicial muestra las 30
 > columnas base** (denso). El diseño previo que mostraba 10 queda DEROGADO;
 > el `.op` debe actualizarse a 30 columnas con scroll horizontal y columnas
@@ -38,9 +41,11 @@ server-side y exportación, construida sobre un **contrato de consulta único**
 
 ## 3. Matriz canónica de columnas (FUENTE DE VERDAD)
 
-**37 columnas**: **30 visibles por defecto** (orden fijo) + **7 ocultas
+**36 columnas**: **29 visibles por defecto** (orden fijo) + **7 ocultas
 activables**. "Edad" y "Peso último" son derivadas y ya están CONTADAS en
 sus grupos (no se suman aparte en exportación — corrige "30 + derivadas").
+Nota v2.1: "Lugar compra" quedó DEROGADA (el esquema no la vincula), por lo
+que las columnas base bajan de 30 a 29 y el total de 37 a 36.
 
 Leyenda: **V**=visible por defecto. Todas exportables salvo nota.
 
@@ -53,7 +58,7 @@ Leyenda: **V**=visible por defecto. Todas exportables salvo nota.
 | 5 | Fecha nacimiento | `fecha_nacimiento` (epoch) | fecha | ✓ | rango fecha | `fecha_nacimiento` |
 | 6 | Edad | derivada de fecha_nacimiento | número | ✓ | rango núm | `fecha_nacimiento` (inv) |
 | 7 | Color | `color_id`→`config_colores.nombre` | catálogo | ✓ | in[] | `color_nombre` |
-| 8 | Origen | `tipo_ingreso_key`→texto | enum | ✓ | in[] | `tipo_ingreso_key` |
+| 8 | Origen | `tipo_ingreso_id`→texto | enum | ✓ | in[] | `tipo_ingreso_id` |
 | 9 | Madre (Cód.) | `codigo_madre` | texto | ✓ | contiene | `codigo_madre` |
 | 10 | Madre (Nom.) | `madre_id`→`animales.nombre` | texto | ✓ | contiene | `madre_nombre` |
 | 11 | Padre (Cód.) | `codigo_padre` | texto | ✓ | contiene | `codigo_padre` |
@@ -66,7 +71,7 @@ Leyenda: **V**=visible por defecto. Todas exportables salvo nota.
 | 18 | Fecha compra | `fecha_compra` (epoch) | fecha | ✓ | rango fecha | `fecha_compra` |
 | 19 | Precio | `precio_compra` | número | ✓ | rango núm | `precio_compra` |
 | 20 | Peso compra | `peso_compra` | número | ✓ | rango núm | `peso_compra` |
-| 21 | Lugar compra | `lugar_compra_id`→`lugares_compras.nombre` | catálogo | ✓ | in[] | `lugar_compra_nombre` |
+| ~~21~~ | ~~Lugar compra~~ | **DEROGADA** — `animales` no tiene `lugar_compra_id` (LA-002) | — | — | — | — |
 | 22 | Tatuado | `tatuado` | bool | ✓ | sí/no | `tatuado` |
 | 23 | Herrado | `herrado` | bool | ✓ | sí/no | `herrado` |
 | 24 | Descornado | `descornado` | bool | ✓ | sí/no | `descornado` |
@@ -86,9 +91,12 @@ Leyenda: **V**=visible por defecto. Todas exportables salvo nota.
 
 - **LA-001** — Toda FK/key se muestra y exporta como **texto legible**,
   nunca id/número. Resolución server-side; el cliente recibe texto listo.
-- **LA-002 · Lugar de compra** — El esquema **sí** tiene `lugar_compra_id`
-  hacia `lugares_compras` (verificado en `0000_initial.sql`). Columna
-  plenamente funcional; se retira la advertencia de "columna vacía" de v1.0.
+- **LA-002 · Lugar de compra — DEROGADA (v2.1)** — El esquema NO tiene
+  `animales.lugar_compra_id`. La tabla `lugares_compras` existe como
+  catálogo pero ningún campo de `animales` la referencia. La columna se
+  RETIRA del listado y de la exportación. Si a futuro se agrega el vínculo
+  `animales.lugar_compra_id → lugares_compras(id)`, se reincorpora como
+  columna oculta activable. No inventar el dato mientras tanto.
 - **LA-003 · Derivadas** — Edad = años con 1 decimal desde
   `fecha_nacimiento` a hoy. Peso último = `peso` del registro de mayor
   `fecha` en `pesos` (no `peso_compra`). Ordenan por valor numérico real;
@@ -124,11 +132,11 @@ Leyenda: **V**=visible por defecto. Todas exportables salvo nota.
 
 ## 6. Selector de columnas
 
-- **LA-030** — Botón "Columnas": checklist de las 37. **Código y Nombre no
+- **LA-030** — Botón "Columnas": checklist de las 36. **Código y Nombre no
   ocultables**. Reordenar: fuera de alcance v1.0 (orden = §3).
 - **LA-031** — Selección persistida **por usuario + finca** (endpoint de
   preferencias UI, NO localStorage — debe sobrevivir cambio de dispositivo).
-  "Restablecer" vuelve a las 30. Primer ingreso sin preferencia = 30 base.
+  "Restablecer" vuelve a las 29. Primer ingreso sin preferencia = 30 base.
 
 ## 7. Paginación
 
@@ -233,7 +241,7 @@ Responsabilidad del sub-issue de UI (§11), no "de nadie":
 - **LA-075 · CSV injection** — Todo valor que empiece por `= + - @` o tab/CR
   se prefija con `'` en CSV y se fuerza a texto en XLSX, para impedir
   ejecución de fórmulas. Aplica a nombres, comentarios y texto libre.
-- **LA-076 · PDF** — "Todas" en PDF advierte que 37 columnas no caben y sugiere
+- **LA-076 · PDF** — "Todas" en PDF advierte que 36 columnas no caben y sugiere
   Excel; permite continuar (fuente reducida).
 - **LA-077 · Valores** — FK en texto, fechas es-CO, números con separador
   local, bool "Sí/No", encabezados = §3, nulos vacíos.
@@ -245,7 +253,7 @@ Responsabilidad del sub-issue de UI (§11), no "de nadie":
 El `.op` v1.0 (10 columnas, 44px, 3 temas con colores directos) queda
 DEROGADO. El nuevo debe demostrar:
 
-- **LA-080** — Las **30 columnas base** en orden §3, con **scroll horizontal**
+- **LA-080** — Las **29 columnas base** en orden §3, con **scroll horizontal**
   y **Código + Nombre congeladas**.
 - **LA-081** — Filas **36–40px** (no 44). Header sticky.
 - **LA-082** — Filtros y contador **coherentes con los datos** mostrados.

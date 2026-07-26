@@ -1,4 +1,4 @@
-# Issues de GitHub — Listado de Animales Desktop (v2.0)
+# Issues de GitHub — Listado de Animales Desktop (v2.1)
 
 > Reorganizados según la revisión: **el contrato backend va primero** (todo
 > depende de él), la ruta del `.md` es la real, y las reglas antes huérfanas
@@ -15,12 +15,12 @@
 
 ```markdown
 ## Objetivo
-Tabla densa de análisis del hato: 30 columnas base visibles, filtros, orden,
+Tabla densa de análisis del hato: 29 columnas base visibles, filtros, orden,
 paginación server-side, exportación, offline y accesible.
 
 ## Fuente de verdad
 📄 features/feature-003-listado_animales-desktop/requisito_listado_animales.md
-Decisión raíz cerrada: vista inicial = **30 columnas base** (§3). La matriz
+Decisión raíz cerrada: vista inicial = **29 columnas base** (§3). La matriz
 §3 manda sobre cualquier otro documento.
 
 ## Orden de ejecución (los sub-issues NO son paralelos)
@@ -59,7 +59,8 @@ Spec: requisito §3 (matriz), §8 (contrato), §14 (rendimiento), §2 (RBAC).
       badge, id; total + totalSinFiltro.
 - [ ] Resolución de las 37 columnas de §3 incluidas derivadas: Edad
       (de fecha_nacimiento) y Peso último (máx fecha en `pesos`) — LA-003.
-- [ ] Lugar compra vía `lugar_compra_id → lugares_compras` (LA-002, existe).
+- [ ] Origen vía `tipo_ingreso_id`→texto (NO `tipo_ingreso_key`; corregido v2.1).
+- [ ] NO incluir "Lugar compra": el esquema no tiene `lugar_compra_id` (LA-002 derogada).
 - [ ] Orden: solo keys permitidos (§3 col "Orden"); desempate `,id:asc`
       siempre (LA-022/044).
 - [ ] Nulos como null (LA-042). Errores 400/403/500 (LA-043).
@@ -89,7 +90,7 @@ Parte de #_. Depende de #_ (contrato).
 Spec: §3, §9 (estados), §12 (diseño), §13 (a11y).
 
 ## Tareas
-- [ ] Render de las 30 columnas base en orden §3; scroll horizontal; Código
+- [ ] Render de las 29 columnas base en orden §3; scroll horizontal; Código
       y Nombre congeladas (LA-080). Filas 36–40px, header sticky (LA-081).
 - [ ] FK/key en texto; nulos "—"/"sin registrar" (LA-001/042).
 - [ ] Badges: Salud siempre verde/rojo; categoría con colores de dominio;
@@ -150,10 +151,10 @@ Spec: §6 (columnas), §7 (paginación), §8.1 (URL).
       (LA-032/033).
 - [ ] page/pageSize/sort/filtros en query params URL; atrás/compartir
       funcionan; cambios de filtro/orden/size → page=1 (LA-034).
-- [ ] Selector "Columnas" (37); Código y Nombre no ocultables; "Restablecer"
-      → 30 base (LA-030).
+- [ ] Selector "Columnas" (36); Código y Nombre no ocultables; "Restablecer"
+      → 29 base (LA-030).
 - [ ] Persistir columnas por usuario+finca vía endpoint de preferencias
-      (NO localStorage); primer ingreso = 30 base (LA-031).
+      (NO localStorage); primer ingreso = 29 base (LA-031).
 
 ## Criterios de aceptación
 - [ ] Con 543 animales, Network trae solo la página pedida.
@@ -174,7 +175,7 @@ Spec: §11.
 
 ## Tareas
 - [ ] Export Excel/CSV/PDF apaisado (LA-070).
-- [ ] Diálogo vista actual (cols=) vs todas (37); filas = filtrado completo
+- [ ] Diálogo vista actual (cols=) vs todas (36); filas = filtrado completo
       (LA-071).
 - [ ] Generación server-side con mismos filtros/orden (LA-072).
 - [ ] Límite 50k filas → 413; timeout 30s (LA-073/074).
@@ -229,7 +230,8 @@ Spec: §10.
    (LA-090..095) → sub-issue 2; densidad/tokens (LA-081/085) → sub-issue 2;
    navegación (LA-086) → sub-issue 2; rendimiento (LA-100..103) → sub-issue 1
    (contrato) y 3 (debounce).
-4. **Lugar compra**: ya NO es migración pendiente — el esquema tiene
-   `lugar_compra_id` (verificado); es tarea normal del contrato (#1).
+4. **Lugar compra**: DEROGADA (v2.1) — el esquema NO tiene
+   `lugar_compra_id`; la columna se retira del listado y export. La base
+   baja de 30→29 columnas (36 en total). No implementar.
 5. **Ejemplo de orden corregido**: 89<289<412 en ASC (el "412 antes que 89"
    solo valía en DESC).
