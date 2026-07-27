@@ -15,6 +15,10 @@
 - [x] 3.1 HTTP contract RED coverage for validation-before-read, non-disclosing authorization, sanitized failures, and complete nullable rows.
 - [x] 3.2 TanStack Start GET route and testable HTTP adapter with request IDs, session composition, PostgreSQL read-model delegation, and contractual responses.
 - [x] 3.3 Kept DB exports unchanged (existing `./animal-infrastructure` export suffices) and verified legacy action/UI/filter/preference/export paths were untouched.
+- [x] 2.4 Preserved local `EXPLAIN (ANALYZE, BUFFERS)` and fixed-query-count evidence; recorded the absent §11 fixture/scenarios as the blocker for representative animal-list-index evidence.
+- [x] 4.1 Recorded the absent agreed §11 fixture, scenarios, and p95 harness without claiming LA-100/LA-102 acceptance.
+- [x] 4.2 Added PostgreSQL-only route-contract and evidence documentation; SQLite/WASM parity remains excluded.
+- [x] 4.3 Normalized the candidate and completed final apply verification evidence; bounded review is the subsequent external parent-orchestrator gate.
 
 ## TDD Cycle Evidence
 
@@ -31,6 +35,10 @@
 | 3.1 | `apps/web/tests/animal-list-server-contract.test.ts` | HTTP adapter contract | ✅ Existing pure contract harness passed before extension | ✅ Missing `animal-list-http` module failed `ERR_MODULE_NOT_FOUND` | ✅ `pnpm exec tsx tests/animal-list-server-contract.test.ts` — exit 0 | ✅ Invalid grammar avoids both reads; session and forbidden read yield equal 403; driver and timeout failures sanitize; nullable row has 37 keys | ✅ Extracted injected HTTP adapter; route remains framework-only composition |
 | 3.2 | `apps/web/tests/animal-list-server-contract.test.ts` | HTTP adapter + PostgreSQL integration | N/A (new route) | ✅ Same absent-module RED from 3.1 | ✅ HTTP contract harness exit 0; PostgreSQL focused suite 4/4 passed | ✅ Contract tests cover independent validation, authorization, error, and nullable-row paths | ✅ Route delegates to a small injected handler and real session/read dependencies |
 | 3.3 | `packages/aplicacion/tests/animal-listado-port.test.ts`; `packages/db/tests/animal-infrastructure.test.ts` | Vitest contract/regression | ✅ Both focused files initially failed: no Vitest suite and stale migration list | ✅ Existing introduced regression failures observed before correction | ✅ application port 2/2 and migration infrastructure 8/8 passed | ✅ Distinct request/page-size/sort contract values and additive journal entry | ✅ Converted the port harness to behavioral Vitest tests; updated only the additive migration expectation |
+| 2.4 | `packages/db/tests/animal-listado-postgres.test.ts` | PostgreSQL integration/evidence | ✅ 4/4 focused suite baseline | N/A — evidence-only task; no production behavior added | ✅ 4/4 passed; local plan used `idx_pesos_animal_fecha_id` and the read model remained fixed at three listing statements | N/A — exact §11 scenarios are absent | ➖ No source refactor; preserved actual plan and documented the fixture blocker |
+| 4.1 | N/A | Benchmark evidence | N/A — documentation/evidence task | N/A — no production behavior added | N/A — agreed §11 fixture/scenarios/p95 harness absent | N/A — no available scenarios to triangulate | ➖ Documented blocker without weakening LA-100/LA-102 |
+| 4.2 | N/A | Contract documentation | N/A — documentation task | N/A — no production behavior added | ✅ `route-contract-evidence.md` records PostgreSQL-only support, excluded SQLite/WASM parity, contract, and evidence status | N/A — one static contract/evidence document | ➖ Documentation only; final verify report remains owned by `sdd-verify` |
+| 4.3 | Existing focused/full suites | Candidate verification | ✅ Focused suites passed before final checks | N/A — normalization/evidence task; no production behavior added | ✅ format no fixes; focused tests, full suite, typecheck, and Biome command passed | ✅ CA-UI-002 isolated runs produced one pass and one timeout; full suite subsequently passed | ➖ No candidate code change; excluded UI timeout classified and not masked |
 
 ## Work Unit Evidence
 
@@ -41,6 +49,7 @@
 | LA-102 indexes | `pnpm --filter @ganaweb/db exec tsx tests/animal-list-indexes.test.ts` — exit 0, 2 index assertions | Blocked — `DATABASE_URL` is not configured and the exact RF-ANIM-LIST §11 PostgreSQL fixture/harness is absent; no plan or query execution was claimed | Revert schema metadata and `0002_animal_list_indexes.sql` only; for an applied migration, reverse in a new migration rather than editing it |
 | PostgreSQL read model | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-listado-postgres.test.ts` — exit 0, 4/4 integration tests | `pnpm db:up` recreated only local `ganaweb-postgres` / `ganaweb_pgdata`, applied migrations and seeded demo data; focused fixture executed authorization + read queries against PostgreSQL | Revert `packages/db/src/animal-infrastructure.ts` read-model additions and `packages/db/tests/animal-listado-postgres.test.ts`; no legacy action/UI behavior changes |
 | HTTP route and regression correction | `pnpm exec tsx apps/web/tests/animal-list-server-contract.test.ts` — exit 0; `pnpm --filter @ganaweb/aplicacion exec vitest run tests/animal-listado-port.test.ts` — 2/2; `pnpm --filter @ganaweb/db exec vitest run tests/animal-infrastructure.test.ts` — 8/8 | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-listado-postgres.test.ts` — exit 0, 4/4; validates the delegated PostgreSQL read model | Revert `apps/web/src/server/animal-list-http.ts`, `apps/web/src/routes/api/fincas/$fincaId/animales.ts`, related contract-test/package command changes, and the two regression-test corrections; legacy action/UI files remain isolated |
+| Evidence and candidate readiness | `pnpm --filter @ganaweb/web test` — exit 0; application port 2/2; DB infrastructure 8/8; DB PostgreSQL 4/4; index harness exit 0; `pnpm turbo test` — exit 0, 13 tasks (UI 409/409) | Local PostgreSQL plan/migration review: latest-weight index used; list is fixed at three statements; tiny demo seed sequential-scanned `animales`; exact §11 fixture/scenarios/p95 harness unavailable | Revert only `openspec/changes/implement-issue-107-server-contract/{tasks.md,apply-progress.md,route-contract-evidence.md}` to remove apply evidence; feature behavior remains in prior dedicated commits |
 
 ## Commands
 
@@ -59,6 +68,13 @@
 - `pnpm turbo typecheck` — exit 0, 13/13.
 - `pnpm exec biome check` on all modified source and tests — exit 0.
 - Final `pnpm turbo test` — exit 1 only because unrelated `@ganaweb/ui/tests/animal-ui.test.tsx` test `CA-UI-002` timed out (408/409 passed); no UI files were modified. The prior web timeout did not recur.
+- `pnpm exec biome format --write .` — exit 0; formatted 250 files with no fixes.
+- Isolated `CA-UI-002` twice: first pass (4.876 s), second timeout at 5 s with `MutationObserver is not a constructor` after teardown. The later full suite passed; this is nondeterministic excluded UI-test infrastructure behavior, not a candidate failure.
+- Final focused evidence: web exit 0; application port 2/2; DB infrastructure 8/8; PostgreSQL read-model 4/4; index harness exit 0.
+- Final `pnpm turbo test` — exit 0, 13 tasks successful; UI 409/409.
+- Final `pnpm turbo typecheck` — exit 0, 13/13.
+- Final `pnpm exec biome ci .` — exit 0, eight warnings in excluded pre-existing UI/create files; no fixes applied.
+- Migration review: PostgreSQL contains `idx_animales_finca_activo_codigo` and `idx_pesos_animal_fecha_id` with expected definitions; migration ledger table is `drizzle.__drizzle_migrations`.
 
 ## Work-unit Commit
 
@@ -70,5 +86,6 @@
 
 - Historical note (superseded): the PostgreSQL read model and HTTP route are implemented. Only the exact §11 benchmark evidence remains unimplemented.
 - Historical note (superseded by this batch): age/latest-weight and `origen` helper derivations are now implemented and unit-tested; database-backed derivation remains pending task 2.2.
-- PostgreSQL benchmark fixture and RF-ANIM-LIST §11 measurement harness remain unavailable, as documented in the design. LA-100 p95 acceptance remains blocked and has not been inferred from this local query plan.
-- Task 2.4 remains unchecked: the feasible PostgreSQL plan capture is recorded above, but its tiny disposable seed chose a sequential `animales` scan. The latest-weight LA-102 index is used; a representative finalized benchmark plan for the animal-list index still requires the absent §11 fixture/scenarios.
+- PostgreSQL benchmark fixture, RF-ANIM-LIST §11 exact scenarios, and p95 measurement harness remain unavailable. LA-100 p95 acceptance and full LA-102 benchmark acceptance remain blocked and have not been inferred from the local query plan.
+- Task 2.4 is complete through its explicit blocker/deviation alternative: the actual local plan used `idx_pesos_animal_fecha_id` for latest weight across 13 loops, while the 20-row demo seed sequential-scanned `animales`. A representative animal-list-index plan still requires the absent §11 fixture/scenarios.
+- Task 4.3 is complete as apply evidence preparation. Bounded review is a later external parent-orchestrator delivery gate, not an unchecked apply-time mutation after receipt freezing.

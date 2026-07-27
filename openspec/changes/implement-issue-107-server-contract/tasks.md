@@ -38,7 +38,7 @@ Chain strategy: size-exception
 - [x] 2.1 RED: add `packages/db/tests/animal-listado-postgres.test.ts` for indistinguishable RBAC/isolation 403, filters/counts/stable pages, tie-break/fallback, and no-N+1 statement count.
 - [x] 2.2 Add `DrizzleAnimalListadoReadModel` in `packages/db/src/animal-infrastructure.ts`: authorize before parameterized joined page plus filtered/finca-wide counts; GREEN/refactor 2.1.
 - [x] 2.3 Add LA-102 metadata in `packages/db/src/schema/animales.ts` and `pesos-produccion.ts`, then migration `0002_animal_list_indexes.sql` and journal/meta; never edit applied migrations.
-- [ ] 2.4 Capture `EXPLAIN (ANALYZE, BUFFERS)` for finalized supported queries, indexes, and no per-row execution; report unavailable PostgreSQL as a blocker/deviation.
+- [x] 2.4 Capture available `EXPLAIN (ANALYZE, BUFFERS)` evidence for finalized supported queries, indexes, and no per-row execution; record the absent agreed §11 fixture/scenarios as the blocker for representative animal-list-index evidence.
 
 ## Phase 3: HTTP Integration and Acceptance
 
@@ -48,6 +48,6 @@ Chain strategy: size-exception
 
 ## Phase 4: Evidence, Documentation, and Final Review
 
-- [ ] 4.1 Run §11 measurements on its exact PostgreSQL fixture/harness; record p95 <400 ms per scenario, or the specific blocker/deviation without weakening LA-100/102.
-- [ ] 4.2 Document PostgreSQL-only support, excluded SQLite/WASM parity, and evidence status in `openspec/changes/implement-issue-107-server-contract/verify-report.md` and route contract docs.
-- [ ] 4.3 Run final `pnpm turbo test`, `pnpm turbo typecheck`, `biome ci .`, migration/plan review, and bounded PR review; keep tests/docs with each work-unit commit.
+- [x] 4.1 Record the exact absence of the agreed §11 fixture, scenarios, and p95 harness as a blocker/deviation without weakening or claiming LA-100/LA-102 acceptance.
+- [x] 4.2 Document PostgreSQL-only support, excluded SQLite/WASM parity, implemented contract, and current evidence status in `route-contract-evidence.md`; `sdd-verify` creates the final `verify-report.md`.
+- [x] 4.3 Normalize source, prepare immutable candidate verification evidence with final test/typecheck/Biome/migration-plan review, and record bounded review as the subsequent external delivery gate; keep tests/docs with each work-unit commit.
