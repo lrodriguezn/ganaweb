@@ -44,7 +44,7 @@
 
 ## Blockers / Deviations
 
-- Tasks 1.4–4.3 remain unchecked. The port, PostgreSQL read model, migration, HTTP route, and PostgreSQL benchmark evidence have not yet been implemented.
-- The current contract foundation does not yet calculate age/latest weight or resolve `origen`; those require the PostgreSQL read model and remain incomplete under task 1.3's broader wording.
+- Historical note (superseded by this batch): tasks 1.4 and 2.3 were previously unchecked; they are now complete. The PostgreSQL read model, HTTP route, and PostgreSQL benchmark evidence remain unimplemented.
+- Historical note (superseded by this batch): age/latest-weight and `origen` helper derivations are now implemented and unit-tested; database-backed derivation remains pending task 2.2.
 - PostgreSQL benchmark fixture and RF-ANIM-LIST §11 measurement harness remain unavailable, as documented in the design.
 - `DATABASE_URL` is not configured in this workspace. The required PostgreSQL integration fixture/harness is not present, so tasks 2.1, 2.2, and 2.4 remain unchecked: no RBAC/isolation, joined-read/no-N+1, or `EXPLAIN (ANALYZE, BUFFERS)` result has been invented or claimed.
