@@ -2,7 +2,7 @@
 
 **Mode:** Strict TDD
 **Delivery:** Maintainer-approved `size:exception` on `feat/issue-107-server-contract`
-**Work unit:** PostgreSQL `unaccent` migration, literal-safe predicates, and integration proof.
+**Work unit:** PostgreSQL `unaccent` migration, literal-safe predicates, and integration proof; corrective audit test evidence.
 
 ## Completed Tasks
 
@@ -25,15 +25,16 @@
 | 1.1 | PostgreSQL capability commands | Integration | Existing PostgreSQL list suite: 4/4 passed | `unaccent` absent before provision | Transactional provision/use check passed | Fresh + already-provisioned migration paths | N/A — capability only |
 | 1.2, 2.1–2.2 | `packages/db/tests/animal-list-indexes.test.ts` | Migration integration | Existing TS harness passed before conversion | Missing `0003` failed `ENOENT` | 2/2 passed after forward migration/journal | Preserved `0002`; asserted extension, callable, privilege, and journal | Converted focused harness to behavioral Vitest |
 | 1.3–1.4, 2.3–2.4 | `packages/db/tests/animal-listado-postgres.test.ts` | PostgreSQL integration | Existing suite: 4/4 passed | 17/20 failed with lower-only predicates; unaccented inputs returned no matches | 20/20 passed after qualified helper | 4 `q` fields × three equivalents; 10 `contains` fields × three equivalents; literal and page/isolation cases | Extracted `escapeLikeLiteral` + one `normalizedContains` helper; focused suite remained green |
+| Audit corrective evidence | `packages/db/tests/animal-listado-postgres.test.ts` | PostgreSQL integration | Existing suite: 20/20 passed | Test-first reversible lower-only predicate run: 2/2 selected scenarios failed (inverse `q`/`contains` returned `[]`; 26-row normalized page returned `[]`) | Restored existing qualified helper without production changes; 23/23 focused tests passed | Adds inverse query-against-unaccented storage for representative `q` + `contains`; adds 26 tied rows at page size 25 across repeated pages 1 and 2, with exact IDs, full union, totals, and finca-B exclusion | Test fixtures only; existing fixture count assertions updated for the one additional unaccented row |
 | 3.1–3.2 | All changed files | Integration | Focused suite green | N/A — verification task | Full Turbo suite 13/13 tasks passed | Fresh migration plus target re-run | `biome format --write` only on changed TS/JSON files; retested |
 
 ## Work Unit Evidence
 
 | Evidence | Result |
 |---|---|
-| Focused test command and exact result | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-list-indexes.test.ts tests/animal-listado-postgres.test.ts` — exit 0; 2 files, 22 tests passed. |
-| Runtime harness command/scenario and exact result | Fresh `ganaweb_accent_migration_test`: `pnpm --filter @ganaweb/db migrate` — exit 0; qualified callable, EXECUTE privilege, and `Árbol -> Arbol` passed; temporary database dropped. Target re-run also exited 0. |
-| Rollback boundary | Revert `0003`, its journal entry, the normalized predicate helper, and accent tests together. If applied outside this disposable target, use a reviewed forward migration; never edit `0002` or drop a shared extension. |
+| Focused test command and exact result | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-list-indexes.test.ts tests/animal-listado-postgres.test.ts` — exit 0; 2 files, 23 tests passed. |
+| Runtime harness command/scenario and exact result | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db migrate` — exit 0; existing target migration chain re-applied successfully. The focused PostgreSQL repository test then exercised the real `public.unaccent` query path over inverse equivalence and pages 1/2. |
+| Rollback boundary | Revert the audit additions in `packages/db/tests/animal-listado-postgres.test.ts` to remove only this evidence expansion; no production behavior changes. The original migration/predicate unit remains independently revertible as documented above. |
 
 ## Verification Commands
 
@@ -41,10 +42,14 @@
 - `pnpm turbo typecheck` — exit 0; 13/13 tasks successful.
 - `pnpm exec biome ci .` — exit 0; 8 pre-existing warnings in excluded UI files, no fixes applied.
 - `pnpm exec biome format --write` on changed TS/JSON files — exit 0; one file normalized.
+- Corrective focused PostgreSQL/migration suite — exit 0; 2 files, 23 tests passed.
+- `pnpm turbo test` — exit 0; 13/13 tasks successful; DB suite 47 passed, 2 skipped.
+- `pnpm turbo typecheck` — exit 0; 13/13 tasks successful.
+- `pnpm exec biome ci .` — exit 0; 8 existing warnings, no fixes applied.
 
 ## Deviations and Scope
 
-None — implementation follows the approved design. No UI, SQLite/WASM, issue #112, normalized columns, or RF-ANIM-LIST §11 benchmark fixture was changed. The production listing credential remains an explicit deployment validation requirement; this authorized local listing credential is `postgres`.
+None — implementation follows the approved design. This corrective batch changes tests only; the existing `public.unaccent` production predicate already satisfies both new scenarios. No UI, SQLite/WASM, issue #112, normalized columns, or RF-ANIM-LIST §11 benchmark fixture was changed. The production listing credential remains an explicit deployment validation requirement; this authorized local listing credential is `postgres`.
 
 ## Changed Paths
 
@@ -55,3 +60,9 @@ None — implementation follows the approved design. No UI, SQLite/WASM, issue #
 - `packages/db/tests/animal-listado-postgres.test.ts`
 - `packages/db/tests/animal-infrastructure.test.ts`
 - `openspec/changes/remediate-issue-107-accent-search/{tasks.md,apply-progress.md}`
+
+## Corrective Audit Coverage
+
+- Representative inverse equivalence: accented `q` and `codigo` `contains` inputs each find one unaccented stored counterpart.
+- Real pagination: 26 accent-filtered, equal-sort rows with contractual `pageSize: 25`; page 1 has the first 25 `id ASC` values and page 2 has the remaining value. Repeated reads retain both sequences; their union has every expected ID exactly once; both filtered totals are 26; `totalSinFiltro` is 34; a matching finca-B row is absent.
+- Task 3.3 remains pending. This executor did not call any review lifecycle command; independent audit and parent fresh content-bound review are external gates.
