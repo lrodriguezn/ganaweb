@@ -69,3 +69,17 @@ Confirmed implementation plan for proposal/design:
 ### Ready for Proposal
 
 Yes. Exploration is complete and approval-gated. The next phase may produce a proposal for the dedicated server-side contract only, preserving the exclusions above and the later delivery constraints (dedicated branch, reviewable work-unit commits, and a PR closing #107).
+
+### Consolidated LA-010 Remediation Exploration
+
+Independent verification later proved the initial `lower(column) LIKE lower($value)` implementation was case-insensitive but not accent-insensitive. The shared predicate affected all four `q` fields and all ten validated `contains` fields. Existing authorization, finca scoping, bound parameters, counters, and `id ASC` tie-breaking were sound, so the correction remained surgical.
+
+Three approaches were evaluated:
+
+1. PostgreSQL `unaccent`: smallest complete change, one shared helper, no write-path or backfill impact; requires extension provisioning/use privileges and does not make leading-wildcard searches btree-efficient.
+2. Persisted normalized columns: avoids extension privileges but expands every write/import/sync path, requires backfill, and still needs a separate indexing strategy.
+3. Collations or ad-hoc `translate`: repository support and `LIKE` behavior were unproven; hard-coded transliteration is incomplete for Unicode.
+
+The approved choice was qualified `public.unaccent(pg_catalog.lower(...))` after an explicit deployment capability gate. Literal `%`, `_`, and `!` are escaped into one bound pattern. If the migration or listing role cannot invoke the extension, rollout stops and persisted normalized columns require separate design approval; case-only matching is never an acceptable fallback.
+
+Required and completed proof covered bidirectional accented/unaccented storage and queries, every `q`/`contains` field, literal wildcard and SQL-like text, matching rows in another finca, exact filtered/unfiltered counters, and 26 tied matches across repeated page 1/page 2 reads. The remaining risks are production-role callability and leading-wildcard performance. The absent RF-ANIM-LIST §11 fixture/p95 harness remains a deviation rather than being inferred from semantic correctness.

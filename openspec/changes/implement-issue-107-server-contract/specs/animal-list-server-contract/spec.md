@@ -24,12 +24,32 @@ Age MUST be derived at request time to one decimal. Latest weight MUST select gr
 
 ### Requirement: Query grammar, filtering, ordering, and counters (LA-010–LA-021, LA-050)
 
-The endpoint MUST accept one-based `page` (default 1), `pageSize` (default 25), `sort=<matrix sortKey>:asc|desc`, `q`, `f.<matrix filterKey>`, and `cols`. Filters MUST accept only matrix-declared `contains`, `in`, `range`, `drange`, or `bool` grammar; filters combine with AND and `q` OR-matches code, name, ear tag, and RFID. `cols` MUST contain unique valid `columnId`s, MUST NOT change row shape, and MUST be echoed normalized. Default sort MUST be `codigo:asc`; every order MUST add `id:asc`. `total` MUST be filtered and `totalSinFiltro` finca-wide.
+The endpoint MUST accept one-based `page` (default 1), `pageSize` (default 25), `sort=<matrix sortKey>:asc|desc`, `q`, `f.<matrix filterKey>`, and `cols`. Filters MUST accept only matrix-declared `contains`, `in`, `range`, `drange`, or `bool` grammar; filters combine with AND and `q` OR-matches `codigo`, `nombre`, `codigo_arete`, and `codigo_rfid`. PostgreSQL `q` MUST match case and Spanish accents bidirectionally across all four fields. Every matrix `contains` field—`codigo`, `nombre`, `codigoMadre`, `nombreMadre`, `codigoPadre`, `nombrePadre`, `codigoArete`, `codigoRfid`, `comentarios`, and `codigoQr`—MUST provide the same case/accent behavior. Request values MUST remain bound parameters, and `%`, `_`, `!`, and SQL-like text MUST retain literal rather than wildcard or executable semantics. `cols` MUST contain unique valid `columnId`s, MUST NOT change row shape, and MUST be echoed normalized. Default sort MUST be `codigo:asc`; every order MUST add `id:asc`. `total` MUST use the same normalized predicate as page rows and `totalSinFiltro` MUST remain finca-wide and unfiltered.
 
 #### Scenario: Filtered stable page
 - GIVEN matching animals share a selected sort value
 - WHEN page 1 and page 2 are requested with identical query parameters
 - THEN rows do not overlap or reorder, and both counters have their contractual meaning.
+
+#### Scenario: Bidirectional global-search equivalence
+- GIVEN each of the four `q` fields contains representative accented or unaccented Spanish text
+- WHEN accented, unaccented, and case-varied equivalent values are requested in both storage/query directions
+- THEN each value returns its matching row through the contractual OR search.
+
+#### Scenario: Bidirectional contains equivalence
+- GIVEN each of the ten validated `contains` fields has accented or unaccented Spanish text
+- WHEN accented, unaccented, and case-varied equivalent filter values are requested in both storage/query directions
+- THEN the selected field matches through the contractual AND filter grammar.
+
+#### Scenario: Search literals remain safe
+- GIVEN `q` or `contains` includes `%`, `_`, `!`, or SQL-like payload text
+- WHEN the request is executed
+- THEN the value is bound and escaped as literal text and cannot broaden or execute the query.
+
+#### Scenario: Accent-filtered pages remain isolated and stable
+- GIVEN 26 equivalent matches with tied sort values in finca A and a matching row in finca B
+- WHEN repeated page 1 and page 2 requests use page size 25 and the same normalized query
+- THEN page IDs are stable in `id:asc` order, their union contains every expected finca-A row exactly once, the finca-B row is absent, `total` is 26, and `totalSinFiltro` retains its finca-wide meaning.
 
 #### Scenario: Invalid query
 - GIVEN `pageSize=30`, repeated `cols`, or an unsupported `f.*`/sort key
@@ -77,3 +97,17 @@ The finalized endpoint MUST demonstrate p95 below 400 ms for the exact agreed RF
 - GIVEN the required fixture, PostgreSQL target, or measurement harness is unavailable
 - WHEN acceptance evidence is attempted
 - THEN verification reports the specific blocker/deviation and does not mark LA-100 satisfied.
+
+### Requirement: PostgreSQL RED/GREEN accent-search evidence
+
+Focused PostgreSQL integration evidence MUST demonstrate the same accent-equivalence, literal-safety, isolation, counter, and pagination cases failing under case-only predicates and passing under the corrected implementation. SQLite/WASM, UI, export, preferences, issue #112, and RF-ANIM-LIST §11 fixture creation MUST NOT substitute for this evidence.
+
+#### Scenario: Accent-search evidence gate
+- GIVEN the PostgreSQL integration environment is available
+- WHEN controlled RED and GREEN runs execute the contractual accent-search scenarios
+- THEN recorded output identifies failure under case-only predicates and success under the corrected qualified predicates.
+
+#### Scenario: Missing PostgreSQL environment
+- GIVEN PostgreSQL integration cannot run
+- WHEN accent-search evidence is requested
+- THEN verification reports a blocker and does not claim GREEN acceptance.

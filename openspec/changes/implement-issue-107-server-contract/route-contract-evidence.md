@@ -14,6 +14,12 @@ finca-wide count queries. It has a fixed listing execution count of three
 statements; it does not issue a query per returned row. Latest weight is selected
 by `fecha DESC, id DESC` through a lateral lookup.
 
+LA-010 search is implemented with qualified
+`public.unaccent(pg_catalog.lower(...))` on both columns and bound patterns for
+all four `q` fields and all ten validated `contains` fields. `%`, `_`, and `!`
+are escaped with `ESCAPE '!'`, so wildcard and SQL-like request text remains
+literal. The page query and filtered count share the same normalized predicate.
+
 ## Support Boundary
 
 - Supported: PostgreSQL for this HTTP route and its Drizzle read model.
@@ -40,6 +46,12 @@ Local disposable PostgreSQL used:
 - Migration review confirmed applied PostgreSQL indexes
   `idx_animales_finca_activo_codigo` and `idx_pesos_animal_fecha_id` with their
   expected definitions. The Drizzle ledger is `drizzle.__drizzle_migrations`.
+- Migration `0003_animal_list_unaccent.sql` applied on fresh and existing
+  PostgreSQL 17.10 databases and proved qualified callability, EXECUTE privilege,
+  and `public.unaccent('Árbol') = 'Arbol'` for the authorized local role.
+- Controlled case-only RED failed 17/20 focused scenarios; corrected GREEN passed
+  20/20. Independent audit added inverse stored-text and 26-row page-size-25
+  coverage; the combined focused migration/PostgreSQL suite passed 23/23.
 
 ## Acceptance Blocker
 
@@ -49,8 +61,13 @@ plan evidence and per-scenario p95 measurements cannot be produced. The tiny
 demo-seed sequential scan is not substituted for the agreed fixture, and neither
 LA-100 p95 <400 ms nor full LA-102 benchmark acceptance is claimed.
 
-The later `sdd-verify` phase must create `verify-report.md` and report this
-blocker again if the agreed fixture/harness remains unavailable.
+Any later independent verification must report this blocker again if the agreed
+fixture/harness remains unavailable. This consolidation does not create a verify
+report.
+
+Production listing-role callability remains a deployment validation risk when
+that credential differs from the locally validated migration role. Rollout must
+fail explicitly rather than silently reverting to case-only search.
 
 ## Candidate Verification Prepared by Apply
 
@@ -67,3 +84,6 @@ blocker again if the agreed fixture/harness remains unavailable.
 
 Bounded review is an external delivery gate owned by the parent orchestrator and
 is intentionally not run or represented as an apply-time source mutation.
+
+Fresh independent verification and a fresh content-bound review of the next
+frozen identity remain external delivery gates. Prior receipts must not be reused.

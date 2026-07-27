@@ -2,6 +2,7 @@
 
 **Mode:** Strict TDD
 **Delivery:** Maintainer-approved `size:exception` on `feat/issue-107-server-contract`
+**Accent-search corrective commits:** `50614d0 fix(animals): remediate accent-insensitive listing search`; `3c9b937 test(animals): close accent search audit gaps`; `bd7d5da docs(openspec): normalize accent search review gate`
 
 ## Completed Tasks
 
@@ -19,6 +20,9 @@
 - [x] 4.1 Recorded the absent agreed §11 fixture, scenarios, and p95 harness without claiming LA-100/LA-102 acceptance.
 - [x] 4.2 Added PostgreSQL-only route-contract and evidence documentation; SQLite/WASM parity remains excluded.
 - [x] 4.3 Normalized the candidate and completed final apply verification evidence; bounded review is the subsequent external parent-orchestrator gate.
+- [x] 5.1–5.3 Capability inspection and controlled RED migration, equivalence, literal-safety, isolation, counter, and real page 1/2 proof.
+- [x] 5.4–5.5 Forward `0003` migration plus qualified parameterized `public.unaccent` predicate helper; GREEN while preserving authorization, counters, DTOs, sorting, and bounded statements.
+- [x] 5.6–5.7 Focused/full validation and independent audit completed; all implementation tasks remain complete.
 
 ## TDD Cycle Evidence
 
@@ -37,8 +41,11 @@
 | 3.3 | `packages/aplicacion/tests/animal-listado-port.test.ts`; `packages/db/tests/animal-infrastructure.test.ts` | Vitest contract/regression | ✅ Both focused files initially failed: no Vitest suite and stale migration list | ✅ Existing introduced regression failures observed before correction | ✅ application port 2/2 and migration infrastructure 8/8 passed | ✅ Distinct request/page-size/sort contract values and additive journal entry | ✅ Converted the port harness to behavioral Vitest tests; updated only the additive migration expectation |
 | 2.4 | `packages/db/tests/animal-listado-postgres.test.ts` | PostgreSQL integration/evidence | ✅ 4/4 focused suite baseline | N/A — evidence-only task; no production behavior added | ✅ 4/4 passed; local plan used `idx_pesos_animal_fecha_id` and the read model remained fixed at three listing statements | N/A — exact §11 scenarios are absent | ➖ No source refactor; preserved actual plan and documented the fixture blocker |
 | 4.1 | N/A | Benchmark evidence | N/A — documentation/evidence task | N/A — no production behavior added | N/A — agreed §11 fixture/scenarios/p95 harness absent | N/A — no available scenarios to triangulate | ➖ Documented blocker without weakening LA-100/LA-102 |
-| 4.2 | N/A | Contract documentation | N/A — documentation task | N/A — no production behavior added | ✅ `route-contract-evidence.md` records PostgreSQL-only support, excluded SQLite/WASM parity, contract, and evidence status | N/A — one static contract/evidence document | ➖ Documentation only; final verify report remains owned by `sdd-verify` |
+| 4.2 | N/A | Contract documentation | N/A — documentation task | N/A — no production behavior added | ✅ `route-contract-evidence.md` records PostgreSQL-only support, excluded SQLite/WASM parity, contract, and evidence status | N/A — one static contract/evidence document | ➖ Documentation only; independent verification remains an external delivery gate |
 | 4.3 | Existing focused/full suites | Candidate verification | ✅ Focused suites passed before final checks | N/A — normalization/evidence task; no production behavior added | ✅ format no fixes; focused tests, full suite, typecheck, and Biome command passed | ✅ CA-UI-002 isolated runs produced one pass and one timeout; full suite subsequently passed | ➖ No candidate code change; excluded UI timeout classified and not masked |
+| 5.2, 5.4 | `packages/db/tests/animal-list-indexes.test.ts` | Migration integration | Existing migration harness green | Missing `0003` failed `ENOENT` | Migration tests 2/2 passed; fresh and existing databases applied the chain | Preserved `0002`; asserted extension, qualified callable/EXECUTE validation, and journal | Converted focused harness to behavioral Vitest |
+| 5.2–5.5 | `packages/db/tests/animal-listado-postgres.test.ts` | PostgreSQL integration | Existing suite 4/4 green | Case-only predicates failed 17/20 accent scenarios | Qualified helper passed 20/20 | Four `q` fields, ten `contains` fields, three accent/case forms, literals, isolation, counters, and stable pages | One `escapeLikeLiteral` plus one `normalizedContains` helper |
+| 5.6–5.7 | `packages/db/tests/animal-listado-postgres.test.ts` | Independent corrective audit | Existing corrected suite 20/20 green | Reversible case-only run failed 2/2 selected inverse/page scenarios | Restored unchanged production helper; focused migration/PostgreSQL suite passed 23/23 | Inverse query against unaccented storage and 26 tied rows over repeated pages 1/2 closed both audit gaps | Test fixtures only; one baseline fixture count updated |
 
 ## Work Unit Evidence
 
@@ -50,6 +57,7 @@
 | PostgreSQL read model | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-listado-postgres.test.ts` — exit 0, 4/4 integration tests | `pnpm db:up` recreated only local `ganaweb-postgres` / `ganaweb_pgdata`, applied migrations and seeded demo data; focused fixture executed authorization + read queries against PostgreSQL | Revert `packages/db/src/animal-infrastructure.ts` read-model additions and `packages/db/tests/animal-listado-postgres.test.ts`; no legacy action/UI behavior changes |
 | HTTP route and regression correction | `pnpm exec tsx apps/web/tests/animal-list-server-contract.test.ts` — exit 0; `pnpm --filter @ganaweb/aplicacion exec vitest run tests/animal-listado-port.test.ts` — 2/2; `pnpm --filter @ganaweb/db exec vitest run tests/animal-infrastructure.test.ts` — 8/8 | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-listado-postgres.test.ts` — exit 0, 4/4; validates the delegated PostgreSQL read model | Revert `apps/web/src/server/animal-list-http.ts`, `apps/web/src/routes/api/fincas/$fincaId/animales.ts`, related contract-test/package command changes, and the two regression-test corrections; legacy action/UI files remain isolated |
 | Evidence and candidate readiness | `pnpm --filter @ganaweb/web test` — exit 0; application port 2/2; DB infrastructure 8/8; DB PostgreSQL 4/4; index harness exit 0; `pnpm turbo test` — exit 0, 13 tasks (UI 409/409) | Local PostgreSQL plan/migration review: latest-weight index used; list is fixed at three statements; tiny demo seed sequential-scanned `animales`; exact §11 fixture/scenarios/p95 harness unavailable | Revert only `openspec/changes/implement-issue-107-server-contract/{tasks.md,apply-progress.md,route-contract-evidence.md}` to remove apply evidence; feature behavior remains in prior dedicated commits |
+| LA-010 accent-search correction | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-list-indexes.test.ts tests/animal-listado-postgres.test.ts` — exit 0; 2 files, 23 tests passed | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db migrate` — exit 0; existing chain re-applied. Fresh DB also applied the full chain and proved `public.unaccent(text)`, EXECUTE, and `Árbol` → `Arbol`. | Revert the predicate/tests with their work-unit commit; reverse an applied migration only through a reviewed forward migration. Do not drop a shared extension casually. |
 
 ## Commands
 
@@ -75,12 +83,20 @@
 - Final `pnpm turbo typecheck` — exit 0, 13/13.
 - Final `pnpm exec biome ci .` — exit 0, eight warnings in excluded pre-existing UI/create files; no fixes applied.
 - Migration review: PostgreSQL contains `idx_animales_finca_activo_codigo` and `idx_pesos_animal_fecha_id` with expected definitions; migration ledger table is `drizzle.__drizzle_migrations`.
+- Accent RED: missing `0003` failed `ENOENT`; case-only predicates failed 17/20 focused PostgreSQL scenarios. A later reversible case-only audit run failed both selected inverse-equivalence/real-pagination scenarios as expected.
+- Accent GREEN: migration tests 2/2 and semantic suite 20/20 passed; after audit expansion the combined focused migration/PostgreSQL suite passed 23/23.
+- Capability: PostgreSQL 17.10 disposable role `postgres` provisioned and invoked `public.unaccent`; fresh database and already-provisioned reruns passed. This superuser result does not replace production listing-role validation.
+- Corrective full validation: `pnpm turbo test` — exit 0, 13/13 tasks and DB 47 passed/2 skipped; `pnpm turbo typecheck` — exit 0, 13/13; `pnpm exec biome ci .` — exit 0 with 8 existing excluded UI warnings and no fixes.
+- Independent audit at `3c9b937` — PASS; focused 23/23, typecheck, check-only Biome, and clean `git diff --check`. One unrelated UI timeout occurred in the full run; isolated rerun passed 3/3.
 
 ## Work-unit Commit
 
 - `6f711f7 feat(animals): add listing derivations and indexes`
 - Changed paths: contract derivations/tests; application read-port/export/test; LA-102 schema metadata, additive migration/journal, and migration test; task status.
 - `bdd60b4 feat(animals): add PostgreSQL listing read model` — includes the real read model, PostgreSQL integration test, and this task/evidence update.
+- `50614d0 fix(animals): remediate accent-insensitive listing search` — adds migration `0003`, qualified literal-safe predicates, and initial RED/GREEN coverage.
+- `3c9b937 test(animals): close accent search audit gaps` — adds inverse stored-text and real 26-row page 1/2 proof; focused suite reaches 23/23.
+- `bd7d5da docs(openspec): normalize accent search review gate` — records independent audit completion and keeps fresh review external to mutable apply state.
 
 ## Blockers / Deviations
 
@@ -89,3 +105,6 @@
 - PostgreSQL benchmark fixture, RF-ANIM-LIST §11 exact scenarios, and p95 measurement harness remain unavailable. LA-100 p95 acceptance and full LA-102 benchmark acceptance remain blocked and have not been inferred from the local query plan.
 - Task 2.4 is complete through its explicit blocker/deviation alternative: the actual local plan used `idx_pesos_animal_fecha_id` for latest weight across 13 loops, while the 20-row demo seed sequential-scanned `animales`. A representative animal-list-index plan still requires the absent §11 fixture/scenarios.
 - Task 4.3 is complete as apply evidence preparation. Bounded review is a later external parent-orchestrator delivery gate, not an unchecked apply-time mutation after receipt freezing.
+- LA-010 semantic correction is implemented and audited. PostgreSQL-only support remains intentional; no UI, SQLite/WASM, issue #112, normalized-column fallback, or §11 fixture was added.
+- Production listing-role `public.unaccent` callability remains a rollout validation risk. Migration-role/superuser success MUST NOT be treated as proof for a distinct production credential.
+- Fresh independent verification and fresh content-bound review remain external delivery gates for the next frozen identity; no prior receipt may be reused and no post-freeze checkbox mutation is required.

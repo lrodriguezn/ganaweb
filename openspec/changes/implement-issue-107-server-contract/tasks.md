@@ -49,5 +49,19 @@ Chain strategy: size-exception
 ## Phase 4: Evidence, Documentation, and Final Review
 
 - [x] 4.1 Record the exact absence of the agreed §11 fixture, scenarios, and p95 harness as a blocker/deviation without weakening or claiming LA-100/LA-102 acceptance.
-- [x] 4.2 Document PostgreSQL-only support, excluded SQLite/WASM parity, implemented contract, and current evidence status in `route-contract-evidence.md`; `sdd-verify` creates the final `verify-report.md`.
+- [x] 4.2 Document PostgreSQL-only support, excluded SQLite/WASM parity, implemented contract, and current evidence status in `route-contract-evidence.md`; keep independent verification as an external delivery gate.
 - [x] 4.3 Normalize source, prepare immutable candidate verification evidence with final test/typecheck/Biome/migration-plan review, and record bounded review as the subsequent external delivery gate; keep tests/docs with each work-unit commit.
+
+## Phase 5: LA-010 Accent-Search Correction
+
+- [x] 5.1 Inspect disposable PostgreSQL 17 extension provisioning and `public.unaccent` callable/EXECUTE capability; preserve production-role validation as an explicit rollout risk.
+- [x] 5.2 RED: require forward migration `0003`, preserve `0002`, and cover all four `q` plus ten `contains` fields for bidirectional `áéíóúñ`/case equivalence.
+- [x] 5.3 RED: prove `%`, `_`, `!`, and SQL-like values remain bound literals; prove cross-finca isolation, exact counters, and repeated stable page 1/2 IDs across 26 tied rows at page size 25.
+- [x] 5.4 Add `0003_animal_list_unaccent.sql` and its journal entry to provision qualified `public.unaccent`, assert callable/EXECUTE capability, and fail rollout explicitly when unavailable.
+- [x] 5.5 Add shared `escapeLikeLiteral` and `normalizedContains` helpers; route `q` OR and validated `contains` AND predicates through one parameterized qualified expression while preserving the shared page/count WHERE.
+- [x] 5.6 GREEN: focused migration/PostgreSQL suite passed 23/23; fresh and already-provisioned migration paths passed; full tests, typecheck, and check-only Biome passed.
+- [x] 5.7 Independent corrective audit passed at `3c9b937`; commit `bd7d5da` normalized the external review gate without changing production behavior.
+
+## External Delivery Gates — Parent-Owned
+
+Fresh independent verification and a fresh content-bound review of the final frozen bytes remain external delivery gates. They MUST NOT reuse prior receipts and are deliberately not mutable task checkboxes after candidate identity freezes.
