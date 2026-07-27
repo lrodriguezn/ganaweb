@@ -52,7 +52,7 @@
 
 - `6f711f7 feat(animals): add listing derivations and indexes`
 - Changed paths: contract derivations/tests; application read-port/export/test; LA-102 schema metadata, additive migration/journal, and migration test; task status.
-- Pending conventional work-unit commit: `feat(animals): add PostgreSQL listing read model` — includes the real read model, PostgreSQL integration test, and this task/evidence update.
+- `bdd60b4 feat(animals): add PostgreSQL listing read model` — includes the real read model, PostgreSQL integration test, and this task/evidence update.
 
 ## Blockers / Deviations
 
