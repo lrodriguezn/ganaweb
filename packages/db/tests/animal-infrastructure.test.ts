@@ -193,6 +193,8 @@ describe("PR2 animal DB infrastructure", () => {
     expect(journal.entries.map((entry: { tag: string }) => entry.tag)).toEqual([
       "0000_initial",
       "0001_animal_sync_audit",
+      "0002_animal_list_indexes",
+      "0003_animal_list_unaccent",
     ])
   })
 })
