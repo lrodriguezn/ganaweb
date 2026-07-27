@@ -93,12 +93,12 @@ beforeAll(async () => {
     VALUES (${`${fixture}-assignment`}, ${authorizedUser}, ${role}, ${fincaA}, 1)
   `)
   await execute(sql`
-    INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, tipo_ingreso_id, activo)
+    INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, tipo_ingreso_id, activo, fecha_nacimiento)
     VALUES
-      (${`${fixture}-animal-1`}, ${fincaA}, 'AA-001', 'Alpha', 1, 9, 1),
-      (${`${fixture}-animal-2`}, ${fincaA}, 'AA-002', 'Bravo', 0, NULL, 1),
-      (${`${fixture}-animal-3`}, ${fincaA}, 'AA-003', 'Charlie', 1, 1, 1),
-       (${`${fixture}-animal-other`}, ${fincaB}, 'AA-001', 'Other finca', 1, 1, 1)
+      (${`${fixture}-animal-1`}, ${fincaA}, 'AA-001', 'Alpha', 1, 9, 1, 1577836800),
+      (${`${fixture}-animal-2`}, ${fincaA}, 'AA-002', 'Bravo', 0, NULL, 1, 1615507200),
+      (${`${fixture}-animal-3`}, ${fincaA}, 'AA-003', 'Charlie', 1, 1, 1, 1735689600),
+       (${`${fixture}-animal-other`}, ${fincaB}, 'AA-001', 'Other finca', 1, 1, 1, NULL)
   `)
   await execute(sql`
     INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo)
@@ -121,6 +121,11 @@ beforeAll(async () => {
       comentarios = 'COMENTÁRIOÁÉÍÓÚÑ',
       codigo_qr = 'QRÁÉÍÓÚÑ'
     WHERE id = ${accentSearchAnimal}
+  `)
+  await execute(sql`
+    INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo, es_de_monta)
+    VALUES
+      (${`${fixture}-animal-bool`}, ${fincaA}, 'BOOL-001', 'BoolTest', 2, 1, 1)
   `)
   await execute(sql`
     INSERT INTO pesos (id, animal_id, fecha, peso_kg)
@@ -169,9 +174,9 @@ describe("DrizzleAnimalListadoReadModel (PostgreSQL)", () => {
       expect.arrayContaining([`${fixture}-animal-1`, `${fixture}-animal-3`]),
     )
     expect(firstPage.total).toBe(7)
-    expect(firstPage.totalSinFiltro).toBe(8)
+    expect(firstPage.totalSinFiltro).toBe(9)
     expect(pageOne.data.map((animal) => animal.id)).not.toContain(`${fixture}-animal-other`)
-    expect(new Set([...pageOne.data, ...pageTwo.data].map((animal) => animal.id)).size).toBe(8)
+    expect(new Set([...pageOne.data, ...pageTwo.data].map((animal) => animal.id)).size).toBe(9)
   })
 
   it("uses greatest weight id on a latest-date tie and preserves null origen fallback", async () => {
@@ -189,7 +194,7 @@ describe("DrizzleAnimalListadoReadModel (PostgreSQL)", () => {
     const readModel = new DrizzleAnimalListadoReadModel(db)
     const result = await readModel.listar(request({ pageSize: 50 }))
 
-    expect(result.data).toHaveLength(8)
+    expect(result.data).toHaveLength(9)
     expect(readModel.lastStatementCount).toBe(3)
   })
 
@@ -241,6 +246,56 @@ describe("DrizzleAnimalListadoReadModel (PostgreSQL)", () => {
     expect(containsResult.data.map((animal) => animal.id)).toEqual([literalAnimal])
   })
 
+  it("maps epoch columns to ISO fechaNacimiento and edadAnios", async () => {
+    const readModel = new DrizzleAnimalListadoReadModel(db)
+    const result = await readModel.listar(request())
+    const alpha = result.data.find((animal) => animal.id === `${fixture}-animal-1`)
+    const bravo = result.data.find((animal) => animal.id === `${fixture}-animal-2`)
+    const charlie = result.data.find((animal) => animal.id === `${fixture}-animal-3`)
+    // accentSearchAnimal is on fincaA with no fecha_nacimiento (NULL)
+    const nullDateAnimal = result.data.find((animal) => animal.id === accentSearchAnimal)
+
+    // Epoch seconds map to ISO date
+    expect(alpha?.fechaNacimiento).toBe("2020-01-01")
+    expect(bravo?.fechaNacimiento).toBe("2021-03-12")
+    expect(charlie?.fechaNacimiento).toBe("2025-01-01")
+
+    // Null epoch maps to null
+    expect(nullDateAnimal).toBeDefined()
+    expect(nullDateAnimal?.fechaNacimiento).toBeNull()
+    expect(nullDateAnimal?.edadAnios).toBeNull()
+
+    // edadAnios is computed from fechaNacimiento (positive number for past dates)
+    expect(alpha?.edadAnios).toBeGreaterThan(0)
+    expect(typeof alpha?.edadAnios).toBe("number")
+  })
+
+  it("bool filter on esDeMonta returns matching rows without 500", async () => {
+    const readModel = new DrizzleAnimalListadoReadModel(db)
+    const result = await readModel.listar(
+      request({ filters: [{ key: "esDeMonta", grammar: "bool", value: "true" }] }),
+    )
+
+    // No 500 crash; matching row returned
+    expect(result.data.map((animal) => animal.id)).toContain(`${fixture}-animal-bool`)
+    expect(result.data.every((animal) => animal.esDeMonta === true)).toBe(true)
+    expect(result.total).toBeGreaterThanOrEqual(1)
+  })
+
+  it("drange filter on fechaNacimiento returns matching rows", async () => {
+    const readModel = new DrizzleAnimalListadoReadModel(db)
+    const result = await readModel.listar(
+      request({
+        filters: [{ key: "fechaNacimiento", grammar: "drange", value: "2021-03-12,2021-03-20" }],
+      }),
+    )
+
+    // Only animal-2 (epoch 1615507200 = 2021-03-12) should match
+    expect(result.data.map((animal) => animal.id)).toEqual([`${fixture}-animal-2`])
+    expect(result.data.map((animal) => animal.id)).not.toContain(`${fixture}-animal-1`)
+    expect(result.data.map((animal) => animal.id)).not.toContain(`${fixture}-animal-3`)
+  })
+
   it("keeps normalized filters finca-scoped across real stable tied pages", async () => {
     const readModel = new DrizzleAnimalListadoReadModel(db)
     const sharedName = "EmpáteÁ"
@@ -278,8 +333,8 @@ describe("DrizzleAnimalListadoReadModel (PostgreSQL)", () => {
     )
     expect(first.total).toBe(26)
     expect(second.total).toBe(26)
-    expect(first.totalSinFiltro).toBe(34)
-    expect(second.totalSinFiltro).toBe(34)
+    expect(first.totalSinFiltro).toBe(35)
+    expect(second.totalSinFiltro).toBe(35)
     expect(first.data.map((animal) => animal.id)).not.toContain(`${fixture}-animal-tie-other`)
     expect(readModel.lastStatementCount).toBeLessThanOrEqual(3)
   })

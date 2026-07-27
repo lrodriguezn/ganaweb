@@ -133,12 +133,61 @@ function testOrigenFallback() {
   assert.deepEqual(resolveAnimalOrigen(99, null), { id: "99", label: "Desconocido (99)" })
 }
 
+function testIsIsoDateStrictness() {
+  // Impossible dates must be rejected via drange grammar validation
+  const impossibleDates = [
+    "2026-02-31", // Feb 31 doesn't exist
+    "2026-04-31", // Apr has 30 days
+    "2026-02-29", // 2026 is not a leap year
+    "2026-13-01", // Month 13 doesn't exist
+    "2026-00-15", // Month 0 doesn't exist
+    "2026-06-00", // Day 0 doesn't exist
+    "2026-06-32", // Day 32 doesn't exist
+  ]
+  for (const badDate of impossibleDates) {
+    const result = parseAnimalListadoQuery(
+      new URLSearchParams(`f.fechaNacimiento=drange:${badDate},2026-03-15`),
+    )
+    assert.deepEqual(result, {
+      ok: false,
+      error: { campo: "f.fechaNacimiento", motivo: "Valor de filtro no permitido" },
+    })
+  }
+
+  // Leap-year Feb 29 must be accepted
+  const leapResult = parseAnimalListadoQuery(
+    new URLSearchParams("f.fechaNacimiento=drange:2024-02-29,2024-03-15"),
+  )
+  assert.equal(leapResult.ok, true)
+
+  // Valid drange must be accepted
+  const validResult = parseAnimalListadoQuery(
+    new URLSearchParams("f.fechaNacimiento=drange:2021-03-12,2021-03-20"),
+  )
+  assert.equal(validResult.ok, true)
+  if (validResult.ok) {
+    assert.equal(validResult.value.filters.length, 1)
+    assert.equal(validResult.value.filters[0].grammar, "drange")
+    assert.equal(validResult.value.filters[0].key, "fechaNacimiento")
+    assert.equal(validResult.value.filters[0].value, "2021-03-12,2021-03-20")
+  }
+
+  // Bool grammar accepts only true/false
+  assert.deepEqual(parseAnimalListadoQuery(new URLSearchParams("f.esDeMonta=bool:yes")), {
+    ok: false,
+    error: { campo: "f.esDeMonta", motivo: "Valor de filtro no permitido" },
+  })
+  const boolTrueResult = parseAnimalListadoQuery(new URLSearchParams("f.esDeMonta=bool:true"))
+  assert.equal(boolTrueResult.ok, true)
+}
+
 testRegistryAndNullableRow()
 testParserDefaultsAndNormalizedColumns()
 testInvalidGrammar()
 testErrorEnvelope()
 testDeterministicDerivations()
 testOrigenFallback()
+testIsIsoDateStrictness()
 
 // biome-ignore lint/suspicious/noConsole: focused TDD harness progress output
 console.log("✅ animal-list-server-contract.test.ts passed")

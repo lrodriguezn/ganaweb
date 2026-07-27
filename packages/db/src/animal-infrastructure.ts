@@ -688,10 +688,25 @@ function nullableString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null
 }
 
+function epochToIsoDate(epoch: unknown): string | null {
+  if (epoch === null || epoch === undefined) return null
+  const numeric = Number(epoch)
+  if (!Number.isFinite(numeric)) return null
+  return new Date(numeric * 1000).toISOString().slice(0, 10)
+}
+
 function nullableNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
+}
+
+function isoToEpochStart(iso: string): number {
+  return Math.floor(Date.parse(`${iso}T00:00:00Z`) / 1000)
+}
+
+function isEpochDateColumn(filterKey: string): boolean {
+  return filterKey === "fechaNacimiento" || filterKey === "fechaCompra"
 }
 
 function idLabel(id: unknown, label: unknown) {
@@ -719,7 +734,7 @@ function mapAnimalListadoDbRow(row: AnimalListadoDbRow): AnimalListadoRow {
   const sexoKey = Number(row.sexo_key ?? 0)
   const saludKey = Number(row.salud_animal_key ?? 0)
   const estadoKey = Number(row.estado_animal_key ?? 0)
-  const fechaNacimiento = nullableString(row.fecha_nacimiento)
+  const fechaNacimiento = epochToIsoDate(row.fecha_nacimiento)
   const birth = fechaNacimiento ? new Date(`${fechaNacimiento}T00:00:00Z`) : null
   const edadAnios =
     birth && birth <= new Date()
@@ -752,7 +767,7 @@ function mapAnimalListadoDbRow(row: AnimalListadoDbRow): AnimalListadoRow {
     numeroPezones: nullableNumber(row.numero_pezones),
     calidad: idLabel(row.calidad_id, row.calidad_nombre),
     codigoArete: nullableString(row.codigo_arete),
-    fechaCompra: nullableString(row.fecha_compra),
+    fechaCompra: epochToIsoDate(row.fecha_compra),
     precioCompra: nullableNumber(row.precio_compra),
     pesoCompraKg: nullableNumber(row.peso_compra),
     tatuado: row.tatuado === true,
@@ -794,10 +809,13 @@ function buildAnimalListadoPredicates(request: AnimalListadoReadRequest): SQL[] 
       const values = filter.value.split(",").map((value) => sql`${value}`)
       predicates.push(sql`${column} IN (${sql.join(values, sql`, `)})`)
     } else if (filter.grammar === "bool")
-      predicates.push(sql`${column} = ${filter.value === "true"}`)
+      predicates.push(sql`${column} = ${filter.value === "true" ? 1 : 0}`)
     else {
       const [min, max] = filter.value.split(",")
-      predicates.push(sql`${column} BETWEEN ${min ?? ""} AND ${max ?? ""}`)
+      const bounds = isEpochDateColumn(filter.key)
+        ? ([isoToEpochStart(min ?? ""), isoToEpochStart(max ?? "")] as const)
+        : ([min ?? "", max ?? ""] as const)
+      predicates.push(sql`${column} BETWEEN ${bounds[0]} AND ${bounds[1]}`)
     }
   }
   return predicates
