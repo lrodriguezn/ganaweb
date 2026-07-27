@@ -40,4 +40,8 @@ Chain strategy: size-exception
 
 - [x] 3.1 Run focused PostgreSQL tests, full `pnpm turbo test`, `pnpm turbo typecheck`, and `biome ci .`; rerun migration capability verification and report any unavailable environment as a blocker.
 - [x] 3.2 Normalize corrected source bytes, inspect the final diff, and create one conventional, reviewable corrective commit on the existing #107 branch with tests and migration in the same work unit.
-- [ ] 3.3 Obtain independent verification and a fresh content-bound review of the normalized corrected bytes before advancing the existing PR; do not reuse prior review evidence.
+- [x] 3.3 Complete independent audit and evidence preparation for the normalized corrected bytes — PASS: both prior gaps closed; focused tests 23/23; typecheck and Biome passed; diff is clean; the full suite had one unrelated UI timeout whose isolated rerun passed 3/3.
+
+## External Delivery Gate — Parent-Owned (Not a Task Checkbox)
+
+Before opening or advancing the PR, the parent MUST obtain a **fresh content-bound review** of the final normalized bytes. It MUST NOT reuse any prior receipt. This delivery gate is intentionally external to the mutable task checklist: after candidate identity freezes, it does not require a repository checkbox mutation.

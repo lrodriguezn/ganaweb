@@ -9,7 +9,11 @@
 - [x] 1.1–1.4 Capability inspection and RED migration/PostgreSQL behavior proof.
 - [x] 2.1–2.4 Forward migration, qualified normalized predicates, and GREEN proof.
 - [x] 3.1–3.2 Focused/full validation and source normalization.
-- [ ] 3.3 Independent verification and fresh content-bound review; intentionally not started because this apply execution must not call review lifecycle commands.
+- [x] 3.3 Independent audit and evidence preparation — PASS: both prior gaps closed; focused tests 23/23; typecheck and Biome passed; diff is clean; the full suite had one unrelated UI timeout whose isolated rerun passed 3/3.
+
+## External Delivery Gate — Parent-Owned (Not a Task Checkbox)
+
+Before opening or advancing the PR, the parent MUST obtain a **fresh content-bound review** of the final normalized bytes. It MUST NOT reuse any prior receipt. This delivery gate is intentionally external to the mutable task checklist: after candidate identity freezes, it does not require a repository checkbox mutation.
 
 ## Capability Evidence
 
@@ -46,6 +50,7 @@
 - `pnpm turbo test` — exit 0; 13/13 tasks successful; DB suite 47 passed, 2 skipped.
 - `pnpm turbo typecheck` — exit 0; 13/13 tasks successful.
 - `pnpm exec biome ci .` — exit 0; 8 existing warnings, no fixes applied.
+- Independent re-audit at `3c9b937` — PASS: both prior gaps closed; focused PostgreSQL/migration suite 23/23; typecheck and check-only Biome passed; `git diff --check` was clean. The full suite had one unrelated UI timeout; its isolated rerun passed 3/3.
 
 ## Deviations and Scope
 
@@ -65,4 +70,4 @@ None — implementation follows the approved design. This corrective batch chang
 
 - Representative inverse equivalence: accented `q` and `codigo` `contains` inputs each find one unaccented stored counterpart.
 - Real pagination: 26 accent-filtered, equal-sort rows with contractual `pageSize: 25`; page 1 has the first 25 `id ASC` values and page 2 has the remaining value. Repeated reads retain both sequences; their union has every expected ID exactly once; both filtered totals are 26; `totalSinFiltro` is 34; a matching finca-B row is absent.
-- Task 3.3 remains pending. This executor did not call any review lifecycle command; independent audit and parent fresh content-bound review are external gates.
+- Task 3.3 is complete: independent audit and evidence preparation passed at `3c9b937`. This executor did not call any review lifecycle command. A fresh, content-bound review of the final normalized bytes remains a parent-owned external delivery gate and MUST NOT reuse a prior receipt.
