@@ -1,5 +1,9 @@
 import { AsyncLocalStorage } from "node:async_hooks"
 import type {
+  AnimalListadoReadPort,
+  AnimalListadoReadRequest,
+  AnimalListadoReadResult,
+  AnimalListadoRow,
   AnimalRegistro,
   AnimalRepositoryPort,
   AnimalUpdateCambios,
@@ -13,7 +17,8 @@ import type {
 } from "@ganaweb/aplicacion"
 import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
 import type { ErrorValidacionAnimal } from "@ganaweb/aplicacion"
-import { and, asc, eq, or } from "drizzle-orm"
+import { type SQL, and, asc, eq, or, sql } from "drizzle-orm"
+import { DrizzleAuthRepository } from "./auth-repository.js"
 import type { DbClient } from "./client.js"
 import {
   animales,
@@ -592,6 +597,271 @@ function buildUpdateSet(cambios: AnimalUpdateCambios) {
   if (cambios.esDeMonta !== undefined) set.esDeMonta = cambios.esDeMonta ? 1 : 0
   if (cambios.numeroPezones !== undefined) set.numeroPezones = cambios.numeroPezones
   return set
+}
+
+export class AnimalListadoForbiddenError extends Error {
+  constructor() {
+    super("Animal listing is forbidden")
+    this.name = "AnimalListadoForbiddenError"
+  }
+}
+
+type AnimalListadoDbRow = Record<string, unknown>
+
+const animalListSortColumns: Record<string, SQL> = {
+  codigo: sql`a.codigo`,
+  nombre: sql`a.nombre`,
+  sexoKey: sql`a.sexo_key`,
+  razaLabel: sql`raza.nombre`,
+  fechaNacimiento: sql`a.fecha_nacimiento`,
+  edadAnios: sql`a.fecha_nacimiento`,
+  colorLabel: sql`color.nombre`,
+  tipoIngresoId: sql`a.tipo_ingreso_id`,
+  codigoMadre: sql`a.codigo_madre`,
+  nombreMadre: sql`madre.nombre`,
+  codigoPadre: sql`a.codigo_padre`,
+  nombrePadre: sql`padre.nombre`,
+  propietarioLabel: sql`propietario.nombre`,
+  hierroLabel: sql`hierro.nombre`,
+  numeroPezones: sql`a.numero_pezones`,
+  calidadLabel: sql`calidad.nombre`,
+  codigoArete: sql`a.codigo_arete`,
+  fechaCompra: sql`a.fecha_compra`,
+  precioCompra: sql`a.precio_compra`,
+  pesoCompraKg: sql`a.peso_compra`,
+  tatuado: sql`a.tatuado`,
+  herrado: sql`a.herrado`,
+  descornado: sql`a.descornado`,
+  codigoRfid: sql`a.codigo_rfid`,
+  potreroLabel: sql`potrero.nombre`,
+  sectorLabel: sql`sector.nombre`,
+  loteLabel: sql`lote.nombre`,
+  grupoLabel: sql`grupo.nombre`,
+  saludKey: sql`a.salud_animal_key`,
+  categoriaReproductivaKey: sql`a.categoria_reproductiva`,
+  estadoKey: sql`a.estado_animal_key`,
+  pesoUltimoKg: sql`ultimo_peso.peso_kg`,
+  codigoQr: sql`a.codigo_qr`,
+  esDeMonta: sql`a.es_de_monta`,
+  tipoExplotacionLabel: sql`tipo_explotacion.nombre`,
+}
+
+const animalListFilterColumns: Record<string, SQL> = {
+  codigo: sql`a.codigo`,
+  nombre: sql`a.nombre`,
+  sexoKey: sql`a.sexo_key`,
+  razaId: sql`a.raza_id`,
+  fechaNacimiento: sql`a.fecha_nacimiento`,
+  colorId: sql`a.color_id`,
+  tipoIngresoId: sql`a.tipo_ingreso_id`,
+  codigoMadre: sql`a.codigo_madre`,
+  nombreMadre: sql`madre.nombre`,
+  codigoPadre: sql`a.codigo_padre`,
+  nombrePadre: sql`padre.nombre`,
+  propietarioId: sql`a.propietario_id`,
+  hierroId: sql`a.hierro_id`,
+  numeroPezones: sql`a.numero_pezones`,
+  calidadAnimalId: sql`a.calidad_animal_id`,
+  codigoArete: sql`a.codigo_arete`,
+  fechaCompra: sql`a.fecha_compra`,
+  precioCompra: sql`a.precio_compra`,
+  pesoCompraKg: sql`a.peso_compra`,
+  tatuado: sql`a.tatuado`,
+  herrado: sql`a.herrado`,
+  descornado: sql`a.descornado`,
+  codigoRfid: sql`a.codigo_rfid`,
+  potreroId: sql`a.potrero_id`,
+  sectorId: sql`a.sector_id`,
+  loteId: sql`a.lote_id`,
+  grupoId: sql`a.grupo_id`,
+  comentarios: sql`a.comentarios`,
+  saludKey: sql`a.salud_animal_key`,
+  categoriaReproductivaKey: sql`a.categoria_reproductiva`,
+  estadoKey: sql`a.estado_animal_key`,
+  pesoUltimoKg: sql`ultimo_peso.peso_kg`,
+  codigoQr: sql`a.codigo_qr`,
+  esDeMonta: sql`a.es_de_monta`,
+  tipoExplotacionId: sql`a.tipo_explotacion_id`,
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null
+}
+
+function nullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function idLabel(id: unknown, label: unknown) {
+  const validId = nullableString(id)
+  return validId
+    ? { id: validId, label: nullableString(label) ?? `Desconocido (${validId})` }
+    : null
+}
+
+function keyLabel(key: unknown, label: string) {
+  return { key: String(key ?? 0), label }
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: maps the fixed 36-field transport contract.
+function mapAnimalListadoDbRow(row: AnimalListadoDbRow): AnimalListadoRow {
+  const sexoKey = Number(row.sexo_key ?? 0)
+  const saludKey = Number(row.salud_animal_key ?? 0)
+  const estadoKey = Number(row.estado_animal_key ?? 0)
+  const fechaNacimiento = nullableString(row.fecha_nacimiento)
+  const birth = fechaNacimiento ? new Date(`${fechaNacimiento}T00:00:00Z`) : null
+  const edadAnios =
+    birth && birth <= new Date()
+      ? Math.round(((Date.now() - birth.getTime()) / 31557600000) * 10) / 10
+      : null
+  const pesoKg = nullableNumber(row.peso_kg)
+  const pesoFecha = nullableString(row.peso_fecha)
+  return {
+    id: String(row.id),
+    codigo: String(row.codigo),
+    nombre: String(row.nombre ?? ""),
+    sexo: keyLabel(sexoKey, sexoKey === 1 ? "Hembra" : sexoKey === 2 ? "Pajuela" : "Macho"),
+    raza: idLabel(row.raza_id, row.raza_nombre),
+    fechaNacimiento,
+    edadAnios,
+    color: idLabel(row.color_id, row.color_nombre),
+    origen:
+      row.tipo_ingreso_id === null || row.tipo_ingreso_id === undefined
+        ? null
+        : {
+            id: String(row.tipo_ingreso_id),
+            label: nullableString(row.origen_label) ?? `Desconocido (${row.tipo_ingreso_id})`,
+          },
+    codigoMadre: nullableString(row.codigo_madre),
+    nombreMadre: nullableString(row.madre_nombre),
+    codigoPadre: nullableString(row.codigo_padre),
+    nombrePadre: nullableString(row.padre_nombre),
+    propietario: idLabel(row.propietario_id, row.propietario_nombre),
+    hierro: idLabel(row.hierro_id, row.hierro_nombre),
+    numeroPezones: nullableNumber(row.numero_pezones),
+    calidad: idLabel(row.calidad_id, row.calidad_nombre),
+    codigoArete: nullableString(row.codigo_arete),
+    fechaCompra: nullableString(row.fecha_compra),
+    precioCompra: nullableNumber(row.precio_compra),
+    pesoCompraKg: nullableNumber(row.peso_compra),
+    tatuado: row.tatuado === true,
+    herrado: row.herrado === true,
+    descornado: row.descornado === true,
+    codigoRfid: nullableString(row.codigo_rfid),
+    potrero: idLabel(row.potrero_id, row.potrero_nombre),
+    sector: idLabel(row.sector_id, row.sector_nombre),
+    lote: idLabel(row.lote_id, row.lote_nombre),
+    grupo: idLabel(row.grupo_id, row.grupo_nombre),
+    comentarios: nullableString(row.comentarios),
+    salud: keyLabel(saludKey, saludKey === 1 ? "Enfermo" : "Sano"),
+    categoriaReproductiva: nullableString(row.categoria_reproductiva)
+      ? keyLabel(row.categoria_reproductiva, String(row.categoria_reproductiva))
+      : null,
+    estado: keyLabel(
+      estadoKey,
+      estadoKey === 1 ? "Vendido" : estadoKey === 2 ? "Muerto" : "Activo",
+    ),
+    pesoUltimo: pesoKg === null || !pesoFecha ? null : { pesoKg, fecha: pesoFecha },
+    codigoQr: nullableString(row.codigo_qr),
+    esDeMonta: Number(row.es_de_monta ?? 0) === 1,
+    tipoExplotacion: idLabel(row.tipo_explotacion_id, row.tipo_explotacion_nombre),
+  }
+}
+
+function buildAnimalListadoPredicates(request: AnimalListadoReadRequest): SQL[] {
+  const predicates: SQL[] = []
+  if (request.q) {
+    const search = `%${request.q.toLocaleLowerCase()}%`
+    predicates.push(
+      sql`(lower(a.codigo) LIKE ${search} OR lower(a.nombre) LIKE ${search} OR lower(a.codigo_arete) LIKE ${search} OR lower(a.codigo_rfid) LIKE ${search})`,
+    )
+  }
+  for (const filter of request.filters) {
+    const column = animalListFilterColumns[filter.key]
+    if (!column) throw new Error(`Unsupported animal-list filter: ${filter.key}`)
+    if (filter.grammar === "contains")
+      predicates.push(sql`lower(${column}) LIKE ${`%${filter.value.toLocaleLowerCase()}%`}`)
+    else if (filter.grammar === "in") {
+      const values = filter.value.split(",").map((value) => sql`${value}`)
+      predicates.push(sql`${column} IN (${sql.join(values, sql`, `)})`)
+    } else if (filter.grammar === "bool")
+      predicates.push(sql`${column} = ${filter.value === "true"}`)
+    else {
+      const [min, max] = filter.value.split(",")
+      predicates.push(sql`${column} BETWEEN ${min ?? ""} AND ${max ?? ""}`)
+    }
+  }
+  return predicates
+}
+
+const animalListadoFrom = sql`
+  FROM animales a
+  LEFT JOIN config_razas raza ON raza.id = a.raza_id
+  LEFT JOIN config_colores color ON color.id = a.color_id
+  LEFT JOIN animales madre ON madre.id = a.madre_id
+  LEFT JOIN animales padre ON padre.id = a.padre_id
+  LEFT JOIN propietarios propietario ON propietario.id = a.propietario_id
+  LEFT JOIN hierros hierro ON hierro.id = a.hierro_id
+  LEFT JOIN config_calidad_animal calidad ON calidad.id = a.calidad_animal_id
+  LEFT JOIN potreros potrero ON potrero.id = a.potrero_id
+  LEFT JOIN sectores sector ON sector.id = a.sector_id
+  LEFT JOIN lotes lote ON lote.id = a.lote_id
+  LEFT JOIN grupos grupo ON grupo.id = a.grupo_id
+  LEFT JOIN config_tipos_explotacion tipo_explotacion ON tipo_explotacion.id = a.tipo_explotacion_id
+  LEFT JOIN config_key_values origen ON origen.opcion = 'tipo_ingreso' AND origen.key = a.tipo_ingreso_id::text
+  LEFT JOIN LATERAL (SELECT peso_kg, fecha FROM pesos WHERE animal_id = a.id ORDER BY fecha DESC, id DESC LIMIT 1) ultimo_peso ON true
+`
+
+export class DrizzleAnimalListadoReadModel implements AnimalListadoReadPort {
+  lastStatementCount = 0
+  constructor(private readonly db: DbClient) {}
+
+  async listar(request: AnimalListadoReadRequest): Promise<AnimalListadoReadResult> {
+    const authorization = await new DrizzleAuthRepository(
+      currentDb(this.db),
+    ).obtenerAutorizacionUsuario(request.usuarioId, request.fincaId)
+    if (
+      authorization.tipo !== "autorizado" ||
+      !authorization.sesion.permisos.some(
+        (permission) => permission.modulo === "animales" && permission.accion === "ver",
+      )
+    )
+      throw new AnimalListadoForbiddenError()
+    const predicates = buildAnimalListadoPredicates(request)
+    const where = sql`WHERE a.finca_id = ${request.fincaId} AND a.activo = 1 ${predicates.length ? sql`AND ${sql.join(predicates, sql` AND `)}` : sql``}`
+    const [sortKey = "", direction] = request.sort.split(":")
+    const sortColumn = animalListSortColumns[sortKey]
+    if (!sortColumn) throw new Error(`Unsupported animal-list sort: ${sortKey}`)
+    const order =
+      direction === "desc" ? sql`${sortColumn} DESC, a.id ASC` : sql`${sortColumn} ASC, a.id ASC`
+    this.lastStatementCount = 0
+    const page = await currentDb(this.db).execute(
+      sql`SELECT a.*, raza.nombre AS raza_nombre, color.nombre AS color_nombre, madre.nombre AS madre_nombre, padre.nombre AS padre_nombre, propietario.nombre AS propietario_nombre, hierro.nombre AS hierro_nombre, calidad.nombre AS calidad_nombre, potrero.nombre AS potrero_nombre, sector.nombre AS sector_nombre, lote.nombre AS lote_nombre, grupo.nombre AS grupo_nombre, tipo_explotacion.nombre AS tipo_explotacion_nombre, origen.value AS origen_label, ultimo_peso.peso_kg, ultimo_peso.fecha AS peso_fecha ${animalListadoFrom} ${where} ORDER BY ${order} LIMIT ${request.pageSize} OFFSET ${(request.page - 1) * request.pageSize}`,
+    )
+    this.lastStatementCount += 1
+    const filtered = await currentDb(this.db).execute(
+      sql`SELECT count(*)::int AS count ${animalListadoFrom} ${where}`,
+    )
+    this.lastStatementCount += 1
+    const unfiltered = await currentDb(this.db).execute(
+      sql`SELECT count(*)::int AS count FROM animales WHERE finca_id = ${request.fincaId} AND activo = 1`,
+    )
+    this.lastStatementCount += 1
+    const pageRows = page as AnimalListadoDbRow[]
+    const filteredRows = filtered as AnimalListadoDbRow[]
+    const unfilteredRows = unfiltered as AnimalListadoDbRow[]
+    return {
+      data: pageRows.map(mapAnimalListadoDbRow),
+      page: request.page,
+      pageSize: request.pageSize,
+      total: Number(filteredRows[0]?.count ?? 0),
+      totalSinFiltro: Number(unfilteredRows[0]?.count ?? 0),
+      sort: request.sort,
+      cols: request.cols,
+    }
+  }
 }
 
 export class DrizzleAnimalRepository implements AnimalRepositoryPort {

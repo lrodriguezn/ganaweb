@@ -35,8 +35,8 @@ Chain strategy: size-exception
 
 ## Phase 2: PostgreSQL Read Model and Migration
 
-- [ ] 2.1 RED: add `packages/db/tests/animal-listado-postgres.test.ts` for indistinguishable RBAC/isolation 403, filters/counts/stable pages, tie-break/fallback, and no-N+1 statement count.
-- [ ] 2.2 Add `DrizzleAnimalListadoReadModel` in `packages/db/src/animal-infrastructure.ts`: authorize before parameterized joined page plus filtered/finca-wide counts; GREEN/refactor 2.1.
+- [x] 2.1 RED: add `packages/db/tests/animal-listado-postgres.test.ts` for indistinguishable RBAC/isolation 403, filters/counts/stable pages, tie-break/fallback, and no-N+1 statement count.
+- [x] 2.2 Add `DrizzleAnimalListadoReadModel` in `packages/db/src/animal-infrastructure.ts`: authorize before parameterized joined page plus filtered/finca-wide counts; GREEN/refactor 2.1.
 - [x] 2.3 Add LA-102 metadata in `packages/db/src/schema/animales.ts` and `pesos-produccion.ts`, then migration `0002_animal_list_indexes.sql` and journal/meta; never edit applied migrations.
 - [ ] 2.4 Capture `EXPLAIN (ANALYZE, BUFFERS)` for finalized supported queries, indexes, and no per-row execution; report unavailable PostgreSQL as a blocker/deviation.
 
