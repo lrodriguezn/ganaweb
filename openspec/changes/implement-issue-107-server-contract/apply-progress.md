@@ -12,6 +12,9 @@
 - [x] 2.3 Additive LA-102 schema metadata, migration, and migration journal entry.
 - [x] 2.1 PostgreSQL RED integration coverage for authorization/isolation, filters/counters/pagination, latest-weight/origen fallback, and bounded listing statement count.
 - [x] 2.2 Parameterized PostgreSQL `DrizzleAnimalListadoReadModel` with fresh RBAC authorization, joined page rows, filtered/finca-wide counts, and fixed three-statement listing execution.
+- [x] 3.1 HTTP contract RED coverage for validation-before-read, non-disclosing authorization, sanitized failures, and complete nullable rows.
+- [x] 3.2 TanStack Start GET route and testable HTTP adapter with request IDs, session composition, PostgreSQL read-model delegation, and contractual responses.
+- [x] 3.3 Kept DB exports unchanged (existing `./animal-infrastructure` export suffices) and verified legacy action/UI/filter/preference/export paths were untouched.
 
 ## TDD Cycle Evidence
 
@@ -25,6 +28,9 @@
 | 2.3 | `packages/db/tests/animal-list-indexes.test.ts` | Migration artifact harness | N/A (new migration) | ✅ Missing `0002_animal_list_indexes.sql` failed `ENOENT` | ✅ `tsx` exit 0 | ✅ Both animal-list and latest-weight index assertions | ✅ Schema metadata and additive SQL names match |
 | 2.1 | `packages/db/tests/animal-listado-postgres.test.ts` | PostgreSQL integration | N/A (new test) | ✅ Test imported missing `DrizzleAnimalListadoReadModel`; run failed 4/4 with `is not a constructor` | ✅ `DATABASE_URL=... pnpm --filter @ganaweb/db exec vitest run tests/animal-listado-postgres.test.ts` — 4/4 passed | ✅ 4 independent scenarios: indistinguishable RBAC/isolation, filters/counts/pages, tie-break/fallback, bounded statements | ✅ Fixture uses unique IDs and cleans up all inserted rows |
 | 2.2 | `packages/db/tests/animal-listado-postgres.test.ts` | PostgreSQL integration | ✅ Same focused suite: 4/4 passed before final production refactor | ✅ Read-model behavior was absent (same 4/4 RED evidence) | ✅ Focused PostgreSQL suite 4/4 passed after implementation | ✅ Multiple rows and cross-farm row prove finca scoping; same-date weight IDs prove deterministic selection | ✅ Fixed read execution to three queries and retained a typed application port |
+| 3.1 | `apps/web/tests/animal-list-server-contract.test.ts` | HTTP adapter contract | ✅ Existing pure contract harness passed before extension | ✅ Missing `animal-list-http` module failed `ERR_MODULE_NOT_FOUND` | ✅ `pnpm exec tsx tests/animal-list-server-contract.test.ts` — exit 0 | ✅ Invalid grammar avoids both reads; session and forbidden read yield equal 403; driver and timeout failures sanitize; nullable row has 37 keys | ✅ Extracted injected HTTP adapter; route remains framework-only composition |
+| 3.2 | `apps/web/tests/animal-list-server-contract.test.ts` | HTTP adapter + PostgreSQL integration | N/A (new route) | ✅ Same absent-module RED from 3.1 | ✅ HTTP contract harness exit 0; PostgreSQL focused suite 4/4 passed | ✅ Contract tests cover independent validation, authorization, error, and nullable-row paths | ✅ Route delegates to a small injected handler and real session/read dependencies |
+| 3.3 | `packages/aplicacion/tests/animal-listado-port.test.ts`; `packages/db/tests/animal-infrastructure.test.ts` | Vitest contract/regression | ✅ Both focused files initially failed: no Vitest suite and stale migration list | ✅ Existing introduced regression failures observed before correction | ✅ application port 2/2 and migration infrastructure 8/8 passed | ✅ Distinct request/page-size/sort contract values and additive journal entry | ✅ Converted the port harness to behavioral Vitest tests; updated only the additive migration expectation |
 
 ## Work Unit Evidence
 
@@ -34,6 +40,7 @@
 | Contract derivations and application port | `pnpm --filter @ganaweb/web exec tsx tests/animal-list-server-contract.test.ts && pnpm --filter @ganaweb/aplicacion exec tsx tests/animal-listado-port.test.ts` — exit 0 | N/A — pure derivation and interfaces-only port have no runtime boundary | Revert `apps/web/src/server/animal-list-contract.ts`, `packages/aplicacion/src/puertos/animal-listado-port.ts`, export, and tests; no route/UI behavior changes |
 | LA-102 indexes | `pnpm --filter @ganaweb/db exec tsx tests/animal-list-indexes.test.ts` — exit 0, 2 index assertions | Blocked — `DATABASE_URL` is not configured and the exact RF-ANIM-LIST §11 PostgreSQL fixture/harness is absent; no plan or query execution was claimed | Revert schema metadata and `0002_animal_list_indexes.sql` only; for an applied migration, reverse in a new migration rather than editing it |
 | PostgreSQL read model | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-listado-postgres.test.ts` — exit 0, 4/4 integration tests | `pnpm db:up` recreated only local `ganaweb-postgres` / `ganaweb_pgdata`, applied migrations and seeded demo data; focused fixture executed authorization + read queries against PostgreSQL | Revert `packages/db/src/animal-infrastructure.ts` read-model additions and `packages/db/tests/animal-listado-postgres.test.ts`; no legacy action/UI behavior changes |
+| HTTP route and regression correction | `pnpm exec tsx apps/web/tests/animal-list-server-contract.test.ts` — exit 0; `pnpm --filter @ganaweb/aplicacion exec vitest run tests/animal-listado-port.test.ts` — 2/2; `pnpm --filter @ganaweb/db exec vitest run tests/animal-infrastructure.test.ts` — 8/8 | `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ganaweb pnpm --filter @ganaweb/db exec vitest run tests/animal-listado-postgres.test.ts` — exit 0, 4/4; validates the delegated PostgreSQL read model | Revert `apps/web/src/server/animal-list-http.ts`, `apps/web/src/routes/api/fincas/$fincaId/animales.ts`, related contract-test/package command changes, and the two regression-test corrections; legacy action/UI files remain isolated |
 
 ## Commands
 
@@ -47,6 +54,11 @@
 - `pnpm exec biome check packages/db/src/animal-infrastructure.ts packages/db/tests/animal-listado-postgres.test.ts` — exit 0 after source normalization.
 - `docker exec ganaweb-postgres psql -U postgres -d ganaweb -c "EXPLAIN (ANALYZE, BUFFERS) ..."` — actual demo-seed plan: `idx_pesos_animal_fecha_id` used by the LATERAL latest-weight lookup (13 loops, no per-row statement); `animales` used a sequential scan because the disposable demo table held only 20 rows. Execution time: 0.929 ms. This is query-plan evidence only, not RF-ANIM-LIST §11 p95 acceptance.
 - `pnpm turbo test` — exit 1 from pre-existing unrelated suites: `@ganaweb/aplicacion/tests/animal-listado-port.test.ts` has no Vitest suite, and `@ganaweb/db/tests/animal-infrastructure.test.ts` still expects only `0000_initial` and `0001_animal_sync_audit` despite the already-applied additive `0002_animal_list_indexes` migration. Focused PostgreSQL tests remain green; these failures were not changed in this work unit.
+- Regression correction: `pnpm --filter @ganaweb/aplicacion exec vitest run tests/animal-listado-port.test.ts` — exit 0, 2/2; `pnpm --filter @ganaweb/db exec vitest run tests/animal-infrastructure.test.ts` — exit 0, 8/8; followed by `pnpm turbo test` which no longer fails for either introduced regression.
+- `pnpm --filter @ganaweb/web test` — exit 0; runs the HTTP contract harness and the web Vitest suite.
+- `pnpm turbo typecheck` — exit 0, 13/13.
+- `pnpm exec biome check` on all modified source and tests — exit 0.
+- Final `pnpm turbo test` — exit 1 only because unrelated `@ganaweb/ui/tests/animal-ui.test.tsx` test `CA-UI-002` timed out (408/409 passed); no UI files were modified. The prior web timeout did not recur.
 
 ## Work-unit Commit
 
@@ -56,7 +68,7 @@
 
 ## Blockers / Deviations
 
-- Historical note (superseded by this batch): tasks 1.4 and 2.3 were previously unchecked; they are now complete. The PostgreSQL read model, HTTP route, and PostgreSQL benchmark evidence remain unimplemented.
+- Historical note (superseded): the PostgreSQL read model and HTTP route are implemented. Only the exact §11 benchmark evidence remains unimplemented.
 - Historical note (superseded by this batch): age/latest-weight and `origen` helper derivations are now implemented and unit-tested; database-backed derivation remains pending task 2.2.
 - PostgreSQL benchmark fixture and RF-ANIM-LIST §11 measurement harness remain unavailable, as documented in the design. LA-100 p95 acceptance remains blocked and has not been inferred from this local query plan.
 - Task 2.4 remains unchecked: the feasible PostgreSQL plan capture is recorded above, but its tiny disposable seed chose a sequential `animales` scan. The latest-weight LA-102 index is used; a representative finalized benchmark plan for the animal-list index still requires the absent §11 fixture/scenarios.

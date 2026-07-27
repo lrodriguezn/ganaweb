@@ -42,9 +42,9 @@ Chain strategy: size-exception
 
 ## Phase 3: HTTP Integration and Acceptance
 
-- [ ] 3.1 RED: extend `apps/web/tests/animal-list-server-contract.test.ts` for 400-before-read, indistinguishable 403, sanitized 500/timeout, and complete nullable rows.
-- [ ] 3.2 Create `apps/web/src/routes/api/fincas/$fincaId/animales.ts` with GET handler, request IDs, session/port composition, and contract responses; GREEN/refactor 3.1.
-- [ ] 3.3 Update `packages/db/package.json` only if needed; verify legacy `listAnimalsAction`, UI, filters, preferences, and export remain untouched.
+- [x] 3.1 RED: extend `apps/web/tests/animal-list-server-contract.test.ts` for 400-before-read, indistinguishable 403, sanitized 500/timeout, and complete nullable rows.
+- [x] 3.2 Create `apps/web/src/routes/api/fincas/$fincaId/animales.ts` with GET handler, request IDs, session/port composition, and contract responses; GREEN/refactor 3.1.
+- [x] 3.3 Update `packages/db/package.json` only if needed; verify legacy `listAnimalsAction`, UI, filters, preferences, and export remain untouched.
 
 ## Phase 4: Evidence, Documentation, and Final Review
 

@@ -9,6 +9,7 @@ import {
   resolveAnimalOrigen,
   selectLatestAnimalWeight,
 } from "../src/server/animal-list-contract.js"
+import { createAnimalListadoHttpHandler } from "../src/server/animal-list-http.js"
 
 function testRegistryAndNullableRow() {
   assert.equal(ANIMAL_LIST_COLUMNS.length, 36)
@@ -141,3 +142,109 @@ testOrigenFallback()
 
 // biome-ignore lint/suspicious/noConsole: focused TDD harness progress output
 console.log("✅ animal-list-server-contract.test.ts passed")
+
+const completeNullableResult = {
+  data: [
+    mapAnimalListadoRow({
+      id: "animal-nullable",
+      codigo: "MT-123",
+      nombre: "",
+      sexo: { key: "0", label: "Macho" },
+      tatuado: false,
+      herrado: false,
+      descornado: false,
+      esDeMonta: false,
+    }),
+  ],
+  page: 1,
+  pageSize: 25 as const,
+  total: 1,
+  totalSinFiltro: 1,
+  sort: "codigo:asc",
+  cols: ["codigo", "nombre"] as const,
+}
+
+function handlerWith(
+  overrides: Partial<Parameters<typeof createAnimalListadoHttpHandler>[0]> = {},
+) {
+  return createAnimalListadoHttpHandler({
+    getUsuarioId: async () => "usuario-1",
+    readPort: { listar: async () => completeNullableResult },
+    isForbidden: () => false,
+    requestId: () => "req-http-1",
+    reportError: () => {},
+    ...overrides,
+  })
+}
+
+async function testHttpContract() {
+  let sessionReads = 0
+  let listingReads = 0
+  const response400 = await handlerWith({
+    getUsuarioId: async () => {
+      sessionReads += 1
+      return "usuario-1"
+    },
+    readPort: {
+      listar: async () => {
+        listingReads += 1
+        return completeNullableResult
+      },
+    },
+  })({
+    request: new Request("http://test/api/fincas/finca-1/animales?pageSize=30"),
+    fincaId: "finca-1",
+  })
+  assert.equal(response400.status, 400)
+  assert.deepEqual(await response400.json(), {
+    error: "Solicitud inválida",
+    campo: "pageSize",
+    motivo: "pageSize debe ser 25, 50 o 100",
+    requestId: "req-http-1",
+  })
+  assert.equal(sessionReads, 0)
+  assert.equal(listingReads, 0)
+
+  const unauthenticated = await handlerWith({ getUsuarioId: async () => null })({
+    request: new Request("http://test/api/fincas/finca-a/animales"),
+    fincaId: "finca-a",
+  })
+  const forbidden = await handlerWith({
+    readPort: { listar: async () => Promise.reject(new Error("forbidden")) },
+    isForbidden: (error) => error instanceof Error && error.message === "forbidden",
+  })({ request: new Request("http://test/api/fincas/finca-b/animales"), fincaId: "finca-b" })
+
+  assert.equal(forbidden.status, 403)
+  assert.deepEqual(await forbidden.json(), await unauthenticated.json())
+
+  for (const failure of [
+    new Error("password=secret"),
+    Object.assign(new Error("deadline"), { name: "TimeoutError" }),
+  ]) {
+    const response = await handlerWith({
+      readPort: { listar: async () => Promise.reject(failure) },
+    })({ request: new Request("http://test/api/fincas/finca-1/animales"), fincaId: "finca-1" })
+    assert.equal(response.status, 500)
+    assert.deepEqual(await response.json(), {
+      error: "Error interno",
+      campo: null,
+      motivo: "No fue posible consultar los animales",
+      requestId: "req-http-1",
+    })
+  }
+
+  const response = await handlerWith()({
+    request: new Request("http://test/api/fincas/finca-1/animales?cols=nombre,codigo"),
+    fincaId: "finca-1",
+  })
+  const body = await response.json()
+  assert.equal(response.status, 200)
+  assert.deepEqual(body.cols, ["codigo", "nombre"])
+  assert.equal(Object.keys(body.data[0]).length, 37)
+  assert.deepEqual(
+    { raza: body.data[0].raza, pesoUltimo: body.data[0].pesoUltimo, tatuado: body.data[0].tatuado },
+    { raza: null, pesoUltimo: null, tatuado: false },
+  )
+}
+
+await testHttpContract()
