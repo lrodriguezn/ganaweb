@@ -16,6 +16,35 @@ const authorizedUser = `${fixture}-authorized`
 const unprivilegedUser = `${fixture}-unprivileged`
 const outsideUser = `${fixture}-outside`
 const role = `${fixture}-role`
+const accentSearchAnimal = `${fixture}-animal-accent-search`
+const accentedParent = `${fixture}-animal-accent-parent`
+const accentedFather = `${fixture}-animal-accent-father`
+const literalAnimal = `${fixture}-animal-literal`
+const literalSearch = "LIT%_!-' OR 1=1 --"
+
+function accentEquivalents(value: string) {
+  return [value, value.toLocaleLowerCase(), value.normalize("NFD").replace(/\p{Diacritic}/gu, "")]
+}
+
+const qCases = [
+  { value: "CÓDIGOÁÉÍÓÚÑ", expectedId: accentSearchAnimal },
+  { value: "NÓMBREÁÉÍÓÚÑ", expectedId: accentSearchAnimal },
+  { value: "ARETÉÁÉÍÓÚÑ", expectedId: accentSearchAnimal },
+  { value: "RFÍDÁÉÍÓÚÑ", expectedId: accentSearchAnimal },
+] as const
+
+const containsCases = [
+  { key: "codigo", value: "CÓDIGOÁÉÍÓÚÑ" },
+  { key: "nombre", value: "NÓMBREÁÉÍÓÚÑ" },
+  { key: "codigoMadre", value: "MADREÁÉÍÓÚÑ" },
+  { key: "nombreMadre", value: "NOMBREMADREÁÉÍÓÚÑ" },
+  { key: "codigoPadre", value: "PADREÁÉÍÓÚÑ" },
+  { key: "nombrePadre", value: "NOMBREPADREÁÉÍÓÚÑ" },
+  { key: "codigoArete", value: "ARETÉÁÉÍÓÚÑ" },
+  { key: "codigoRfid", value: "RFÍDÁÉÍÓÚÑ" },
+  { key: "comentarios", value: "COMENTÁRIOÁÉÍÓÚÑ" },
+  { key: "codigoQr", value: "QRÁÉÍÓÚÑ" },
+] as const
 
 const request = (overrides: Record<string, unknown> = {}) => ({
   usuarioId: authorizedUser,
@@ -68,7 +97,28 @@ beforeAll(async () => {
       (${`${fixture}-animal-1`}, ${fincaA}, 'AA-001', 'Alpha', 1, 9, 1),
       (${`${fixture}-animal-2`}, ${fincaA}, 'AA-002', 'Bravo', 0, NULL, 1),
       (${`${fixture}-animal-3`}, ${fincaA}, 'AA-003', 'Charlie', 1, 1, 1),
-      (${`${fixture}-animal-other`}, ${fincaB}, 'AA-001', 'Other finca', 1, 1, 1)
+       (${`${fixture}-animal-other`}, ${fincaB}, 'AA-001', 'Other finca', 1, 1, 1)
+  `)
+  await execute(sql`
+    INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo)
+    VALUES
+      (${accentedParent}, ${fincaA}, 'PARENT-Á', 'NOMBREMADREÁÉÍÓÚÑ', 1, 1),
+      (${accentedFather}, ${fincaA}, 'FATHER-Á', 'NOMBREPADREÁÉÍÓÚÑ', 1, 1),
+      (${accentSearchAnimal}, ${fincaA}, 'CÓDIGOÁÉÍÓÚÑ', 'NÓMBREÁÉÍÓÚÑ', 1, 1),
+      (${literalAnimal}, ${fincaA}, ${literalSearch}, 'Literal token', 1, 1)
+  `)
+  await execute(sql`
+    UPDATE animales
+    SET
+      codigo_madre = 'MADREÁÉÍÓÚÑ',
+      madre_id = ${accentedParent},
+      codigo_padre = 'PADREÁÉÍÓÚÑ',
+      padre_id = ${accentedFather},
+      codigo_arete = 'ARETÉÁÉÍÓÚÑ',
+      codigo_rfid = 'RFÍDÁÉÍÓÚÑ',
+      comentarios = 'COMENTÁRIOÁÉÍÓÚÑ',
+      codigo_qr = 'QRÁÉÍÓÚÑ'
+    WHERE id = ${accentSearchAnimal}
   `)
   await execute(sql`
     INSERT INTO pesos (id, animal_id, fecha, peso_kg)
@@ -113,14 +163,13 @@ describe("DrizzleAnimalListadoReadModel (PostgreSQL)", () => {
     const pageOne = await readModel.listar(request({ pageSize: 25, sort: "codigo:asc" }))
     const pageTwo = await readModel.listar(request({ page: 2, pageSize: 25, sort: "codigo:asc" }))
 
-    expect(firstPage.data.map((animal) => animal.id)).toEqual([
-      `${fixture}-animal-1`,
-      `${fixture}-animal-3`,
-    ])
-    expect(firstPage.total).toBe(2)
-    expect(firstPage.totalSinFiltro).toBe(3)
+    expect(firstPage.data.map((animal) => animal.id)).toEqual(
+      expect.arrayContaining([`${fixture}-animal-1`, `${fixture}-animal-3`]),
+    )
+    expect(firstPage.total).toBe(6)
+    expect(firstPage.totalSinFiltro).toBe(7)
     expect(pageOne.data.map((animal) => animal.id)).not.toContain(`${fixture}-animal-other`)
-    expect(new Set([...pageOne.data, ...pageTwo.data].map((animal) => animal.id)).size).toBe(3)
+    expect(new Set([...pageOne.data, ...pageTwo.data].map((animal) => animal.id)).size).toBe(7)
   })
 
   it("uses greatest weight id on a latest-date tie and preserves null origen fallback", async () => {
@@ -138,7 +187,70 @@ describe("DrizzleAnimalListadoReadModel (PostgreSQL)", () => {
     const readModel = new DrizzleAnimalListadoReadModel(db)
     const result = await readModel.listar(request({ pageSize: 50 }))
 
-    expect(result.data).toHaveLength(3)
-    expect(readModel.lastStatementCount).toBeLessThanOrEqual(6)
+    expect(result.data).toHaveLength(7)
+    expect(readModel.lastStatementCount).toBe(3)
+  })
+
+  it.each(qCases)(
+    "matches q accent, case, and unaccented equivalents for $value",
+    async ({ value, expectedId }) => {
+      const readModel = new DrizzleAnimalListadoReadModel(db)
+
+      for (const equivalent of accentEquivalents(value)) {
+        const result = await readModel.listar(request({ q: equivalent }))
+        expect(result.data.map((animal) => animal.id)).toContain(expectedId)
+      }
+    },
+  )
+
+  it.each(containsCases)(
+    "matches contains $key across accent, case, and unaccented equivalents",
+    async ({ key, value }) => {
+      const readModel = new DrizzleAnimalListadoReadModel(db)
+
+      for (const equivalent of accentEquivalents(value)) {
+        const result = await readModel.listar(
+          request({ filters: [{ key, grammar: "contains", value: equivalent }] }),
+        )
+        expect(result.data.map((animal) => animal.id)).toEqual([accentSearchAnimal])
+      }
+    },
+  )
+
+  it("treats wildcard, escape, and SQL-like search input as bound literals", async () => {
+    const readModel = new DrizzleAnimalListadoReadModel(db)
+    const qResult = await readModel.listar(request({ q: literalSearch }))
+    const containsResult = await readModel.listar(
+      request({ filters: [{ key: "codigo", grammar: "contains", value: literalSearch }] }),
+    )
+
+    expect(qResult.data.map((animal) => animal.id)).toEqual([literalAnimal])
+    expect(containsResult.data.map((animal) => animal.id)).toEqual([literalAnimal])
+  })
+
+  it("keeps normalized filters finca-scoped with matching counts and stable tied pages", async () => {
+    const readModel = new DrizzleAnimalListadoReadModel(db)
+    const sharedName = "EmpáteÁ"
+    await execute(sql`
+      INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo)
+      VALUES
+        (${`${fixture}-animal-tie-2`}, ${fincaA}, 'TIE-2', ${sharedName}, 1, 1),
+        (${`${fixture}-animal-tie-1`}, ${fincaA}, 'TIE-1', ${sharedName}, 1, 1),
+        (${`${fixture}-animal-tie-other`}, ${fincaB}, 'TIE-OTHER', ${sharedName}, 1, 1)
+    `)
+    const filter = { q: "empatea", sort: "nombre:asc" as const, pageSize: 25 as const }
+
+    const first = await readModel.listar(request(filter))
+    const repeated = await readModel.listar(request(filter))
+
+    expect(first.data.map((animal) => animal.id)).toEqual([
+      `${fixture}-animal-tie-1`,
+      `${fixture}-animal-tie-2`,
+    ])
+    expect(repeated.data.map((animal) => animal.id)).toEqual(first.data.map((animal) => animal.id))
+    expect(first.total).toBe(2)
+    expect(first.totalSinFiltro).toBe(9)
+    expect(first.data.map((animal) => animal.id)).not.toContain(`${fixture}-animal-tie-other`)
+    expect(readModel.lastStatementCount).toBeLessThanOrEqual(3)
   })
 })

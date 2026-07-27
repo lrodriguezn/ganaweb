@@ -705,6 +705,15 @@ function keyLabel(key: unknown, label: string) {
   return { key: String(key ?? 0), label }
 }
 
+function escapeLikeLiteral(value: string): string {
+  return value.replaceAll("!", "!!").replaceAll("%", "!%").replaceAll("_", "!_")
+}
+
+function normalizedContains(column: SQL, value: string): SQL {
+  const pattern = `%${escapeLikeLiteral(value)}%`
+  return sql`public.unaccent(pg_catalog.lower(${column})) LIKE public.unaccent(pg_catalog.lower(${pattern})) ESCAPE '!'`
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: maps the fixed 36-field transport contract.
 function mapAnimalListadoDbRow(row: AnimalListadoDbRow): AnimalListadoRow {
   const sexoKey = Number(row.sexo_key ?? 0)
@@ -773,16 +782,14 @@ function mapAnimalListadoDbRow(row: AnimalListadoDbRow): AnimalListadoRow {
 function buildAnimalListadoPredicates(request: AnimalListadoReadRequest): SQL[] {
   const predicates: SQL[] = []
   if (request.q) {
-    const search = `%${request.q.toLocaleLowerCase()}%`
     predicates.push(
-      sql`(lower(a.codigo) LIKE ${search} OR lower(a.nombre) LIKE ${search} OR lower(a.codigo_arete) LIKE ${search} OR lower(a.codigo_rfid) LIKE ${search})`,
+      sql`(${normalizedContains(sql`a.codigo`, request.q)} OR ${normalizedContains(sql`a.nombre`, request.q)} OR ${normalizedContains(sql`a.codigo_arete`, request.q)} OR ${normalizedContains(sql`a.codigo_rfid`, request.q)})`,
     )
   }
   for (const filter of request.filters) {
     const column = animalListFilterColumns[filter.key]
     if (!column) throw new Error(`Unsupported animal-list filter: ${filter.key}`)
-    if (filter.grammar === "contains")
-      predicates.push(sql`lower(${column}) LIKE ${`%${filter.value.toLocaleLowerCase()}%`}`)
+    if (filter.grammar === "contains") predicates.push(normalizedContains(column, filter.value))
     else if (filter.grammar === "in") {
       const values = filter.value.split(",").map((value) => sql`${value}`)
       predicates.push(sql`${column} IN (${sql.join(values, sql`, `)})`)

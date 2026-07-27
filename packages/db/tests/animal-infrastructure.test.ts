@@ -194,6 +194,7 @@ describe("PR2 animal DB infrastructure", () => {
       "0000_initial",
       "0001_animal_sync_audit",
       "0002_animal_list_indexes",
+      "0003_animal_list_unaccent",
     ])
   })
 })
