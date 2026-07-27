@@ -3,8 +3,11 @@ import assert from "node:assert/strict"
 import {
   ANIMAL_LIST_COLUMNS,
   apiError,
+  calculateAnimalAge,
   mapAnimalListadoRow,
   parseAnimalListadoQuery,
+  resolveAnimalOrigen,
+  selectLatestAnimalWeight,
 } from "../src/server/animal-list-contract.js"
 
 function testRegistryAndNullableRow() {
@@ -109,10 +112,32 @@ function testErrorEnvelope() {
   })
 }
 
+function testDeterministicDerivations() {
+  assert.equal(calculateAnimalAge("2020-01-01", new Date("2025-07-01T00:00:00Z")), 5.5)
+  assert.equal(calculateAnimalAge(null, new Date("2025-07-01T00:00:00Z")), null)
+  assert.deepEqual(
+    selectLatestAnimalWeight([
+      { id: "peso-1", fecha: "2025-06-15", pesoKg: 420 },
+      { id: "peso-2", fecha: "2025-06-15", pesoKg: 430 },
+      { id: "peso-3", fecha: "2025-05-15", pesoKg: 440 },
+    ]),
+    { pesoKg: 430, fecha: "2025-06-15" },
+  )
+  assert.equal(selectLatestAnimalWeight([]), null)
+}
+
+function testOrigenFallback() {
+  assert.equal(resolveAnimalOrigen(null, null), null)
+  assert.deepEqual(resolveAnimalOrigen(1, "Comprado"), { id: "1", label: "Comprado" })
+  assert.deepEqual(resolveAnimalOrigen(99, null), { id: "99", label: "Desconocido (99)" })
+}
+
 testRegistryAndNullableRow()
 testParserDefaultsAndNormalizedColumns()
 testInvalidGrammar()
 testErrorEnvelope()
+testDeterministicDerivations()
+testOrigenFallback()
 
 // biome-ignore lint/suspicious/noConsole: focused TDD harness progress output
 console.log("✅ animal-list-server-contract.test.ts passed")

@@ -27,6 +27,16 @@ export type {
 export type { ErrorValidacionAnimal } from "./casos-uso/animales/index.js"
 export type { AnimalReferenceCheckerPort } from "./puertos/animal-reference-checker-port.js"
 export type {
+  AnimalListadoFilterGrammar,
+  AnimalListadoIdLabel,
+  AnimalListadoKeyLabel,
+  AnimalListadoReadFilter,
+  AnimalListadoReadPort,
+  AnimalListadoReadRequest,
+  AnimalListadoReadResult,
+  AnimalListadoRow,
+} from "./puertos/animal-listado-port.js"
+export type {
   ArchivoAnimalPort,
   ColaBinariosPort,
   ImagenAnimalDto,

@@ -19,7 +19,10 @@ export const pesos = pgTable(
     usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("idx_pesos_animal").on(t.animalId, t.fecha)],
+  (t) => [
+    index("idx_pesos_animal").on(t.animalId, t.fecha),
+    index("idx_pesos_animal_fecha_id").on(t.animalId, t.fecha.desc(), t.id.desc()),
+  ],
 )
 
 export const produccionesLacteas = pgTable(

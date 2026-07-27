@@ -241,6 +241,40 @@ export function mapAnimalListadoRow(
   }
 }
 
+export function calculateAnimalAge(
+  fechaNacimiento: string | null,
+  now: Date = new Date(),
+): number | null {
+  if (!fechaNacimiento) return null
+  const birth = new Date(`${fechaNacimiento}T00:00:00Z`)
+  if (Number.isNaN(birth.getTime()) || birth > now) return null
+  const years = (now.getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+  return Math.round(years * 10) / 10
+}
+
+export function selectLatestAnimalWeight(
+  weights: readonly Readonly<{ id: string; fecha: string; pesoKg: number }>[],
+): PesoUltimo | null {
+  const latest = weights.reduce<Readonly<{ id: string; fecha: string; pesoKg: number }> | null>(
+    (current, weight) =>
+      !current ||
+      weight.fecha > current.fecha ||
+      (weight.fecha === current.fecha && weight.id > current.id)
+        ? weight
+        : current,
+    null,
+  )
+  return latest ? { pesoKg: latest.pesoKg, fecha: latest.fecha } : null
+}
+
+export function resolveAnimalOrigen(
+  tipoIngresoId: number | null,
+  label: string | null,
+): IdLabel | null {
+  if (tipoIngresoId === null) return null
+  return { id: String(tipoIngresoId), label: label ?? `Desconocido (${tipoIngresoId})` }
+}
+
 export function apiError(
   error: string,
   campo: string | null,

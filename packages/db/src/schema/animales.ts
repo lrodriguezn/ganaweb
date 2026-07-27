@@ -82,6 +82,7 @@ export const animales = pgTable(
     foreignKey({ columns: [t.donadoraId], foreignColumns: [t.id] }),
     uniqueIndex("uq_animales_finca_codigo").on(t.fincaId, t.codigo),
     index("idx_animales_finca_activo").on(t.fincaId, t.activo),
+    index("idx_animales_finca_activo_codigo").on(t.fincaId, t.activo, t.codigo),
     index("idx_animales_madre").on(t.madreId),
     index("idx_animales_padre").on(t.padreId),
   ],
