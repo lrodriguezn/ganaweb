@@ -1,11 +1,27 @@
 import { createHash, randomUUID } from "node:crypto"
 import { access, mkdir, rename, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import {
-  type AnimalListadoReadRequest,
-  type BenchmarkAnimalListadoReadRequest,
-  createBenchmarkAnimalListadoRequest,
+import type {
+  AnimalListadoReadRequest,
+  BenchmarkAnimalListadoReadRequest,
 } from "@ganaweb/aplicacion"
+
+/** Inlined from @ganaweb/aplicacion to satisfy db-to-aplicacion-runtime layer rule (type-only imports allowed). */
+function createBenchmarkAnimalListadoRequest(
+  overrides: Pick<BenchmarkAnimalListadoReadRequest, "page" | "pageSize">,
+): BenchmarkAnimalListadoReadRequest {
+  if (overrides.pageSize !== 10) throw new Error("Benchmark page size must be 10")
+  return {
+    usuarioId: "benchmark-reader",
+    fincaId: "finca-A",
+    page: overrides.page,
+    pageSize: 10,
+    sort: "codigo:asc",
+    q: null,
+    filters: [],
+    cols: ["codigo", "nombre"],
+  }
+}
 
 export const FIXTURE_VERSION = "rf-anim-list-11-v2"
 export const SCENARIO_MATRIX_VERSION = FIXTURE_VERSION

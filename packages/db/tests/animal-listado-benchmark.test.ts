@@ -1,7 +1,24 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { createBenchmarkAnimalListadoRequest } from "@ganaweb/aplicacion"
+import type { BenchmarkAnimalListadoReadRequest } from "@ganaweb/aplicacion"
+
+/** Inlined from @ganaweb/aplicacion to satisfy db-to-aplicacion-runtime layer rule (type-only imports allowed). */
+function createBenchmarkAnimalListadoRequest(
+  overrides: Pick<BenchmarkAnimalListadoReadRequest, "page" | "pageSize">,
+): BenchmarkAnimalListadoReadRequest {
+  if (overrides.pageSize !== 10) throw new Error("Benchmark page size must be 10")
+  return {
+    usuarioId: "benchmark-reader",
+    fincaId: "finca-A",
+    page: overrides.page,
+    pageSize: 10,
+    sort: "codigo:asc",
+    q: null,
+    filters: [],
+    cols: ["codigo", "nombre"],
+  }
+}
 import { describe, expect, it } from "vitest"
 import {
   BENCHMARK_LOCK_NAME,
