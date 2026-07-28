@@ -17,6 +17,27 @@ export interface AnimalListadoReadRequest {
   readonly cols: readonly string[]
 }
 
+/** Internal-only adapter for the contractual §11 benchmark. HTTP parsing remains 25/50/100. */
+export type BenchmarkAnimalListadoReadRequest = Omit<AnimalListadoReadRequest, "pageSize"> & {
+  readonly pageSize: 10
+}
+
+export function createBenchmarkAnimalListadoRequest(
+  overrides: Pick<BenchmarkAnimalListadoReadRequest, "page" | "pageSize">,
+): BenchmarkAnimalListadoReadRequest {
+  if (overrides.pageSize !== 10) throw new Error("Benchmark page size must be 10")
+  return {
+    usuarioId: "benchmark-reader",
+    fincaId: "finca-A",
+    page: overrides.page,
+    pageSize: 10,
+    sort: "codigo:asc",
+    q: null,
+    filters: [],
+    cols: ["codigo", "nombre"],
+  }
+}
+
 export interface AnimalListadoKeyLabel {
   readonly key: string
   readonly label: string
@@ -70,7 +91,7 @@ export interface AnimalListadoRow {
 export interface AnimalListadoReadResult {
   readonly data: readonly AnimalListadoRow[]
   readonly page: number
-  readonly pageSize: 25 | 50 | 100
+  readonly pageSize: 10 | 25 | 50 | 100
   readonly total: number
   readonly totalSinFiltro: number
   readonly sort: string
@@ -78,5 +99,7 @@ export interface AnimalListadoReadResult {
 }
 
 export interface AnimalListadoReadPort {
-  listar(request: AnimalListadoReadRequest): Promise<AnimalListadoReadResult>
+  listar(
+    request: AnimalListadoReadRequest | BenchmarkAnimalListadoReadRequest,
+  ): Promise<AnimalListadoReadResult>
 }

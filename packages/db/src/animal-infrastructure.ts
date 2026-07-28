@@ -9,6 +9,7 @@ import type {
   AnimalUpdateCambios,
   AnimalUseCaseDeps,
   ArchivoAnimalPort,
+  BenchmarkAnimalListadoReadRequest,
   ColaBinariosPort,
   EntradaOutbox,
   OutboxPort,
@@ -18,7 +19,6 @@ import type {
 import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
 import type { ErrorValidacionAnimal } from "@ganaweb/aplicacion"
 import { type SQL, and, asc, eq, or, sql } from "drizzle-orm"
-import { DrizzleAuthRepository } from "./auth-repository.js"
 import type { DbClient } from "./client.js"
 import {
   animales,
@@ -684,6 +684,30 @@ const animalListFilterColumns: Record<string, SQL> = {
   tipoExplotacionId: sql`a.tipo_explotacion_id`,
 }
 
+const animalListPageFilterColumns: Record<string, SQL> = {
+  ...animalListFilterColumns,
+  nombreMadre: sql`(SELECT madre_pagina.nombre FROM animales madre_pagina WHERE madre_pagina.id = a.madre_id)`,
+  nombrePadre: sql`(SELECT padre_pagina.nombre FROM animales padre_pagina WHERE padre_pagina.id = a.padre_id)`,
+  pesoUltimoKg: sql`(SELECT peso_pagina.peso_kg FROM pesos peso_pagina WHERE peso_pagina.animal_id = a.id ORDER BY peso_pagina.fecha DESC, peso_pagina.id DESC LIMIT 1)`,
+}
+
+const animalListPageSortColumns: Record<string, SQL> = {
+  ...animalListSortColumns,
+  razaLabel: sql`(SELECT raza_pagina.nombre FROM config_razas raza_pagina WHERE raza_pagina.id = a.raza_id)`,
+  colorLabel: sql`(SELECT color_pagina.nombre FROM config_colores color_pagina WHERE color_pagina.id = a.color_id)`,
+  nombreMadre: sql`(SELECT madre_pagina.nombre FROM animales madre_pagina WHERE madre_pagina.id = a.madre_id)`,
+  nombrePadre: sql`(SELECT padre_pagina.nombre FROM animales padre_pagina WHERE padre_pagina.id = a.padre_id)`,
+  propietarioLabel: sql`(SELECT propietario_pagina.nombre FROM propietarios propietario_pagina WHERE propietario_pagina.id = a.propietario_id)`,
+  hierroLabel: sql`(SELECT hierro_pagina.nombre FROM hierros hierro_pagina WHERE hierro_pagina.id = a.hierro_id)`,
+  calidadLabel: sql`(SELECT calidad_pagina.nombre FROM config_calidad_animal calidad_pagina WHERE calidad_pagina.id = a.calidad_animal_id)`,
+  potreroLabel: sql`(SELECT potrero_pagina.nombre FROM potreros potrero_pagina WHERE potrero_pagina.id = a.potrero_id)`,
+  sectorLabel: sql`(SELECT sector_pagina.nombre FROM sectores sector_pagina WHERE sector_pagina.id = a.sector_id)`,
+  loteLabel: sql`(SELECT lote_pagina.nombre FROM lotes lote_pagina WHERE lote_pagina.id = a.lote_id)`,
+  grupoLabel: sql`(SELECT grupo_pagina.nombre FROM grupos grupo_pagina WHERE grupo_pagina.id = a.grupo_id)`,
+  pesoUltimoKg: sql`(SELECT peso_pagina.peso_kg FROM pesos peso_pagina WHERE peso_pagina.animal_id = a.id ORDER BY peso_pagina.fecha DESC, peso_pagina.id DESC LIMIT 1)`,
+  tipoExplotacionLabel: sql`(SELECT tipo_explotacion_pagina.nombre FROM config_tipos_explotacion tipo_explotacion_pagina WHERE tipo_explotacion_pagina.id = a.tipo_explotacion_id)`,
+}
+
 function nullableString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null
 }
@@ -794,7 +818,10 @@ function mapAnimalListadoDbRow(row: AnimalListadoDbRow): AnimalListadoRow {
   }
 }
 
-function buildAnimalListadoPredicates(request: AnimalListadoReadRequest): SQL[] {
+function buildAnimalListadoPredicates(
+  request: AnimalListadoReadRequest | BenchmarkAnimalListadoReadRequest,
+  columns = animalListFilterColumns,
+): SQL[] {
   const predicates: SQL[] = []
   if (request.q) {
     predicates.push(
@@ -802,7 +829,7 @@ function buildAnimalListadoPredicates(request: AnimalListadoReadRequest): SQL[] 
     )
   }
   for (const filter of request.filters) {
-    const column = animalListFilterColumns[filter.key]
+    const column = columns[filter.key]
     if (!column) throw new Error(`Unsupported animal-list filter: ${filter.key}`)
     if (filter.grammar === "contains") predicates.push(normalizedContains(column, filter.value))
     else if (filter.grammar === "in") {
@@ -821,8 +848,7 @@ function buildAnimalListadoPredicates(request: AnimalListadoReadRequest): SQL[] 
   return predicates
 }
 
-const animalListadoFrom = sql`
-  FROM animales a
+const animalListadoJoins = sql`
   LEFT JOIN config_razas raza ON raza.id = a.raza_id
   LEFT JOIN config_colores color ON color.id = a.color_id
   LEFT JOIN animales madre ON madre.id = a.madre_id
@@ -843,31 +869,37 @@ export class DrizzleAnimalListadoReadModel implements AnimalListadoReadPort {
   lastStatementCount = 0
   constructor(private readonly db: DbClient) {}
 
-  async listar(request: AnimalListadoReadRequest): Promise<AnimalListadoReadResult> {
-    const authorization = await new DrizzleAuthRepository(
-      currentDb(this.db),
-    ).obtenerAutorizacionUsuario(request.usuarioId, request.fincaId)
-    if (
-      authorization.tipo !== "autorizado" ||
-      !authorization.sesion.permisos.some(
-        (permission) => permission.modulo === "animales" && permission.accion === "ver",
-      )
-    )
-      throw new AnimalListadoForbiddenError()
+  async listar(
+    request: AnimalListadoReadRequest | BenchmarkAnimalListadoReadRequest,
+  ): Promise<AnimalListadoReadResult> {
     const predicates = buildAnimalListadoPredicates(request)
+    const pagePredicates = buildAnimalListadoPredicates(request, animalListPageFilterColumns)
     const where = sql`WHERE a.finca_id = ${request.fincaId} AND a.activo = 1 ${predicates.length ? sql`AND ${sql.join(predicates, sql` AND `)}` : sql``}`
+    const pageWhere = sql`WHERE a.finca_id = ${request.fincaId} AND a.activo = 1 ${pagePredicates.length ? sql`AND ${sql.join(pagePredicates, sql` AND `)}` : sql``}`
     const [sortKey = "", direction] = request.sort.split(":")
     const sortColumn = animalListSortColumns[sortKey]
     if (!sortColumn) throw new Error(`Unsupported animal-list sort: ${sortKey}`)
+    const pageSortColumn = animalListPageSortColumns[sortKey]
+    if (!pageSortColumn) throw new Error(`Unsupported animal-list sort: ${sortKey}`)
     const order =
       direction === "desc" ? sql`${sortColumn} DESC, a.id ASC` : sql`${sortColumn} ASC, a.id ASC`
+    const pageOrder =
+      sortKey === "codigo"
+        ? direction === "desc"
+          ? sql`${pageSortColumn} DESC`
+          : sql`${pageSortColumn} ASC`
+        : direction === "desc"
+          ? sql`${pageSortColumn} DESC, a.id ASC`
+          : sql`${pageSortColumn} ASC, a.id ASC`
     this.lastStatementCount = 0
-    const page = await currentDb(this.db).execute(
-      sql`SELECT a.*, raza.nombre AS raza_nombre, color.nombre AS color_nombre, madre.nombre AS madre_nombre, padre.nombre AS padre_nombre, propietario.nombre AS propietario_nombre, hierro.nombre AS hierro_nombre, calidad.nombre AS calidad_nombre, potrero.nombre AS potrero_nombre, sector.nombre AS sector_nombre, lote.nombre AS lote_nombre, grupo.nombre AS grupo_nombre, tipo_explotacion.nombre AS tipo_explotacion_nombre, origen.value AS origen_label, ultimo_peso.peso_kg, ultimo_peso.fecha AS peso_fecha ${animalListadoFrom} ${where} ORDER BY ${order} LIMIT ${request.pageSize} OFFSET ${(request.page - 1) * request.pageSize}`,
+    const filtered = await currentDb(this.db).execute(
+      sql`WITH authz AS (SELECT EXISTS (SELECT 1 FROM usuarios u JOIN usuarios_fincas uf ON uf.usuario_id = u.id JOIN usuarios_roles_asignacion ura ON ura.usuario_id = u.id AND ura.finca_id = uf.finca_id JOIN usuarios_roles ur ON ur.id = ura.rol_id JOIN roles_permisos rp ON rp.rol_id = ur.id JOIN usuarios_permisos up ON up.id = rp.permiso_id WHERE u.id = ${request.usuarioId} AND u.activo = 1 AND uf.finca_id = ${request.fincaId} AND uf.activo = 1 AND ura.activo = 1 AND ur.activo = 1 AND rp.activo = 1 AND up.activo = 1 AND up.modulo = 'animales' AND up.accion = 'ver') AS authorized) SELECT CASE WHEN authorized THEN (SELECT count(*)::int FROM animales a ${animalListadoJoins} ${where}) ELSE 0 END AS count, authorized FROM authz`,
     )
     this.lastStatementCount += 1
-    const filtered = await currentDb(this.db).execute(
-      sql`SELECT count(*)::int AS count ${animalListadoFrom} ${where}`,
+    const filteredRows = filtered as AnimalListadoDbRow[]
+    if (filteredRows[0]?.authorized !== true) throw new AnimalListadoForbiddenError()
+    const page = await currentDb(this.db).execute(
+      sql`WITH pagina AS (SELECT a.id FROM animales a ${pageWhere} ORDER BY ${pageOrder} LIMIT ${request.pageSize} OFFSET ${(request.page - 1) * request.pageSize}) SELECT a.*, raza.nombre AS raza_nombre, color.nombre AS color_nombre, madre.nombre AS madre_nombre, padre.nombre AS padre_nombre, propietario.nombre AS propietario_nombre, hierro.nombre AS hierro_nombre, calidad.nombre AS calidad_nombre, potrero.nombre AS potrero_nombre, sector.nombre AS sector_nombre, lote.nombre AS lote_nombre, grupo.nombre AS grupo_nombre, tipo_explotacion.nombre AS tipo_explotacion_nombre, origen.value AS origen_label, ultimo_peso.peso_kg, ultimo_peso.fecha AS peso_fecha FROM pagina p JOIN animales a ON a.id = p.id ${animalListadoJoins} ORDER BY ${order}`,
     )
     this.lastStatementCount += 1
     const unfiltered = await currentDb(this.db).execute(
@@ -875,7 +907,6 @@ export class DrizzleAnimalListadoReadModel implements AnimalListadoReadPort {
     )
     this.lastStatementCount += 1
     const pageRows = page as AnimalListadoDbRow[]
-    const filteredRows = filtered as AnimalListadoDbRow[]
     const unfilteredRows = unfiltered as AnimalListadoDbRow[]
     return {
       data: pageRows.map(mapAnimalListadoDbRow),

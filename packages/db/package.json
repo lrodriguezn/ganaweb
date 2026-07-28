@@ -49,7 +49,9 @@
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
     "push": "drizzle-kit push",
-    "seed": "tsx src/seed/seed.ts"
+    "seed": "tsx src/seed/seed.ts",
+    "benchmark:animal-listado": "tsx src/benchmark/run-animal-listado.ts",
+    "vacuum:analyze": "tsx scripts/vacuum-analyze.ts"
   },
   "dependencies": {
     "@ganaweb/aplicacion": "workspace:*",

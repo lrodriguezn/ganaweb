@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { sql } from "drizzle-orm"
+import { drizzle } from "drizzle-orm/postgres-js"
+import postgres from "postgres"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import {
   AnimalListadoForbiddenError,
@@ -191,11 +193,35 @@ describe("DrizzleAnimalListadoReadModel (PostgreSQL)", () => {
   })
 
   it("executes a fixed bounded statement set for pages with multiple rows", async () => {
-    const readModel = new DrizzleAnimalListadoReadModel(db)
-    const result = await readModel.listar(request({ pageSize: 50 }))
+    const statements: string[] = []
+    const client = postgres(process.env.DATABASE_URL ?? databaseUrl, {
+      max: 1,
+      debug: (_connection, query) => statements.push(query),
+    })
+    const readModel = new DrizzleAnimalListadoReadModel(
+      drizzle(client) as unknown as ReturnType<typeof createClient>,
+    )
+    try {
+      await client`SELECT 1`
+      statements.length = 0
+      const result = await readModel.listar(request({ pageSize: 50 }))
 
-    expect(result.data).toHaveLength(9)
-    expect(readModel.lastStatementCount).toBe(3)
+      expect(result.data).toHaveLength(9)
+      expect(statements).toHaveLength(3)
+      expect(statements[0]).toMatch(/^with "?authz"? as/iu)
+      expect(statements[0]).toMatch(/select count\(\*\).*authorized/isu)
+      expect(statements[1]).toMatch(/^with "?pagina"? as/iu)
+      expect(statements[2]).toMatch(/^select count\(\*\)/iu)
+
+      statements.length = 0
+      await expect(
+        readModel.listar(request({ usuarioId: unprivilegedUser })),
+      ).rejects.toBeInstanceOf(AnimalListadoForbiddenError)
+      expect(statements).toHaveLength(1)
+      expect(statements[0]).not.toMatch(/with "?pagina"? as/iu)
+    } finally {
+      await client.end({ timeout: 5 })
+    }
   })
 
   it.each(qCases)(
@@ -223,6 +249,19 @@ describe("DrizzleAnimalListadoReadModel (PostgreSQL)", () => {
       }
     },
   )
+
+  it("sorts by a parent label without moving the parent join into the page CTE", async () => {
+    const readModel = new DrizzleAnimalListadoReadModel(db)
+    const result = await readModel.listar(request({ sort: "nombreMadre:asc" }))
+
+    expect(
+      result.data.findIndex((animal) => animal.id === accentSearchAnimal),
+    ).toBeGreaterThanOrEqual(0)
+    expect(result.data.find((animal) => animal.id === accentSearchAnimal)?.nombreMadre).toBe(
+      "NOMBREMADREÁÉÍÓÚÑ",
+    )
+    expect(readModel.lastStatementCount).toBe(3)
+  })
 
   it("matches accented q and contains queries against an unaccented stored counterpart", async () => {
     const readModel = new DrizzleAnimalListadoReadModel(db)

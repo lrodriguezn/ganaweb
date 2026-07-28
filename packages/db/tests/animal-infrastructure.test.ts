@@ -178,6 +178,10 @@ describe("PR2 animal DB infrastructure", () => {
       resolve(packageRoot, "migrations", "0001_animal_sync_audit.sql"),
       "utf8",
     )
+    const pageIndex = await readFile(
+      resolve(packageRoot, "migrations", "0004_animal_list_page_index_covering.sql"),
+      "utf8",
+    )
     const journal = JSON.parse(
       await readFile(resolve(packageRoot, "migrations", "meta", "_journal.json"), "utf8"),
     )
@@ -190,11 +194,14 @@ describe("PR2 animal DB infrastructure", () => {
     expect(additive).toContain('CREATE TABLE IF NOT EXISTS "auditoria_eliminaciones"')
     expect(additive).toContain('CREATE TABLE IF NOT EXISTS "sync_tombstones"')
     expect(additive).toContain('CREATE TABLE IF NOT EXISTS "sync_cola_binaria"')
+    expect(pageIndex).toContain('DROP INDEX "idx_animales_finca_activo_codigo"')
+    expect(pageIndex).toContain('INCLUDE ("id")')
     expect(journal.entries.map((entry: { tag: string }) => entry.tag)).toEqual([
       "0000_initial",
       "0001_animal_sync_audit",
       "0002_animal_list_indexes",
       "0003_animal_list_unaccent",
+      "0004_animal_list_page_index_covering",
     ])
   })
 })
