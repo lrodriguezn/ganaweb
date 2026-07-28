@@ -824,7 +824,7 @@ function buildSearchPredicate(q: string): SQL {
 
 function buildFilterPredicate(
   column: SQL,
-  filter: { key: string; value: string; grammar: "contains" | "in" | "bool" | "range" },
+  filter: { key: string; value: string; grammar: "contains" | "in" | "bool" | "range" | "drange" },
 ): SQL {
   if (filter.grammar === "contains") return normalizedContains(column, filter.value)
   if (filter.grammar === "in") {
