@@ -1,10 +1,6 @@
 {
   "label": "with-analyze",
-  "paramTypes": [
-    "text",
-    "integer",
-    "integer"
-  ],
+  "paramTypes": ["text", "integer", "integer"],
   "checksum": "7e905214ef0675ded722769e6df956e2149abb5977f66e33c0ec88b89ad57ca9",
   "planPrepared": [
     {
@@ -22,10 +18,7 @@
             "Actual Total Time": 6.656,
             "Actual Rows": 100,
             "Actual Loops": 1,
-            "Sort Key": [
-              "a.codigo",
-              "a.id"
-            ],
+            "Sort Key": ["a.codigo", "a.id"],
             "Sort Method": "quicksort",
             "Sort Space Used": 47,
             "Sort Space Type": "Memory",
@@ -1454,10 +1447,7 @@
             "Actual Total Time": 4.488,
             "Actual Rows": 100,
             "Actual Loops": 1,
-            "Sort Key": [
-              "a.codigo",
-              "a.id"
-            ],
+            "Sort Key": ["a.codigo", "a.id"],
             "Sort Method": "quicksort",
             "Sort Space Used": 47,
             "Sort Space Type": "Memory",

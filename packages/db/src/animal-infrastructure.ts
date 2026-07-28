@@ -818,32 +818,37 @@ function mapAnimalListadoDbRow(row: AnimalListadoDbRow): AnimalListadoRow {
   }
 }
 
+function buildSearchPredicate(q: string): SQL {
+  return sql`(${normalizedContains(sql`a.codigo`, q)} OR ${normalizedContains(sql`a.nombre`, q)} OR ${normalizedContains(sql`a.codigo_arete`, q)} OR ${normalizedContains(sql`a.codigo_rfid`, q)})`
+}
+
+function buildFilterPredicate(
+  column: SQL,
+  filter: { key: string; value: string; grammar: "contains" | "in" | "bool" | "range" },
+): SQL {
+  if (filter.grammar === "contains") return normalizedContains(column, filter.value)
+  if (filter.grammar === "in") {
+    const values = filter.value.split(",").map((v) => sql`${v}`)
+    return sql`${column} IN (${sql.join(values, sql`, `)})`
+  }
+  if (filter.grammar === "bool") return sql`${column} = ${filter.value === "true" ? 1 : 0}`
+  const [min, max] = filter.value.split(",")
+  const bounds = isEpochDateColumn(filter.key)
+    ? ([isoToEpochStart(min ?? ""), isoToEpochStart(max ?? "")] as const)
+    : ([min ?? "", max ?? ""] as const)
+  return sql`${column} BETWEEN ${bounds[0]} AND ${bounds[1]}`
+}
+
 function buildAnimalListadoPredicates(
   request: AnimalListadoReadRequest | BenchmarkAnimalListadoReadRequest,
   columns = animalListFilterColumns,
 ): SQL[] {
   const predicates: SQL[] = []
-  if (request.q) {
-    predicates.push(
-      sql`(${normalizedContains(sql`a.codigo`, request.q)} OR ${normalizedContains(sql`a.nombre`, request.q)} OR ${normalizedContains(sql`a.codigo_arete`, request.q)} OR ${normalizedContains(sql`a.codigo_rfid`, request.q)})`,
-    )
-  }
+  if (request.q) predicates.push(buildSearchPredicate(request.q))
   for (const filter of request.filters) {
     const column = columns[filter.key]
     if (!column) throw new Error(`Unsupported animal-list filter: ${filter.key}`)
-    if (filter.grammar === "contains") predicates.push(normalizedContains(column, filter.value))
-    else if (filter.grammar === "in") {
-      const values = filter.value.split(",").map((value) => sql`${value}`)
-      predicates.push(sql`${column} IN (${sql.join(values, sql`, `)})`)
-    } else if (filter.grammar === "bool")
-      predicates.push(sql`${column} = ${filter.value === "true" ? 1 : 0}`)
-    else {
-      const [min, max] = filter.value.split(",")
-      const bounds = isEpochDateColumn(filter.key)
-        ? ([isoToEpochStart(min ?? ""), isoToEpochStart(max ?? "")] as const)
-        : ([min ?? "", max ?? ""] as const)
-      predicates.push(sql`${column} BETWEEN ${bounds[0]} AND ${bounds[1]}`)
-    }
+    predicates.push(buildFilterPredicate(column, filter))
   }
   return predicates
 }

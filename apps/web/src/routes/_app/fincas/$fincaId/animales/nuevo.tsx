@@ -57,26 +57,40 @@ function parseOrigen(value: FormDataEntryValue | null): "nacido_en_finca" | "com
   return undefined
 }
 
+function collectOptionalStringFields(
+  formData: FormData,
+  names: readonly string[],
+): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const name of names) {
+    const value = optionalText(formData, name)
+    if (value) out[name] = value
+  }
+  return out
+}
+
 export function buildCreateAnimalInputFromFormData(
   fincaId: string,
   formData: FormData,
 ): CreateAnimalWebInput {
-  const potreroId = optionalText(formData, "potreroId")
-  const sectorId = optionalText(formData, "sectorId")
-  const loteId = optionalText(formData, "loteId")
-  const grupoId = optionalText(formData, "grupoId")
+  const stringFields = collectOptionalStringFields(formData, [
+    "potreroId",
+    "sectorId",
+    "loteId",
+    "grupoId",
+    "fechaNacimiento",
+    "fechaCompra",
+    "raza",
+    "color",
+    "calidad",
+    "tipoExplotacion",
+    "lugarCompra",
+    "madreId",
+    "padreId",
+  ])
   const origen = parseOrigen(formData.get("origen"))
-  const fechaNacimiento = optionalText(formData, "fechaNacimiento")
-  const fechaCompra = optionalText(formData, "fechaCompra")
-  const razaId = optionalText(formData, "raza")
-  const colorId = optionalText(formData, "color")
-  const calidadId = optionalText(formData, "calidad")
-  const tipoExplotacionId = optionalText(formData, "tipoExplotacion")
-  const lugarCompraId = optionalText(formData, "lugarCompra")
-  const madreId = optionalText(formData, "madreId")
-  const padreId = optionalText(formData, "padreId")
-  const precioCompra = parseEsCONumber(formData.get("precioCompra"))
-  const pesoCompra = parseEsCONumber(formData.get("pesoCompra"))
+  const precioCompra = parseEsCONumber(formData.get("precioCompra")) ?? undefined
+  const pesoCompra = parseEsCONumber(formData.get("pesoCompra")) ?? undefined
 
   return {
     fincaId,
@@ -84,20 +98,8 @@ export function buildCreateAnimalInputFromFormData(
       codigo: requiredText(formData, "codigo"),
       nombre: requiredText(formData, "nombre"),
       sexoKey: parseSexoKey(formData.get("sexoKey")),
-      ...(potreroId ? { potreroId } : {}),
-      ...(sectorId ? { sectorId } : {}),
-      ...(loteId ? { loteId } : {}),
-      ...(grupoId ? { grupoId } : {}),
+      ...stringFields,
       ...(origen ? { origen } : {}),
-      ...(fechaNacimiento ? { fechaNacimiento } : {}),
-      ...(fechaCompra ? { fechaCompra } : {}),
-      ...(razaId ? { razaId } : {}),
-      ...(colorId ? { colorId } : {}),
-      ...(calidadId ? { calidadId } : {}),
-      ...(tipoExplotacionId ? { tipoExplotacionId } : {}),
-      ...(lugarCompraId ? { lugarCompraId } : {}),
-      ...(madreId ? { madreId } : {}),
-      ...(padreId ? { padreId } : {}),
       ...(precioCompra !== undefined ? { precioCompra } : {}),
       ...(pesoCompra !== undefined ? { pesoCompra } : {}),
     },
