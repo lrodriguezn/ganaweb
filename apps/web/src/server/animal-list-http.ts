@@ -24,10 +24,9 @@ export function createAnimalListadoHttpHandler(deps: AnimalListadoHttpDependenci
       )
     }
 
-    const usuarioId = await deps.getUsuarioId(fincaId)
-    if (!usuarioId) return forbiddenResponse(requestId)
-
     try {
+      const usuarioId = await deps.getUsuarioId(fincaId)
+      if (!usuarioId) return forbiddenResponse(requestId)
       const result = await deps.readPort.listar({ ...parsed.value, fincaId, usuarioId })
       return Response.json(result)
     } catch (error) {

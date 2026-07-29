@@ -51,7 +51,8 @@
     "push": "drizzle-kit push",
     "seed": "tsx src/seed/seed.ts",
     "benchmark:animal-listado": "tsx src/benchmark/run-animal-listado.ts",
-    "vacuum:analyze": "tsx scripts/vacuum-analyze.ts"
+    "vacuum:analyze": "tsx scripts/vacuum-analyze.ts",
+    "concurrent-index-deploy": "tsx scripts/concurrent-index-deploy.ts"
   },
   "dependencies": {
     "@ganaweb/aplicacion": "workspace:*",

@@ -32,3 +32,18 @@ describe("animal list migrations", () => {
     expect(journal).toContain('"tag": "0003_animal_list_unaccent"')
   })
 })
+
+describe("concurrent index deploy script", () => {
+  const scriptUrl = new URL("../scripts/concurrent-index-deploy.ts", import.meta.url)
+
+  it("deploys and recovers the animal-list indexes concurrently, outside a transaction", async () => {
+    const source = await readFile(fileURLToPath(scriptUrl), "utf8")
+
+    expect(source).toContain("CREATE INDEX CONCURRENTLY")
+    expect(source).toContain("REINDEX CONCURRENTLY")
+    expect(source).toContain("pg_index")
+    expect(source).toContain("indisvalid")
+    expect(source).not.toMatch(/\.begin\(/)
+    expect(source).not.toMatch(/\bBEGIN\b/)
+  })
+})
