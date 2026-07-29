@@ -1,3 +1,4 @@
+import type { DecisionAutorizacion, PermisoUsuario } from "@ganaweb/aplicacion"
 /**
  * #108 (PR 1) — typed #107 route adapter + fail-closed visual permission
  * projection. Vitest suite, node environment (pure logic, no DOM).
@@ -27,6 +28,11 @@ import type {
   AnimalListadoRowDto,
   ApiErrorDto,
 } from "../src/server/animal-list-contract.js"
+import {
+  PERMISOS_VISUALES_LISTADO_DENEGADOS,
+  proyectarPermisosVisualesListado,
+  resolverPermisosVisualesListado,
+} from "../src/server/animal-listado-permissions.server.js"
 
 const IDS_CANONICOS_29 = [
   "codigo",
@@ -230,7 +236,9 @@ describe("Canonical online table contract (task 1.2/1.3)", () => {
 
   it("exposes the canonical 29 default columns in order with Spanish labels", () => {
     expect(ANIMAL_LISTADO_DEFAULT_COLUMNS).toHaveLength(29)
-    expect(ANIMAL_LISTADO_DEFAULT_COLUMNS.map((columna) => columna.id)).toEqual([...IDS_CANONICOS_29])
+    expect(ANIMAL_LISTADO_DEFAULT_COLUMNS.map((columna) => columna.id)).toEqual([
+      ...IDS_CANONICOS_29,
+    ])
     expect(ANIMAL_LISTADO_DEFAULT_COLUMNS.map((columna) => columna.label)).toEqual(
       ETIQUETAS_CANONICAS_29,
     )
@@ -253,7 +261,9 @@ describe("Canonical online table contract (task 1.2/1.3)", () => {
     // Catalog/relation nulls announce absence; scalar nulls use a dash.
     expect(formatearCeldaListado(columnaPorId("raza"), filaSinDatos)).toBe("Sin registrar")
     expect(formatearCeldaListado(columnaPorId("propietario"), filaSinDatos)).toBe("Sin registrar")
-    expect(formatearCeldaListado(columnaPorId("tipoExplotacion"), filaSinDatos)).toBe("Sin registrar")
+    expect(formatearCeldaListado(columnaPorId("tipoExplotacion"), filaSinDatos)).toBe(
+      "Sin registrar",
+    )
     expect(formatearCeldaListado(columnaPorId("edad"), filaSinDatos)).toBe("-")
     expect(formatearCeldaListado(columnaPorId("numeroPezones"), filaSinDatos)).toBe("-")
     expect(formatearCeldaListado(columnaPorId("comentarios"), filaSinDatos)).toBe("-")
@@ -371,5 +381,124 @@ describe("400 sanitization — invalid query preserves data (LA-040–043, task 
     expect(resultado.pageReset).toBe(false)
     expect(resultado.sanitizedQuery.get("page")).toBe("2")
     expect(resultado.toast.mensaje).toBe("Petición no permitida")
+  })
+})
+
+function sesionAutorizada(
+  permisos: readonly PermisoUsuario[],
+  fincaActivaId = "finca-1",
+): DecisionAutorizacion {
+  return {
+    tipo: "autorizado",
+    sesion: {
+      usuarioId: "usuario-1",
+      nombre: "Operario",
+      email: "operario@ganaweb.test",
+      fincaActivaId,
+      fincaActivaNombre: "Finca 1",
+      rol: "Mayordomo",
+      permisos,
+    },
+  }
+}
+
+const permiso = (modulo: string, accion: string): PermisoUsuario => ({ modulo, accion })
+
+describe("Visual permission projection — fail closed (LA-RBAC-02/03, PE-001–003, task 1.5/1.6)", () => {
+  const fincaId = "finca-1"
+
+  it("grants nothing when the session has no relevant permissions", () => {
+    const resultado = proyectarPermisosVisualesListado(
+      sesionAutorizada([permiso("configuracion", "ver")]),
+      fincaId,
+    )
+    expect(resultado).toEqual({ canCreate: false, canExport: false })
+  })
+
+  it("canCreate requires animales:crear", () => {
+    expect(
+      proyectarPermisosVisualesListado(sesionAutorizada([permiso("animales", "crear")]), fincaId),
+    ).toEqual({ canCreate: true, canExport: false })
+    expect(
+      proyectarPermisosVisualesListado(sesionAutorizada([permiso("animales", "ver")]), fincaId),
+    ).toEqual({ canCreate: false, canExport: false })
+  })
+
+  it("canExport requires animales:ver AND reportes:exportar", () => {
+    expect(
+      proyectarPermisosVisualesListado(sesionAutorizada([permiso("animales", "ver")]), fincaId),
+    ).toEqual({ canCreate: false, canExport: false })
+    expect(
+      proyectarPermisosVisualesListado(
+        sesionAutorizada([permiso("reportes", "exportar")]),
+        fincaId,
+      ),
+    ).toEqual({ canCreate: false, canExport: false })
+    expect(
+      proyectarPermisosVisualesListado(
+        sesionAutorizada([permiso("animales", "ver"), permiso("reportes", "exportar")]),
+        fincaId,
+      ),
+    ).toEqual({ canCreate: false, canExport: true })
+  })
+
+  it("grants both flags with the full combination", () => {
+    const resultado = proyectarPermisosVisualesListado(
+      sesionAutorizada([
+        permiso("animales", "crear"),
+        permiso("animales", "ver"),
+        permiso("reportes", "exportar"),
+      ]),
+      fincaId,
+    )
+    expect(resultado).toEqual({ canCreate: true, canExport: true })
+  })
+
+  it("the global *:* grant enables both flags", () => {
+    const resultado = proyectarPermisosVisualesListado(
+      sesionAutorizada([permiso("*", "*")]),
+      fincaId,
+    )
+    expect(resultado).toEqual({ canCreate: true, canExport: true })
+  })
+
+  it("fails closed for unauthenticated and pending decisions — no false 403", () => {
+    expect(proyectarPermisosVisualesListado({ tipo: "no_autenticado" }, fincaId)).toEqual(
+      PERMISOS_VISUALES_LISTADO_DENEGADOS,
+    )
+    expect(
+      proyectarPermisosVisualesListado(
+        { tipo: "pendiente", usuarioId: "u", nombre: "N", email: "e" },
+        fincaId,
+      ),
+    ).toEqual(PERMISOS_VISUALES_LISTADO_DENEGADOS)
+  })
+
+  it("fails closed when the authorized session belongs to another finca", () => {
+    const resultado = proyectarPermisosVisualesListado(
+      sesionAutorizada(
+        [permiso("animales", "crear"), permiso("animales", "ver"), permiso("reportes", "exportar")],
+        "finca-ajena",
+      ),
+      fincaId,
+    )
+    expect(resultado).toEqual(PERMISOS_VISUALES_LISTADO_DENEGADOS)
+  })
+
+  it("the server resolver fails closed outside a request context instead of throwing", async () => {
+    // No request context, no session cookie: the resolver must resolve both
+    // flags false (denial/failure fail closed) and never throw a false 403.
+    const resultado = await resolverPermisosVisualesListado(fincaId)
+    expect(resultado).toEqual({ canCreate: false, canExport: false })
+  })
+})
+
+describe("Server fn exposure (task 1.7)", () => {
+  it("exposes the projection as a read-only server fn and leaves the legacy/#107 surface intact", async () => {
+    const modulo = await import("../src/server/animal-actions.server.js")
+    expect(typeof modulo.getAnimalListadoVisualPermissionsAction).toBe("function")
+    // Regression guard: the legacy mobile list action stays exported and the
+    // #107 API route is not modified by this change.
+    expect(typeof modulo.listAnimalsAction).toBe("function")
   })
 })

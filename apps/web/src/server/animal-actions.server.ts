@@ -49,6 +49,7 @@ import { DrizzleCatalogoPadresAdapter } from "@ganaweb/db/catalogo-padres-infras
 import { db } from "@ganaweb/db/client"
 import type { AnimalListItem, AnimalTimelineItem } from "@ganaweb/ui"
 import { createServerFn } from "@tanstack/react-start"
+import { resolverPermisosVisualesListado } from "./animal-listado-permissions.server.js"
 import {
   createAnimalE2eCatalogoFincaPort,
   createAnimalE2eCatalogoMaestroPort,
@@ -1081,6 +1082,17 @@ function getRuntimeHarness() {
 export const listAnimalsAction = createServerFn({ method: "GET" })
   .validator((data: { fincaId: string } & AnimalListFilters) => data)
   .handler(({ data }) => getRuntimeHarness().list(data))
+
+/**
+ * #108 (PR 1): read-only visual permission projection for the desktop animal
+ * list (LA-RBAC-02/03). Serializes `{ canCreate, canExport }` and fails closed
+ * (both flags false) on denial or failure. Presentation only (LA-RBAC-05): no
+ * mutation and no authorization policy change — #107 listing authorization,
+ * create enforcement, and future #111 export enforcement stay authoritative.
+ */
+export const getAnimalListadoVisualPermissionsAction = createServerFn({ method: "GET" })
+  .validator((data: { fincaId: string }) => data)
+  .handler(({ data }) => resolverPermisosVisualesListado(data.fincaId))
 
 export const getAnimalFichaAction = createServerFn({ method: "GET" })
   .validator((data: AnimalIdWebInput & { cursorTimeline?: string }) => data)

@@ -153,7 +153,6 @@ function booleano(valor: boolean): string {
  * present `Sin registrar`; absent scalar values present `-`; never the `null`
  * literal nor zero for an absent value (§6.2).
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: one bounded display branch per column of the 36-field transport contract.
 export function formatearCeldaListado(
   columna: AnimalListadoColumn,
   fila: AnimalListadoRowDto,
