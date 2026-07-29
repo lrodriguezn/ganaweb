@@ -10,9 +10,12 @@
  *
  * The default environment is `node` to keep parity with the existing tsx-based
  * tests; the E2E test uses a per-file `// @vitest-environment jsdom` directive.
- * The include pattern is scoped to the E2E test so vitest does not re-run the
- * tsx-based unit tests (which would double-execute the run() at the bottom of
- * each file).
+ * The include pattern is scoped so vitest does not re-run the tsx-based unit
+ * tests (which would double-execute the run() at the bottom of each file).
+ *
+ * `animal-listado-route.test.tsx` (#108, PR 1) is a vitest suite covering the
+ * typed #107 route adapter and the fail-closed visual permission projection;
+ * it runs in the node environment (pure logic, no DOM).
  */
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vitest/config"
@@ -21,7 +24,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     allowOnly: false,
-    include: ["tests/animal-create-e2e.test.tsx"],
+    include: ["tests/animal-create-e2e.test.tsx", "tests/animal-listado-route.test.tsx"],
     environment: "node",
   },
 })
