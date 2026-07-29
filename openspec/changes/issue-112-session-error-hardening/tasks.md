@@ -42,7 +42,7 @@ Chain strategy: pending
 
 ## Phase 3: Verification & Manual Integration
 
-- [ ] 3.1 `pnpm turbo test` — all packages green (web contract + db source-invariant + indexes).
-- [ ] 3.2 Manual disposable PG 17: run script twice → both exit 0, `indisvalid=true`, second run no-op (spec: re-run no-op).
-- [ ] 3.3 Manual recovery: leave invalid index (`indisvalid=false`), run → drop + `REINDEX CONCURRENTLY`, valid, exit 0 (spec: interrupted build recovered).
-- [ ] 3.4 Manual RBAC/rollback: animal-list authorization identical post-deploy; `DROP INDEX CONCURRENTLY` keeps queries correct (spec: additive + reversible).
+- [x] 3.1 `pnpm turbo test` — all packages green (web contract + db source-invariant + indexes).
+- [x] 3.2 Manual disposable PG 17: run script twice → both exit 0, `indisvalid=true`, second run no-op (spec: re-run no-op).
+- [x] 3.3 Manual recovery: leave invalid index (`indisvalid=false`), run → drop + `REINDEX CONCURRENTLY`, valid, exit 0 (spec: interrupted build recovered).
+- [x] 3.4 Manual RBAC/rollback: animal-list authorization identical post-deploy; `DROP INDEX CONCURRENTLY` keeps queries correct (spec: additive + reversible).
