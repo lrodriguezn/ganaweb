@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest"
 import {
   ANIMAL_LISTADO_COLUMN_REGISTRY,
   ANIMAL_LISTADO_DEFAULT_COLUMNS,
+  cargarListadoDesktop,
   construirModeloListadoDesktop,
   formatearCeldaListado,
   resolverColumnaListado,
@@ -500,5 +501,124 @@ describe("Server fn exposure (task 1.7)", () => {
     // Regression guard: the legacy mobile list action stays exported and the
     // #107 API route is not modified by this change.
     expect(typeof modulo.listAnimalsAction).toBe("function")
+  })
+})
+
+describe("Desktop model mirrors the #107 sort — aria-sort source (task 3.1)", () => {
+  it("mirrors codigo:asc as the default orden", () => {
+    const modelo = construirModeloListadoDesktop(respuestaListado(), permisosFijos)
+    expect(modelo.orden).toEqual({ campo: "codigo", direccion: "asc" })
+  })
+
+  it("mirrors a descending sort and fails safe on a malformed sort", () => {
+    const descendente = construirModeloListadoDesktop(
+      respuestaListado({ sort: "nombre:desc" }),
+      permisosFijos,
+    )
+    expect(descendente.orden).toEqual({ campo: "nombre", direccion: "desc" })
+
+    const malformado = construirModeloListadoDesktop(
+      respuestaListado({ sort: "nombre:sin-direccion" }),
+      permisosFijos,
+    )
+    expect(malformado.orden).toEqual({ campo: "codigo", direccion: "asc" })
+  })
+})
+
+describe("Route wiring — #107 outcomes reach only the desktop adapter (task 3.1)", () => {
+  const fincaId = "finca-1"
+
+  const fetchFijo =
+    (cuerpo: unknown, estado = 200): typeof fetch =>
+    async () =>
+      new Response(JSON.stringify(cuerpo), { status: estado })
+
+  it("200 → listo with the desktop model built through the adapter", async () => {
+    const resultado = await cargarListadoDesktop(fincaId, permisosFijos, {
+      fetchImpl: fetchFijo(respuestaListado()),
+    })
+    if (resultado.tipo !== "listo") throw new Error(`esperado listo, recibido ${resultado.tipo}`)
+    expect(resultado.modelo.columns.map((columna) => columna.id)).toEqual([...IDS_CANONICOS_29])
+    expect(resultado.modelo.rows).toHaveLength(2)
+    expect(resultado.modelo.total).toBe(2)
+    expect(resultado.modelo.totalSinFiltro).toBe(10)
+    expect(resultado.modelo.permissions).toEqual(permisosFijos)
+    expect(resultado.modelo.orden).toEqual({ campo: "codigo", direccion: "asc" })
+  })
+
+  it("requests the #107 endpoint for the finca and appends the consulta", async () => {
+    const urls: string[] = []
+    const fetchImpl: typeof fetch = async (input) => {
+      urls.push(String(input))
+      return new Response(JSON.stringify(respuestaListado()), { status: 200 })
+    }
+    await cargarListadoDesktop(fincaId, permisosFijos, { fetchImpl })
+    await cargarListadoDesktop(fincaId, permisosFijos, { fetchImpl, consulta: "?page=2" })
+    expect(urls).toEqual(["/api/fincas/finca-1/animales", "/api/fincas/finca-1/animales?page=2"])
+  })
+
+  it("400 → consulta_invalida carrying the #107 ApiErrorDto", async () => {
+    const resultado = await cargarListadoDesktop(fincaId, permisosFijos, {
+      fetchImpl: fetchFijo(error400(), 400),
+    })
+    expect(resultado).toEqual({ tipo: "consulta_invalida", error: error400() })
+  })
+
+  it("403 → sin_acceso through the adapter, not the legacy action", async () => {
+    const cuerpo = error400({
+      error: "forbidden",
+      campo: null,
+      motivo: "No autorizado",
+      requestId: "req-403",
+    })
+    const resultado = await cargarListadoDesktop(fincaId, permisosFijos, {
+      fetchImpl: fetchFijo(cuerpo, 403),
+    })
+    if (resultado.tipo !== "sin_acceso") {
+      throw new Error(`esperado sin_acceso, recibido ${resultado.tipo}`)
+    }
+    expect(resultado.error.requestId).toBe("req-403")
+  })
+
+  it("500 → error_servidor carrying the ApiErrorDto", async () => {
+    const cuerpo = error400({
+      error: "internal_error",
+      campo: null,
+      motivo: "No fue posible consultar los animales",
+      requestId: "req-500",
+    })
+    const resultado = await cargarListadoDesktop(fincaId, permisosFijos, {
+      fetchImpl: fetchFijo(cuerpo, 500),
+    })
+    expect(resultado).toEqual({ tipo: "error_servidor", error: cuerpo })
+  })
+
+  it("network failure → error_servidor with null error, never a false 403", async () => {
+    const fetchImpl: typeof fetch = async () => {
+      throw new TypeError("fetch failed")
+    }
+    const resultado = await cargarListadoDesktop(fincaId, permisosFijos, { fetchImpl })
+    expect(resultado).toEqual({ tipo: "error_servidor", error: null })
+  })
+
+  it("timeout abort → error_servidor with null error", async () => {
+    const fetchImpl: typeof fetch = async () => {
+      throw new DOMException("The operation was aborted", "AbortError")
+    }
+    const resultado = await cargarListadoDesktop(fincaId, permisosFijos, { fetchImpl })
+    expect(resultado).toEqual({ tipo: "error_servidor", error: null })
+  })
+
+  it("a 200 with a non-JSON body → error_servidor, never a silent empty table", async () => {
+    const fetchImpl: typeof fetch = async () =>
+      new Response("<html>gateway</html>", { status: 200 })
+    const resultado = await cargarListadoDesktop(fincaId, permisosFijos, { fetchImpl })
+    expect(resultado).toEqual({ tipo: "error_servidor", error: null })
+  })
+
+  it("a 400 with an unparseable body degrades to error_servidor", async () => {
+    const fetchImpl: typeof fetch = async () => new Response("oops", { status: 400 })
+    const resultado = await cargarListadoDesktop(fincaId, permisosFijos, { fetchImpl })
+    expect(resultado).toEqual({ tipo: "error_servidor", error: null })
   })
 })

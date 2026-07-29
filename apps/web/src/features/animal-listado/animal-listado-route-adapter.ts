@@ -9,8 +9,14 @@
  * registry — NEVER from the visible label. This module owns no filters,
  * search, or order controls (#109), pagination/column-selector/preferences
  * (#110), or export execution (#111); it only parses #107 responses, exposes
- * the canonical registry, formats null-safe cells, and sanitizes a 400
- * (LA-040–043). `Lugar compra` is not a column and must never render.
+ * the canonical registry, formats null-safe cells, sanitizes a 400
+ * (LA-040–043), and — since PR 3 — exposes the `cargarListadoDesktop`
+ * transport that maps every #107 outcome onto the desktop state machine.
+ * `Lugar compra` is not a column and must never render.
+ *
+ * Consumer (#108 PR 3): `apps/web/src/routes/_app/fincas/$fincaId/animales.tsx`
+ * (`AnimalsListRouteView`) — the desktop branch only; the legacy mobile
+ * branch keeps `listAnimalsAction`, and #107 itself stays untouched.
  */
 import {
   ANIMAL_LIST_COLUMNS,
@@ -42,12 +48,19 @@ export interface AnimalListadoColumn {
   readonly visibleByDefault: boolean
 }
 
+/** Sort mirrored from the #107 response — the table's `aria-sort` source. */
+export type AnimalListadoOrden = Readonly<{
+  campo: string
+  direccion: "asc" | "desc"
+}>
+
 export type AnimalListadoDesktopModel = Readonly<{
   columns: readonly AnimalListadoColumn[] // 29 visible by default; 36 recognized
   rows: readonly AnimalListadoRowDto[]
   total: number
   totalSinFiltro: number
   permissions: AnimalListadoVisualPermissions
+  orden: AnimalListadoOrden
 }>
 
 /** Spanish labels keyed by stable `columnId` — the RF-ANIM-LIST v2.1 matrix. */
@@ -238,6 +251,17 @@ export function formatearCeldaListado(
   }
 }
 
+const ORDEN_POR_DEFECTO: AnimalListadoOrden = Object.freeze({ campo: "codigo", direccion: "asc" })
+
+/** Mirrors the #107 `sort` ("campo:direccion"); malformed values fail safe. */
+function resolverOrden(sort: string): AnimalListadoOrden {
+  const separador = sort.indexOf(":")
+  const campo = separador > 0 ? sort.slice(0, separador) : ""
+  const direccion = separador > 0 ? sort.slice(separador + 1) : ""
+  if (campo === "" || (direccion !== "asc" && direccion !== "desc")) return ORDEN_POR_DEFECTO
+  return { campo, direccion }
+}
+
 /** Builds the desktop model from a #107 response plus visual permission flags. */
 export function construirModeloListadoDesktop(
   respuesta: AnimalListadoResponseDto,
@@ -249,6 +273,7 @@ export function construirModeloListadoDesktop(
     total: respuesta.total,
     totalSinFiltro: respuesta.totalSinFiltro,
     permissions,
+    orden: resolverOrden(respuesta.sort),
   }
 }
 
@@ -312,5 +337,89 @@ export function sanitizarListadoBadRequest(
       mensaje: error.motivo,
       requestId: error.requestId,
     },
+  }
+}
+
+/**
+ * Desktop branch transport (PR 3): GET `/api/fincas/{fincaId}/animales`
+ * (#107 authorization) and map every outcome onto the desktop state machine.
+ * The route view owns the stateful LA-040–063 behavior (retain the last valid
+ * model, retry, safe return); this function is the pure transport boundary —
+ * `fetch` is injectable so the interpretation is unit-testable without DOM.
+ *
+ * Failure policy: a parseable 400/403/500 carries the #107 `ApiErrorDto`;
+ * network failures, timeout aborts, and unparseable bodies resolve
+ * `error_servidor` with a `null` error — never a false 403 (LA-042) and never
+ * a silent empty table.
+ */
+export type ResultadoListadoDesktop =
+  | { readonly tipo: "listo"; readonly modelo: AnimalListadoDesktopModel }
+  | { readonly tipo: "consulta_invalida"; readonly error: ApiErrorDto }
+  | { readonly tipo: "sin_acceso"; readonly error: ApiErrorDto }
+  | { readonly tipo: "error_servidor"; readonly error: ApiErrorDto | null }
+
+export interface OpcionesCargaListado {
+  /** Injectable transport seam (tests); defaults to the global `fetch`. */
+  readonly fetchImpl?: typeof fetch
+  /** Optional query appended to the #107 URL (`"?page=2"` / `"f.razaId=in:x"`). */
+  readonly consulta?: string
+  /** Request budget in milliseconds; aborts map to `error_servidor`. */
+  readonly timeoutMs?: number
+}
+
+export const LISTADO_TIMEOUT_MS = 15_000
+
+const ERROR_SIN_ACCESO_SIN_CUERPO: ApiErrorDto = Object.freeze({
+  error: "forbidden",
+  campo: null,
+  motivo: "No autorizado",
+  requestId: "",
+})
+
+function urlListado(fincaId: string, consulta: string): string {
+  const base = `/api/fincas/${fincaId}/animales`
+  if (consulta === "") return base
+  return consulta.startsWith("?") ? `${base}${consulta}` : `${base}?${consulta}`
+}
+
+async function leerErrorApi(respuesta: Response): Promise<ApiErrorDto | null> {
+  try {
+    return (await respuesta.json()) as ApiErrorDto
+  } catch {
+    return null
+  }
+}
+
+export async function cargarListadoDesktop(
+  fincaId: string,
+  permissions: AnimalListadoVisualPermissions,
+  opciones: OpcionesCargaListado = {},
+): Promise<ResultadoListadoDesktop> {
+  const fetchImpl = opciones.fetchImpl ?? fetch
+  const timeoutMs = opciones.timeoutMs ?? LISTADO_TIMEOUT_MS
+  const señal =
+    typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined
+  try {
+    const respuesta = await fetchImpl(urlListado(fincaId, opciones.consulta ?? ""), {
+      headers: { Accept: "application/json" },
+      ...(señal ? { signal: señal } : {}),
+    })
+    if (respuesta.status === 200) {
+      try {
+        const dto = (await respuesta.json()) as AnimalListadoResponseDto
+        return { tipo: "listo", modelo: construirModeloListadoDesktop(dto, permissions) }
+      } catch {
+        return { tipo: "error_servidor", error: null }
+      }
+    }
+    const error = await leerErrorApi(respuesta)
+    if (respuesta.status === 400 && error !== null) return { tipo: "consulta_invalida", error }
+    if (respuesta.status === 403) {
+      return { tipo: "sin_acceso", error: error ?? ERROR_SIN_ACCESO_SIN_CUERPO }
+    }
+    return { tipo: "error_servidor", error }
+  } catch {
+    // Network failure or timeout abort — fail without a false 403 (LA-042).
+    return { tipo: "error_servidor", error: null }
   }
 }

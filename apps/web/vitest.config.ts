@@ -16,6 +16,11 @@
  * `animal-listado-route.test.tsx` (#108, PR 1) is a vitest suite covering the
  * typed #107 route adapter and the fail-closed visual permission projection;
  * it runs in the node environment (pure logic, no DOM).
+ *
+ * `animal-listado-route-integration.test.tsx` (#108, PR 3) mounts the exported
+ * `AnimalsListRouteView` under jsdom and stubs the #107 transport at the
+ * `fetch` seam: the desktop branch consumes #107 through the typed adapter,
+ * the legacy action stays mobile-only, and ficha navigation is spied.
  */
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vitest/config"
@@ -24,7 +29,11 @@ export default defineConfig({
   plugins: [react()],
   test: {
     allowOnly: false,
-    include: ["tests/animal-create-e2e.test.tsx", "tests/animal-listado-route.test.tsx"],
+    include: [
+      "tests/animal-create-e2e.test.tsx",
+      "tests/animal-listado-route.test.tsx",
+      "tests/animal-listado-route-integration.test.tsx",
+    ],
     environment: "node",
   },
 })
