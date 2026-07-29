@@ -1,0 +1,437 @@
+import type * as React from "react"
+
+import { cn } from "../lib/utils"
+import { Button } from "../primitives/button"
+
+/**
+ * AnimalListadoDesktop — presentational #107-backed table for issue #108.
+ *
+ * Contract source: the typed route adapter
+ * `apps/web/src/features/animal-listado/animal-listado-route-adapter.ts`
+ * (built on #107 `AnimalListadoResponseDto`, RF-ANIM-LIST v2.1). The adapter
+ * owns 36-column recognition, canonical 29 ordering, and null-safe cell
+ * formatting (`-` / `Sin registrar`); this component consumes display-ready
+ * columns + rows through structural prop types so `packages/ui` never depends
+ * on `apps/web` (dependency-cruiser boundary).
+ *
+ * Wiring (#108 PR 3): `apps/web/src/routes/_app/fincas/$fincaId/animales.tsx`
+ * (`AnimalsListRouteView`) fetches the #107 endpoint, pre-formats cells with
+ * `formatearCeldaListado`, mirrors the #107 sort as `orden`, and drives the
+ * `estado` machine from the adapter's `ResultadoListadoDesktop`.
+ *
+ * Boundaries (non-goals of #108):
+ * - No filter controls or general filter URL mutation — #109 (only LA-040
+ *   sanitization lives upstream). `Limpiar filtros` is a #109-owned slot:
+ *   this component renders the supplied action without owning its behavior.
+ * - No pagination, column selector, or preference persistence — #110.
+ * - No export execution, dialog, or download — #111. `Exportar` is inert.
+ *
+ * Theming: CSS tokens only — zero Tailwind dark-mode variants (T-004).
+ * All ten appearances re-skin this exact markup through the token cascade.
+ */
+
+export interface AnimalListadoDesktopColumn {
+  readonly id: string
+  readonly label: string
+}
+
+export interface AnimalListadoDesktopRow {
+  readonly id: string
+  /** Display text aligned 1:1 with `columns`; null coalesces to `-`. */
+  readonly cells: readonly (string | null)[]
+}
+
+export interface AnimalListadoDesktopPermissions {
+  readonly canCreate: boolean // animales:crear
+  readonly canExport: boolean // animales:ver && reportes:exportar
+}
+
+/** Data/failure state machine (LA-060–063, LA-041/042). */
+export type AnimalListadoDesktopEstado = "cargando" | "listo" | "sin-acceso" | "error"
+
+export interface AnimalListadoDesktopOrden {
+  /** Column id the response is sorted by. */
+  readonly campo: string
+  readonly direccion: "asc" | "desc"
+}
+
+export interface AnimalListadoDesktopProps {
+  /** Visible columns in render order (canonical 29 by default; any
+   * recognized subset — including optional columns — renders as supplied). */
+  readonly columns: readonly AnimalListadoDesktopColumn[]
+  readonly estado: AnimalListadoDesktopEstado
+  /** Display-ready rows; meaningful only when `estado` is `listo`. */
+  readonly rows?: readonly AnimalListadoDesktopRow[]
+  readonly total?: number
+  readonly totalSinFiltro?: number
+  readonly permissions: AnimalListadoDesktopPermissions
+  /** Current sort, mirrored from the #107 response (`aria-sort`). */
+  readonly orden?: AnimalListadoDesktopOrden | null | undefined
+  /** LA-091: row click / Enter outside a control opens the animal ficha. */
+  readonly onAbrirFicha: (animalId: string) => void
+  /** LA-RBAC-02: rendered only with `canCreate`. */
+  readonly onNuevoAnimal?: () => void
+  /** LA-061: finca-empty registration action (respects `canCreate`). */
+  readonly onVolver?: () => void
+  /** LA-042: 500/timeout retry. */
+  readonly onReintentar?: () => void
+  /** #109-owned action slot for the no-results state. */
+  readonly onLimpiarFiltros?: () => void
+  readonly className?: string
+}
+
+/** Skeleton rows shown while loading (LA-060). */
+const FILAS_SKELETON = 8
+
+/** Frozen columns (LA-080): `Código` and `Nombre` stay visible on
+ * horizontal scroll. Widths are fixed so the sticky offsets are stable. */
+const COLUMNA_CODIGO = "codigo"
+const COLUMNA_NOMBRE = "nombre"
+const ANCHO_CODIGO_PX = 120
+
+/** Horizontal sticky offset for a frozen column; null when not frozen. */
+function desplazamientoCongelado(columna: AnimalListadoDesktopColumn): {
+  left: number
+  zIndex: number
+} | null {
+  if (columna.id === COLUMNA_CODIGO) return { left: 0, zIndex: 10 }
+  if (columna.id === COLUMNA_NOMBRE) return { left: ANCHO_CODIGO_PX, zIndex: 10 }
+  return null
+}
+
+/** Sticky header (LA-081); frozen corners stack above scrolling cells. */
+function estiloEncabezado(columna: AnimalListadoDesktopColumn): React.CSSProperties {
+  const congelado = desplazamientoCongelado(columna)
+  return congelado
+    ? { position: "sticky", top: 0, left: congelado.left, zIndex: 30 }
+    : { position: "sticky", top: 0, zIndex: 20 }
+}
+
+function claseAncho(columna: AnimalListadoDesktopColumn): string {
+  // Literal classes — Tailwind's scanner cannot see runtime-built strings.
+  if (columna.id === COLUMNA_CODIGO) return "w-[120px] min-w-[120px]"
+  if (columna.id === COLUMNA_NOMBRE) return "w-[160px] min-w-[160px]"
+  return "min-w-32"
+}
+
+/** Interactive descendants that own their events (LA-091 guard). */
+const SELECTOR_CONTROLES =
+  "a, button, input, select, textarea, [role='button'], [role='link'], [role='checkbox'], [role='radio'], [role='switch'], [role='combobox'], [role='option'], [role='menuitem']"
+
+function esEventoDesdeControl(evento: React.SyntheticEvent): boolean {
+  const objetivo = evento.target
+  return objetivo instanceof Element && objetivo.closest(SELECTOR_CONTROLES) !== null
+}
+
+function textoCelda(valor: string | null | undefined): string {
+  return valor ?? "-"
+}
+
+function CeldaListado({
+  columna,
+  valor,
+}: {
+  columna: AnimalListadoDesktopColumn
+  valor: string | null | undefined
+}) {
+  const congelado = desplazamientoCongelado(columna)
+  return (
+    <td
+      style={
+        congelado
+          ? { position: "sticky", left: congelado.left, zIndex: congelado.zIndex }
+          : undefined
+      }
+      className={cn(
+        "h-10 whitespace-nowrap px-3",
+        claseAncho(columna),
+        congelado && "border-r bg-card",
+      )}
+    >
+      {textoCelda(valor)}
+    </td>
+  )
+}
+
+function FilaListado({
+  fila,
+  columns,
+  onAbrirFicha,
+}: {
+  fila: AnimalListadoDesktopRow
+  columns: readonly AnimalListadoDesktopColumn[]
+  onAbrirFicha: (animalId: string) => void
+}) {
+  return (
+    <tr
+      tabIndex={0}
+      className="h-10 cursor-pointer border-t transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      onClick={(evento) => {
+        if (!esEventoDesdeControl(evento)) onAbrirFicha(fila.id)
+      }}
+      onKeyDown={(evento) => {
+        if (evento.key === "Enter" && !esEventoDesdeControl(evento)) {
+          evento.preventDefault()
+          onAbrirFicha(fila.id)
+        }
+      }}
+    >
+      {columns.map((columna, indice) => (
+        <CeldaListado key={columna.id} columna={columna} valor={fila.cells[indice]} />
+      ))}
+    </tr>
+  )
+}
+
+function EncabezadoColumna({
+  columna,
+  orden,
+}: {
+  columna: AnimalListadoDesktopColumn
+  orden?: AnimalListadoDesktopOrden | null | undefined
+}) {
+  const ordenada = orden?.campo === columna.id
+  const congelado = desplazamientoCongelado(columna)
+  return (
+    <th
+      scope="col"
+      aria-sort={ordenada ? (orden?.direccion === "asc" ? "ascending" : "descending") : undefined}
+      style={estiloEncabezado(columna)}
+      className={cn(
+        "h-10 whitespace-nowrap border-b bg-muted px-3 text-left text-caption font-semibold text-muted-foreground",
+        claseAncho(columna),
+        congelado && "border-r",
+      )}
+    >
+      {columna.label}
+    </th>
+  )
+}
+
+function TablaListado({
+  columns,
+  orden,
+  ariaBusy = false,
+  children,
+}: {
+  columns: readonly AnimalListadoDesktopColumn[]
+  orden?: AnimalListadoDesktopOrden | null | undefined
+  ariaBusy?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div className="overflow-auto rounded-card border bg-card">
+      <table
+        className="w-full border-collapse text-support"
+        aria-label="Listado de animales"
+        aria-busy={ariaBusy || undefined}
+      >
+        <thead>
+          <tr>
+            {columns.map((columna) => (
+              <EncabezadoColumna key={columna.id} columna={columna} orden={orden} />
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  )
+}
+
+/** LA-060: 36–40 px skeleton row (`h-10` = 40 px) that retains the column
+ * grid. The table's `aria-busy` already shields assistive technology. */
+function FilaSkeleton({ columns }: { columns: readonly AnimalListadoDesktopColumn[] }) {
+  return (
+    <tr data-testid="animal-listado-skeleton-row" className="h-10 border-t">
+      {columns.map((columna) => (
+        <td key={columna.id} className="px-3">
+          <div className="h-4 w-full max-w-24 animate-pulse rounded bg-muted" />
+        </td>
+      ))}
+    </tr>
+  )
+}
+
+function TablaCargando({
+  columns,
+  orden,
+}: {
+  columns: readonly AnimalListadoDesktopColumn[]
+  orden?: AnimalListadoDesktopOrden | null | undefined
+}) {
+  return (
+    <TablaListado columns={columns} orden={orden} ariaBusy>
+      {Array.from({ length: FILAS_SKELETON }, (_, indice) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: skeleton slots are static placeholders
+        <FilaSkeleton key={indice} columns={columns} />
+      ))}
+    </TablaListado>
+  )
+}
+
+function PanelEstado({
+  titulo,
+  descripcion,
+  children,
+}: {
+  titulo: string
+  descripcion: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-card border bg-card px-6 py-16 text-center">
+      <h2 className="text-title font-semibold">{titulo}</h2>
+      <p className="mt-1 max-w-sm text-support text-muted-foreground">{descripcion}</p>
+      {children ? <div className="mt-4 flex gap-2">{children}</div> : null}
+    </div>
+  )
+}
+
+function textoAnuncio(
+  estado: AnimalListadoDesktopEstado,
+  total: number,
+  totalSinFiltro: number,
+): string {
+  switch (estado) {
+    case "cargando":
+      return "Cargando animales…"
+    case "sin-acceso":
+      return "No tienes acceso a esta finca"
+    case "error":
+      return "Error al cargar los animales"
+    case "listo":
+      if (totalSinFiltro === 0) return "Aún no hay animales en esta finca"
+      if (total === 0) return "Sin resultados para los filtros actuales"
+      return total === 1 ? "1 animal" : `${total} animales`
+  }
+}
+
+/** LA-RBAC-02/03 toolbar: presence is permission-gated — server
+ * enforcement stays authoritative. `Exportar` is intentionally inert
+ * until #111 owns export execution, dialog, and download. */
+function BarraAcciones({
+  permissions,
+  onNuevoAnimal,
+}: {
+  permissions: AnimalListadoDesktopPermissions
+  onNuevoAnimal?: (() => void) | undefined
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <p className="text-title font-semibold">Animales</p>
+      <div className="flex items-center gap-2">
+        {permissions.canCreate && (
+          <Button type="button" onClick={onNuevoAnimal}>
+            Nuevo animal
+          </Button>
+        )}
+        {permissions.canExport && (
+          <Button type="button" variant="secondary">
+            Exportar
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ContenidoListo({
+  columns,
+  rows,
+  total,
+  totalSinFiltro,
+  permissions,
+  orden,
+  onAbrirFicha,
+  onNuevoAnimal,
+  onLimpiarFiltros,
+}: AnimalListadoDesktopProps) {
+  // LA-061: `totalSinFiltro === 0` → the finca has no animals at all.
+  if ((totalSinFiltro ?? 0) === 0) {
+    return (
+      <PanelEstado
+        titulo="Aún no hay animales"
+        descripcion="Registra el primer animal para empezar a llevar el control del hato."
+      >
+        {permissions.canCreate && (
+          <Button type="button" onClick={onNuevoAnimal}>
+            Registrar animal
+          </Button>
+        )}
+      </PanelEstado>
+    )
+  }
+  // LA-062: `total === 0` with animals in the finca → filter mismatch.
+  if ((total ?? 0) === 0) {
+    return (
+      <PanelEstado
+        titulo="Sin resultados"
+        descripcion="Ningún animal coincide con los filtros aplicados."
+      >
+        {onLimpiarFiltros && (
+          <Button type="button" variant="secondary" onClick={onLimpiarFiltros}>
+            Limpiar filtros
+          </Button>
+        )}
+      </PanelEstado>
+    )
+  }
+  return (
+    <TablaListado columns={columns} orden={orden}>
+      {(rows ?? []).map((fila) => (
+        <FilaListado key={fila.id} fila={fila} columns={columns} onAbrirFicha={onAbrirFicha} />
+      ))}
+    </TablaListado>
+  )
+}
+
+function ContenidoPorEstado(props: AnimalListadoDesktopProps) {
+  switch (props.estado) {
+    case "cargando":
+      return <TablaCargando columns={props.columns} orden={props.orden} />
+    case "sin-acceso":
+      // LA-041: data cleared, safe return offered.
+      return (
+        <PanelEstado
+          titulo="No tienes acceso a esta finca"
+          descripcion="Tu sesión no tiene permisos sobre esta finca. Regresa a un lugar seguro."
+        >
+          {props.onVolver && (
+            <Button type="button" variant="secondary" onClick={props.onVolver}>
+              Volver
+            </Button>
+          )}
+        </PanelEstado>
+      )
+    case "error":
+      // LA-042: explicit retriable failure — never a silent empty table.
+      return (
+        <PanelEstado
+          titulo="Error al cargar los animales"
+          descripcion="No se pudo cargar el listado. Intenta de nuevo en unos momentos."
+        >
+          {props.onReintentar && (
+            <Button type="button" onClick={props.onReintentar}>
+              Reintentar
+            </Button>
+          )}
+        </PanelEstado>
+      )
+    case "listo":
+      return <ContenidoListo {...props} />
+  }
+}
+
+export function AnimalListadoDesktop(props: AnimalListadoDesktopProps) {
+  const { className, estado, total, totalSinFiltro, permissions, onNuevoAnimal } = props
+  return (
+    <section className={cn("space-y-4", className)}>
+      {/* LA-090: persistent live region (<output> implies role="status") —
+          state changes are announced. */}
+      <output className="sr-only">{textoAnuncio(estado, total ?? 0, totalSinFiltro ?? 0)}</output>
+      <BarraAcciones permissions={permissions} onNuevoAnimal={onNuevoAnimal} />
+      <ContenidoPorEstado {...props} />
+    </section>
+  )
+}

@@ -173,6 +173,23 @@ export const listAnimalsAction = createServerFn({ method: "GET" })
   .validator((data: { fincaId: string }) => data)
   .handler(async ({ data }) => (await getRuntimeHarness()).list(data))
 
+/**
+ * #108 (PR 3): client-safe exposure of the fail-closed visual permission
+ * projection for the desktop animal list (LA-RBAC-02/03). Mirrors the
+ * `listAnimalsAction` pattern — the handler dynamically imports the server
+ * resolver so this module stays bundleable for the client, while the PR 1
+ * server-side twin in `animal-actions.server.ts` remains intact. Presentation
+ * only (LA-RBAC-05): hides actions, never authorizes a request.
+ */
+export const getAnimalListadoVisualPermissionsAction = createServerFn({ method: "GET" })
+  .validator((data: { fincaId: string }) => data)
+  .handler(async ({ data }) => {
+    const { resolverPermisosVisualesListado } = await import(
+      "./animal-listado-permissions.server.js"
+    )
+    return resolverPermisosVisualesListado(data.fincaId)
+  })
+
 export const getAnimalSexoCatalogAction = createServerFn({ method: "GET" }).handler(
   async () => (await (await getRuntimeHarness()).sexoCatalog()) as AnimalSexoCatalog,
 )
