@@ -14,6 +14,11 @@ import { Button } from "../primitives/button"
  * columns + rows through structural prop types so `packages/ui` never depends
  * on `apps/web` (dependency-cruiser boundary).
  *
+ * Wiring (#108 PR 3): `apps/web/src/routes/_app/fincas/$fincaId/animales.tsx`
+ * (`AnimalsListRouteView`) fetches the #107 endpoint, pre-formats cells with
+ * `formatearCeldaListado`, mirrors the #107 sort as `orden`, and drives the
+ * `estado` machine from the adapter's `ResultadoListadoDesktop`.
+ *
  * Boundaries (non-goals of #108):
  * - No filter controls or general filter URL mutation — #109 (only LA-040
  *   sanitization lives upstream). `Limpiar filtros` is a #109-owned slot:
