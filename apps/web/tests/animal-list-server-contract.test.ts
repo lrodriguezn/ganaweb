@@ -294,6 +294,61 @@ async function testHttpContract() {
     { raza: body.data[0].raza, pesoUltimo: body.data[0].pesoUltimo, tatuado: body.data[0].tatuado },
     { raza: null, pesoUltimo: null, tatuado: false },
   )
+
+  // Issue #112 — session resolution MUST run inside the error boundary.
+  // Degraded session: getUsuarioId throws → sanitized 500 + reportError, no data read.
+  let degradedReportCalls = 0
+  let degradedListingReads = 0
+  const degradedSession = await handlerWith({
+    getUsuarioId: async () => {
+      throw new Error("password=secret connection refused")
+    },
+    readPort: {
+      listar: async () => {
+        degradedListingReads += 1
+        return completeNullableResult
+      },
+    },
+    reportError: () => {
+      degradedReportCalls += 1
+    },
+  })({ request: new Request("http://test/api/fincas/finca-1/animales"), fincaId: "finca-1" })
+
+  assert.equal(degradedSession.status, 500)
+  assert.notEqual(degradedSession.status, 200)
+  assert.deepEqual(await degradedSession.json(), {
+    error: "Error interno",
+    campo: null,
+    motivo: "No fue posible consultar los animales",
+    requestId: "req-http-1",
+  })
+  assert.equal(degradedReportCalls, 1)
+  // Fail-closed: a session-resolution throw MUST NOT read or return animal data.
+  assert.equal(degradedListingReads, 0)
+
+  // Triangulation: a forbidden-classified failure during session resolution maps to 403,
+  // not 500, and MUST NOT call reportError (authorization denial stays fail-closed).
+  let forbiddenSessionReportCalls = 0
+  let forbiddenSessionListingReads = 0
+  const forbiddenSession = await handlerWith({
+    getUsuarioId: async () => {
+      throw new Error("forbidden")
+    },
+    isForbidden: (error) => error instanceof Error && error.message === "forbidden",
+    readPort: {
+      listar: async () => {
+        forbiddenSessionListingReads += 1
+        return completeNullableResult
+      },
+    },
+    reportError: () => {
+      forbiddenSessionReportCalls += 1
+    },
+  })({ request: new Request("http://test/api/fincas/finca-c/animales"), fincaId: "finca-c" })
+
+  assert.equal(forbiddenSession.status, 403)
+  assert.equal(forbiddenSessionReportCalls, 0)
+  assert.equal(forbiddenSessionListingReads, 0)
 }
 
 await testHttpContract()
