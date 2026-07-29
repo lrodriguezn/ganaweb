@@ -24,6 +24,17 @@ import {
   sectionFor,
   useOnlineStatus,
 } from "../src/ganado/animal-crud-infra"
+import {
+  AnimalListadoDesktop,
+  type AnimalListadoDesktopColumn,
+  type AnimalListadoDesktopProps,
+  type AnimalListadoDesktopRow,
+} from "../src/ganado/animal-listado-desktop"
+
+// Task 2.7: the barrel is the public contract — imports must resolve from
+// `@ganaweb/ui` (development condition → src/index.ts), not internal paths.
+import * as BarrilUI from "../src"
+import type { AnimalListadoDesktopProps as PropsDesdeBarril } from "../src"
 
 const animal = {
   id: "a-1",
@@ -1598,6 +1609,682 @@ describe("PR3 animal UI OpenPencil parity", () => {
       const footerEl = dialog.querySelector(".border-t")
       expect(footerEl).not.toBeNull()
       expect(footerEl).toHaveTextContent("Estimar por edad")
+    })
+  })
+})
+
+/* =====================================================================
+   PR2 (#108) — AnimalListadoDesktop presentational table.
+   Tasks 2.1–2.6: semantics, navigation, states, visual RBAC, tokens.
+   Fixtures mirror the canonical 29-column registry of the #107 route
+   adapter (RF-ANIM-LIST v2.1); recognition of the full 36 stays in
+   apps/web (PR 1) — the component renders whichever recognized columns
+   the model supplies.
+   ===================================================================== */
+
+const COLUMNAS_CANONICAS: readonly AnimalListadoDesktopColumn[] = [
+  { id: "codigo", label: "Código" },
+  { id: "nombre", label: "Nombre" },
+  { id: "sexo", label: "Sexo" },
+  { id: "raza", label: "Raza" },
+  { id: "fechaNacimiento", label: "Fecha nacimiento" },
+  { id: "edad", label: "Edad" },
+  { id: "color", label: "Color" },
+  { id: "origen", label: "Origen" },
+  { id: "codigoMadre", label: "Madre (Cód.)" },
+  { id: "nombreMadre", label: "Madre (Nom.)" },
+  { id: "codigoPadre", label: "Padre (Cód.)" },
+  { id: "nombrePadre", label: "Padre (Nom.)" },
+  { id: "propietario", label: "Propietario" },
+  { id: "hierro", label: "Hierro" },
+  { id: "numeroPezones", label: "No. Pezones" },
+  { id: "calidad", label: "Calidad" },
+  { id: "arete", label: "Arete" },
+  { id: "fechaCompra", label: "Fecha compra" },
+  { id: "precioCompra", label: "Precio" },
+  { id: "pesoCompra", label: "Peso compra" },
+  { id: "tatuado", label: "Tatuado" },
+  { id: "herrado", label: "Herrado" },
+  { id: "descornado", label: "Descornado" },
+  { id: "rfid", label: "RFID" },
+  { id: "potrero", label: "Potrero" },
+  { id: "sector", label: "Sector" },
+  { id: "lote", label: "Lote" },
+  { id: "grupo", label: "Grupo" },
+  { id: "comentarios", label: "Comentarios" },
+]
+
+const ETIQUETAS_CANONICAS = COLUMNAS_CANONICAS.map((columna) => columna.label)
+
+/** Populated row — cells aligned 1:1 to COLUMNAS_CANONICAS. */
+const FILA_LUNA: AnimalListadoDesktopRow = {
+  id: "a-1",
+  cells: [
+    "MT-122",
+    "Luna",
+    "Hembra",
+    "Angus",
+    "2023-05-10",
+    "3",
+    "Negro",
+    "Nacido en finca",
+    "MT-100",
+    "Lola",
+    "MT-090",
+    "Roble",
+    "Carlos Pérez",
+    "Hierro A",
+    "4",
+    "Excelente",
+    "AR-5521",
+    "2023-06-01",
+    "1500",
+    "45",
+    "Sí",
+    "No",
+    "Sí",
+    "RF-778899",
+    "Potrero 4",
+    "Sector Norte",
+    "Lote Norte",
+    "Grupo A",
+    "Primera lactancia",
+  ],
+}
+
+/** Row with absent values: the adapter emits `Sin registrar` for catalogs
+ * and null for scalars the presentation layer must coalesce to `-`. */
+const FILA_ESTRELLA: AnimalListadoDesktopRow = {
+  id: "a-2",
+  cells: [
+    "MT-123",
+    "Estrella",
+    "Hembra",
+    "Sin registrar",
+    null,
+    null,
+    "Sin registrar",
+    "Sin registrar",
+    null,
+    null,
+    null,
+    null,
+    "Sin registrar",
+    "Sin registrar",
+    null,
+    "Sin registrar",
+    null,
+    null,
+    null,
+    null,
+    "No",
+    "No",
+    "No",
+    null,
+    "Sin registrar",
+    "Sin registrar",
+    "Sin registrar",
+    "Sin registrar",
+    null,
+  ],
+}
+
+function propsListado(
+  overrides: Partial<AnimalListadoDesktopProps> = {},
+): AnimalListadoDesktopProps {
+  return {
+    columns: COLUMNAS_CANONICAS,
+    estado: "listo",
+    rows: [FILA_LUNA, FILA_ESTRELLA],
+    total: 2,
+    totalSinFiltro: 2,
+    permissions: { canCreate: true, canExport: true },
+    onAbrirFicha: vi.fn(),
+    ...overrides,
+  }
+}
+
+describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
+  describe("2.1 · canonical semantics (LA-090, RF-ANIM-LIST v2.1)", () => {
+    it("renders the 29 canonical Spanish headers in canonical order", () => {
+      render(<AnimalListadoDesktop {...propsListado()} />)
+
+      const headers = screen.getAllByRole("columnheader").map((th) => th.textContent)
+      expect(headers).toHaveLength(29)
+      expect(headers).toEqual(ETIQUETAS_CANONICAS)
+    })
+
+    it("renders a semantic table with scoped headers, one row per animal, and one cell per column", () => {
+      render(<AnimalListadoDesktop {...propsListado()} />)
+
+      expect(screen.getByRole("table", { name: "Listado de animales" })).toBeInTheDocument()
+      for (const th of screen.getAllByRole("columnheader")) {
+        expect(th).toHaveAttribute("scope", "col")
+      }
+      // 1 header row + 2 body rows; 29 cells per body row.
+      expect(screen.getAllByRole("row")).toHaveLength(3)
+      expect(screen.getAllByRole("cell")).toHaveLength(58)
+    })
+
+    it("presents null cells as '-' and never leaks the null literal", () => {
+      const { container } = render(<AnimalListadoDesktop {...propsListado()} />)
+
+      const filaEstrella = screen.getByRole("row", { name: /MT-123/ })
+      // fechaNacimiento / edad / codigoMadre are null in FILA_ESTRELLA → '-'
+      expect(within(filaEstrella).getAllByRole("cell")[4]).toHaveTextContent("-")
+      expect(within(filaEstrella).getAllByRole("cell")[5]).toHaveTextContent("-")
+      // Adapter-formatted catalog placeholders pass through untouched.
+      expect(within(filaEstrella).getAllByRole("cell")[3]).toHaveTextContent("Sin registrar")
+      // Populated values render verbatim.
+      const filaLuna = screen.getByRole("row", { name: /MT-122/ })
+      expect(within(filaLuna).getAllByRole("cell")[0]).toHaveTextContent("MT-122")
+      expect(within(filaLuna).getAllByRole("cell")[28]).toHaveTextContent("Primera lactancia")
+      expect(container.textContent).not.toContain("null")
+    })
+
+    it("marks only the sorted column with aria-sort and maps asc/desc directions", () => {
+      const { rerender } = render(
+        <AnimalListadoDesktop
+          {...propsListado({ orden: { campo: "codigo", direccion: "asc" } })}
+        />,
+      )
+
+      const headers = screen.getAllByRole("columnheader")
+      const thCodigo = headers[0]
+      const thNombre = headers[1]
+      if (!thCodigo || !thNombre) throw new Error("codigo/nombre headers expected")
+      expect(thCodigo).toHaveAttribute("aria-sort", "ascending")
+      expect(thNombre).not.toHaveAttribute("aria-sort")
+
+      rerender(
+        <AnimalListadoDesktop {...propsListado({ orden: { campo: "sexo", direccion: "desc" } })} />,
+      )
+      const thSexo = screen.getAllByRole("columnheader")[2]
+      if (!thSexo) throw new Error("sexo header expected")
+      expect(thSexo).toHaveAttribute("aria-sort", "descending")
+      expect(screen.getAllByRole("columnheader")[0]).not.toHaveAttribute("aria-sort")
+
+      rerender(<AnimalListadoDesktop {...propsListado()} />)
+      for (const th of screen.getAllByRole("columnheader")) {
+        expect(th).not.toHaveAttribute("aria-sort")
+      }
+    })
+
+    it("ignores an orden referencing a column that is not rendered", () => {
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({ orden: { campo: "pesoUltimo", direccion: "asc" } })}
+        />,
+      )
+      for (const th of screen.getAllByRole("columnheader")) {
+        expect(th).not.toHaveAttribute("aria-sort")
+      }
+    })
+
+    it("announces the visible result count through an aria-live status region", () => {
+      render(<AnimalListadoDesktop {...propsListado()} />)
+      expect(screen.getByRole("status")).toHaveTextContent("2 animales")
+    })
+
+    it("announces a single result in singular form", () => {
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({ rows: [FILA_LUNA], total: 1, totalSinFiltro: 1 })}
+        />,
+      )
+      expect(screen.getByRole("status")).toHaveTextContent("1 animal")
+    })
+  })
+
+  describe("2.2 · column recognition beyond the default 29 (36-registry awareness)", () => {
+    it("renders recognized optional columns when the model supplies them", () => {
+      const columnasConOpcionales: AnimalListadoDesktopColumn[] = [
+        ...COLUMNAS_CANONICAS,
+        { id: "salud", label: "Salud" },
+        { id: "estado", label: "Estado" },
+        { id: "pesoUltimo", label: "Peso último" },
+      ]
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({
+            columns: columnasConOpcionales,
+            rows: [
+              { id: "a-1", cells: [...(FILA_LUNA.cells as string[]), "Sano", "Activo", "320 kg"] },
+            ],
+            total: 1,
+            totalSinFiltro: 1,
+          })}
+        />,
+      )
+
+      const headers = screen.getAllByRole("columnheader").map((th) => th.textContent)
+      expect(headers).toHaveLength(32)
+      expect(headers.slice(29)).toEqual(["Salud", "Estado", "Peso último"])
+      expect(screen.getByRole("row", { name: /MT-122/ })).toHaveTextContent("320 kg")
+    })
+
+    it("never renders 'Lugar compra' — it is not part of the 36 recognized columns", () => {
+      const { container } = render(<AnimalListadoDesktop {...propsListado()} />)
+      expect(container.textContent).not.toContain("Lugar compra")
+    })
+
+    it("renders a custom recognized subset in canonical ordinal order", () => {
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({
+            columns: [
+              { id: "codigo", label: "Código" },
+              { id: "nombre", label: "Nombre" },
+              { id: "raza", label: "Raza" },
+            ],
+            rows: [{ id: "a-1", cells: ["MT-122", "Luna", "Angus"] }],
+            total: 1,
+            totalSinFiltro: 1,
+          })}
+        />,
+      )
+      expect(screen.getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
+        "Código",
+        "Nombre",
+        "Raza",
+      ])
+      expect(screen.getAllByRole("cell")).toHaveLength(3)
+    })
+  })
+
+  describe("2.3 · row navigation to ficha (LA-091)", () => {
+    it("navigates to the clicked row's ficha with that row's animal id", async () => {
+      const user = userEvent.setup()
+      const onAbrirFicha = vi.fn()
+      render(<AnimalListadoDesktop {...propsListado({ onAbrirFicha })} />)
+
+      await user.click(screen.getByRole("cell", { name: "MT-123" }))
+      expect(onAbrirFicha).toHaveBeenCalledTimes(1)
+      expect(onAbrirFicha).toHaveBeenCalledWith("a-2")
+    })
+
+    it("navigates on Enter when a visible row has focus (keyboard scenario)", async () => {
+      const user = userEvent.setup()
+      const onAbrirFicha = vi.fn()
+      render(<AnimalListadoDesktop {...propsListado({ onAbrirFicha })} />)
+
+      const filaLuna = screen.getByRole("row", { name: /MT-122/ })
+      filaLuna.focus()
+      expect(filaLuna).toHaveFocus()
+      await user.keyboard("{Enter}")
+      expect(onAbrirFicha).toHaveBeenCalledTimes(1)
+      expect(onAbrirFicha).toHaveBeenCalledWith("a-1")
+    })
+
+    it("does not navigate when the click originates inside an embedded control", async () => {
+      const user = userEvent.setup()
+      const onAbrirFicha = vi.fn()
+      render(<AnimalListadoDesktop {...propsListado({ onAbrirFicha })} />)
+
+      // Simulate a future embedded control (e.g. a #109/#111 row action):
+      // events bubbling from a control inside the row must keep their own
+      // action and never trigger ficha navigation.
+      const filaLuna = screen.getByRole("row", { name: /MT-122/ })
+      const control = document.createElement("button")
+      control.type = "button"
+      control.textContent = "Acción de fila"
+      filaLuna.appendChild(control)
+
+      await user.click(control)
+      expect(onAbrirFicha).not.toHaveBeenCalled()
+
+      // Enter from the control must not navigate either.
+      control.focus()
+      await user.keyboard("{Enter}")
+      expect(onAbrirFicha).not.toHaveBeenCalled()
+    })
+
+    it("targets the focused row, not the whole table, when several rows render", async () => {
+      const user = userEvent.setup()
+      const onAbrirFicha = vi.fn()
+      render(<AnimalListadoDesktop {...propsListado({ onAbrirFicha })} />)
+
+      const filas = screen.getAllByRole("row").filter((row) => row.tabIndex === 0)
+      expect(filas).toHaveLength(2)
+      const segunda = filas[1]
+      if (!segunda) throw new Error("second focusable row expected")
+      segunda.focus()
+      await user.keyboard("{Enter}")
+      expect(onAbrirFicha).toHaveBeenCalledWith("a-2")
+    })
+  })
+
+  describe("2.4 · data and failure states (LA-060–063, LA-041/042)", () => {
+    it("loading retains the 29 headers with 36–40 px skeletons, no data rows, and aria-busy", () => {
+      render(<AnimalListadoDesktop {...propsListado({ estado: "cargando", rows: undefined })} />)
+
+      // LA-060: headers survive the loading state.
+      expect(screen.getAllByRole("columnheader").map((th) => th.textContent)).toEqual(
+        ETIQUETAS_CANONICAS,
+      )
+      expect(screen.queryAllByRole("row").filter((row) => row.tabIndex === 0)).toHaveLength(0)
+
+      const skeletons = screen.getAllByTestId("animal-listado-skeleton-row")
+      expect(skeletons.length).toBeGreaterThanOrEqual(5)
+      for (const skeleton of skeletons) {
+        // jsdom does not compute layout-derived properties; the h-10 (40 px)
+        // class is the LA-081 36–40 px contract (same carve-out as CA-UI-006).
+        expect(skeleton).toHaveClass("h-10")
+      }
+      expect(screen.getByRole("table", { name: "Listado de animales" })).toHaveAttribute(
+        "aria-busy",
+        "true",
+      )
+      expect(screen.getByRole("status")).toHaveTextContent("Cargando animales…")
+    })
+
+    it("finca-empty (totalSinFiltro=0) shows 'Aún no hay animales' with an RBAC-gated register action", async () => {
+      const user = userEvent.setup()
+      const onNuevoAnimal = vi.fn()
+      const { rerender } = render(
+        <AnimalListadoDesktop
+          {...propsListado({
+            rows: [],
+            total: 0,
+            totalSinFiltro: 0,
+            permissions: { canCreate: true, canExport: false },
+            onNuevoAnimal,
+          })}
+        />,
+      )
+
+      expect(screen.getByRole("heading", { name: "Aún no hay animales" })).toBeInTheDocument()
+      expect(screen.queryByRole("table")).not.toBeInTheDocument()
+      expect(screen.getByRole("status")).toHaveTextContent("Aún no hay animales en esta finca")
+
+      // LA-061: the registration action respects RBAC.
+      await user.click(screen.getByRole("button", { name: "Registrar animal" }))
+      expect(onNuevoAnimal).toHaveBeenCalledTimes(1)
+
+      rerender(
+        <AnimalListadoDesktop
+          {...propsListado({
+            rows: [],
+            total: 0,
+            totalSinFiltro: 0,
+            permissions: { canCreate: false, canExport: false },
+            onNuevoAnimal,
+          })}
+        />,
+      )
+      expect(screen.queryByRole("button", { name: "Registrar animal" })).not.toBeInTheDocument()
+      expect(screen.getByRole("heading", { name: "Aún no hay animales" })).toBeInTheDocument()
+    })
+
+    it("no-results (total=0, totalSinFiltro>0) renders the supplied 'Limpiar filtros' slot without owning it", async () => {
+      const user = userEvent.setup()
+      const onLimpiarFiltros = vi.fn()
+      const { rerender } = render(
+        <AnimalListadoDesktop
+          {...propsListado({ rows: [], total: 0, totalSinFiltro: 14, onLimpiarFiltros })}
+        />,
+      )
+
+      expect(screen.getByRole("heading", { name: "Sin resultados" })).toBeInTheDocument()
+      expect(screen.queryByRole("table")).not.toBeInTheDocument()
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Sin resultados para los filtros actuales",
+      )
+
+      await user.click(screen.getByRole("button", { name: "Limpiar filtros" }))
+      expect(onLimpiarFiltros).toHaveBeenCalledTimes(1)
+
+      // Without the #109-owned slot the action is absent — the component
+      // never invents filter behavior of its own.
+      rerender(
+        <AnimalListadoDesktop {...propsListado({ rows: [], total: 0, totalSinFiltro: 14 })} />,
+      )
+      expect(screen.queryByRole("button", { name: "Limpiar filtros" })).not.toBeInTheDocument()
+      expect(screen.getByRole("heading", { name: "Sin resultados" })).toBeInTheDocument()
+    })
+
+    it("403 clears the data, states 'No tienes acceso a esta finca', and offers safe return", async () => {
+      const user = userEvent.setup()
+      const onVolver = vi.fn()
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({
+            estado: "sin-acceso",
+            rows: undefined,
+            total: undefined,
+            totalSinFiltro: undefined,
+            permissions: { canCreate: false, canExport: false },
+            onVolver,
+          })}
+        />,
+      )
+
+      expect(
+        screen.getByRole("heading", { name: "No tienes acceso a esta finca" }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole("table")).not.toBeInTheDocument()
+      expect(screen.queryByText("MT-122")).not.toBeInTheDocument()
+      expect(screen.getByRole("status")).toHaveTextContent("No tienes acceso a esta finca")
+
+      await user.click(screen.getByRole("button", { name: "Volver" }))
+      expect(onVolver).toHaveBeenCalledTimes(1)
+    })
+
+    it("500/timeout offers 'Reintentar' and never degrades into a silent empty table", async () => {
+      const user = userEvent.setup()
+      const onReintentar = vi.fn()
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({
+            estado: "error",
+            rows: undefined,
+            total: undefined,
+            totalSinFiltro: undefined,
+            onReintentar,
+          })}
+        />,
+      )
+
+      expect(
+        screen.getByRole("heading", { name: "Error al cargar los animales" }),
+      ).toBeInTheDocument()
+      // LA-042: an error is visually distinct from an empty result set.
+      expect(screen.queryByRole("table")).not.toBeInTheDocument()
+      expect(screen.queryByText("Sin resultados")).not.toBeInTheDocument()
+      expect(screen.queryByText("Aún no hay animales")).not.toBeInTheDocument()
+      expect(screen.getByRole("status")).toHaveTextContent("Error al cargar los animales")
+
+      await user.click(screen.getByRole("button", { name: "Reintentar" }))
+      expect(onReintentar).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("2.5 · visual RBAC (LA-RBAC-02/03, PE-001–003)", () => {
+    it("hides 'Nuevo animal' and 'Exportar' for a viewer without permissions while the table stays usable", async () => {
+      const user = userEvent.setup()
+      const onAbrirFicha = vi.fn()
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({
+            permissions: { canCreate: false, canExport: false },
+            onAbrirFicha,
+          })}
+        />,
+      )
+
+      expect(screen.queryByRole("button", { name: "Nuevo animal" })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: "Exportar" })).not.toBeInTheDocument()
+      // PE-001: hiding actions never hides the data.
+      expect(screen.getAllByRole("row")).toHaveLength(3)
+      await user.click(screen.getByRole("cell", { name: "MT-122" }))
+      expect(onAbrirFicha).toHaveBeenCalledWith("a-1")
+    })
+
+    it("renders 'Nuevo animal' only with canCreate and wires its action", async () => {
+      const user = userEvent.setup()
+      const onNuevoAnimal = vi.fn()
+      const { rerender } = render(
+        <AnimalListadoDesktop
+          {...propsListado({ permissions: { canCreate: true, canExport: false }, onNuevoAnimal })}
+        />,
+      )
+
+      await user.click(screen.getByRole("button", { name: "Nuevo animal" }))
+      expect(onNuevoAnimal).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole("button", { name: "Exportar" })).not.toBeInTheDocument()
+
+      rerender(
+        <AnimalListadoDesktop
+          {...propsListado({ permissions: { canCreate: false, canExport: false } })}
+        />,
+      )
+      expect(screen.queryByRole("button", { name: "Nuevo animal" })).not.toBeInTheDocument()
+    })
+
+    it("renders 'Exportar' only with canExport and keeps it inert until #111", async () => {
+      const user = userEvent.setup()
+      const onAbrirFicha = vi.fn()
+      const { rerender } = render(
+        <AnimalListadoDesktop
+          {...propsListado({ permissions: { canCreate: false, canExport: true }, onAbrirFicha })}
+        />,
+      )
+
+      const exportar = screen.getByRole("button", { name: "Exportar" })
+      expect(exportar).toBeEnabled()
+      // Inert: no dialog, no download, no navigation — #111 owns execution.
+      await user.click(exportar)
+      expect(onAbrirFicha).not.toHaveBeenCalled()
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+
+      rerender(
+        <AnimalListadoDesktop
+          {...propsListado({ permissions: { canCreate: false, canExport: false } })}
+        />,
+      )
+      expect(screen.queryByRole("button", { name: "Exportar" })).not.toBeInTheDocument()
+    })
+
+    it("renders both labelled actions for a fully permissioned profile", () => {
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({ permissions: { canCreate: true, canExport: true } })}
+        />,
+      )
+      expect(screen.getByRole("button", { name: "Nuevo animal" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Exportar" })).toBeInTheDocument()
+    })
+  })
+
+  describe("2.6 · dense accessible token-themed layout (LA-080/081, T-004, IA-003)", () => {
+    it("keeps the header sticky on vertical scroll", () => {
+      render(<AnimalListadoDesktop {...propsListado()} />)
+
+      const headers = screen.getAllByRole("columnheader")
+      expect(headers.length).toBeGreaterThan(0)
+      // jsdom cannot compute position:sticky from stylesheets; the inline
+      // style is the verifiable contract (layout carve-out, cf. CA-UI-006).
+      for (const th of headers) {
+        expect(th.style.position).toBe("sticky")
+        expect(th.style.top).toBe("0px")
+      }
+    })
+
+    it("freezes Código and Nombre during horizontal scroll, and only those", () => {
+      render(<AnimalListadoDesktop {...propsListado()} />)
+
+      const headers = screen.getAllByRole("columnheader")
+      const thCodigo = headers[0]
+      const thNombre = headers[1]
+      const thSexo = headers[2]
+      if (!thCodigo || !thNombre || !thSexo) throw new Error("first three headers expected")
+      expect(thCodigo.textContent).toBe("Código")
+      expect(thCodigo.style.position).toBe("sticky")
+      expect(thCodigo.style.left).toBe("0px")
+      expect(thNombre.textContent).toBe("Nombre")
+      expect(thNombre.style.position).toBe("sticky")
+      expect(thNombre.style.left).toBe("120px")
+      // The rest of the header stays vertically sticky but is NOT frozen
+      // horizontally (no left offset).
+      expect(thSexo.style.position).toBe("sticky")
+      expect(thSexo.style.left).toBe("")
+
+      const fila = screen.getByRole("row", { name: /MT-122/ })
+      const celdas = within(fila).getAllByRole("cell")
+      const celdaCodigo = celdas[0]
+      const celdaNombre = celdas[1]
+      const celdaSexo = celdas[2]
+      if (!celdaCodigo || !celdaNombre || !celdaSexo) throw new Error("first three cells expected")
+      expect(celdaCodigo.style.position).toBe("sticky")
+      expect(celdaCodigo.style.left).toBe("0px")
+      expect(celdaNombre.style.position).toBe("sticky")
+      expect(celdaNombre.style.left).toBe("120px")
+      expect(celdaSexo.style.position).not.toBe("sticky")
+    })
+
+    it("keeps data rows inside the 36–40 px band", () => {
+      render(<AnimalListadoDesktop {...propsListado()} />)
+
+      const filas = screen.getAllByRole("row").filter((row) => row.tabIndex === 0)
+      expect(filas).toHaveLength(2)
+      for (const fila of filas) {
+        // jsdom does not compute layout; h-10 = 40 px is the LA-081 contract
+        // (same carve-out as CA-UI-006's min-w assertion).
+        expect(fila).toHaveClass("h-10")
+      }
+    })
+
+    it("keeps the focused row visibly focusable via keyboard traversal", async () => {
+      const user = userEvent.setup()
+      render(<AnimalListadoDesktop {...propsListado()} />)
+
+      // Tab reaches the first data row (toolbar buttons come first).
+      await user.tab() // Nuevo animal
+      await user.tab() // Exportar
+      await user.tab() // first row
+      const filaLuna = screen.getByRole("row", { name: /MT-122/ })
+      expect(filaLuna).toHaveFocus()
+      // Visible focus ring is token-driven (ring-ring); jsdom cannot compute
+      // it, so the focus-visible utilities are the verifiable contract.
+      expect(filaLuna.className).toContain("focus-visible:ring-ring")
+    })
+
+    it("renders identical semantics with live announcements across the ten appearances, with zero dark: variants", () => {
+      const estilos = [null, "theme-moderna", "theme-indigo", "theme-cielo", "theme-grafito"]
+      const modos = ["", "dark"]
+
+      for (const estilo of estilos) {
+        for (const modo of modos) {
+          const { container } = render(
+            <div className={[estilo, modo].filter(Boolean).join(" ")}>
+              <AnimalListadoDesktop {...propsListado()} />
+            </div>,
+          )
+
+          // Labels and live announcements remain available in every theme.
+          expect(screen.getAllByRole("columnheader")).toHaveLength(29)
+          expect(screen.getByRole("status")).toHaveTextContent("2 animales")
+          expect(screen.getByRole("table", { name: "Listado de animales" })).toBeInTheDocument()
+
+          // T-004: no appearance-specific component variant — the markup
+          // carries zero `dark:` utilities; the token cascade re-skins it.
+          for (const elemento of container.querySelectorAll("*")) {
+            expect(String(elemento.className)).not.toContain("dark:")
+          }
+          cleanup()
+        }
+      }
+    })
+  })
+
+  describe("2.7 · public export (@ganaweb/ui barrel)", () => {
+    it("exports AnimalListadoDesktop and its prop types from the barrel", () => {
+      expect(BarrilUI.AnimalListadoDesktop).toBe(AnimalListadoDesktop)
+      // Type-level: a props value typed through the barrel export must be
+      // assignable to the module's own props type (fails typecheck if the
+      // barrel drops the type re-export).
+      const propsBarril: PropsDesdeBarril = propsListado()
+      expect(propsBarril.columns).toBe(COLUMNAS_CANONICAS)
     })
   })
 })

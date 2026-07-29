@@ -52,6 +52,15 @@ export type {
   AnimalTimelineProps,
   SelectOption,
 } from "./ganado/animal-crud"
+export { AnimalListadoDesktop } from "./ganado/animal-listado-desktop"
+export type {
+  AnimalListadoDesktopColumn,
+  AnimalListadoDesktopEstado,
+  AnimalListadoDesktopOrden,
+  AnimalListadoDesktopPermissions,
+  AnimalListadoDesktopProps,
+  AnimalListadoDesktopRow,
+} from "./ganado/animal-listado-desktop"
 export { AppHeader } from "./ganado/app-header"
 export { AparienciaCard } from "./ganado/apariencia-card"
 export { AvatarMenu } from "./ganado/avatar-menu"
