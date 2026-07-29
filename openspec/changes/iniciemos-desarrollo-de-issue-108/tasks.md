@@ -4,13 +4,13 @@ Gates/exclusions: #106 approved + #107 delivered before any PR (task 1.1); #109 
 
 ## Phase 1: Foundation — #107 Adapter and Visual Permission Projection (PR 1)
 
-- [ ] 1.1 **Gate verification** — confirm epic #106 approved and #107 endpoint delivered. Files: none. AC: both confirmed in tracker before PR 1. ~0 lines.
-- [ ] 1.2 **RED: adapter registry tests** — 36 `columnId`/`responseKey` recognition, 29 canonical order, null → `-`/`Sin registrar` (never `null`/0). Files: `apps/web/tests/animal-listado-route.test.tsx` (create). AC: tests fail for those assertions. ~90 lines.
-- [ ] 1.3 **GREEN: route adapter** — typed from `AnimalListadoResponseDto` + `ANIMAL_LIST_COLUMNS`; builds `AnimalListadoDesktopModel`; no label-derived mapping. Files: `apps/web/src/features/animal-listado/animal-listado-route-adapter.ts` (create). AC: 1.2 passes. ~160 lines.
-- [ ] 1.4 **400 sanitization (LA-040–043)** — RED then GREEN: retain last valid model, strip invalid `campo`, reset page when required, emit toast payload. Files: adapter + route tests. AC: spec scenario "Invalid query preserves data" passes. ~60 lines.
-- [ ] 1.5 **RED: projection tests** — every permission combination plus global `*:*`; denial/failure fails closed. Files: route tests. AC: failing tests — both flags false on denial/error, no false 403. ~60 lines.
-- [ ] 1.6 **GREEN: permission projection** — `obtenerSesionActual(getAuthDeps())(readSessionToken(), fincaId)` → `{canCreate, canExport}`; canCreate = `animales:crear`; canExport = `animales:ver && reportes:exportar`. Files: `apps/web/src/server/animal-listado-permissions.server.ts` (create). AC: 1.5 passes. ~50 lines.
-- [ ] 1.7 **Server fn exposure** — `getAnimalListadoVisualPermissionsAction` via `createServerFn`; read-only, no authorization policy change. Files: `apps/web/src/server/animal-actions.server.ts` (modify). AC: typed flags serialize; #107 untouched. ~25 lines.
+- [x] 1.1 **Gate verification** — confirm epic #106 approved and #107 endpoint delivered. Files: none. AC: both confirmed in tracker before PR 1. ~0 lines. (Verified 2026-07-29: #107 CLOSED/delivered; #106 epic OPEN — `status:approved` label still pending; PR opening gated on it.)
+- [x] 1.2 **RED: adapter registry tests** — 36 `columnId`/`responseKey` recognition, 29 canonical order, null → `-`/`Sin registrar` (never `null`/0). Files: `apps/web/tests/animal-listado-route.test.tsx` (create). AC: tests fail for those assertions. ~90 lines.
+- [x] 1.3 **GREEN: route adapter** — typed from `AnimalListadoResponseDto` + `ANIMAL_LIST_COLUMNS`; builds `AnimalListadoDesktopModel`; no label-derived mapping. Files: `apps/web/src/features/animal-listado/animal-listado-route-adapter.ts` (create). AC: 1.2 passes. ~160 lines.
+- [x] 1.4 **400 sanitization (LA-040–043)** — RED then GREEN: retain last valid model, strip invalid `campo`, reset page when required, emit toast payload. Files: adapter + route tests. AC: spec scenario "Invalid query preserves data" passes. ~60 lines.
+- [x] 1.5 **RED: projection tests** — every permission combination plus global `*:*`; denial/failure fails closed. Files: route tests. AC: failing tests — both flags false on denial/error, no false 403. ~60 lines.
+- [x] 1.6 **GREEN: permission projection** — `obtenerSesionActual(getAuthDeps())(readSessionToken(), fincaId)` → `{canCreate, canExport}`; canCreate = `animales:crear`; canExport = `animales:ver && reportes:exportar`. Files: `apps/web/src/server/animal-listado-permissions.server.ts` (create). AC: 1.5 passes. ~50 lines.
+- [x] 1.7 **Server fn exposure** — `getAnimalListadoVisualPermissionsAction` via `createServerFn`; read-only, no authorization policy change. Files: `apps/web/src/server/animal-actions.server.ts` (modify). AC: typed flags serialize; #107 untouched. ~25 lines.
 
 ## Phase 2: Presentational Table (PR 2)
 
