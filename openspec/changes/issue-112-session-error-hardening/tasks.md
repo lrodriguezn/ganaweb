@@ -34,11 +34,11 @@ Chain strategy: pending
 
 ## Phase 2: Concurrent Index Deployment (packages/db)
 
-- [ ] 2.1 RED — create `packages/db/tests/concurrent-index-deploy-source.test.ts` (follow `vacuum-analyze-script-source.test.ts`): assert script exists, contains `CONCURRENTLY`, no `.begin(`/`BEGIN`. Fails (absent).
-- [ ] 2.2 RED — extend `packages/db/tests/animal-list-indexes.test.ts`: assert script exists, contains `CREATE INDEX CONCURRENTLY` + `REINDEX CONCURRENTLY`, references `pg_index.indisvalid`, no transaction wrapper.
-- [ ] 2.3 GREEN — create `packages/db/scripts/concurrent-index-deploy.ts` (follow `vacuum-analyze.ts`): needs `DATABASE_URL`; for `idx_animales_finca_activo_codigo` + `idx_pesos_animal_fecha_id` check `indisvalid`; invalid → `DROP INDEX CONCURRENTLY` + `REINDEX CONCURRENTLY`; absent → `CREATE INDEX CONCURRENTLY IF NOT EXISTS`; verify valid; exit 0/1; no transaction.
-- [ ] 2.4 GREEN — add `concurrent-index-deploy` script to `packages/db/package.json` (`tsx scripts/concurrent-index-deploy.ts`).
-- [ ] 2.5 REFACTOR — `packages/db/README.md`: runbook section — execution command, `indisvalid` diagnostic query, recovery procedure, `DROP INDEX CONCURRENTLY` rollback, "never via drizzle-kit migrate".
+- [x] 2.1 RED — create `packages/db/tests/concurrent-index-deploy-source.test.ts` (follow `vacuum-analyze-script-source.test.ts`): assert script exists, contains `CONCURRENTLY`, no `.begin(`/`BEGIN`. Fails (absent).
+- [x] 2.2 RED — extend `packages/db/tests/animal-list-indexes.test.ts`: assert script exists, contains `CREATE INDEX CONCURRENTLY` + `REINDEX CONCURRENTLY`, references `pg_index.indisvalid`, no transaction wrapper.
+- [x] 2.3 GREEN — create `packages/db/scripts/concurrent-index-deploy.ts` (follow `vacuum-analyze.ts`): needs `DATABASE_URL`; for `idx_animales_finca_activo_codigo` + `idx_pesos_animal_fecha_id` check `indisvalid`; invalid → `DROP INDEX CONCURRENTLY` + `REINDEX CONCURRENTLY`; absent → `CREATE INDEX CONCURRENTLY IF NOT EXISTS`; verify valid; exit 0/1; no transaction.
+- [x] 2.4 GREEN — add `concurrent-index-deploy` script to `packages/db/package.json` (`tsx scripts/concurrent-index-deploy.ts`).
+- [x] 2.5 REFACTOR — `packages/db/README.md`: runbook section — execution command, `indisvalid` diagnostic query, recovery procedure, `DROP INDEX CONCURRENTLY` rollback, "never via drizzle-kit migrate".
 
 ## Phase 3: Verification & Manual Integration
 

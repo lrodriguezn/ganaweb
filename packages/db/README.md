@@ -58,3 +58,70 @@ exclusive lock. Can be run while readers and writers are active.
 `openspec/changes/s02-vacuum-analyze-fix/`. The disposable-fixture integration
 test is `packages/db/tests/vacuum-analyze-postgres.test.ts`; the source-invariant
 test (no `sql.begin`) is `packages/db/tests/vacuum-analyze-script-source.test.ts`.
+
+### `concurrent-index-deploy` — animal-list supporting indexes
+
+Builds the animal-list supporting indexes
+(`idx_animales_finca_activo_codigo` covering index post-migration `0004`, and
+`idx_pesos_animal_fecha_id`) with `CREATE INDEX CONCURRENTLY`, detects
+interrupted/invalid builds via `pg_index.indisvalid`, and recovers them
+idempotently. The deployment is additive: it never alters RBAC, per-finca
+isolation, or query authorization, and an invalid or absent index affects only
+performance, never correctness.
+
+**Command**:
+
+```sh
+DATABASE_URL='postgresql://...' \
+  pnpm --filter @ganaweb/db concurrent-index-deploy
+```
+
+`DATABASE_URL` is required. Run it during a maintenance window. The command
+exits `0` when every target index is valid and `1` on any failure.
+
+**Never via drizzle-kit migrate**: `CREATE INDEX CONCURRENTLY` cannot run inside
+a transaction, and `drizzle-kit migrate` always wraps statements in one. This
+script runs each statement in autocommit (`postgres-js`, `max: 1`), outside any
+transaction block. Build these indexes only with this standalone script.
+
+**What it does** (per target index, idempotently):
+
+1. Reads `pg_index.indisvalid`.
+2. Valid → no-op, exit `0`.
+3. Invalid (an interrupted prior build) → `DROP INDEX CONCURRENTLY` then rebuild.
+4. Absent → `CREATE INDEX CONCURRENTLY IF NOT EXISTS`.
+5. Re-verifies `indisvalid = true`; a defensive `REINDEX CONCURRENTLY` runs only
+   if the index is somehow still invalid after the build.
+
+Re-running against already-valid indexes is a safe no-op.
+
+**`indisvalid` diagnostic query**:
+
+```sql
+SELECT c.relname, i.indisvalid
+  FROM pg_index i
+  JOIN pg_class c ON c.oid = i.indexrelid
+ WHERE c.relname IN (
+   'idx_animales_finca_activo_codigo',
+   'idx_pesos_animal_fecha_id'
+ );
+```
+
+**Recovery procedure** (interrupted build left `indisvalid = false`): just
+re-run the command. It drops the invalid index concurrently and rebuilds it,
+ending with `indisvalid = true` and exit `0`.
+
+**Rollback**:
+
+```sql
+DROP INDEX CONCURRENTLY "idx_animales_finca_activo_codigo";
+DROP INDEX CONCURRENTLY "idx_pesos_animal_fecha_id";
+```
+
+Rollback is fully reversible and correctness-preserving — queries keep returning
+the same rows (PostgreSQL falls back to other plans); only performance changes.
+
+**Reference**: design and specs live in
+`openspec/changes/issue-112-session-error-hardening/`. The source-invariant tests
+(no transaction wrapper) are `packages/db/tests/concurrent-index-deploy-source.test.ts`
+and `packages/db/tests/animal-list-indexes.test.ts`.
