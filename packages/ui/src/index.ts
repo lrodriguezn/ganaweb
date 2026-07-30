@@ -52,6 +52,15 @@ export type {
   AnimalTimelineProps,
   SelectOption,
 } from "./ganado/animal-crud"
+export { AnimalExportacionDialog } from "./ganado/animal-exportacion-dialog"
+export type {
+  AnimalExportacionAlcance,
+  AnimalExportacionDialogProps,
+  AnimalExportacionFormato,
+  AnimalExportacionSeleccion,
+  AnimalExportacionTransporte,
+  ResultadoExportacionDialog,
+} from "./ganado/animal-exportacion-dialog"
 export { AnimalListadoDesktop } from "./ganado/animal-listado-desktop"
 export type {
   AnimalListadoDesktopColumn,
