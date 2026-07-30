@@ -206,3 +206,17 @@ export {
 } from "./primitives/select"
 export { SelectConCreacion } from "./primitives/select-con-creacion"
 export type { SelectConCreacionProps } from "./primitives/select-con-creacion"
+export {
+  Toast,
+  ToastAction,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+  Toaster,
+  toast,
+  toastVariants,
+  useToast,
+} from "./primitives/toast"
+export type { ToastActionElement, ToastProps, ToasterToast } from "./primitives/toast"
