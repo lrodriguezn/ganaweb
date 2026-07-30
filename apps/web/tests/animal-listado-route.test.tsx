@@ -8,16 +8,23 @@ import type { DecisionAutorizacion, PermisoUsuario } from "@ganaweb/aplicacion"
  * Gate: epic #106 approved + #107 delivered before PR 1. Route wiring, the
  * presentational table, and #109–#111 behavior belong to later PRs.
  */
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   ANIMAL_LISTADO_COLUMN_REGISTRY,
   ANIMAL_LISTADO_DEFAULT_COLUMNS,
+  aplicarFiltroListado,
   cargarListadoDesktop,
   construirModeloListadoDesktop,
+  crearChipsListado,
+  crearModelosFiltroListado,
+  eliminarChipListado,
+  finalizarConsultaListado,
   formatearCeldaListado,
+  limpiarFiltrosListado,
   resolverColumnaListado,
   resolverColumnasListado,
   sanitizarListadoBadRequest,
+  siguienteOrdenListado,
 } from "../src/features/animal-listado/animal-listado-route-adapter.js"
 import type {
   AnimalListadoDesktopModel,
@@ -34,6 +41,49 @@ import {
   proyectarPermisosVisualesListado,
   resolverPermisosVisualesListado,
 } from "../src/server/animal-listado-permissions.server.js"
+
+// Prevent the fail-closed resolver test from loading the real database driver,
+// native argon2 binding, and TanStack Start server runtime. The mock makes
+// getAuthDeps() throw, which exercises the catch → denied path the test asserts.
+vi.mock("../src/server/auth-deps.server.js", () => ({
+  getAuthDeps: (): never => {
+    throw new Error("no server context in unit tests")
+  },
+}))
+vi.mock("../src/server/session-cookie.server.js", () => ({
+  readSessionToken: (): null => null,
+  setSessionCookie: vi.fn(),
+  clearSessionCookie: vi.fn(),
+  readRequestMetadata: () => ({ userAgent: null, ip: null }),
+}))
+
+// Prevent the "Server fn exposure" dynamic import from loading the real
+// postgres driver, drizzle adapters, and TanStack Start server runtime.
+// The test only asserts that the module exports the expected functions.
+vi.mock("@ganaweb/db/client", () => ({ db: {} }))
+vi.mock("@ganaweb/db/animal-infrastructure", () => ({
+  createAnimalUseCaseDeps: () => ({}),
+}))
+vi.mock("@ganaweb/db/catalogo-animal-maestro-infrastructure", () => ({
+  DrizzleCatalogoAnimalMaestroAdapter: class {},
+}))
+vi.mock("@ganaweb/db/catalogo-finca-infrastructure", () => ({
+  DrizzleCatalogoFincaAdapter: class {},
+}))
+vi.mock("@ganaweb/db/catalogo-global-infrastructure", () => ({
+  DrizzleCatalogoGlobalAdapter: class {},
+}))
+vi.mock("@ganaweb/db/catalogo-padres-infrastructure", () => ({
+  DrizzleCatalogoPadresAdapter: class {},
+}))
+vi.mock("@tanstack/react-start", () => ({
+  createServerFn: () => {
+    const chain: Record<string, unknown> = {}
+    chain.validator = () => chain
+    chain.handler = (fn: unknown) => fn
+    return chain
+  },
+}))
 
 const IDS_CANONICOS_29 = [
   "codigo",
@@ -383,6 +433,99 @@ describe("400 sanitization — invalid query preserves data (LA-040–043, task 
     expect(resultado.sanitizedQuery.get("page")).toBe("2")
     expect(resultado.toast.mensaje).toBe("Petición no permitida")
   })
+})
+
+describe("Issue #109 canonical query adapter (tasks 1.1–1.3)", () => {
+  it("serializes stable IDs with metadata grammar into a complete canonical query", () => {
+    const consulta = aplicarFiltroListado(
+      new URLSearchParams("cols=nombre,codigo&q=toros&pageSize=50&page=3&sort=razaLabel:desc"),
+      { filterKey: "razaId", grammar: "in", value: "raza-uuid" },
+    )
+
+    expect(finalizarConsultaListado(consulta)).toEqual({
+      searchParams:
+        "pageSize=50&sort=razaLabel%3Adesc&q=toros&f.razaId=in%3Araza-uuid&cols=nombre%2Ccodigo",
+    })
+    expect(consulta.get("f.razaId")).toBe("in:raza-uuid")
+    expect(consulta.get("f.razaId")).not.toContain("Brahman")
+  })
+
+  it("builds metadata-backed filter models and labels chips without deriving IDs from labels", () => {
+    const modelos = crearModelosFiltroListado(new URLSearchParams("f.razaId=in:raza-uuid"), {
+      razaId: [{ value: "raza-uuid", label: "Brahman" }],
+    })
+    const raza = modelos.find((modelo) => modelo.filterKey === "razaId")
+
+    expect(raza).toMatchObject({
+      grammar: "in",
+      label: "Raza",
+      committedValue: "raza-uuid",
+      options: [{ value: "raza-uuid", label: "Brahman" }],
+    })
+    expect(
+      crearChipsListado(new URLSearchParams("q=toros&f.razaId=in:raza-uuid"), modelos),
+    ).toEqual([
+      { queryKey: "q", label: "Búsqueda", valueLabel: "toros" },
+      { queryKey: "f.razaId", label: "Raza", valueLabel: "Brahman" },
+    ])
+  })
+
+  it("resets page for filter/chip/clear mutations and cycles sort through no-sort", () => {
+    const inicial = new URLSearchParams(
+      "page=4&pageSize=50&sort=nombre:asc&q=toros&f.razaId=in:raza-uuid&cols=nombre,codigo",
+    )
+
+    expect(eliminarChipListado(inicial, "f.razaId").toString()).toBe(
+      "pageSize=50&sort=nombre%3Aasc&q=toros&cols=nombre%2Ccodigo",
+    )
+    expect(limpiarFiltrosListado(inicial).toString()).toBe(
+      "pageSize=50&sort=nombre%3Aasc&cols=nombre%2Ccodigo",
+    )
+    expect(siguienteOrdenListado(inicial, "nombre").get("sort")).toBe("nombre:desc")
+    expect(
+      siguienteOrdenListado(new URLSearchParams("sort=nombre:desc"), "nombre").has("sort"),
+    ).toBe(false)
+    expect(siguienteOrdenListado(new URLSearchParams(), "codigo").get("sort")).toBe("codigo:asc")
+  })
+})
+
+describe("Issue #109 400 recovery map (task 1.2)", () => {
+  const ultimoModelo = construirModeloListadoDesktop(respuestaListado(), permisosFijos)
+  const camposFiltro = ANIMAL_LIST_COLUMNS.map(([, , filterKey]) => `f.${filterKey}`)
+
+  it.each(camposFiltro)("removes dataset-shaping %s and resets page only", (campo) => {
+    const resultado = sanitizarListadoBadRequest(
+      error400({ campo }),
+      ultimoModelo,
+      new URLSearchParams(`page=3&pageSize=50&${campo}=valor`),
+    )
+
+    expect(resultado.removedParams).toEqual([campo, "page"])
+    expect(resultado.pageReset).toBe(true)
+    expect(resultado.sanitizedQuery.toString()).toBe("pageSize=50")
+  })
+
+  it.each([
+    ["page", "page=3&pageSize=50", ["page"], true, "pageSize=50"],
+    ["pageSize", "page=3&pageSize=50", ["pageSize", "page"], true, ""],
+    ["sort", "page=3&sort=codigo:asc", ["sort", "page"], true, ""],
+    ["cols", "page=3&cols=codigo,nombre", ["cols"], false, "page=3"],
+    ["f.desconocido", "page=3&f.desconocido=in:x", [], false, "page=3&f.desconocido=in%3Ax"],
+    [null, "page=3&f.razaId=in:x", [], false, "page=3&f.razaId=in%3Ax"],
+  ] as const)(
+    "applies the exact recovery rule for %s",
+    (campo, consulta, removedParams, pageReset, serializada) => {
+      const resultado = sanitizarListadoBadRequest(
+        error400({ campo }),
+        ultimoModelo,
+        new URLSearchParams(consulta),
+      )
+
+      expect(resultado.removedParams).toEqual(removedParams)
+      expect(resultado.pageReset).toBe(pageReset)
+      expect(resultado.sanitizedQuery.toString()).toBe(serializada)
+    },
+  )
 })
 
 function sesionAutorizada(

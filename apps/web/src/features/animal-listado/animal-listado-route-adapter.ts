@@ -21,7 +21,9 @@
 import {
   ANIMAL_LIST_COLUMNS,
   type AnimalListColumnId,
+  type AnimalListFilterKey,
   type AnimalListResponseKey,
+  type AnimalListSortKey,
   type AnimalListadoResponseDto,
   type AnimalListadoRowDto,
   type ApiErrorDto,
@@ -116,6 +118,152 @@ export const ANIMAL_LISTADO_COLUMN_REGISTRY: readonly AnimalListadoColumn[] =
 
 export const ANIMAL_LISTADO_DEFAULT_COLUMNS: readonly AnimalListadoColumn[] =
   ANIMAL_LISTADO_COLUMN_REGISTRY.filter((columna) => columna.visibleByDefault)
+
+export type AnimalListadoFilterGrammar = (typeof ANIMAL_LIST_COLUMNS)[number][4]
+
+export type FilterOption = Readonly<{ value: string; label: string }>
+
+export type FilterControlModel = Readonly<{
+  filterKey: AnimalListFilterKey
+  grammar: AnimalListadoFilterGrammar
+  label: string
+  committedValue: string | null
+  options: readonly FilterOption[]
+}>
+
+export type FilterCommit = Readonly<{
+  filterKey: AnimalListFilterKey
+  grammar: AnimalListadoFilterGrammar
+  value: string | null
+}>
+
+export type QueryChip = Readonly<{
+  queryKey: "q" | `f.${AnimalListFilterKey}`
+  label: string
+  valueLabel: string
+}>
+
+/** Read-only complete query seam for #111; it never owns navigation or fetching. */
+export type FinalizedAnimalListadoQuery = Readonly<{ searchParams: string }>
+
+type AnimalListadoColumnMetadata = (typeof ANIMAL_LIST_COLUMNS)[number]
+
+const columnaPorFiltro = new Map<string, AnimalListadoColumnMetadata>(
+  ANIMAL_LIST_COLUMNS.map((columna) => [columna[2], columna]),
+)
+
+const columnaPorId = new Map<string, AnimalListadoColumnMetadata>(
+  ANIMAL_LIST_COLUMNS.map((columna) => [columna[0], columna]),
+)
+
+function consultaConPaginaInicial(consulta: URLSearchParams): URLSearchParams {
+  const siguiente = new URLSearchParams(consulta)
+  siguiente.delete("page")
+  return siguiente
+}
+
+function valorFiltro(value: string): string {
+  const separator = value.indexOf(":")
+  return separator === -1 ? value : value.slice(separator + 1)
+}
+
+/**
+ * Produces stable query order for replay and the #111 export seam without
+ * inventing defaults; absent values keep #107's canonical defaults.
+ */
+export function finalizarConsultaListado(consulta: URLSearchParams): FinalizedAnimalListadoQuery {
+  const canonical = new URLSearchParams()
+  for (const key of ["page", "pageSize", "sort", "q"] as const) {
+    const value = consulta.get(key)
+    if (value !== null) canonical.set(key, value)
+  }
+  for (const [, , filterKey] of ANIMAL_LIST_COLUMNS) {
+    const value = consulta.get(`f.${filterKey}`)
+    if (value !== null) canonical.set(`f.${filterKey}`, value)
+  }
+  const cols = consulta.get("cols")
+  if (cols !== null) canonical.set("cols", cols)
+  return { searchParams: canonical.toString() }
+}
+
+/** Commits a metadata-validated stable ID/key filter and resets pagination. */
+export function aplicarFiltroListado(
+  consulta: URLSearchParams,
+  commit: FilterCommit,
+): URLSearchParams {
+  const columna = columnaPorFiltro.get(commit.filterKey)
+  if (columna === undefined || columna[4] !== commit.grammar) return new URLSearchParams(consulta)
+  const siguiente = consultaConPaginaInicial(consulta)
+  const queryKey = `f.${commit.filterKey}`
+  if (commit.value === null) siguiente.delete(queryKey)
+  else siguiente.set(queryKey, `${commit.grammar}:${commit.value}`)
+  return siguiente
+}
+
+export function crearModelosFiltroListado(
+  consulta: URLSearchParams,
+  opciones: Readonly<Partial<Record<AnimalListFilterKey, readonly FilterOption[]>>>,
+): readonly FilterControlModel[] {
+  return ANIMAL_LIST_COLUMNS.map(([, , filterKey, , grammar]) => ({
+    filterKey,
+    grammar,
+    label: ETIQUETAS[columnaPorFiltro.get(filterKey)?.[0] ?? "codigo"],
+    committedValue: consulta.has(`f.${filterKey}`)
+      ? valorFiltro(consulta.get(`f.${filterKey}`) ?? "")
+      : null,
+    options: opciones[filterKey] ?? [],
+  }))
+}
+
+export function crearChipsListado(
+  consulta: URLSearchParams,
+  modelos: readonly FilterControlModel[],
+): readonly QueryChip[] {
+  const chips: QueryChip[] = []
+  const search = consulta.get("q")
+  if (search !== null) chips.push({ queryKey: "q", label: "Búsqueda", valueLabel: search })
+  for (const modelo of modelos) {
+    if (modelo.committedValue === null) continue
+    const option = modelo.options.find((candidate) => candidate.value === modelo.committedValue)
+    chips.push({
+      queryKey: `f.${modelo.filterKey}`,
+      label: modelo.label,
+      valueLabel: option?.label ?? modelo.committedValue,
+    })
+  }
+  return chips
+}
+
+export function eliminarChipListado(
+  consulta: URLSearchParams,
+  queryKey: QueryChip["queryKey"],
+): URLSearchParams {
+  const siguiente = consultaConPaginaInicial(consulta)
+  siguiente.delete(queryKey)
+  return siguiente
+}
+
+export function limpiarFiltrosListado(consulta: URLSearchParams): URLSearchParams {
+  const siguiente = consultaConPaginaInicial(consulta)
+  siguiente.delete("q")
+  for (const [, , filterKey] of ANIMAL_LIST_COLUMNS) siguiente.delete(`f.${filterKey}`)
+  return siguiente
+}
+
+export function siguienteOrdenListado(
+  consulta: URLSearchParams,
+  columnId: AnimalListColumnId,
+): URLSearchParams {
+  const columna = columnaPorId.get(columnId)
+  if (columna === undefined || columna[3] === null) return new URLSearchParams(consulta)
+  const siguiente = consultaConPaginaInicial(consulta)
+  const sortKey = columna[3] as AnimalListSortKey
+  const sortActual = siguiente.get("sort")
+  if (sortActual === `${sortKey}:asc`) siguiente.set("sort", `${sortKey}:desc`)
+  else if (sortActual === `${sortKey}:desc`) siguiente.delete("sort")
+  else siguiente.set("sort", `${sortKey}:asc`)
+  return siguiente
+}
 
 const columnaPorIdOKey = new Map<string, AnimalListadoColumn>()
 for (const columna of ANIMAL_LISTADO_COLUMN_REGISTRY) {
@@ -302,9 +450,22 @@ export interface AnimalListadoSanitizationResult {
 }
 
 const CAMPOS_CON_REINICIO_DE_PAGINA = new Set(["page", "pageSize", "sort"])
+const CAMPOS_FILTRO_VALIDOS = new Set(
+  ANIMAL_LIST_COLUMNS.map(([, , filterKey]) => `f.${filterKey}`),
+)
 
 function reiniciaPagina(campo: string): boolean {
-  return CAMPOS_CON_REINICIO_DE_PAGINA.has(campo) || campo.startsWith("f.")
+  return CAMPOS_CON_REINICIO_DE_PAGINA.has(campo) || CAMPOS_FILTRO_VALIDOS.has(campo)
+}
+
+function campoCorregible(campo: string): boolean {
+  return (
+    campo === "page" ||
+    campo === "pageSize" ||
+    campo === "sort" ||
+    campo === "cols" ||
+    CAMPOS_FILTRO_VALIDOS.has(campo)
+  )
 }
 
 export function sanitizarListadoBadRequest(
@@ -317,7 +478,7 @@ export function sanitizarListadoBadRequest(
   let pageReset = false
 
   const campo = error.campo
-  if (campo !== null && sanitizedQuery.has(campo)) {
+  if (campo !== null && campoCorregible(campo) && sanitizedQuery.has(campo)) {
     sanitizedQuery.delete(campo)
     removedParams.push(campo)
     pageReset = reiniciaPagina(campo)

@@ -1,4 +1,7 @@
 import type {
+  AnimalListadoReadPort,
+  AnimalListadoReadResult,
+  AnimalListadoRow,
   AnimalRegistro,
   AnimalResumen,
   AnimalUseCaseDeps,
@@ -68,6 +71,8 @@ const animals = new Map<string, AnimalRegistro>([
       codigo: "MT-122",
       nombre: "Matilda",
       sexoKey: 1,
+      fechaNacimiento: 1577923200,
+      fechaCompra: 1709510400,
       version: 1,
       activo: true,
       usuarioCreadoPor: "usuario-operario",
@@ -75,6 +80,88 @@ const animals = new Map<string, AnimalRegistro>([
     },
   ],
 ])
+
+function toIsoDate(epochSeconds: number | null | undefined): string | null {
+  return epochSeconds === null || epochSeconds === undefined
+    ? null
+    : new Date(epochSeconds * 1000).toISOString().slice(0, 10)
+}
+
+function toAnimalListadoRow(animal: AnimalRegistro): AnimalListadoRow {
+  return {
+    id: animal.id,
+    codigo: animal.codigo,
+    nombre: animal.nombre,
+    sexo: { key: String(animal.sexoKey), label: animal.sexoKey === 1 ? "Hembra" : "Macho" },
+    raza: null,
+    fechaNacimiento: toIsoDate(animal.fechaNacimiento),
+    edadAnios: null,
+    color: null,
+    origen: null,
+    codigoMadre: null,
+    nombreMadre: null,
+    codigoPadre: null,
+    nombrePadre: null,
+    propietario: null,
+    hierro: null,
+    numeroPezones: null,
+    calidad: null,
+    codigoArete: null,
+    fechaCompra: toIsoDate(animal.fechaCompra),
+    precioCompra: null,
+    pesoCompraKg: null,
+    tatuado: false,
+    herrado: false,
+    descornado: false,
+    codigoRfid: null,
+    potrero: null,
+    sector: null,
+    lote: null,
+    grupo: null,
+    comentarios: null,
+    salud: { key: "sano", label: "Sano" },
+    categoriaReproductiva: null,
+    estado: {
+      key: animal.activo ? "activo" : "vendido",
+      label: animal.activo ? "Activo" : "Vendido",
+    },
+    pesoUltimo: null,
+    codigoQr: null,
+    esDeMonta: false,
+    tipoExplotacion: null,
+  }
+}
+
+/** Test-only #107 read port so browser query requests use the same explicit E2E fixture as actions. */
+export function createAnimalE2eListadoReadPort(): AnimalListadoReadPort {
+  return {
+    async listar(request) {
+      const allRows = [...animals.values()]
+        .filter((animal) => animal.fincaId === request.fincaId)
+        .map(toAnimalListadoRow)
+      const query = request.q?.trim().toLocaleLowerCase() ?? ""
+      const matchingRows =
+        query === ""
+          ? allRows
+          : allRows.filter(
+              (animal) =>
+                animal.codigo.toLocaleLowerCase().includes(query) ||
+                animal.nombre.toLocaleLowerCase().includes(query),
+            )
+      const start = (request.page - 1) * request.pageSize
+      const result: AnimalListadoReadResult = {
+        data: matchingRows.slice(start, start + request.pageSize),
+        page: request.page,
+        pageSize: request.pageSize,
+        total: matchingRows.length,
+        totalSinFiltro: allRows.length,
+        sort: request.sort,
+        cols: request.cols,
+      }
+      return result
+    },
+  }
+}
 
 function toAnimalResumen(animal: AnimalRegistro): AnimalResumen {
   return {
