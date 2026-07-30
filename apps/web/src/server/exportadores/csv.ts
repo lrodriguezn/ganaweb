@@ -32,7 +32,9 @@ export async function generarCsv(
   const encabezado = columnas
     .map((columna) => escaparCampoCsv(neutralizarCelda(columna.label)))
     .join(",")
-  const registros = filas.map((fila) => columnas.map((columna) => celdaCsv(columna, fila)).join(","))
-  const texto = [encabezado, ...registros].join("\r\n") + "\r\n"
+  const registros = filas.map((fila) =>
+    columnas.map((columna) => celdaCsv(columna, fila)).join(","),
+  )
+  const texto = `${[encabezado, ...registros].join("\r\n")}\r\n`
   return new TextEncoder().encode(texto)
 }

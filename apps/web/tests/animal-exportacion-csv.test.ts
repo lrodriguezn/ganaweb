@@ -47,20 +47,24 @@ describe("generarCsv — structure (LA-070)", () => {
 describe("generarCsv — RFC 4180 quoting (LA-070)", () => {
   it("quotes a field containing a comma", async () => {
     const columnas = resolverColumnasListado(["comentarios"])
-    const csv = decodificar(await generarCsv([filaAnimal({ comentarios: "leche, carne" })], columnas))
-    expect(csv).toBe("Comentarios\r\n\"leche, carne\"\r\n")
+    const csv = decodificar(
+      await generarCsv([filaAnimal({ comentarios: "leche, carne" })], columnas),
+    )
+    expect(csv).toBe('Comentarios\r\n"leche, carne"\r\n')
   })
 
   it("escapes embedded double-quotes by doubling them and quotes the field", async () => {
     const columnas = resolverColumnasListado(["comentarios"])
     const csv = decodificar(await generarCsv([filaAnimal({ comentarios: 'dice "mu"' })], columnas))
-    expect(csv).toBe("Comentarios\r\n\"dice \"\"mu\"\"\"\r\n")
+    expect(csv).toBe('Comentarios\r\n"dice ""mu"""\r\n')
   })
 
   it("quotes a field containing a newline", async () => {
     const columnas = resolverColumnasListado(["comentarios"])
-    const csv = decodificar(await generarCsv([filaAnimal({ comentarios: "línea1\nlínea2" })], columnas))
-    expect(csv).toBe("Comentarios\r\n\"línea1\nlínea2\"\r\n")
+    const csv = decodificar(
+      await generarCsv([filaAnimal({ comentarios: "línea1\nlínea2" })], columnas),
+    )
+    expect(csv).toBe('Comentarios\r\n"línea1\nlínea2"\r\n')
   })
 })
 
@@ -74,7 +78,7 @@ describe("generarCsv — injection neutralization (LA-073)", () => {
   it("neutralizes AND quotes a dangerous value that also contains a comma", async () => {
     const columnas = resolverColumnasListado(["comentarios"])
     const csv = decodificar(await generarCsv([filaAnimal({ comentarios: "=CMD(),x" })], columnas))
-    expect(csv).toBe("Comentarios\r\n\"'=CMD(),x\"\r\n")
+    expect(csv).toBe('Comentarios\r\n"\'=CMD(),x"\r\n')
   })
 
   it("neutralizes every dangerous prefix in data cells", async () => {
@@ -90,6 +94,6 @@ describe("generarCsv — injection neutralization (LA-073)", () => {
     const columnas = resolverColumnasListado(["codigo"])
     const csv = decodificar(await generarCsv([filaAnimal({ codigo: "\rF" })], columnas))
     // The neutralizer prefixes '; RFC 4180 then quotes because of the CR.
-    expect(csv).toBe("Código\r\n\"'\rF\"\r\n")
+    expect(csv).toBe('Código\r\n"\'\rF"\r\n')
   })
 })

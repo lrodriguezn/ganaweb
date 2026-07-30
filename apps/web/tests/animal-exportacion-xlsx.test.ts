@@ -45,7 +45,9 @@ describe("generarXlsx — structure (LA-070)", () => {
 
   it("writes one data row per fila using the null-safe formatter", async () => {
     const columnas = resolverColumnasListado(["codigo", "nombre"])
-    const hoja = await leerHoja(await generarXlsx([filaAnimal({ codigo: "A-001", nombre: "Estrella" })], columnas))
+    const hoja = await leerHoja(
+      await generarXlsx([filaAnimal({ codigo: "A-001", nombre: "Estrella" })], columnas),
+    )
     expect(hoja.getCell("A2").value).toBe("A-001")
     expect(hoja.getCell("B2").value).toBe("Estrella")
   })

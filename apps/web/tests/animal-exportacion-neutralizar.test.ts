@@ -10,7 +10,7 @@
  * bool) that produced the row (LA-073 "across all filter grammars").
  */
 import { describe, expect, it } from "vitest"
-import { neutralizarCelda, PREFIJOS } from "../src/server/exportadores/neutralizar-celda.js"
+import { PREFIJOS, neutralizarCelda } from "../src/server/exportadores/neutralizar-celda.js"
 
 describe("neutralizarCelda — dangerous prefixes are neutralized (LA-073)", () => {
   it("neutralizes a formula starting with '='", () => {
