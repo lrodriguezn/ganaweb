@@ -1,5 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks"
 import type {
+  AnimalExportacionReadPort,
+  AnimalExportacionRequest,
+  AnimalListadoReadFilter,
   AnimalListadoReadPort,
   AnimalListadoReadRequest,
   AnimalListadoReadResult,
@@ -18,6 +21,7 @@ import type {
 } from "@ganaweb/aplicacion"
 import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
 import type { ErrorValidacionAnimal } from "@ganaweb/aplicacion"
+import { AnimalExportacionOverflowError } from "@ganaweb/aplicacion"
 import { type SQL, and, asc, eq, or, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 import {
@@ -840,7 +844,7 @@ function buildFilterPredicate(
 }
 
 function buildAnimalListadoPredicates(
-  request: AnimalListadoReadRequest | BenchmarkAnimalListadoReadRequest,
+  request: { readonly q: string | null; readonly filters: readonly AnimalListadoReadFilter[] },
   columns = animalListFilterColumns,
 ): SQL[] {
   const predicates: SQL[] = []
@@ -870,7 +874,9 @@ const animalListadoJoins = sql`
   LEFT JOIN LATERAL (SELECT peso_kg, fecha FROM pesos WHERE animal_id = a.id ORDER BY fecha DESC, id DESC LIMIT 1) ultimo_peso ON true
 `
 
-export class DrizzleAnimalListadoReadModel implements AnimalListadoReadPort {
+export class DrizzleAnimalListadoReadModel
+  implements AnimalListadoReadPort, AnimalExportacionReadPort
+{
   lastStatementCount = 0
   constructor(private readonly db: DbClient) {}
 
@@ -923,6 +929,64 @@ export class DrizzleAnimalListadoReadModel implements AnimalListadoReadPort {
       cols: request.cols,
     }
   }
+
+  async listarTodos(request: AnimalExportacionRequest): Promise<readonly AnimalListadoRow[]> {
+    const predicates = buildAnimalListadoPredicates(request)
+    const where = sql`WHERE a.finca_id = ${request.fincaId} AND a.activo = 1 ${predicates.length ? sql`AND ${sql.join(predicates, sql` AND `)}` : sql``}`
+    const [sortKey = "", direction] = request.sort.split(":")
+    const sortColumn = animalListSortColumns[sortKey]
+    if (!sortColumn) throw new Error(`Unsupported animal-list sort: ${sortKey}`)
+    const order =
+      direction === "desc" ? sql`${sortColumn} DESC, a.id ASC` : sql`${sortColumn} ASC, a.id ASC`
+    const authz = await currentDb(this.db).execute(
+      sql`WITH authz AS (SELECT EXISTS (SELECT 1 FROM usuarios u JOIN usuarios_fincas uf ON uf.usuario_id = u.id JOIN usuarios_roles_asignacion ura ON ura.usuario_id = u.id AND ura.finca_id = uf.finca_id JOIN usuarios_roles ur ON ur.id = ura.rol_id JOIN roles_permisos rp ON rp.rol_id = ur.id JOIN usuarios_permisos up ON up.id = rp.permiso_id WHERE u.id = ${request.usuarioId} AND u.activo = 1 AND uf.finca_id = ${request.fincaId} AND uf.activo = 1 AND ura.activo = 1 AND ur.activo = 1 AND rp.activo = 1 AND up.activo = 1 AND up.modulo = 'animales' AND up.accion = 'ver') AS authorized) SELECT authorized FROM authz`,
+    )
+    const authzRows = authz as AnimalListadoDbRow[]
+    if (authzRows[0]?.authorized !== true) throw new AnimalListadoForbiddenError()
+    const rows = await currentDb(this.db).execute(
+      sql`SELECT a.*, raza.nombre AS raza_nombre, color.nombre AS color_nombre, madre.nombre AS madre_nombre, padre.nombre AS padre_nombre, propietario.nombre AS propietario_nombre, hierro.nombre AS hierro_nombre, calidad.nombre AS calidad_nombre, potrero.nombre AS potrero_nombre, sector.nombre AS sector_nombre, lote.nombre AS lote_nombre, grupo.nombre AS grupo_nombre, tipo_explotacion.nombre AS tipo_explotacion_nombre, origen.value AS origen_label, ultimo_peso.peso_kg, ultimo_peso.fecha AS peso_fecha FROM animales a ${animalListadoJoins} ${where} ORDER BY ${order} LIMIT ${request.maxFilas + 1}`,
+    )
+    const dbRows = rows as AnimalListadoDbRow[]
+    if (dbRows.length > request.maxFilas) throw new AnimalExportacionOverflowError(request.maxFilas)
+    return dbRows.map(mapAnimalListadoDbRow)
+  }
+
+  exportar(request: AnimalExportacionRequest): Promise<readonly AnimalListadoRow[]> {
+    return this.listarTodos(request)
+  }
+}
+
+const EXPORT_MAX_FILAS_DEFAULT = 50000
+const EXPORT_TIMEOUT_SEGUNDOS_DEFAULT = 30
+
+export interface LimitesExportacion {
+  readonly maxFilas: number
+  readonly timeoutSegundos: number
+}
+
+/**
+ * First runtime reader of `config_parametros_finca` (LA-072). Resolves the
+ * per-finca export limits, falling back to fail-safe defaults when a row is
+ * missing or holds a non-positive / non-numeric value. No threshold is
+ * hardcoded at the call site: the handler injects these into the export
+ * request and the AbortSignal timeout (PR3).
+ */
+export async function leerLimitesExportacion(
+  db: DbClient,
+  fincaId: string,
+): Promise<LimitesExportacion> {
+  const rows = (await currentDb(db).execute(
+    sql`SELECT codigo, valor FROM config_parametros_finca WHERE finca_id = ${fincaId} AND activo = 1 AND codigo IN ('export_max_filas', 'export_timeout_segundos')`,
+  )) as { codigo: string; valor: string | null }[]
+  let maxFilas = EXPORT_MAX_FILAS_DEFAULT
+  let timeoutSegundos = EXPORT_TIMEOUT_SEGUNDOS_DEFAULT
+  for (const row of rows) {
+    const parsed = Number(row.valor)
+    if (!Number.isFinite(parsed) || parsed <= 0) continue
+    if (row.codigo === "export_max_filas") maxFilas = Math.floor(parsed)
+    else if (row.codigo === "export_timeout_segundos") timeoutSegundos = Math.floor(parsed)
+  }
+  return { maxFilas, timeoutSegundos }
 }
 
 export class DrizzleAnimalRepository implements AnimalRepositoryPort {

@@ -48,11 +48,11 @@ Chain strategy: pending
 
 | # | Task (files) | Satisfies | Proof (test) | ~Ln |
 |---|--------------|-----------|--------------|-----|
-| 2.1 | RED `packages/db/tests/animal-exportacion-postgres.test.ts` (`describe.skipIf(CI)`, mirror `animal-listado-postgres.test.ts`): total=40→40 at pageSize=25; filter/order preserved; overflow>maxFilas; foreign finca forbidden | LA-071/072, LA-RBAC-04/05 | tests fail | 110 |
-| 2.2 | GREEN add `listarTodos` to `packages/db/src/animal-infrastructure.ts`: reuse `buildAnimalListadoPredicates`/`animalListadoJoins`/sort + identical authz CTE; `SELECT … LIMIT maxFilas+1`, no OFFSET; `mapAnimalListadoDbRow`; overflow→`AnimalExportacionOverflowError` | LA-071/072, LA-RBAC-04/05 | 2.1 passes | 70 |
-| 2.3 | RED+GREEN `leerLimitesExportacion(db, fincaId)` in `animal-infrastructure.ts`: read `export_max_filas`/`export_timeout_segundos` from `config_parametros_finca`, fail-safe 50000/30; test changed values respected (config-driven) | LA-072 | config-change test passes | 50 |
-| 2.4 | Seed: add `["export_max_filas","50000",…]`, `["export_timeout_segundos","30",…]` to `PARAMETROS` in `packages/db/src/seed/seed.ts` (per-finca, `ON CONFLICT DO NOTHING`) | LA-072 | seed idempotent; reader returns seeded values | 6 |
-| 2.5 | REFACTOR typecheck+biome db | — | green | 3 |
+| 2.1 [x] | RED `packages/db/tests/animal-exportacion-postgres.test.ts` (`describe.skipIf(CI)`, mirror `animal-listado-postgres.test.ts`): total=40→40 at pageSize=25; filter/order preserved; overflow>maxFilas; foreign finca forbidden | LA-071/072, LA-RBAC-04/05 | tests fail | 110 |
+| 2.2 [x] | GREEN add `listarTodos` to `packages/db/src/animal-infrastructure.ts`: reuse `buildAnimalListadoPredicates`/`animalListadoJoins`/sort + identical authz CTE; `SELECT … LIMIT maxFilas+1`, no OFFSET; `mapAnimalListadoDbRow`; overflow→`AnimalExportacionOverflowError` | LA-071/072, LA-RBAC-04/05 | 2.1 passes | 70 |
+| 2.3 [x] | RED+GREEN `leerLimitesExportacion(db, fincaId)` in `animal-infrastructure.ts`: read `export_max_filas`/`export_timeout_segundos` from `config_parametros_finca`, fail-safe 50000/30; test changed values respected (config-driven) | LA-072 | config-change test passes | 50 |
+| 2.4 [x] | Seed: add `["export_max_filas","50000",…]`, `["export_timeout_segundos","30",…]` to `PARAMETROS` in `packages/db/src/seed/seed.ts` (per-finca, `ON CONFLICT DO NOTHING`) | LA-072 | seed idempotent; reader returns seeded values | 6 |
+| 2.5 [x] | REFACTOR typecheck+biome db | — | green | 3 |
 
 ## Phase 3: web exportadores (generators + neutralizer) → PR2
 
