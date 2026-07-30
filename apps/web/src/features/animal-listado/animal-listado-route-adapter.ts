@@ -584,3 +584,127 @@ export async function cargarListadoDesktop(
     return { tipo: "error_servidor", error: null }
   }
 }
+
+/**
+ * Export download transport (PR 5): GET `/api/fincas/{fincaId}/animales/exportar`
+ * (LA-070/071/072). Reuses the active listado query (filters/sort/search/cols)
+ * and adds the dialog's `format`/`scope`; the artifact is received as a blob
+ * and delivered through a real client download — an anchor with a `download`
+ * attribute — never an inline render or a navigation away from the list.
+ *
+ * Boundary (Clean/Hexagonal): this client transport MUST NOT import the
+ * server-only generators/handler (exceljs + pdfkit live there); it only speaks
+ * HTTP. `fetch` and the download side effect are injectable so the mapping is
+ * unit-testable without a DOM. Outcomes mirror `ResultadoListadoDesktop`'s
+ * discriminated union, refined with the export-specific 413 and timeout states
+ * (LA-076). A server timeout returns HTTP 500 whose `ApiErrorDto.error` title
+ * is the timeout copy; that title is the de-facto contract that distinguishes
+ * `timeout` from a generic `error_servidor`.
+ */
+export type AlcanceExportacionListado = "vista" | "todas"
+export type FormatoExportacionListado = "xlsx" | "csv" | "pdf"
+
+/** The dialog's confirmed selection; structurally matches the ui contract. */
+export type SeleccionExportacionListado = Readonly<{
+  alcance: AlcanceExportacionListado
+  formato: FormatoExportacionListado
+}>
+
+export type ResultadoExportacionDesktop =
+  | { readonly tipo: "exito"; readonly nombreArchivo: string }
+  | { readonly tipo: "consulta_invalida"; readonly error: ApiErrorDto }
+  | { readonly tipo: "sin_acceso"; readonly error: ApiErrorDto }
+  | { readonly tipo: "demasiados_resultados"; readonly error: ApiErrorDto }
+  | { readonly tipo: "timeout"; readonly error: ApiErrorDto | null }
+  | { readonly tipo: "error_servidor"; readonly error: ApiErrorDto | null }
+
+export interface OpcionesExportacionListado {
+  /** Injectable transport seam (tests); defaults to the global `fetch`. */
+  readonly fetchImpl?: typeof fetch
+  /** Injectable download side effect (tests); defaults to an anchor click. */
+  readonly descargaImpl?: (blob: Blob, nombreArchivo: string) => void
+  /** The finalized listado query (`"pageSize=50&sort=…&q=…&f.…&cols=…"`). */
+  readonly consulta?: string
+}
+
+/** Server timeout title — the contract that separates timeout from a 500. */
+const TITULO_TIMEOUT_EXPORTACION = "La exportación tardó demasiado"
+
+const ERROR_DEMASIADOS_SIN_CUERPO: ApiErrorDto = Object.freeze({
+  error: "Demasiados resultados",
+  campo: null,
+  motivo: "Afina los filtros para reducir los animales",
+  requestId: "",
+})
+
+function urlExportacion(
+  fincaId: string,
+  seleccion: SeleccionExportacionListado,
+  consulta: string,
+): string {
+  const parametros = new URLSearchParams(consulta)
+  parametros.set("format", seleccion.formato)
+  parametros.set("scope", seleccion.alcance)
+  return `/api/fincas/${fincaId}/animales/exportar?${parametros.toString()}`
+}
+
+/** Filename from `Content-Disposition`, falling back to a derived name. */
+function resolverNombreArchivoExportacion(
+  respuesta: Response,
+  seleccion: SeleccionExportacionListado,
+): string {
+  const disposicion = respuesta.headers.get("Content-Disposition") ?? ""
+  const coincidencia = /filename="([^"]+)"/.exec(disposicion)
+  return coincidencia?.[1] ?? `animales_${seleccion.alcance}.${seleccion.formato}`
+}
+
+/** Real browser download: an anchor with `download` (no navigation/inline). */
+function descargarArchivo(blob: Blob, nombreArchivo: string): void {
+  const url = URL.createObjectURL(blob)
+  const enlace = document.createElement("a")
+  enlace.href = url
+  enlace.download = nombreArchivo
+  document.body.appendChild(enlace)
+  enlace.click()
+  enlace.remove()
+  URL.revokeObjectURL(url)
+}
+
+function esTimeoutExportacion(error: ApiErrorDto): boolean {
+  return error.error === TITULO_TIMEOUT_EXPORTACION
+}
+
+export async function exportarListadoDesktop(
+  fincaId: string,
+  seleccion: SeleccionExportacionListado,
+  opciones: OpcionesExportacionListado = {},
+): Promise<ResultadoExportacionDesktop> {
+  const fetchImpl = opciones.fetchImpl ?? fetch
+  const descargaImpl = opciones.descargaImpl ?? descargarArchivo
+  try {
+    const respuesta = await fetchImpl(urlExportacion(fincaId, seleccion, opciones.consulta ?? ""), {
+      headers: { Accept: "*/*" },
+    })
+    if (respuesta.status === 200) {
+      const blob = await respuesta.blob()
+      const nombreArchivo = resolverNombreArchivoExportacion(respuesta, seleccion)
+      descargaImpl(blob, nombreArchivo)
+      return { tipo: "exito", nombreArchivo }
+    }
+    const error = await leerErrorApi(respuesta)
+    if (respuesta.status === 400 && error !== null) return { tipo: "consulta_invalida", error }
+    if (respuesta.status === 403) {
+      return { tipo: "sin_acceso", error: error ?? ERROR_SIN_ACCESO_SIN_CUERPO }
+    }
+    if (respuesta.status === 413) {
+      return { tipo: "demasiados_resultados", error: error ?? ERROR_DEMASIADOS_SIN_CUERPO }
+    }
+    if (respuesta.status === 500 && error !== null && esTimeoutExportacion(error)) {
+      return { tipo: "timeout", error }
+    }
+    return { tipo: "error_servidor", error }
+  } catch {
+    // Network failure or abort — fail without a false 403 and without a download.
+    return { tipo: "error_servidor", error: null }
+  }
+}
