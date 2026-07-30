@@ -70,8 +70,8 @@ Chain strategy: pending
 
 | # | Task (files) | Satisfies | Proof (test) | ~Ln |
 |---|--------------|-----------|--------------|-----|
-| 4.1 | RED `apps/web/tests/animal-exportacion-server-contract.test.ts` (mirror `animal-list-server-contract.test.ts`): 400 `campo`; 403 no data; 413 overflow; 500 sanitized+`requestId` no driver/stack; timeout signal; `Content-Type`+`Content-Disposition: attachment` | LA-040/041/043/072, LA-RBAC-04/05 | tests fail | 120 |
-| 4.2 | GREEN create `apps/web/src/server/animal-exportacion-http.ts` `createAnimalExportacionHttpHandler(deps)`: `parseAnimalListadoQuery`+format/scope→400 `campo`; `getUsuarioId` null/forbidden→403; `leerLimitesExportacion`; `AbortSignal(timeoutSegundos)`; `port.exportar`; overflow→413; abort→timeout 500; catch→sanitized 500; success headers + filename `animales_{vista|todas}_{yyyyMMdd-HHmmss}.{ext}` | LA-040/041/043/070/072 | 4.1 passes | 110 |
+| 4.1 [x] | RED `apps/web/tests/animal-exportacion-server-contract.test.ts` (mirror `animal-list-server-contract.test.ts`): 400 `campo`; 403 no data; 413 overflow; 500 sanitized+`requestId` no driver/stack; timeout signal; `Content-Type`+`Content-Disposition: attachment` | LA-040/041/043/072, LA-RBAC-04/05 | tests fail | 120 |
+| 4.2 [x] | GREEN create `apps/web/src/server/animal-exportacion-http.ts` `createAnimalExportacionHttpHandler(deps)`: `parseAnimalListadoQuery`+format/scope→400 `campo`; `getUsuarioId` null/forbidden→403; `leerLimitesExportacion`; `AbortSignal(timeoutSegundos)`; `port.exportar`; overflow→413; abort→timeout 500; catch→sanitized 500; success headers + filename `animales_{vista|todas}_{yyyyMMdd-HHmmss}.{ext}` | LA-040/041/043/070/072 | 4.1 passes | 110 |
 | 4.3 | GREEN create route `apps/web/src/routes/api/fincas/$fincaId/animales/exportar.ts` (mirror `animales.ts`; wire deps) | LA-070 | contract via route | 40 |
 | 4.4 | REFACTOR typecheck+biome web | — | green | 3 |
 
