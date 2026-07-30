@@ -58,8 +58,8 @@ Chain strategy: pending
 
 | # | Task (files) | Satisfies | Proof (test) | ~Ln |
 |---|--------------|-----------|--------------|-----|
-| 3.1 | RED `apps/web/tests/animal-exportacion-neutralizar.test.ts`: `=CMD()`,`+`,`-`,`@`,`\t`,`\r` neutralized; safe values unchanged; all grammars | LA-073 | tests fail | 50 |
-| 3.2 | GREEN create `apps/web/src/server/exportadores/neutralizar-celda.ts` (`PREFIJOS`, prefix→`'`-prefix) | LA-073 | 3.1 passes | 15 |
+| 3.1 [x] | RED `apps/web/tests/animal-exportacion-neutralizar.test.ts`: `=CMD()`,`+`,`-`,`@`,`\t`,`\r` neutralized; safe values unchanged; all grammars | LA-073 | tests fail | 50 |
+| 3.2 [x] | GREEN create `apps/web/src/server/exportadores/neutralizar-celda.ts` (`PREFIJOS`, prefix→`'`-prefix) | LA-073 | 3.1 passes | 15 |
 | 3.3 | RED+GREEN `exportadores/csv.ts` `generarCsv(filas,columnas)`: RFC 4180 quoting + `neutralizarCelda` | LA-070/073 | `=CMD()` quoted+neutralized | 70 |
 | 3.4 | RED+GREEN `exportadores/xlsx.ts` `generarXlsx` (exceljs; `cell.numFmt="@"` on neutralized string; sheet `Animales`); add `exceljs` dep (server-only) | LA-070/073 | `=CMD()` stored as text | 80 |
 | 3.5 | RED+GREEN `exportadores/pdf.ts` `generarPdf` (pdfkit `A4 landscape`, fixed-width 36-col, neutralized text); add `pdfkit` dep | LA-070/074 | renders neutralized text → `Uint8Array` | 90 |
