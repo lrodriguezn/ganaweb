@@ -79,9 +79,9 @@ Chain strategy: pending
 
 | # | Task (files) | Satisfies | Proof (test) | ~Ln |
 |---|--------------|-----------|--------------|-----|
-| 5.1 | Create `packages/ui/src/primitives/dialog.tsx` (shadcn-style from `alert-dialog.tsx`, `@radix-ui/react-dialog` already dep); no `dark:` variants | LA-074 | render test | 70 |
-| 5.2 | Create `packages/ui/src/primitives/toast.tsx` (shadcn-style) | LA-040/041/072 | render test | 60 |
-| 5.3 | REFACTOR typecheck+biome ui | — | green | 5 |
+| 5.1 [x] | Create `packages/ui/src/primitives/dialog.tsx` (shadcn-style from `alert-dialog.tsx`, `@radix-ui/react-dialog` already dep); no `dark:` variants | LA-074 | render test | 70 |
+| 5.2 [x] | Create `packages/ui/src/primitives/toast.tsx` (shadcn-style, `@radix-ui/react-toast` added) | LA-040/041/072 | render test | 60 |
+| 5.3 [x] | REFACTOR typecheck+biome ui | — | green | 5 |
 
 ## Phase 6: dialog + transport → PR5
 
