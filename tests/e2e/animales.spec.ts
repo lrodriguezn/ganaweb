@@ -21,6 +21,26 @@ function animalFormFrame(page: Page) {
 }
 
 test.describe("animal CRUD web flow", () => {
+  test("replays a shared list URL through browser Back and Forward", async ({ page }) => {
+    const sharedQuery = "?q=MT-122&sort=codigo%3Aasc"
+    // Desktop renders a <table> with cells; mobile renders a card button.
+    // Extended timeout: first navigation triggers Vite SSR cold compilation.
+    const mt122 = isMobileViewport(page)
+      ? page.getByRole("button", { name: "MT-122 Matilda" })
+      : page.getByRole("cell", { name: "MT-122" })
+    await page.goto(`/fincas/finca-1/animales${sharedQuery}`)
+    await expect(mt122).toBeVisible({ timeout: 15_000 })
+    await expect(page).toHaveURL(new RegExp(`animales${sharedQuery.replace("?", "\\?")}$`))
+
+    await page.goto("/fincas/finca-1/animales?q=MT-122&sort=codigo%3Adesc")
+    await expect(page).toHaveURL(/q=MT-122&sort=codigo%3Adesc$/)
+    await page.goBack()
+    await expect(page).toHaveURL(new RegExp(`animales${sharedQuery.replace("?", "\\?")}$`))
+    await expect(mt122).toBeVisible()
+    await page.goForward()
+    await expect(page).toHaveURL(/q=MT-122&sort=codigo%3Adesc$/)
+  })
+
   test("creates a local animal and shows pending upload state for a photo", async ({ page }) => {
     const codigo = isMobileViewport(page) ? "NV-E2E-M" : "NV-E2E-D"
     await page.goto("/fincas/finca-1/animales")

@@ -30,12 +30,20 @@ import {
   type AnimalListadoDesktopModel,
   type AnimalListadoToastPayload,
   type AnimalListadoVisualPermissions,
+  aplicarFiltroListado,
   cargarListadoDesktop,
   construirModeloListadoDesktop,
+  crearChipsListado,
+  crearModelosFiltroListado,
+  eliminarChipListado,
   formatearCeldaListado,
+  limpiarFiltrosListado,
   sanitizarListadoBadRequest,
+  siguienteOrdenListado,
 } from "../../../../features/animal-listado/animal-listado-route-adapter.js"
 import {
+  type AnimalCatalogs,
+  getAnimalCatalogsAction,
   getAnimalListadoVisualPermissionsAction,
   listAnimalsAction,
 } from "../../../../server/animal-actions.js"
@@ -50,14 +58,15 @@ export type AnimalsLegadoData = Awaited<ReturnType<typeof listAnimalsAction>>
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales")({
   loader: async ({ params }) => {
-    const [permissions, legado] = await Promise.all([
+    const [permissions, legado, catalogs] = await Promise.all([
       // Fail closed: an RPC failure never produces a false grant (LA-RBAC-05).
       getAnimalListadoVisualPermissionsAction({ data: { fincaId: params.fincaId } }).catch(
         () => PERMISOS_VISUALES_DENEGADOS,
       ),
       listAnimalsAction({ data: { fincaId: params.fincaId } }),
+      getAnimalCatalogsAction({ data: { fincaId: params.fincaId } }),
     ])
-    return { permissions, legado }
+    return { permissions, legado, catalogs }
   },
   component: AnimalsListRoute,
 })
@@ -69,10 +78,62 @@ const bottomNavItems = [
   { id: "mas", label: "Más", icon: Menu, href: "/mas" },
 ]
 
+const BUSQUEDA_DEBOUNCE_MS = 300
+
+export type AnimalListadoQueryNavigation = Readonly<{
+  consulta: URLSearchParams
+  replace: boolean
+}>
+
+/**
+ * Route-owned query mutations. The desktop UI receives these callbacks in Unit
+ * 3; this controller deliberately owns URL intentions, never fetches or
+ * navigates on its own. Each render creates it from the committed URL so
+ * Back/Forward replay cannot retain superseded control state.
+ */
+export function crearControladorConsultaListado(
+  consulta: URLSearchParams,
+  navegar: (intencion: AnimalListadoQueryNavigation) => void,
+) {
+  let temporizador: ReturnType<typeof setTimeout> | undefined
+  const push = (siguiente: URLSearchParams) => {
+    if (temporizador !== undefined) clearTimeout(temporizador)
+    navegar({ consulta: siguiente, replace: false })
+  }
+  return {
+    buscar(valor: string) {
+      if (temporizador !== undefined) clearTimeout(temporizador)
+      temporizador = setTimeout(() => {
+        const siguiente = new URLSearchParams(consulta)
+        siguiente.delete("page")
+        if (valor === "") siguiente.delete("q")
+        else siguiente.set("q", valor)
+        navegar({ consulta: siguiente, replace: true })
+      }, BUSQUEDA_DEBOUNCE_MS)
+    },
+    filtrar(commit: Parameters<typeof aplicarFiltroListado>[1]) {
+      push(aplicarFiltroListado(consulta, commit))
+    },
+    eliminarChip(queryKey: Parameters<typeof eliminarChipListado>[1]) {
+      push(eliminarChipListado(consulta, queryKey))
+    },
+    limpiar() {
+      push(limpiarFiltrosListado(consulta))
+    },
+    ordenar(columnId: Parameters<typeof siguienteOrdenListado>[1]) {
+      push(siguienteOrdenListado(consulta, columnId))
+    },
+    cancelarBusqueda() {
+      if (temporizador !== undefined) clearTimeout(temporizador)
+    },
+  }
+}
+
 export interface AnimalsListRouteViewProps {
   readonly fincaId: string
   readonly permissions: AnimalListadoVisualPermissions
   readonly legado: AnimalsLegadoData
+  readonly catalogs: AnimalCatalogs
   /** Current URL search string — drives LA-040 sanitization reactivity. */
   readonly consulta?: string | undefined
   /** LA-091: opens the animal ficha (the route maps it to navigation). */
@@ -82,6 +143,7 @@ export interface AnimalsListRouteViewProps {
   readonly onVolver: () => void
   /** LA-040: replace the URL with the sanitized query. */
   readonly onSanearUrl?: ((consultaSanitizada: URLSearchParams) => void) | undefined
+  readonly onNavegarConsulta?: ((intencion: AnimalListadoQueryNavigation) => void) | undefined
 }
 
 type EstadoVistaListado =
@@ -104,11 +166,13 @@ export function AnimalsListRouteView({
   fincaId,
   permissions,
   legado,
+  catalogs,
   consulta = "",
   onAbrirFicha,
   onIrANuevo,
   onVolver,
   onSanearUrl,
+  onNavegarConsulta = () => undefined,
 }: AnimalsListRouteViewProps) {
   const [estado, setEstado] = useState<EstadoVistaListado>({ tipo: "cargando" })
   const [aviso, setAviso] = useState<AnimalListadoToastPayload | null>(null)
@@ -175,6 +239,25 @@ export function AnimalsListRouteView({
   }
 
   const modelo = estado.tipo === "listo" ? estado.modelo : null
+  const consultaActual = new URLSearchParams(consulta)
+  const filtros = crearModelosFiltroListado(consultaActual, {
+    sexoKey: catalogs.sexo.options,
+    razaId: catalogs.raza.options,
+    colorId: catalogs.color.options,
+    propietarioId: catalogs.propietario.options,
+    hierroId: catalogs.hierro.options,
+    calidadAnimalId: catalogs.calidad.options,
+    potreroId: catalogs.potrero.options,
+    sectorId: catalogs.sector.options,
+    loteId: catalogs.lote.options,
+    grupoId: catalogs.grupo.options,
+    tipoExplotacionId: catalogs.tipoExplotacion.options,
+  })
+  const chips = crearChipsListado(consultaActual, filtros)
+  const controlador = crearControladorConsultaListado(consultaActual, onNavegarConsulta)
+  const columnasOrdenables = (modelo?.columns ?? ANIMAL_LISTADO_DEFAULT_COLUMNS).filter((columna) =>
+    siguienteOrdenListado(new URLSearchParams(), columna.id).has("sort"),
+  )
   const columnas = (modelo?.columns ?? ANIMAL_LISTADO_DEFAULT_COLUMNS).map((columna) => ({
     id: columna.id,
     label: columna.label,
@@ -209,6 +292,27 @@ export function AnimalsListRouteView({
             setAviso(null)
             setIntento((actual) => actual + 1)
           }}
+          busqueda={consultaActual.get("q") ?? ""}
+          filtros={filtros.filter((filtro) => filtro.options.length > 0)}
+          chips={chips}
+          columnasOrdenables={columnasOrdenables.map((columna) => columna.id)}
+          onBuscar={controlador.buscar}
+          onFiltrar={(commit) => {
+            const filtro = filtros.find(
+              (candidate) =>
+                candidate.filterKey === commit.filterKey && candidate.grammar === commit.grammar,
+            )
+            if (filtro) controlador.filtrar({ ...filtro, value: commit.value })
+          }}
+          onEliminarChip={(queryKey) => {
+            const chip = chips.find((candidate) => candidate.queryKey === queryKey)
+            if (chip) controlador.eliminarChip(chip.queryKey)
+          }}
+          onLimpiarTodo={controlador.limpiar}
+          onOrdenar={(columnId) => {
+            const columna = columnasOrdenables.find((candidate) => candidate.id === columnId)
+            if (columna) controlador.ordenar(columna.id)
+          }}
         />
         {aviso !== null && (
           // <output> implies role="status" — the LA-040 correction is announced.
@@ -235,7 +339,7 @@ export function AnimalsListRouteView({
 }
 
 function AnimalsListRoute() {
-  const { permissions, legado } = Route.useLoaderData()
+  const { permissions, legado, catalogs } = Route.useLoaderData()
   const { fincaId } = Route.useParams()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -247,6 +351,7 @@ function AnimalsListRoute() {
       fincaId={fincaId}
       permissions={permissions}
       legado={legado}
+      catalogs={catalogs}
       consulta={consulta}
       onAbrirFicha={(animalId) => void navigate({ to: `/fincas/${fincaId}/animales/${animalId}` })}
       onIrANuevo={() => void navigate({ to: `/fincas/${fincaId}/animales/nuevo` })}
@@ -259,6 +364,9 @@ function AnimalsListRoute() {
           search: () => Object.fromEntries(consultaSaneada) as never,
           replace: true,
         })
+      }
+      onNavegarConsulta={({ consulta: siguiente, replace }) =>
+        void navigate({ search: () => Object.fromEntries(siguiente) as never, replace })
       }
     />
   )

@@ -10,6 +10,7 @@ import {
   selectLatestAnimalWeight,
 } from "../src/server/animal-list-contract.js"
 import { createAnimalListadoHttpHandler } from "../src/server/animal-list-http.js"
+import { createAnimalE2eListadoReadPort } from "../src/server/e2e-animals-fixture.server.js"
 
 function testRegistryAndNullableRow() {
   assert.equal(ANIMAL_LIST_COLUMNS.length, 36)
@@ -181,6 +182,26 @@ function testIsIsoDateStrictness() {
   assert.equal(boolTrueResult.ok, true)
 }
 
+async function testE2eListingFixtureReplaysAValidSharedQuery() {
+  const result = await createAnimalE2eListadoReadPort().listar({
+    usuarioId: "usuario-operario",
+    fincaId: "finca-1",
+    page: 1,
+    pageSize: 25,
+    sort: "codigo:asc",
+    q: "MT-122",
+    filters: [],
+    cols: ["codigo", "nombre"],
+  })
+
+  assert.equal(result.total, 1)
+  assert.equal(result.sort, "codigo:asc")
+  assert.deepEqual(result.cols, ["codigo", "nombre"])
+  assert.equal(result.data[0]?.codigo, "MT-122")
+  assert.equal(result.data[0]?.fechaNacimiento, "2020-01-02")
+  assert.equal(result.data[0]?.fechaCompra, "2024-03-04")
+}
+
 testRegistryAndNullableRow()
 testParserDefaultsAndNormalizedColumns()
 testInvalidGrammar()
@@ -188,6 +209,7 @@ testErrorEnvelope()
 testDeterministicDerivations()
 testOrigenFallback()
 testIsIsoDateStrictness()
+await testE2eListingFixtureReplaysAValidSharedQuery()
 
 // biome-ignore lint/suspicious/noConsole: focused TDD harness progress output
 console.log("✅ animal-list-server-contract.test.ts passed")

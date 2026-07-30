@@ -21,8 +21,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ANIMAL_LISTADO_DEFAULT_COLUMNS } from "../src/features/animal-listado/animal-listado-route-adapter.js"
 import type { AnimalListadoVisualPermissions } from "../src/features/animal-listado/animal-listado-route-adapter.js"
-import { AnimalsListRouteView } from "../src/routes/_app/fincas/$fincaId/animales.js"
+import {
+  AnimalsListRouteView,
+  crearControladorConsultaListado,
+} from "../src/routes/_app/fincas/$fincaId/animales.js"
 import type { AnimalsListRouteViewProps } from "../src/routes/_app/fincas/$fincaId/animales.js"
+import type { AnimalCatalogs } from "../src/server/animal-actions.js"
 import type {
   AnimalListadoResponseDto,
   AnimalListadoRowDto,
@@ -34,6 +38,7 @@ import type {
 // the stubs are inert.
 vi.mock("../src/server/animal-actions.js", () => ({
   listAnimalsAction: vi.fn(),
+  getAnimalCatalogsAction: vi.fn(),
   getAnimalListadoVisualPermissionsAction: vi.fn(),
 }))
 
@@ -135,6 +140,24 @@ const permisosCompletos: AnimalListadoVisualPermissions = {
   canExport: true,
 }
 
+const catalogoVacio = { tipo: "disponible", options: [] } as const
+const catalogos: AnimalCatalogs = {
+  sexo: catalogoVacio,
+  raza: { tipo: "disponible", options: [{ value: "raza-1", label: "Holstein" }] },
+  color: catalogoVacio,
+  calidad: catalogoVacio,
+  tipoExplotacion: catalogoVacio,
+  potrero: catalogoVacio,
+  sector: catalogoVacio,
+  lote: catalogoVacio,
+  grupo: catalogoVacio,
+  lugarCompra: catalogoVacio,
+  hierro: catalogoVacio,
+  propietario: catalogoVacio,
+  madre: catalogoVacio,
+  padre: catalogoVacio,
+}
+
 function legadoLista(): AnimalsListRouteViewProps["legado"] {
   return {
     tipo: "lista",
@@ -162,16 +185,19 @@ function montarVista(iniciales: Partial<AnimalsListRouteViewProps> = {}) {
     nuevo: vi.fn(),
     volver: vi.fn(),
     sanear: vi.fn(),
+    navegar: vi.fn(),
   }
   const construir = (props: Partial<AnimalsListRouteViewProps>) => (
     <AnimalsListRouteView
       fincaId="finca-1"
       permissions={permisosCompletos}
       legado={legadoLista()}
+      catalogs={catalogos}
       onAbrirFicha={espias.ficha}
       onIrANuevo={espias.nuevo}
       onVolver={espias.volver}
       onSanearUrl={espias.sanear}
+      onNavegarConsulta={espias.navegar}
       {...props}
     />
   )
@@ -339,5 +365,173 @@ describe("Route wiring — the desktop branch consumes only #107 (task 3.1)", ()
     )
     expect(screen.queryByRole("button", { name: "Exportar" })).not.toBeInTheDocument()
     expect(await screen.findByText("MT-001")).toBeInTheDocument()
+  })
+})
+
+describe("#109 route query controller (Unit 2)", () => {
+  it("renders a catalog-backed route filter and commits its stable ID", async () => {
+    fetchMock.mockResolvedValue(respuestaHttp(respuestaDto()))
+    const { navegar } = montarVista()
+
+    await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Raza" }), "raza-1")
+
+    expect(navegar).toHaveBeenCalledWith({
+      consulta: new URLSearchParams("f.razaId=in%3Araza-1"),
+      replace: false,
+    })
+  })
+
+  it("replaces a debounced search after 300 ms while retaining AND filters", () => {
+    vi.useFakeTimers()
+    const navegar = vi.fn()
+    const controller = crearControladorConsultaListado(
+      new URLSearchParams("page=3&f.razaId=in:raza-1"),
+      navegar,
+    )
+
+    controller.buscar("mariposa")
+    vi.advanceTimersByTime(299)
+    expect(navegar).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+
+    const navegacion = navegar.mock.calls[0]?.[0]
+    expect(navegacion.replace).toBe(true)
+    expect(navegacion.consulta.toString()).toBe("f.razaId=in%3Araza-1&q=mariposa")
+    vi.useRealTimers()
+  })
+
+  it("pushes committed filter/chip/clear/sort mutations and replays URL state", () => {
+    const navegar = vi.fn()
+    const controller = crearControladorConsultaListado(
+      new URLSearchParams("page=2&q=mariposa&f.razaId=in:raza-1"),
+      navegar,
+    )
+
+    controller.eliminarChip("f.razaId")
+    controller.ordenar("codigo")
+    controller.limpiar()
+
+    expect(navegar).toHaveBeenNthCalledWith(1, {
+      consulta: new URLSearchParams("q=mariposa"),
+      replace: false,
+    })
+    expect(navegar).toHaveBeenNthCalledWith(2, {
+      consulta: new URLSearchParams("q=mariposa&f.razaId=in:raza-1&sort=codigo:asc"),
+      replace: false,
+    })
+    expect(navegar).toHaveBeenNthCalledWith(3, {
+      consulta: new URLSearchParams(),
+      replace: false,
+    })
+
+    const sinOrden = crearControladorConsultaListado(
+      new URLSearchParams("page=2&sort=codigo:desc"),
+      navegar,
+    )
+    sinOrden.ordenar("codigo")
+    expect(navegar).toHaveBeenLastCalledWith({ consulta: new URLSearchParams(), replace: false })
+  })
+
+  it("cancels stale debounced search before a newer committed mutation", () => {
+    vi.useFakeTimers()
+    const navegar = vi.fn()
+    const controller = crearControladorConsultaListado(new URLSearchParams("q=anterior"), navegar)
+
+    controller.buscar("obsoleta")
+    controller.ordenar("codigo")
+    vi.advanceTimersByTime(300)
+
+    expect(navegar).toHaveBeenCalledOnce()
+    expect(navegar).toHaveBeenCalledWith({
+      consulta: new URLSearchParams("q=anterior&sort=codigo%3Aasc"),
+      replace: false,
+    })
+    vi.useRealTimers()
+  })
+
+  it("retains valid data and ignores stale 400 corrections", async () => {
+    let resolverAntiguo: ((respuesta: Response) => void) | undefined
+    fetchMock
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolverAntiguo = resolve
+          }),
+      )
+      .mockResolvedValueOnce(
+        respuestaHttp(respuestaDto({ data: [{ ...filaLlena, codigo: "ACT-001" }] })),
+      )
+    const { rerenderCon, sanear } = montarVista({ consulta: "q=antigua" })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    rerenderCon({ consulta: "q=actual" })
+
+    expect(await screen.findByText("ACT-001")).toBeInTheDocument()
+    resolverAntiguo?.(respuestaHttp(errorApi({ campo: "f.razaId", motivo: "Obsoleta" }), 400))
+    await waitFor(() => expect(sanear).not.toHaveBeenCalled())
+    expect(screen.getByText("ACT-001")).toBeInTheDocument()
+    expect(screen.queryByText("Obsoleta")).not.toBeInTheDocument()
+  })
+
+  it("corrects sequential invalid fields one at a time, retaining the valid table (LA-044)", async () => {
+    fetchMock.mockResolvedValueOnce(respuestaHttp(respuestaDto()))
+    const { sanear, rerenderCon } = montarVista()
+    expect(await screen.findByText("MT-001")).toBeInTheDocument()
+
+    fetchMock.mockResolvedValueOnce(
+      respuestaHttp(
+        errorApi({ campo: "f.razaId", motivo: "Valor de filtro no permitido", requestId: "seq-1" }),
+        400,
+      ),
+    )
+    rerenderCon({ consulta: "f.razaId=in:raza-mala&f.sexoKey=eq:999&pageSize=50" })
+
+    await waitFor(() => expect(sanear).toHaveBeenCalledTimes(1))
+    const primeraSaneada = sanear.mock.calls[0]?.[0] as URLSearchParams
+    expect(primeraSaneada.has("f.razaId")).toBe(false)
+    expect(primeraSaneada.get("f.sexoKey")).toBe("eq:999")
+    expect(primeraSaneada.get("pageSize")).toBe("50")
+    expect(screen.getByText("MT-001")).toBeInTheDocument()
+
+    fetchMock.mockResolvedValueOnce(
+      respuestaHttp(
+        errorApi({
+          campo: "f.sexoKey",
+          motivo: "Valor de filtro no permitido",
+          requestId: "seq-2",
+        }),
+        400,
+      ),
+    )
+    rerenderCon({ consulta: "f.sexoKey=eq:999&pageSize=50" })
+
+    await waitFor(() => expect(sanear).toHaveBeenCalledTimes(2))
+    const segundaSaneada = sanear.mock.calls[1]?.[0] as URLSearchParams
+    expect(segundaSaneada.has("f.sexoKey")).toBe(false)
+    expect(segundaSaneada.get("pageSize")).toBe("50")
+    expect(screen.getByText("MT-001")).toBeInTheDocument()
+  })
+
+  it("ignores a stale 200 response that resolves after a newer query (LA-045)", async () => {
+    let resolverAntiguo: ((respuesta: Response) => void) | undefined
+    fetchMock
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolverAntiguo = resolve
+          }),
+      )
+      .mockResolvedValueOnce(
+        respuestaHttp(respuestaDto({ data: [{ ...filaLlena, codigo: "ACT-001" }] })),
+      )
+    const { rerenderCon } = montarVista({ consulta: "q=antigua" })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    rerenderCon({ consulta: "q=actual" })
+
+    expect(await screen.findByText("ACT-001")).toBeInTheDocument()
+
+    resolverAntiguo?.(respuestaHttp(respuestaDto({ data: [{ ...filaLlena, codigo: "OLD-999" }] })))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(screen.getByText("ACT-001")).toBeInTheDocument()
+    expect(screen.queryByText("OLD-999")).not.toBeInTheDocument()
   })
 })

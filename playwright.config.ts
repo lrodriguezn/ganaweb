@@ -15,7 +15,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `pnpm --filter @ganaweb/ui build && PLAYWRIGHT_TEST=1 GANAWEB_E2E_ANIMALS=1 pnpm --filter @ganaweb/web dev --host 127.0.0.1 --port ${PORT} --force`,
+    command: `pnpm --filter @ganaweb/ui build && PLAYWRIGHT_TEST=1 GANAWEB_E2E_ANIMALS=1 pnpm --filter @ganaweb/web dev --host 127.0.0.1 --port ${PORT} --force & app_pid=$!; trap 'kill $app_pid' EXIT; until curl --fail --silent '${baseURL}/api/fincas/finca-1/animales?q=MT-122&sort=codigo%3Aasc' >/dev/null; do sleep 1; done; wait $app_pid`,
     url: baseURL,
     timeout: 120_000,
     reuseExistingServer: false,

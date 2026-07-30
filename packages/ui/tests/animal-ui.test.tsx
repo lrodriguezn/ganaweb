@@ -1810,6 +1810,78 @@ describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
       }
     })
 
+    it("delegates supplied stable filter IDs while displaying labels and active chips", async () => {
+      const user = userEvent.setup()
+      const onFiltrar = vi.fn()
+      const onEliminarChip = vi.fn()
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({
+            busqueda: "Luna",
+            filtros: [
+              {
+                filterKey: "razaId",
+                grammar: "in",
+                label: "Raza",
+                committedValue: "raza-uuid",
+                options: [{ value: "raza-uuid", label: "Brahman" }],
+              },
+            ],
+            chips: [{ queryKey: "f.razaId", label: "Raza", valueLabel: "Brahman" }],
+            onFiltrar,
+            onEliminarChip,
+          })}
+        />,
+      )
+
+      expect(screen.getByRole("searchbox", { name: "Buscar animales" })).toHaveValue("Luna")
+      expect(screen.getByRole("combobox", { name: "Raza" })).toHaveValue("raza-uuid")
+      expect(
+        screen.getByRole("button", { name: "Quitar filtro Raza: Brahman" }),
+      ).toBeInTheDocument()
+
+      await user.selectOptions(screen.getByRole("combobox", { name: "Raza" }), "raza-uuid")
+      expect(onFiltrar).toHaveBeenCalledTimes(1)
+      expect(onFiltrar).toHaveBeenCalledWith({
+        filterKey: "razaId",
+        grammar: "in",
+        value: "raza-uuid",
+      })
+
+      await user.click(screen.getByRole("button", { name: "Quitar filtro Raza: Brahman" }))
+      expect(onEliminarChip).toHaveBeenCalledOnce()
+      expect(onEliminarChip).toHaveBeenCalledWith("f.razaId")
+    })
+
+    it("delegates clear-all and keyboard sort while reflecting the response sort", async () => {
+      const user = userEvent.setup()
+      const onLimpiarTodo = vi.fn()
+      const onOrdenar = vi.fn()
+      render(
+        <AnimalListadoDesktop
+          {...propsListado({
+            orden: { campo: "codigo", direccion: "asc" },
+            chips: [{ queryKey: "q", label: "Búsqueda", valueLabel: "Luna" }],
+            columnasOrdenables: ["codigo"],
+            onLimpiarTodo,
+            onOrdenar,
+          })}
+        />,
+      )
+
+      const codigo = screen.getByRole("columnheader", { name: "Código" })
+      expect(codigo).toHaveAttribute("aria-sort", "ascending")
+
+      await user.click(screen.getByRole("button", { name: "Limpiar todo" }))
+      expect(onLimpiarTodo).toHaveBeenCalledOnce()
+
+      const ordenarCodigo = screen.getByRole("button", { name: "Ordenar por Código" })
+      ordenarCodigo.focus()
+      await user.keyboard("{Enter}")
+      expect(onOrdenar).toHaveBeenCalledTimes(1)
+      expect(onOrdenar).toHaveBeenCalledWith("codigo")
+    })
+
     it("ignores an orden referencing a column that is not rendered", () => {
       render(
         <AnimalListadoDesktop

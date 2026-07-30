@@ -2,6 +2,7 @@ import type * as React from "react"
 
 import { cn } from "../lib/utils"
 import { Button } from "../primitives/button"
+import { Input } from "../primitives/input"
 
 /**
  * AnimalListadoDesktop — presentational #107-backed table for issue #108.
@@ -55,6 +56,21 @@ export interface AnimalListadoDesktopOrden {
   readonly direccion: "asc" | "desc"
 }
 
+/** Route-supplied query-control values. The UI never derives URL grammar. */
+export interface AnimalListadoDesktopFiltro {
+  readonly filterKey: string
+  readonly grammar: string
+  readonly label: string
+  readonly committedValue: string | null
+  readonly options: readonly Readonly<{ value: string; label: string }>[]
+}
+
+export interface AnimalListadoDesktopChip {
+  readonly queryKey: string
+  readonly label: string
+  readonly valueLabel: string
+}
+
 export interface AnimalListadoDesktopProps {
   /** Visible columns in render order (canonical 29 by default; any
    * recognized subset — including optional columns — renders as supplied). */
@@ -77,6 +93,22 @@ export interface AnimalListadoDesktopProps {
   readonly onReintentar?: () => void
   /** #109-owned action slot for the no-results state. */
   readonly onLimpiarFiltros?: () => void
+  /** #109 route-owned, committed global-search value. */
+  readonly busqueda?: string
+  /** #109 route-supplied controls; options carry stable IDs/keys. */
+  readonly filtros?: readonly AnimalListadoDesktopFiltro[]
+  readonly chips?: readonly AnimalListadoDesktopChip[]
+  /** Only route-supplied sortable column IDs expose a sort control. */
+  readonly columnasOrdenables?: readonly string[]
+  readonly onBuscar?: (value: string) => void
+  readonly onFiltrar?: (commit: {
+    filterKey: string
+    grammar: string
+    value: string | null
+  }) => void
+  readonly onEliminarChip?: (queryKey: string) => void
+  readonly onLimpiarTodo?: () => void
+  readonly onOrdenar?: (columnId: string) => void
   readonly className?: string
 }
 
@@ -186,15 +218,20 @@ function FilaListado({
 function EncabezadoColumna({
   columna,
   orden,
+  ordenable = false,
+  onOrdenar,
 }: {
   columna: AnimalListadoDesktopColumn
   orden?: AnimalListadoDesktopOrden | null | undefined
+  ordenable?: boolean
+  onOrdenar?: ((columnId: string) => void) | undefined
 }) {
   const ordenada = orden?.campo === columna.id
   const congelado = desplazamientoCongelado(columna)
   return (
     <th
       scope="col"
+      aria-label={columna.label}
       aria-sort={ordenada ? (orden?.direccion === "asc" ? "ascending" : "descending") : undefined}
       style={estiloEncabezado(columna)}
       className={cn(
@@ -203,7 +240,19 @@ function EncabezadoColumna({
         congelado && "border-r",
       )}
     >
-      {columna.label}
+      {ordenable && onOrdenar ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={`Ordenar por ${columna.label}`}
+          onClick={() => onOrdenar(columna.id)}
+        >
+          {columna.label}
+        </Button>
+      ) : (
+        columna.label
+      )}
     </th>
   )
 }
@@ -211,11 +260,15 @@ function EncabezadoColumna({
 function TablaListado({
   columns,
   orden,
+  columnasOrdenables = [],
+  onOrdenar,
   ariaBusy = false,
   children,
 }: {
   columns: readonly AnimalListadoDesktopColumn[]
   orden?: AnimalListadoDesktopOrden | null | undefined
+  columnasOrdenables?: readonly string[] | undefined
+  onOrdenar?: ((columnId: string) => void) | undefined
   ariaBusy?: boolean
   children: React.ReactNode
 }) {
@@ -229,12 +282,85 @@ function TablaListado({
         <thead>
           <tr>
             {columns.map((columna) => (
-              <EncabezadoColumna key={columna.id} columna={columna} orden={orden} />
+              <EncabezadoColumna
+                key={columna.id}
+                columna={columna}
+                orden={orden}
+                ordenable={columnasOrdenables.includes(columna.id)}
+                onOrdenar={onOrdenar}
+              />
             ))}
           </tr>
         </thead>
         <tbody>{children}</tbody>
       </table>
+    </div>
+  )
+}
+
+function ControlesConsulta({
+  busqueda,
+  filtros = [],
+  chips = [],
+  onBuscar,
+  onFiltrar,
+  onEliminarChip,
+  onLimpiarTodo,
+}: Pick<
+  AnimalListadoDesktopProps,
+  "busqueda" | "filtros" | "chips" | "onBuscar" | "onFiltrar" | "onEliminarChip" | "onLimpiarTodo"
+>) {
+  if (busqueda === undefined && filtros.length === 0 && chips.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-end gap-2 rounded-card border bg-card p-3">
+      {busqueda !== undefined && (
+        <Input
+          type="search"
+          aria-label="Buscar animales"
+          value={busqueda}
+          onChange={(event) => onBuscar?.(event.target.value)}
+        />
+      )}
+      {filtros.map((filtro) => (
+        <label key={filtro.filterKey} className="grid gap-1 text-support">
+          {filtro.label}
+          <select
+            aria-label={filtro.label}
+            value={filtro.committedValue ?? ""}
+            onChange={(event) =>
+              onFiltrar?.({
+                filterKey: filtro.filterKey,
+                grammar: filtro.grammar,
+                value: event.target.value === "" ? null : event.target.value,
+              })
+            }
+          >
+            <option value="">Todos</option>
+            {filtro.options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+      {chips.map((chip) => (
+        <Button
+          key={chip.queryKey}
+          type="button"
+          variant="secondary"
+          size="sm"
+          aria-label={`Quitar filtro ${chip.label}: ${chip.valueLabel}`}
+          onClick={() => onEliminarChip?.(chip.queryKey)}
+        >
+          {chip.label}: {chip.valueLabel}
+        </Button>
+      ))}
+      {chips.length > 0 && onLimpiarTodo && (
+        <Button type="button" variant="secondary" size="sm" onClick={onLimpiarTodo}>
+          Limpiar todo
+        </Button>
+      )}
     </div>
   )
 }
@@ -346,6 +472,8 @@ function ContenidoListo({
   onAbrirFicha,
   onNuevoAnimal,
   onLimpiarFiltros,
+  columnasOrdenables,
+  onOrdenar,
 }: AnimalListadoDesktopProps) {
   // LA-061: `totalSinFiltro === 0` → the finca has no animals at all.
   if ((totalSinFiltro ?? 0) === 0) {
@@ -378,7 +506,12 @@ function ContenidoListo({
     )
   }
   return (
-    <TablaListado columns={columns} orden={orden}>
+    <TablaListado
+      columns={columns}
+      orden={orden}
+      columnasOrdenables={columnasOrdenables}
+      onOrdenar={onOrdenar}
+    >
       {(rows ?? []).map((fila) => (
         <FilaListado key={fila.id} fila={fila} columns={columns} onAbrirFicha={onAbrirFicha} />
       ))}
@@ -431,6 +564,7 @@ export function AnimalListadoDesktop(props: AnimalListadoDesktopProps) {
           state changes are announced. */}
       <output className="sr-only">{textoAnuncio(estado, total ?? 0, totalSinFiltro ?? 0)}</output>
       <BarraAcciones permissions={permissions} onNuevoAnimal={onNuevoAnimal} />
+      <ControlesConsulta {...props} />
       <ContenidoPorEstado {...props} />
     </section>
   )
