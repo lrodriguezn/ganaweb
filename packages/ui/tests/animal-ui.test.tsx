@@ -2213,25 +2213,33 @@ describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
       expect(screen.queryByRole("button", { name: "Nuevo animal" })).not.toBeInTheDocument()
     })
 
-    it("renders 'Exportar' only with canExport and keeps it inert until #111", async () => {
+    it("renders 'Exportar' only with canExport and activates it through onExportar (#111, LA-RBAC-03)", async () => {
       const user = userEvent.setup()
       const onAbrirFicha = vi.fn()
+      const onExportar = vi.fn()
       const { rerender } = render(
         <AnimalListadoDesktop
-          {...propsListado({ permissions: { canCreate: false, canExport: true }, onAbrirFicha })}
+          {...propsListado({
+            permissions: { canCreate: false, canExport: true },
+            onAbrirFicha,
+            onExportar,
+          })}
         />,
       )
 
       const exportar = screen.getByRole("button", { name: "Exportar" })
       expect(exportar).toBeEnabled()
-      // Inert: no dialog, no download, no navigation — #111 owns execution.
+      // Active: clicking invokes onExportar (the route opens the dialog) and
+      // never triggers ficha navigation — the LA-091 guard stays intact.
       await user.click(exportar)
+      expect(onExportar).toHaveBeenCalledTimes(1)
       expect(onAbrirFicha).not.toHaveBeenCalled()
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
 
+      // The canExport visual gate is unchanged (LA-RBAC-03): missing the
+      // permission hides the entry point.
       rerender(
         <AnimalListadoDesktop
-          {...propsListado({ permissions: { canCreate: false, canExport: false } })}
+          {...propsListado({ permissions: { canCreate: false, canExport: false }, onExportar })}
         />,
       )
       expect(screen.queryByRole("button", { name: "Exportar" })).not.toBeInTheDocument()

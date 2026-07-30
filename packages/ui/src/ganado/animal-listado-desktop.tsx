@@ -25,7 +25,9 @@ import { Input } from "../primitives/input"
  *   sanitization lives upstream). `Limpiar filtros` is a #109-owned slot:
  *   this component renders the supplied action without owning its behavior.
  * - No pagination, column selector, or preference persistence — #110.
- * - No export execution, dialog, or download — #111. `Exportar` is inert.
+ * - Export execution lives in the route (#111): this component only renders
+ *   the `Exportar` entry point (LA-RBAC-03) and invokes `onExportar`; the
+ *   route owns the dialog, the download transport, and the network detail.
  *
  * Theming: CSS tokens only — zero Tailwind dark-mode variants (T-004).
  * All ten appearances re-skin this exact markup through the token cascade.
@@ -87,6 +89,8 @@ export interface AnimalListadoDesktopProps {
   readonly onAbrirFicha: (animalId: string) => void
   /** LA-RBAC-02: rendered only with `canCreate`. */
   readonly onNuevoAnimal?: () => void
+  /** LA-RBAC-03: rendered only with `canExport`; opens the #111 export dialog. */
+  readonly onExportar?: () => void
   /** LA-061: finca-empty registration action (respects `canCreate`). */
   readonly onVolver?: () => void
   /** LA-042: 500/timeout retry. */
@@ -434,14 +438,17 @@ function textoAnuncio(
 }
 
 /** LA-RBAC-02/03 toolbar: presence is permission-gated — server
- * enforcement stays authoritative. `Exportar` is intentionally inert
- * until #111 owns export execution, dialog, and download. */
+ * enforcement stays authoritative. `Exportar` is active since #111: its
+ * `onClick` invokes the route-supplied `onExportar`, which opens the export
+ * dialog (the component owns no dialog/download/network detail). */
 function BarraAcciones({
   permissions,
   onNuevoAnimal,
+  onExportar,
 }: {
   permissions: AnimalListadoDesktopPermissions
   onNuevoAnimal?: (() => void) | undefined
+  onExportar?: (() => void) | undefined
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
@@ -453,7 +460,7 @@ function BarraAcciones({
           </Button>
         )}
         {permissions.canExport && (
-          <Button type="button" variant="secondary">
+          <Button type="button" variant="secondary" onClick={onExportar}>
             Exportar
           </Button>
         )}
@@ -557,13 +564,17 @@ function ContenidoPorEstado(props: AnimalListadoDesktopProps) {
 }
 
 export function AnimalListadoDesktop(props: AnimalListadoDesktopProps) {
-  const { className, estado, total, totalSinFiltro, permissions, onNuevoAnimal } = props
+  const { className, estado, total, totalSinFiltro, permissions, onNuevoAnimal, onExportar } = props
   return (
     <section className={cn("space-y-4", className)}>
       {/* LA-090: persistent live region (<output> implies role="status") —
           state changes are announced. */}
       <output className="sr-only">{textoAnuncio(estado, total ?? 0, totalSinFiltro ?? 0)}</output>
-      <BarraAcciones permissions={permissions} onNuevoAnimal={onNuevoAnimal} />
+      <BarraAcciones
+        permissions={permissions}
+        onNuevoAnimal={onNuevoAnimal}
+        onExportar={onExportar}
+      />
       <ControlesConsulta {...props} />
       <ContenidoPorEstado {...props} />
     </section>
