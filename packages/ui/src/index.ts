@@ -145,6 +145,18 @@ export type {
 export { DatePicker } from "./primitives/date-picker"
 export type { DatePickerProps } from "./primitives/date-picker"
 export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./primitives/dialog"
+export {
   Drawer,
   DrawerClose,
   DrawerContent,
