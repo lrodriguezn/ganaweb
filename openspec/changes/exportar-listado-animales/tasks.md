@@ -39,10 +39,10 @@ Chain strategy: pending
 
 | # | Task (files) | Satisfies | Proof (test) | ~Ln |
 |---|--------------|-----------|--------------|-----|
-| 1.1 | Verify aplicacion harness baseline (pre-existing): `pnpm --filter @ganaweb/aplicacion test` green; no scaffold | design-gate WARNING | existing suite green | 0 |
-| 1.2 | RED `packages/aplicacion/tests/animal-exportacion-port.test.ts`: request/result shape, overflow when rows>maxFilas, forbidden reuse | LA-072, LA-RBAC-04/05 | tests fail (no port) | 70 |
-| 1.3 | GREEN create `packages/aplicacion/src/puertos/animal-exportacion-port.ts` (`AnimalExportacionRequest`, `AnimalExportacionReadPort`, `AnimalExportacionOverflowError`); export from `src/index.ts` | LA-070/071/072 | 1.2 passes | 45 |
-| 1.4 | REFACTOR typecheck+biome; `architecture-boundary.test.ts` green (dominio zero-dep, aplicacion format-free) | dependency rule | boundary test green | 5 |
+| 1.1 [x] | Verify aplicacion harness baseline (pre-existing): `pnpm --filter @ganaweb/aplicacion test` green; no scaffold | design-gate WARNING | existing suite green | 0 |
+| 1.2 [x] | RED `packages/aplicacion/tests/animal-exportacion-port.test.ts`: request/result shape, overflow when rows>maxFilas, forbidden reuse | LA-072, LA-RBAC-04/05 | tests fail (no port) | 70 |
+| 1.3 [x] | GREEN create `packages/aplicacion/src/puertos/animal-exportacion-port.ts` (`AnimalExportacionRequest`, `AnimalExportacionReadPort`, `AnimalExportacionOverflowError`); export from `src/index.ts` | LA-070/071/072 | 1.2 passes | 45 |
+| 1.4 [x] | REFACTOR typecheck+biome; `architecture-boundary.test.ts` green (dominio zero-dep, aplicacion format-free) | dependency rule | boundary test green | 5 |
 
 ## Phase 2: db read model + config reader + seed → PR1
 
