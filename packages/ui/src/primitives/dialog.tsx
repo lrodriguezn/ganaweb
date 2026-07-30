@@ -9,7 +9,7 @@ import { cn } from "../lib/utils"
  * Wraps Radix Dialog (dismissible modal). Unlike AlertDialog it can be
  * closed freely (overlay click / Escape / built-in close button) and is
  * the base for non-destructive flows such as the animal export dialog.
- * Theming is CSS-token only — no `dark:` variants (T-004).
+ * Theming is CSS-token only — no dark-mode Tailwind variants (T-004).
  */
 const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger

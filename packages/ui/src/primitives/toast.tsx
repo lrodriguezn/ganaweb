@@ -11,7 +11,7 @@ import { cn } from "../lib/utils"
  * plus the classic shadcn store: `toast()` fires a notification,
  * `useToast()` reads the queue, and `<Toaster />` renders it. Used for
  * export feedback (success / 403 / 413 / timeout / 400 correction).
- * Theming is CSS-token only — no `dark:` variants (T-004).
+ * Theming is CSS-token only — no dark-mode Tailwind variants (T-004).
  */
 const ToastProvider = ToastPrimitives.Provider
 
@@ -51,7 +51,11 @@ const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => (
-  <ToastPrimitives.Root ref={ref} className={cn(toastVariants({ variant }), className)} {...props} />
+  <ToastPrimitives.Root
+    ref={ref}
+    className={cn(toastVariants({ variant }), className)}
+    {...props}
+  />
 ))
 Toast.displayName = ToastPrimitives.Root.displayName
 
@@ -224,12 +228,12 @@ function useToast() {
       const index = listeners.indexOf(setState)
       if (index > -1) listeners.splice(index, 1)
     }
-  }, [state])
+  }, [])
 
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }
 }
 
