@@ -63,7 +63,7 @@ Chain strategy: pending
 | 3.3 [x] | RED+GREEN `exportadores/csv.ts` `generarCsv(filas,columnas)`: RFC 4180 quoting + `neutralizarCelda` | LA-070/073 | `=CMD()` quoted+neutralized | 70 |
 | 3.4 [x] | RED+GREEN `exportadores/xlsx.ts` `generarXlsx` (exceljs; `cell.numFmt="@"` on neutralized string; sheet `Animales`); add `exceljs` dep (server-only) | LA-070/073 | `=CMD()` stored as text | 80 |
 | 3.5 [x] | RED+GREEN `exportadores/pdf.ts` `generarPdf` (pdfkit `A4 landscape`, fixed-width 36-col, neutralized text); add `pdfkit` dep | LA-070/074 | renders neutralized text → `Uint8Array` | 90 |
-| 3.6 | RED+GREEN `exportadores/index.ts`: `generarXlsx|Csv|Pdf` barrel + scope/col resolution (`todas`→36 canonical, `vista`→`normalizeCols` effective, `Lugar compra` excluded) | LA-071 | 36 cols / vista cols tests | 60 |
+| 3.6 [x] | RED+GREEN `exportadores/index.ts`: `generarXlsx|Csv|Pdf` barrel + scope/col resolution (`todas`→36 canonical, `vista`→`normalizeCols` effective, `Lugar compra` excluded) | LA-071 | 36 cols / vista cols tests | 60 |
 | 3.7 | REFACTOR typecheck+biome web exportadores | — | green | 3 |
 
 ## Phase 4: web handler + route + contract → PR3
