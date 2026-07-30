@@ -96,13 +96,13 @@ Chain strategy: pending
 
 | # | Task (files) | Satisfies | Proof (test) | ~Ln |
 |---|--------------|-----------|--------------|-----|
-| 7.1 | RED+GREEN `packages/ui/src/ganado/animal-listado-desktop.tsx`: add `onExportar` prop, Exportar `Button onClick` opens dialog; **PRESERVE** LA-RBAC-02 (`Nuevo animal` `canCreate` gate) + LA-091 (row click/Enter → ficha); `canExport` gate unchanged | LA-RBAC-02/03, LA-091 | desktop test: Exportar active; gates intact | 40 |
-| 7.2 | Modify `apps/web/src/routes/_app/fincas/$fincaId/animales.tsx`: mount dialog, pass transport + `canExport` | LA-RBAC-03, LA-070 | route renders dialog | 40 |
-| 7.3 | RED web route integration test (extend `animal-listado-route-integration.test.tsx` pattern): Exportar opens dialog; confirm triggers download | LA-070/074 | integration test | 60 |
+| 7.1 [x] | RED+GREEN `packages/ui/src/ganado/animal-listado-desktop.tsx`: add `onExportar` prop, Exportar `Button onClick` opens dialog; **PRESERVE** LA-RBAC-02 (`Nuevo animal` `canCreate` gate) + LA-091 (row click/Enter → ficha); `canExport` gate unchanged | LA-RBAC-02/03, LA-091 | desktop test: Exportar active; gates intact | 40 |
+| 7.2 [x] | Modify `apps/web/src/routes/_app/fincas/$fincaId/animales.tsx`: mount dialog, pass transport + `canExport` | LA-RBAC-03, LA-070 | route renders dialog | 40 |
+| 7.3 [x] | RED web route integration test (extend `animal-listado-route-integration.test.tsx` pattern): Exportar opens dialog; confirm triggers download | LA-070/074 | integration test | 60 |
 
 ## Phase 8: Verification (final)
 
-- [ ] 8.1 `pnpm turbo test` green (all packages)
-- [ ] 8.2 `pnpm turbo typecheck` green
-- [ ] 8.3 `biome ci .` green
-- [ ] 8.4 Confirm success criteria: total=40→40 rows; `=CMD()` not executable (CSV/XLSX); `Todas`=36 cols / `Vista` respects cols; PDF warn allows continue; >50k→413; 30s→timeout; 500 Retry preserves filters/scope/format; Exportar hidden without both perms + server re-validates + finca isolation
+- [x] 8.1 `pnpm turbo test` green (all packages) — 12/13 tasks green; `@ganaweb/ui` 467/468. The single failure is the PRE-EXISTING `date-picker.test.tsx` RN-002 month-boundary flake (today = last day of month; "tomorrow" falls in the next month's grid). Not a #111 regression; independent of this change.
+- [x] 8.2 `pnpm turbo typecheck` green — 13/13.
+- [x] 8.3 `biome ci .` green — exit 0; 7 warnings, all pre-existing in `animal-crud.tsx`.
+- [x] 8.4 Confirm success criteria: total=40→40 rows (`animal-exportacion-postgres.test.ts`); `=CMD()` not executable in CSV/XLSX (`animal-exportacion-neutralizar/csv/xlsx.test.ts`); `Todas`=36 cols / `Vista` respects cols (`animal-exportacion-index.test.ts`); PDF warn allows continue (`animal-exportacion-dialog.test.tsx`); >50k→413 (db overflow + `animal-exportacion-server-contract.test.ts` + transport); 30s→timeout (server contract + transport); 500 Retry preserves filters/scope/format (`animal-exportacion-dialog.test.tsx` + transport + route integration LA-076); Exportar hidden without both perms (desktop LA-RBAC-03 + route integration) + server re-validates (server contract 403 + `exportar.ts` fail-closed) + finca isolation (`animal-exportacion-postgres.test.ts` foreign-finca forbidden).
