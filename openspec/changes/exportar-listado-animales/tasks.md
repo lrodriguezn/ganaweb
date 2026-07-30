@@ -87,10 +87,10 @@ Chain strategy: pending
 
 | # | Task (files) | Satisfies | Proof (test) | ~Ln |
 |---|--------------|-----------|--------------|-----|
-| 6.1 | RED `packages/ui/tests/animal-exportacion-dialog.test.tsx`: scope (`Vista actual`/`Todas`) + format (XLSX/CSV/PDF); PDF 36-col warn (continue/switch Excel); 400/403/413/timeout states; 500 Reintentar preserves filters/scope/format | LA-071/074/076/040/041/072 | tests fail | 130 |
-| 6.2 | GREEN create `packages/ui/src/ganado/animal-exportacion-dialog.tsx`: scope/format select, PDF warn, error/Retry; EXACT design copy (403 "No tienes permiso para exportar en esta finca."; 413/timeout/500/success/PDF per design) | LA-071/074/076 | 6.1 passes | 150 |
-| 6.3 | RED+GREEN export transport in `apps/web/src/features/animal-listado/animal-listado-route-adapter.ts`: fetch→blob→download (no inline/nav); error mapping 400/403/413/timeout/500 | LA-070/076 | transport tests | 80 |
-| 6.4 | REFACTOR typecheck+biome ui+web | — | green | 3 |
+| 6.1 [x] | RED `packages/ui/tests/animal-exportacion-dialog.test.tsx`: scope (`Vista actual`/`Todas`) + format (XLSX/CSV/PDF); PDF 36-col warn (continue/switch Excel); 400/403/413/timeout states; 500 Reintentar preserves filters/scope/format | LA-071/074/076/040/041/072 | tests fail | 130 |
+| 6.2 [x] | GREEN create `packages/ui/src/ganado/animal-exportacion-dialog.tsx`: scope/format select, PDF warn, error/Retry; EXACT design copy (403 "No tienes permiso para exportar en esta finca."; 413/timeout/500/success/PDF per design) | LA-071/074/076 | 6.1 passes | 150 |
+| 6.3 [x] | RED+GREEN export transport in `apps/web/src/features/animal-listado/animal-listado-route-adapter.ts`: fetch→blob→download (no inline/nav); error mapping 400/403/413/timeout/500 | LA-070/076 | transport tests | 80 |
+| 6.4 [x] | REFACTOR typecheck+biome ui+web | — | green | 3 |
 
 ## Phase 7: wiring + desktop button → PR6
 
