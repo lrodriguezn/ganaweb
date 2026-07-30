@@ -75,10 +75,36 @@ The header MUST be sticky; `Código` and `Nombre` MUST remain frozen during hori
 - THEN labels and live announcements remain available with AA contrast
 - AND no appearance-specific component variant is required.
 
+### Requirement: Presentational Query Controls
+
+The UI MUST render #109-supplied typed filter, global-search, active-chip, clear-all, and sortable-header models with callbacks, without owning URL/history, request execution, or correction policy. Controls MUST use supplied stable IDs/keys for mutations and human-readable labels for display. The UI MUST expose the route's effective server sort through `aria-sort` and MUST remain compatible with #108 loading, data, failure, and RBAC behavior.
+
+#### Scenario: Controls delegate a typed mutation
+
+- GIVEN the route supplies a raza option, its stable ID, label, and callback
+- WHEN the user selects that option
+- THEN the UI invokes the callback with the stable ID
+- AND it displays the supplied label in the control and active chip.
+
+#### Scenario: Clear-all delegates without owning state
+
+- GIVEN active filters and a route-supplied clear-all callback
+- WHEN the user activates `Limpiar todo`
+- THEN the UI invokes that callback once
+- AND it does not mutate URL parameters or execute a request itself.
+
+#### Scenario: Effective default sort is accessible
+
+- GIVEN the URL contains no `sort` parameter and the server response is `codigo:asc`
+- WHEN the table renders headers
+- THEN `Código` exposes ascending `aria-sort`
+- AND the control can request the next sort transition through its callback.
+
 ## Non-Goals
 
-This change MUST NOT implement #109 filters/search/order, filter controls, or general filter URL mutation; only LA-040 sanitization is included. `Limpiar filtros`, when supplied, is #109-owned. #110 pagination, column selection, and preferences; #111 export execution, dialogs, and downloads; changes to #107, offline behavior, and `Lugar compra` are excluded.
+This change MUST NOT implement #110 pagination controls, column selection, or preferences; #111 export execution, dialogs, or downloads. The UI MUST NOT add export behavior, mutate `pageSize` or `cols`, or implement offline, multi-sort, or `Lugar compra` behavior. Changes to #107, offline behavior, and `Lugar compra` are excluded.
 
 ## Rule Citations
 
 - LA-RBAC-02/03, LA-040–043, LA-060–063, LA-080–091; PE-001–003; T-004; IA-003.
+- LA-001, LA-010–012, LA-020–021 (added by #109).
