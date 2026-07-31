@@ -4,6 +4,11 @@ export {
   animalesImagenes,
   animalesUbicacionHistorico,
 } from "./animales-extra.js"
+export {
+  animalListadoPreferencias,
+  type AnimalListadoPreferencia,
+  type NuevaAnimalListadoPreferencia,
+} from "./animal-listado-preferencias.js"
 export { auditoriaEliminaciones } from "./auditoria.js"
 export {
   usuarios,
