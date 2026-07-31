@@ -123,7 +123,10 @@ export function validatePreferenciasBody(body: unknown): ValidatePreferenciasRes
 
   // Reject duplicates — the PUT contract requires a clean set.
   if (new Set(stringCols).size !== stringCols.length) {
-    return { ok: false, error: { campo: "cols", motivo: "cols no puede contener valores repetidos" } }
+    return {
+      ok: false,
+      error: { campo: "cols", motivo: "cols no puede contener valores repetidos" },
+    }
   }
 
   const unregistered = stringCols.filter((col) => !isRegisteredAnimalListColumn(col))

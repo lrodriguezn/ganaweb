@@ -46,8 +46,8 @@ import {
   type ResultadoExportacionDesktop,
   aplicarFiltroListado,
   cambiarColsListado,
-  cambiarPaginaListado,
   cambiarPageSizeListado,
+  cambiarPaginaListado,
   cargarListadoDesktop,
   cargarPreferenciasListado,
   construirModeloListadoDesktop,
@@ -314,46 +314,48 @@ export function AnimalsListRouteView({
     let activo = true
     setEstado({ tipo: "cargando" })
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: each branch maps one bounded #107 outcome onto the LA-040–063 state machine.
-    void cargarListadoDesktop(fincaId, permissions, { consulta: consultaListado }).then((resultado) => {
-      if (!activo) return
-      switch (resultado.tipo) {
-        case "listo": {
-          ultimoModelo.current = resultado.modelo
-          setAviso(null)
-          setEstado({ tipo: "listo", modelo: resultado.modelo })
-          return
-        }
-        case "sin_acceso": {
-          ultimoModelo.current = null // LA-041: 403 clears the data.
-          setEstado({ tipo: "sin-acceso" })
-          return
-        }
-        case "error_servidor": {
-          setEstado({ tipo: "error" })
-          return
-        }
-        case "consulta_invalida": {
-          // LA-040–043: retain the last valid table, strip the reported
-          // parameter (resetting the page when the dataset changes), and
-          // announce the correction. #109 owns general filter mutation.
-          const retenido = ultimoModelo.current
-          const saneado = sanitizarListadoBadRequest(
-            resultado.error,
-            retenido ?? modeloVacioListado(permissions),
-            new URLSearchParams(consulta),
-          )
-          setAviso(saneado.toast)
-          if (saneado.removedParams.length > 0) sanearRef.current?.(saneado.sanitizedQuery)
-          if (retenido !== null) {
-            setEstado({ tipo: "listo", modelo: retenido })
-          } else if (saneado.removedParams.length === 0) {
-            setEstado({ tipo: "error" }) // nothing to retain nor to sanitize
+    void cargarListadoDesktop(fincaId, permissions, { consulta: consultaListado }).then(
+      (resultado) => {
+        if (!activo) return
+        switch (resultado.tipo) {
+          case "listo": {
+            ultimoModelo.current = resultado.modelo
+            setAviso(null)
+            setEstado({ tipo: "listo", modelo: resultado.modelo })
+            return
           }
-          // Otherwise the sanitized URL re-runs this effect and reloads.
-          return
+          case "sin_acceso": {
+            ultimoModelo.current = null // LA-041: 403 clears the data.
+            setEstado({ tipo: "sin-acceso" })
+            return
+          }
+          case "error_servidor": {
+            setEstado({ tipo: "error" })
+            return
+          }
+          case "consulta_invalida": {
+            // LA-040–043: retain the last valid table, strip the reported
+            // parameter (resetting the page when the dataset changes), and
+            // announce the correction. #109 owns general filter mutation.
+            const retenido = ultimoModelo.current
+            const saneado = sanitizarListadoBadRequest(
+              resultado.error,
+              retenido ?? modeloVacioListado(permissions),
+              new URLSearchParams(consulta),
+            )
+            setAviso(saneado.toast)
+            if (saneado.removedParams.length > 0) sanearRef.current?.(saneado.sanitizedQuery)
+            if (retenido !== null) {
+              setEstado({ tipo: "listo", modelo: retenido })
+            } else if (saneado.removedParams.length === 0) {
+              setEstado({ tipo: "error" }) // nothing to retain nor to sanitize
+            }
+            // Otherwise the sanitized URL re-runs this effect and reloads.
+            return
+          }
         }
-      }
-    })
+      },
+    )
     return () => {
       activo = false
     }
@@ -461,10 +463,7 @@ export function AnimalsListRouteView({
     }
   }
 
-  const paginaActual = Math.max(
-    1,
-    Number.parseInt(consultaActual.get("page") ?? "1", 10) || 1,
-  )
+  const paginaActual = Math.max(1, Number.parseInt(consultaActual.get("page") ?? "1", 10) || 1)
   const totalPaginas =
     modelo !== null ? Math.max(1, Math.ceil(modelo.total / mezcla.efectivas.pageSize)) : 1
   const avisoPreferencias = mezcla.avisoCarga

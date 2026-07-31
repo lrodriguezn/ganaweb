@@ -17,7 +17,5 @@ export interface AnimalListadoPreferenciasPort {
   /** Returns the stored preference for the scope, or 29/25 defaults on miss. */
   obtener(req: { usuarioId: string; fincaId: string }): Promise<AnimalListadoPreferencias>
   /** Last-write-wins upsert; a thrown error leaves the prior row unchanged. */
-  guardar(
-    req: { usuarioId: string; fincaId: string } & AnimalListadoPreferencias,
-  ): Promise<void>
+  guardar(req: { usuarioId: string; fincaId: string } & AnimalListadoPreferencias): Promise<void>
 }

@@ -128,7 +128,9 @@ describe("presentational pagination", () => {
       />,
     )
 
-    await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Filas por página" }), "50")
+    await userEvent
+      .setup()
+      .selectOptions(screen.getByRole("combobox", { name: "Filas por página" }), "50")
     expect(onCambiarPageSize).toHaveBeenCalledWith(50)
   })
 })
@@ -186,7 +188,9 @@ describe("reset delegation", () => {
 
   it("hides the reset control when the selection is already the default", () => {
     render(<AnimalListadoDesktop {...propsListo({ puedeResetear: false })} />)
-    expect(screen.queryByRole("button", { name: "Restablecer preferencias" })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Restablecer preferencias" }),
+    ).not.toBeInTheDocument()
   })
 })
 

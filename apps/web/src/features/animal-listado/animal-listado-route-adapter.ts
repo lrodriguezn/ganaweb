@@ -927,9 +927,7 @@ export async function cargarPreferenciasListado(
   }
 }
 
-export type ResultadoGuardadoPreferencias =
-  | { readonly tipo: "exito" }
-  | { readonly tipo: "error" }
+export type ResultadoGuardadoPreferencias = { readonly tipo: "exito" } | { readonly tipo: "error" }
 
 /**
  * PUT `/api/fincas/{fincaId}/animales/preferencias` with a normalized body.

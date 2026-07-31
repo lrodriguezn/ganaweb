@@ -32,10 +32,8 @@ const handler = createAnimalListadoPreferenciasHttpHandler({
 export const Route = createFileRoute("/api/fincas/$fincaId/animales/preferencias")({
   server: {
     handlers: {
-      GET: ({ request, params }) =>
-        handler({ request, fincaId: params.fincaId, method: "GET" }),
-      PUT: ({ request, params }) =>
-        handler({ request, fincaId: params.fincaId, method: "PUT" }),
+      GET: ({ request, params }) => handler({ request, fincaId: params.fincaId, method: "GET" }),
+      PUT: ({ request, params }) => handler({ request, fincaId: params.fincaId, method: "PUT" }),
     },
   },
 })

@@ -8,10 +8,7 @@
  */
 import { describe, expect, it } from "vitest"
 import { ANIMAL_LIST_COLUMNS } from "./animal-list-contract.js"
-import {
-  normalizePreferencias,
-  validatePreferenciasBody,
-} from "./animal-list-preferences.js"
+import { normalizePreferencias, validatePreferenciasBody } from "./animal-list-preferences.js"
 
 /** The 29 base columns — first 29 entries of the canonical registry. */
 const DEFAULT_COLS = ANIMAL_LIST_COLUMNS.slice(0, 29).map(([id]) => id)

@@ -758,7 +758,10 @@ export function AnimalListadoDesktop(props: AnimalListadoDesktopProps) {
         onExportar={onExportar}
       />
       {avisoPreferencias ? (
-        <AvisoPreferenciasBanner aviso={avisoPreferencias} onReintentar={onReintentarPreferencias} />
+        <AvisoPreferenciasBanner
+          aviso={avisoPreferencias}
+          onReintentar={onReintentarPreferencias}
+        />
       ) : null}
       {listoConDatos && (selectorColumnas || (puedeResetear && onResetPreferencias)) ? (
         <div className="flex flex-wrap items-center gap-2">

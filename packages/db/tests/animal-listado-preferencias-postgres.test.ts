@@ -94,9 +94,9 @@ describe("DrizzleAnimalListadoPreferenciasRepository", () => {
 
   it("PE-003: user without membership is denied (ForbiddenError on obtener)", async () => {
     const repo = new DrizzleAnimalListadoPreferenciasRepository(db)
-    await expect(
-      repo.obtener({ usuarioId: outsideUser, fincaId: fincaA }),
-    ).rejects.toThrow(AnimalListadoForbiddenError)
+    await expect(repo.obtener({ usuarioId: outsideUser, fincaId: fincaA })).rejects.toThrow(
+      AnimalListadoForbiddenError,
+    )
   })
 
   it("PE-003: user without membership is denied (ForbiddenError on guardar)", async () => {
@@ -113,9 +113,9 @@ describe("DrizzleAnimalListadoPreferenciasRepository", () => {
 
   it("cross-scope: authorized user for fincaA is denied for fincaB", async () => {
     const repo = new DrizzleAnimalListadoPreferenciasRepository(db)
-    await expect(
-      repo.obtener({ usuarioId: authorizedUser, fincaId: fincaB }),
-    ).rejects.toThrow(AnimalListadoForbiddenError)
+    await expect(repo.obtener({ usuarioId: authorizedUser, fincaId: fincaB })).rejects.toThrow(
+      AnimalListadoForbiddenError,
+    )
   })
 
   it("LWW upsert: later save overwrites earlier save for the same scope", async () => {

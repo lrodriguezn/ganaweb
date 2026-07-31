@@ -14,13 +14,14 @@
  * - Failed save reports error so the route keeps the session selection + retry.
  */
 import { describe, expect, it } from "vitest"
+import { ANIMAL_LIST_DEFAULT_COLUMNS } from "../../server/animal-list-contract.js"
 import {
   COLUMNAS_INMUTABLES_LISTADO,
   PAGE_SIZE_OPTIONS_LISTADO,
   type PreferenciasListado,
   cambiarColsListado,
-  cambiarPaginaListado,
   cambiarPageSizeListado,
+  cambiarPaginaListado,
   cargarPreferenciasListado,
   crearSelectorColumnasListado,
   esPreferenciaDefectoListado,
@@ -31,7 +32,6 @@ import {
   resolverColsListado,
   resolverPageSizeListado,
 } from "./animal-listado-route-adapter.js"
-import { ANIMAL_LIST_DEFAULT_COLUMNS } from "../../server/animal-list-contract.js"
 
 const VEINTINUEVE = [...ANIMAL_LIST_DEFAULT_COLUMNS]
 
@@ -171,7 +171,11 @@ describe("pagination and column mutation builders", () => {
   })
 
   it("column mutation resets the page to 1 and serializes canonical cols", () => {
-    const siguiente = cambiarColsListado(consulta("page=5&pageSize=25"), ["nombre", "codigo", "raza"])
+    const siguiente = cambiarColsListado(consulta("page=5&pageSize=25"), [
+      "nombre",
+      "codigo",
+      "raza",
+    ])
     expect(siguiente.get("cols")).toBe("codigo,nombre,raza")
     expect(siguiente.has("page")).toBe(false)
     expect(siguiente.get("pageSize")).toBe("25")
@@ -258,13 +262,21 @@ describe("preference transports", () => {
   it("reports a save failure so the route keeps the session selection and can retry", async () => {
     const falla = (async () => new Response("{}", { status: 500 })) as unknown as typeof fetch
     expect(
-      await guardarPreferenciasListado("f1", { cols: VEINTINUEVE, pageSize: 25 }, { fetchImpl: falla }),
+      await guardarPreferenciasListado(
+        "f1",
+        { cols: VEINTINUEVE, pageSize: 25 },
+        { fetchImpl: falla },
+      ),
     ).toEqual({ tipo: "error" })
     const red = (async () => {
       throw new Error("red")
     }) as unknown as typeof fetch
     expect(
-      await guardarPreferenciasListado("f1", { cols: VEINTINUEVE, pageSize: 25 }, { fetchImpl: red }),
+      await guardarPreferenciasListado(
+        "f1",
+        { cols: VEINTINUEVE, pageSize: 25 },
+        { fetchImpl: red },
+      ),
     ).toEqual({ tipo: "error" })
   })
 })

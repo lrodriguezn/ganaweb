@@ -1,3 +1,5 @@
+import type { AnimalListadoPreferenciasPort } from "@ganaweb/aplicacion"
+import { AnimalListadoForbiddenError } from "@ganaweb/db/animal-infrastructure"
 /**
  * #110 PR1 — HTTP contract tests for the animal-list preferences handler.
  *
@@ -8,8 +10,6 @@
  * RED: imports from ./animal-list-preferences-http.js which does not exist yet.
  */
 import { describe, expect, it } from "vitest"
-import type { AnimalListadoPreferenciasPort } from "@ganaweb/aplicacion"
-import { AnimalListadoForbiddenError } from "@ganaweb/db/animal-infrastructure"
 import { createAnimalListadoPreferenciasHttpHandler } from "./animal-list-preferences-http.js"
 
 const REQUEST_ID = "req-pref-1"
@@ -24,12 +24,14 @@ function stubPort(
   }
 }
 
-function handlerWith(overrides: {
-  getUsuarioId?: (fincaId: string) => Promise<string | null>
-  port?: AnimalListadoPreferenciasPort
-  isForbidden?: (error: unknown) => boolean
-  reportError?: (details: { requestId: string; fincaId: string; error: unknown }) => void
-} = {}) {
+function handlerWith(
+  overrides: {
+    getUsuarioId?: (fincaId: string) => Promise<string | null>
+    port?: AnimalListadoPreferenciasPort
+    isForbidden?: (error: unknown) => boolean
+    reportError?: (details: { requestId: string; fincaId: string; error: unknown }) => void
+  } = {},
+) {
   return createAnimalListadoPreferenciasHttpHandler({
     getUsuarioId: overrides.getUsuarioId ?? (async () => "user-1"),
     port: overrides.port ?? stubPort(),
@@ -47,11 +49,7 @@ function get(handler: ReturnType<typeof handlerWith>, fincaId = "finca-1") {
   })
 }
 
-function put(
-  handler: ReturnType<typeof handlerWith>,
-  body: unknown,
-  fincaId = "finca-1",
-) {
+function put(handler: ReturnType<typeof handlerWith>, body: unknown, fincaId = "finca-1") {
   return handler({
     request: new Request(`http://test/api/fincas/${fincaId}/animales/preferencias`, {
       method: "PUT",
@@ -141,7 +139,7 @@ describe("GET /preferencias", () => {
 describe("PUT /preferencias", () => {
   it("returns 200 with normalized echo on valid body", async () => {
     let savedCols: readonly string[] = []
-    let savedPageSize: number = 0
+    let savedPageSize = 0
     const handler = handlerWith({
       port: stubPort({
         guardar: async (req) => {
