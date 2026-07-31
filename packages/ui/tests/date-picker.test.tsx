@@ -96,22 +96,29 @@ describe("DatePicker primitive", () => {
     const onChange = vi.fn()
     const user = userEvent.setup()
 
-    render(<DatePicker name="fechaNacimiento" value="" onChange={onChange} />)
+    // Fix maxDate to a mid-month date so the assertion is deterministic regardless of
+    // when the suite runs. RN-002 disables any day strictly after maxDate. Using the
+    // default maxDate (today) made the test reach for "tomorrow", which on the last day
+    // of a month falls outside the navigable range (endMonth = maxDate and outside days
+    // are hidden), so findByRole timed out. A fixed maxDate keeps a later in-grid day to
+    // assert on. Mirrors the explicit-maxDate setup used above.
+    render(
+      <DatePicker
+        name="fechaNacimiento"
+        value=""
+        onChange={onChange}
+        maxDate={new Date(2026, 6, 15)}
+      />,
+    )
 
     await user.click(screen.getByRole("button", { name: "dd/mm/aaaa" }))
 
-    // Use tomorrow relative to the current date so the test is robust regardless
-    // of when it runs. The DatePicker defaults `maxDate` to today (RN-002), so any
-    // day strictly after today must be disabled. Hardcoding a fixed future date
-    // (e.g. "25 de julio de 2026") makes the test fail on the day that date
-    // stops being in the future. See BUG-TEST-001.
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowLabel = format(tomorrow, "EEEE, d 'de' MMMM 'de' yyyy", {
+    // 20 de julio de 2026 is after maxDate (15 de julio) and always rendered in the July
+    // grid, so it must be disabled and clicking it must not emit.
+    const futureLabel = format(new Date(2026, 6, 20), "EEEE, d 'de' MMMM 'de' yyyy", {
       locale: es,
     })
-
-    const future = await screen.findByRole("button", { name: tomorrowLabel })
+    const future = await screen.findByRole("button", { name: futureLabel })
     expect(future).toBeDisabled()
 
     await user.click(future)
