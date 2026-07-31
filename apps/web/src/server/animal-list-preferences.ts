@@ -26,6 +26,8 @@ export interface AnimalListadoPreferenciasNormalizadas {
 const PAGE_SIZE_WHITELIST: readonly number[] = [25, 50, 100]
 const DEFAULT_PAGE_SIZE: PreferenciasPageSize = 25
 const MANDATORY_COLS: readonly AnimalListColumnId[] = ["codigo", "nombre"]
+/** Maximum valid cols length — the registry has exactly 36 columns. */
+const MAX_COLS_LENGTH = 36
 
 /** The 29 base columns — re-exported from the shared contract registry. */
 export const PREFERENCIAS_DEFAULT_COLS: readonly AnimalListColumnId[] = ANIMAL_LIST_DEFAULT_COLUMNS
@@ -46,7 +48,9 @@ export function normalizePreferenciasPageSize(
 export function normalizePreferenciasCols(
   rawCols: readonly string[] | null | undefined,
 ): readonly AnimalListColumnId[] {
-  if (!rawCols || rawCols.length === 0) return PREFERENCIAS_DEFAULT_COLS
+  if (!rawCols || rawCols.length === 0 || rawCols.length > MAX_COLS_LENGTH) {
+    return PREFERENCIAS_DEFAULT_COLS
+  }
 
   // Registered-only + dedupe (first occurrence wins).
   const seen = new Set<string>()
@@ -111,6 +115,11 @@ export function validatePreferenciasBody(body: unknown): ValidatePreferenciasRes
   }
 
   const stringCols = rawCols as string[]
+
+  // Reject oversized arrays before any per-element work.
+  if (stringCols.length > MAX_COLS_LENGTH) {
+    return { ok: false, error: { campo: "cols", motivo: "cols excede el máximo de 36 columnas" } }
+  }
 
   // Reject duplicates — the PUT contract requires a clean set.
   if (new Set(stringCols).size !== stringCols.length) {
