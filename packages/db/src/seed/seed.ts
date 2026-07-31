@@ -273,6 +273,8 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
     ["stock_minimo_dosis", "20", "KPI-10: umbral de stock bajo"],
     ["peso_nacimiento_default_kg", "32", "KPI-07: peso al nacer estimado"],
     ["rol_invitacion_default", "rol-mayordomo", "PE-007: rol al registrarse con código"],
+    ["export_max_filas", "50000", "LA-072: máximo de filas exportables"],
+    ["export_timeout_segundos", "30", "LA-072: tiempo máximo de generación (segundos)"],
   ]
 
   // Fincas base — siempre se crean

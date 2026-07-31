@@ -18,10 +18,19 @@
  * Rollback surface: revert this file to the legacy `AnimalDesktopScreen`
  * wiring (the component remains exported by `@ganaweb/ui`); #107, the
  * adapter, the projection, and the mobile branch stay untouched.
- * Boundaries: no filters/search/order (#109), pagination/selector/preferences
- * (#110), or export execution (#111 — `Exportar` stays inert).
+ * Boundaries: no filters/search/order (#109) or pagination/selector/preferences
+ * (#110). Since #111 the desktop `Exportar` button opens `AnimalExportacionDialog`,
+ * whose transport reuses the active query through `exportarListadoDesktop`.
  */
-import { AnimalListMobile, AnimalListadoDesktop, type AnimalListadoDesktopRow } from "@ganaweb/ui"
+import {
+  AnimalExportacionDialog,
+  type AnimalExportacionTransporte,
+  AnimalListMobile,
+  AnimalListadoDesktop,
+  type AnimalListadoDesktopRow,
+  type ResultadoExportacionDialog,
+  Toaster,
+} from "@ganaweb/ui"
 import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
 import { Calendar, CheckSquare, Home, Menu, PawPrint } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -30,12 +39,15 @@ import {
   type AnimalListadoDesktopModel,
   type AnimalListadoToastPayload,
   type AnimalListadoVisualPermissions,
+  type ResultadoExportacionDesktop,
   aplicarFiltroListado,
   cargarListadoDesktop,
   construirModeloListadoDesktop,
   crearChipsListado,
   crearModelosFiltroListado,
   eliminarChipListado,
+  exportarListadoDesktop,
+  finalizarConsultaListado,
   formatearCeldaListado,
   limpiarFiltrosListado,
   sanitizarListadoBadRequest,
@@ -51,6 +63,33 @@ import {
 const PERMISOS_VISUALES_DENEGADOS: AnimalListadoVisualPermissions = {
   canCreate: false,
   canExport: false,
+}
+
+/**
+ * Projects the web export transport's rich result (it carries the #107
+ * `ApiErrorDto`/filename) onto the ui dialog's slimmer contract. The dialog
+ * never sees web/network types; the route owns this adaptation so the
+ * LA-RBAC-03 gate stays single-owned by the `canExport` projection and the
+ * dialog never recomputes authorization.
+ */
+function aResultadoExportacionDialog(
+  resultado: ResultadoExportacionDesktop,
+): ResultadoExportacionDialog {
+  switch (resultado.tipo) {
+    case "exito":
+      return { tipo: "exito" }
+    case "consulta_invalida":
+      // LA-040: the dialog announces the correction with the server's motivo.
+      return { tipo: "consulta_invalida", motivo: resultado.error.motivo }
+    case "sin_acceso":
+      return { tipo: "sin_acceso" }
+    case "demasiados_resultados":
+      return { tipo: "demasiados_resultados" }
+    case "timeout":
+      return { tipo: "timeout" }
+    case "error_servidor":
+      return { tipo: "error_servidor" }
+  }
 }
 
 /** Legacy mobile list result — the desktop branch never consumes it. */
@@ -177,6 +216,8 @@ export function AnimalsListRouteView({
   const [estado, setEstado] = useState<EstadoVistaListado>({ tipo: "cargando" })
   const [aviso, setAviso] = useState<AnimalListadoToastPayload | null>(null)
   const [intento, setIntento] = useState(0)
+  // #111: the export dialog's open state; the desktop Exportar button opens it.
+  const [exportarAbierto, setExportarAbierto] = useState(false)
   const ultimoModelo = useRef<AnimalListadoDesktopModel | null>(null)
   // Callback ref: keeps the effect deps stable across route re-renders.
   const sanearRef = useRef(onSanearUrl)
@@ -240,6 +281,17 @@ export function AnimalsListRouteView({
 
   const modelo = estado.tipo === "listo" ? estado.modelo : null
   const consultaActual = new URLSearchParams(consulta)
+  // #111 export transport (LA-070/076): reuses the active listado query —
+  // canonicalized through the read-only #111 seam — so a confirmed export and
+  // any `Reintentar` preserve the active filters; the dialog adds scope/format.
+  // The closure is recreated each render, so the dialog always sees the latest
+  // filters even across a retry.
+  const transportarExportacion: AnimalExportacionTransporte = async (seleccion) =>
+    aResultadoExportacionDialog(
+      await exportarListadoDesktop(fincaId, seleccion, {
+        consulta: finalizarConsultaListado(consultaActual).searchParams,
+      }),
+    )
   const filtros = crearModelosFiltroListado(consultaActual, {
     sexoKey: catalogs.sexo.options,
     razaId: catalogs.raza.options,
@@ -287,6 +339,7 @@ export function AnimalsListRouteView({
           permissions={permissions}
           onAbrirFicha={onAbrirFicha}
           onNuevoAnimal={onIrANuevo}
+          onExportar={() => setExportarAbierto(true)}
           onVolver={onVolver}
           onReintentar={() => {
             setAviso(null)
@@ -334,6 +387,15 @@ export function AnimalsListRouteView({
         <p className="text-support text-muted-foreground">No tienes permiso para ver animales.</p>
       )}
       <span className="sr-only">{Calendar.displayName}</span>
+      {/* #111: the export dialog (LA-070/074) opens from the desktop Exportar
+          button; it portals to <body>, so it is unaffected by the desktop-only
+          branch above. The Toaster renders the dialog's success/400 toasts. */}
+      <AnimalExportacionDialog
+        open={exportarAbierto}
+        onOpenChange={setExportarAbierto}
+        exportar={transportarExportacion}
+      />
+      <Toaster />
     </div>
   )
 }

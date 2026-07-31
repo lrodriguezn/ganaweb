@@ -39,6 +39,11 @@ export type {
 } from "./puertos/animal-listado-port.js"
 export { createBenchmarkAnimalListadoRequest } from "./puertos/animal-listado-port.js"
 export type {
+  AnimalExportacionReadPort,
+  AnimalExportacionRequest,
+} from "./puertos/animal-exportacion-port.js"
+export { AnimalExportacionOverflowError } from "./puertos/animal-exportacion-port.js"
+export type {
   ArchivoAnimalPort,
   ColaBinariosPort,
   ImagenAnimalDto,

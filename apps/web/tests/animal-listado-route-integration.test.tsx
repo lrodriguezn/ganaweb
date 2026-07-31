@@ -17,7 +17,7 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ANIMAL_LISTADO_DEFAULT_COLUMNS } from "../src/features/animal-listado/animal-listado-route-adapter.js"
 import type { AnimalListadoVisualPermissions } from "../src/features/animal-listado/animal-listado-route-adapter.js"
@@ -43,6 +43,23 @@ vi.mock("../src/server/animal-actions.js", () => ({
 }))
 
 const fetchMock = vi.fn()
+
+beforeAll(() => {
+  // The #111 export dialog is a Radix Dialog; opening it calls pointer-capture
+  // + scroll APIs jsdom lacks (same carve-out as the dialog/toast tests).
+  if (!HTMLElement.prototype.hasPointerCapture) {
+    HTMLElement.prototype.hasPointerCapture = () => false
+  }
+  if (!HTMLElement.prototype.setPointerCapture) {
+    HTMLElement.prototype.setPointerCapture = () => undefined
+  }
+  if (!HTMLElement.prototype.releasePointerCapture) {
+    HTMLElement.prototype.releasePointerCapture = () => undefined
+  }
+  if (!HTMLElement.prototype.scrollIntoView) {
+    HTMLElement.prototype.scrollIntoView = () => undefined
+  }
+})
 
 beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock)
@@ -533,5 +550,128 @@ describe("#109 route query controller (Unit 2)", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     expect(screen.getByText("ACT-001")).toBeInTheDocument()
     expect(screen.queryByText("OLD-999")).not.toBeInTheDocument()
+  })
+})
+
+/** A real binary artifact response the export transport can `.blob()`. */
+function respuestaExportacion(
+  bytes: Uint8Array,
+  nombreArchivo: string,
+  contentType = "text/csv; charset=utf-8",
+): Response {
+  return new Response(bytes, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
+    },
+  })
+}
+
+describe("#111 export wiring (PR6) — Exportar opens the dialog and confirms a download (LA-070/074, LA-RBAC-03)", () => {
+  const createObjectURLOriginal = URL.createObjectURL
+  const revokeObjectURLOriginal = URL.revokeObjectURL
+  let createObjectURL: ReturnType<typeof vi.fn>
+  let clickSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    // jsdom lacks the download primitives the real transport uses (anchor +
+    // object URL); capture them so the download side effect is verifiable.
+    createObjectURL = vi.fn(() => "blob:descarga")
+    URL.createObjectURL = createObjectURL
+    URL.revokeObjectURL = vi.fn()
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    clickSpy.mockRestore()
+    URL.createObjectURL = createObjectURLOriginal
+    URL.revokeObjectURL = revokeObjectURLOriginal
+  })
+
+  it("Exportar opens the export dialog while the list and filters stay in place", async () => {
+    fetchMock.mockResolvedValue(respuestaHttp(respuestaDto()))
+    montarVista()
+    await screen.findByText("MT-001")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Exportar" }))
+
+    expect(await screen.findByRole("dialog", { name: "Exportar animales" })).toBeInTheDocument()
+    // Non-destructive: the table is still mounted behind the dialog. Radix
+    // marks the background `aria-hidden` while open, so include hidden nodes.
+    expect(
+      screen.getByRole("table", { name: "Listado de animales", hidden: true }),
+    ).toBeInTheDocument()
+  })
+
+  it("confirming the export triggers the download transport and announces success (LA-070)", async () => {
+    fetchMock.mockResolvedValueOnce(respuestaHttp(respuestaDto()))
+    fetchMock.mockResolvedValueOnce(
+      respuestaExportacion(
+        new TextEncoder().encode("codigo,nombre\nMT-001,Mariposa\n"),
+        "animales_vista_20260731-120000.xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ),
+    )
+    montarVista()
+    await screen.findByText("MT-001")
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: "Exportar" }))
+    const dialogo = await screen.findByRole("dialog", { name: "Exportar animales" })
+    // Confirm with the default selection (Vista actual + XLSX).
+    await user.click(within(dialogo).getByRole("button", { name: "Exportar" }))
+
+    // The download transport ran against the export endpoint with the
+    // dialog's format/scope, and a real client download was triggered.
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1))
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    const urlExport = new URL(String(fetchMock.mock.calls[1]?.[0]), "http://localhost")
+    expect(urlExport.pathname).toBe("/api/fincas/finca-1/animales/exportar")
+    expect(urlExport.searchParams.get("format")).toBe("xlsx")
+    expect(urlExport.searchParams.get("scope")).toBe("vista")
+
+    // Success is announced and the dialog closes; the list remains in place.
+    expect(await screen.findByText("Exportación lista")).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+    expect(screen.getByRole("table", { name: "Listado de animales" })).toBeInTheDocument()
+  })
+
+  it("the export request carries the active filters, scope, and format (LA-076 wiring)", async () => {
+    fetchMock.mockResolvedValueOnce(respuestaHttp(respuestaDto()))
+    fetchMock.mockResolvedValueOnce(
+      respuestaExportacion(new Uint8Array([1]), "animales_todas_20260731-120000.csv"),
+    )
+    montarVista({ consulta: "q=toros&f.razaId=in:raza-1" })
+    await screen.findByText("MT-001")
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: "Exportar" }))
+    const dialogo = await screen.findByRole("dialog", { name: "Exportar animales" })
+    await user.selectOptions(within(dialogo).getByLabelText("Alcance"), "todas")
+    await user.selectOptions(within(dialogo).getByLabelText("Formato"), "csv")
+    await user.click(within(dialogo).getByRole("button", { name: "Exportar" }))
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1))
+    const urlExport = new URL(String(fetchMock.mock.calls[1]?.[0]), "http://localhost")
+    expect(urlExport.pathname).toBe("/api/fincas/finca-1/animales/exportar")
+    expect(urlExport.searchParams.get("format")).toBe("csv")
+    expect(urlExport.searchParams.get("scope")).toBe("todas")
+    // The active filters ride along — the same closure feeds a retry, so
+    // Reintentar preserves filters/scope/format (LA-076).
+    expect(urlExport.searchParams.get("q")).toBe("toros")
+    expect(urlExport.searchParams.get("f.razaId")).toBe("in:raza-1")
+  })
+
+  it("without canExport the entry point is absent and the dialog never opens (LA-RBAC-03)", async () => {
+    fetchMock.mockResolvedValue(respuestaHttp(respuestaDto()))
+    montarVista({ permissions: { canCreate: true, canExport: false } })
+    await screen.findByText("MT-001")
+
+    expect(screen.queryByRole("button", { name: "Exportar" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    // The table stays usable for a view-only profile.
+    expect(screen.getByRole("table", { name: "Listado de animales" })).toBeInTheDocument()
   })
 })
