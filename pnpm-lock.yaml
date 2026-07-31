@@ -160,6 +160,9 @@ importers:
       '@ganaweb/aplicacion':
         specifier: workspace:*
         version: link:../aplicacion
+      '@ganaweb/dominio':
+        specifier: workspace:*
+        version: link:../dominio
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
