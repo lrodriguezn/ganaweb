@@ -1,10 +1,6 @@
-# Animal Listado Query State Specification
+# Delta for Animal Listado Query State
 
-## Purpose
-
-Define Issue #109's typed, route-owned, replayable query state for the online animal list. The server contract remains authoritative.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Canonical Route Query State
 
@@ -64,29 +60,6 @@ The route MUST combine column filters with AND and global search with OR as defi
 - GIVEN a page-size or column mutation and a save failure
 - WHEN the route handles the failure
 - THEN the URL and effective selection remain and retry is available.
-
-### Requirement: Invalid Query Recovery and Request Currency
-
-The route MUST retain the last valid table during a 400, remove the reported `campo`, reset `page` to `1` when that correction changes the dataset, replace the URL, and reload. It MUST correct one reported field per response so sequential invalid fields are recovered without discarding valid parameters. Only the latest request identity MAY update data, toast, or correction state; stale results MUST NOT overwrite or side-effect the current query.
-
-#### Scenario: Sequential invalid fields are corrected
-
-- GIVEN a valid table and a URL with two invalid filter fields
-- WHEN the first 400 reports one `campo`
-- THEN only that field is removed, the valid table remains, and the URL is replaced
-- AND a later 400 corrects its reported remaining field on its own reload.
-
-#### Scenario: Stale response is ignored
-
-- GIVEN a request is pending when a newer query is committed
-- WHEN the older request resolves after the newer request
-- THEN it MUST NOT replace table data, show a toast, or alter the URL.
-
-## Non-Goals
-
-#111 owns export UI, execution, downloads, and API use; it MAY consume the finalized serialized query read-only. Multi-sort, offline behavior, #107 changes, and `Lugar compra` are excluded.
-
-> Note (2026-07-31, #110): pagination UI, column selection, `pageSize`/`cols` mutation, and preferences are now implemented. The route owns these mutations and persists preferences per user/finca (see `animal-listado-preferences` spec).
 
 ## Rule Citations
 
