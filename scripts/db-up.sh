@@ -29,7 +29,7 @@ docker run -d \
   "$DB_IMAGE"
 
 echo "=== Esperando a que PostgreSQL esté listo ==="
-until docker exec "$DB_CONTAINER" pg_isready -U postgres > /dev/null 2>&1; do
+until docker exec "$DB_CONTAINER" psql -U postgres -c "SELECT 1;" > /dev/null 2>&1; do
   sleep 1
 done
 echo "PostgreSQL listo."
