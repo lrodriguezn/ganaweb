@@ -8,19 +8,20 @@ Define #108's #107-backed table.
 
 ### Requirement: Canonical Online Table Contract
 
-The UI MUST consume #107 `AnimalListadoResponseDto`, render the 29 default columns in canonical order, and recognize all 36 `columnId`/`responseKey` pairs without label-derived data. Nulls MUST display `-` or `Sin registrar`, never `null` or zero. The table MUST remain online-only; `Lugar compra` MUST NOT render.
+The UI MUST consume #107 `AnimalListadoResponseDto`, render the effective supplied columns in canonical order, and recognize all 36 `columnId`/`responseKey` pairs without label-derived data. First visit, reset, or unavailable preferences MUST show 29 base columns. Nulls MUST display `-` or `Sin registrar`, never `null` or zero. The table MUST remain online-only; `Lugar compra` MUST NOT render.
+(Previously: The UI always rendered 29 canonical default columns.)
 
 #### Scenario: Canonical response renders
 - GIVEN authorized #107 rows with populated and null fields
 - WHEN `/fincas/$fincaId/animales` renders
-- THEN it shows 29 canonical columns in order with Spanish labels
+- THEN it shows effective columns in canonical order with Spanish labels
 - AND it presents null fields safely.
 
 #### Scenario: Optional field awareness
 - GIVEN a response includes all seven optional column fields
-- WHEN the default table renders
+- WHEN the base table renders
 - THEN all seven optional columns are recognized but hidden by default
-- AND the 29 canonical default columns remain visible.
+- AND the 29 base columns remain visible.
 
 ### Requirement: Data and Failure States
 
@@ -106,9 +107,35 @@ The UI MUST render #109-supplied typed filter, global-search, active-chip, clear
 - THEN `Código` exposes ascending `aria-sort`
 - AND the control can request the next sort transition through its callback.
 
+### Requirement: Presentational Pagination and Preference Controls
+
+The UI MUST render route-supplied pagination, page-size, column-selector, reset, preference-warning, and retry models without owning URL, authorization, persistence, or request execution. It MUST keep `Código` and `Nombre` selected and immutable.
+
+#### Scenario: Viewer changes presentation
+- GIVEN supplied models for 25, 50, and 100 rows and registered columns
+- WHEN the viewer changes page, size, or optional columns
+- THEN the UI invokes the corresponding supplied callback.
+
+#### Scenario: Mandatory columns cannot be removed
+- GIVEN the column selector is open
+- WHEN the viewer attempts to deselect `Código` or `Nombre`
+- THEN both remain selected and the UI does not invoke removal.
+
+#### Scenario: Retryable preference warning
+- GIVEN preference loading or saving failed
+- WHEN the UI renders the supplied warning model
+- THEN it preserves the current table selection and invokes retry on request.
+
+#### Scenario: Reset controls delegate
+- GIVEN a non-default supplied selection
+- WHEN the viewer activates reset
+- THEN the UI invokes the supplied reset callback once.
+
 ## Non-Goals
 
-This change MUST NOT implement #110 pagination controls, column selection, or preferences. The UI MUST NOT mutate `pageSize` or `cols`, or implement offline, multi-sort, or `Lugar compra` behavior. Changes to #107, offline behavior, and `Lugar compra` are excluded.
+The UI MUST NOT implement offline, multi-sort, or `Lugar compra` behavior. Changes to #107, offline behavior, and `Lugar compra` are excluded.
+
+> Note (2026-07-31, #110): pagination controls, column selection, and preferences are now implemented. The UI renders route-supplied models presentationally (see Presentational Pagination and Preference Controls).
 
 > Note (2026-07-31, #111): the former "#111 export execution, dialogs, or downloads" non-goal is retired — export is now implemented. `Exportar` is active and opens the export dialog (see Visual RBAC and Ficha Navigation); export behavior lives in `animal-listado-export-server` and `animal-listado-export-ui`.
 
@@ -117,3 +144,4 @@ This change MUST NOT implement #110 pagination controls, column selection, or pr
 - LA-RBAC-02/03, LA-040–043, LA-060–063, LA-080–091; PE-001–003; T-004; IA-003.
 - LA-001, LA-010–012, LA-020–021 (added by #109).
 - LA-RBAC-03, LA-091; PE-001–003 (updated by #111: `Exportar` is now active and opens the export dialog).
+- LA-040–043, LA-060–063, LA-080–091; PE-001–003 (updated by #110: pagination, column selection, and preferences).
