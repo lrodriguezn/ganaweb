@@ -50,9 +50,16 @@ beforeAll(async () => {
   await execute(
     sql`INSERT INTO usuarios_roles (id, nombre, activo) VALUES (${role}, 'Animal reader', 1)`,
   )
-  // Reference the shared canonical permission (animales:ver) instead of inserting a
-  // duplicate: uq_usuarios_permisos UNIQUE (modulo, accion) rejects a second row with the
-  // same natural key on a seeded database. Mirrors animal-listado-postgres.test.ts.
+  // Ensure the (animales:ver) permission exists. On a clean database (migrations only)
+  // this inserts the fixture row; on a seeded database the natural key already exists, so
+  // ON CONFLICT on uq_usuarios_permisos (modulo, accion) avoids a duplicate-key error.
+  await execute(sql`
+    INSERT INTO usuarios_permisos (id, modulo, accion, nombre, activo)
+    VALUES (${`${fixture}-perm`}, 'animales', 'ver', 'Ver animales', 1)
+    ON CONFLICT (modulo, accion) DO NOTHING
+  `)
+  // Link the role to whichever row owns (animales:ver): the fixture row on a clean
+  // database, the canonical seed row on a seeded one. Mirrors animal-listado-postgres.test.ts.
   await execute(sql`
     INSERT INTO roles_permisos (id, rol_id, permiso_id, activo)
     SELECT ${`${fixture}-rp`}, ${role}, id, 1
@@ -69,6 +76,9 @@ afterAll(async () => {
   await execute(sql`DELETE FROM animal_listado_preferencias WHERE usuario_id = ${authorizedUser}`)
   await execute(sql`DELETE FROM usuarios_roles_asignacion WHERE id = ${`${fixture}-assignment`}`)
   await execute(sql`DELETE FROM roles_permisos WHERE id = ${`${fixture}-rp`}`)
+  // Removes the fixture permission on a clean database; no-op on a seeded one (the
+  // canonical row owns the natural key and ${fixture}-perm was never inserted).
+  await execute(sql`DELETE FROM usuarios_permisos WHERE id = ${`${fixture}-perm`}`)
   await execute(sql`DELETE FROM usuarios_roles WHERE id = ${role}`)
   await execute(sql`DELETE FROM usuarios_fincas WHERE id = ${`${fixture}-membership`}`)
   await execute(sql`DELETE FROM usuarios WHERE id IN (${authorizedUser}, ${outsideUser})`)
