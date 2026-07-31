@@ -37,20 +37,20 @@ beforeAll(async () => {
     VALUES (${fincaA}, ${`${fixture}-A`}, 'Finca A'), (${fincaB}, ${`${fixture}-B`}, 'Finca B')
   `)
   await execute(sql`
-    INSERT INTO usuarios (id, nombre, email)
+    INSERT INTO usuarios (id, nombre, email, activo)
     VALUES
-      (${authorizedUser}, 'Authorized', ${`${fixture}-authorized@example.test`}),
-      (${outsideUser}, 'Outside', ${`${fixture}-outside@example.test`})
+      (${authorizedUser}, 'Authorized', ${`${fixture}-authorized@example.test`}, 1),
+      (${outsideUser}, 'Outside', ${`${fixture}-outside@example.test`}, 1)
   `)
   // Membership: authorizedUser → fincaA only.
   await execute(sql`
     INSERT INTO usuarios_fincas (id, usuario_id, finca_id, activo)
     VALUES (${`${fixture}-membership`}, ${authorizedUser}, ${fincaA}, 1)
   `)
-  await execute(sql`INSERT INTO usuarios_roles (id, nombre) VALUES (${role}, 'Animal reader')`)
+  await execute(sql`INSERT INTO usuarios_roles (id, nombre, activo) VALUES (${role}, 'Animal reader', 1)`)
   await execute(sql`
-    INSERT INTO roles_permisos (id, rol_id, permiso_id)
-    SELECT ${`${fixture}-rp`}, ${role}, id
+    INSERT INTO roles_permisos (id, rol_id, permiso_id, activo)
+    SELECT ${`${fixture}-rp`}, ${role}, id, 1
     FROM usuarios_permisos
     WHERE modulo = 'animales' AND accion = 'ver'
   `)
