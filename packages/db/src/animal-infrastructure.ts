@@ -2,6 +2,8 @@ import { AsyncLocalStorage } from "node:async_hooks"
 import type {
   AnimalExportacionReadPort,
   AnimalExportacionRequest,
+  AnimalListadoPreferencias,
+  AnimalListadoPreferenciasPort,
   AnimalListadoReadFilter,
   AnimalListadoReadPort,
   AnimalListadoReadRequest,
@@ -953,6 +955,45 @@ export class DrizzleAnimalListadoReadModel
 
   exportar(request: AnimalExportacionRequest): Promise<readonly AnimalListadoRow[]> {
     return this.listarTodos(request)
+  }
+}
+
+/**
+ * #110 PR1 — Per-user/per-finca animal-list preference store.
+ *
+ * Reuses the PE-001–003 authz-CTE pattern from `DrizzleAnimalListadoReadModel`:
+ * the CTE verifies `animales:ver` + active membership before any read or write.
+ * `guardar` uses `ON CONFLICT DO UPDATE` for last-write-wins semantics; a thrown
+ * DB error rolls back atomically, leaving the prior row unchanged.
+ */
+export class DrizzleAnimalListadoPreferenciasRepository implements AnimalListadoPreferenciasPort {
+  constructor(private readonly db: DbClient) {}
+
+  async obtener(req: {
+    usuarioId: string
+    fincaId: string
+  }): Promise<AnimalListadoPreferencias> {
+    const rows = (await currentDb(this.db).execute(
+      sql`WITH authz AS (SELECT EXISTS (SELECT 1 FROM usuarios u JOIN usuarios_fincas uf ON uf.usuario_id = u.id JOIN usuarios_roles_asignacion ura ON ura.usuario_id = u.id AND ura.finca_id = uf.finca_id JOIN usuarios_roles ur ON ur.id = ura.rol_id JOIN roles_permisos rp ON rp.rol_id = ur.id JOIN usuarios_permisos up ON up.id = rp.permiso_id WHERE u.id = ${req.usuarioId} AND u.activo = 1 AND uf.finca_id = ${req.fincaId} AND uf.activo = 1 AND ura.activo = 1 AND ur.activo = 1 AND rp.activo = 1 AND up.activo = 1 AND up.modulo = 'animales' AND up.accion = 'ver') AS authorized) SELECT authorized, p.columnas, p.page_size FROM authz LEFT JOIN animal_listado_preferencias p ON p.usuario_id = ${req.usuarioId} AND p.finca_id = ${req.fincaId}`,
+    )) as { authorized: boolean; columnas: string[] | null; page_size: number | null }[]
+    const row = rows[0]
+    if (!row || row.authorized !== true) throw new AnimalListadoForbiddenError()
+    const rawPageSize = row.page_size
+    const pageSize: 25 | 50 | 100 =
+      rawPageSize === 25 || rawPageSize === 50 || rawPageSize === 100 ? rawPageSize : 25
+    return { cols: row.columnas ?? [], pageSize }
+  }
+
+  async guardar(
+    req: { usuarioId: string; fincaId: string } & AnimalListadoPreferencias,
+  ): Promise<void> {
+    const id = crypto.randomUUID()
+    const cols = req.cols as string[]
+    const result = (await currentDb(this.db).execute(
+      sql`WITH authz AS (SELECT EXISTS (SELECT 1 FROM usuarios u JOIN usuarios_fincas uf ON uf.usuario_id = u.id JOIN usuarios_roles_asignacion ura ON ura.usuario_id = u.id AND ura.finca_id = uf.finca_id JOIN usuarios_roles ur ON ur.id = ura.rol_id JOIN roles_permisos rp ON rp.rol_id = ur.id JOIN usuarios_permisos up ON up.id = rp.permiso_id WHERE u.id = ${req.usuarioId} AND u.activo = 1 AND uf.finca_id = ${req.fincaId} AND uf.activo = 1 AND ura.activo = 1 AND ur.activo = 1 AND rp.activo = 1 AND up.activo = 1 AND up.modulo = 'animales' AND up.accion = 'ver') AS authorized) INSERT INTO animal_listado_preferencias (id, usuario_id, finca_id, columnas, page_size, created_at, updated_at) SELECT ${id}, ${req.usuarioId}, ${req.fincaId}, ${cols}, ${req.pageSize}, now(), now() FROM authz WHERE authorized ON CONFLICT (usuario_id, finca_id) DO UPDATE SET columnas = EXCLUDED.columnas, page_size = EXCLUDED.page_size, updated_at = now() RETURNING id`,
+    )) as { id: string }[]
+    // If authz failed the INSERT…SELECT produces zero rows and no conflict fires.
+    if (result.length === 0) throw new AnimalListadoForbiddenError()
   }
 }
 

@@ -145,6 +145,20 @@ const defaultColumns = ANIMAL_LIST_COLUMNS.filter((_, index) => index < 29).map(
   (column) => column[0],
 ) as AnimalListColumnId[]
 
+/** The 29 base column ids — first 29 entries of the canonical registry. */
+export const ANIMAL_LIST_DEFAULT_COLUMNS: readonly AnimalListColumnId[] = defaultColumns
+
+/** True when `id` is a registered `AnimalListColumnId`. */
+export function isRegisteredAnimalListColumn(id: string): boolean {
+  return columnById.has(id)
+}
+
+/** Canonical registry ordinal for sorting; returns Infinity for unknown ids. */
+export function animalListColumnOrdinal(id: string): number {
+  const index = ANIMAL_LIST_COLUMNS.findIndex((column) => column[0] === id)
+  return index === -1 ? Number.POSITIVE_INFINITY : index
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: each branch maps one bounded query grammar error.
 export function parseAnimalListadoQuery(search: URLSearchParams): ParseResult {
   const page = parsePositiveInteger(search.get("page") ?? "1")
