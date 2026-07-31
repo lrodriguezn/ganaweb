@@ -44,6 +44,10 @@ export type {
 } from "./puertos/animal-exportacion-port.js"
 export { AnimalExportacionOverflowError } from "./puertos/animal-exportacion-port.js"
 export type {
+  AnimalListadoPreferencias,
+  AnimalListadoPreferenciasPort,
+} from "./puertos/animal-listado-preferencias-port.js"
+export type {
   ArchivoAnimalPort,
   ColaBinariosPort,
   ImagenAnimalDto,
