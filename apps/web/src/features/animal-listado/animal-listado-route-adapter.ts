@@ -20,6 +20,7 @@
  */
 import {
   ANIMAL_LIST_COLUMNS,
+  ANIMAL_LIST_DEFAULT_COLUMNS,
   type AnimalListColumnId,
   type AnimalListFilterKey,
   type AnimalListResponseKey,
@@ -29,6 +30,8 @@ import {
   type ApiErrorDto,
   type IdLabel,
   type KeyLabel,
+  animalListColumnOrdinal,
+  isRegisteredAnimalListColumn,
 } from "../../server/animal-list-contract.js"
 
 /**
@@ -706,5 +709,248 @@ export async function exportarListadoDesktop(
   } catch {
     // Network failure or abort — fail without a false 403 and without a download.
     return { tipo: "error_servidor", error: null }
+  }
+}
+
+/**
+ * #110 PR2 — preference lifecycle + pagination/column mutation builders.
+ *
+ * The route owns `page`/`pageSize`/`cols` as URL state (animal-listado-query-
+ * state). These pure helpers parse those values, merge valid URL values over
+ * loaded per-user/per-finca preferences over the 29/25 defaults (URL wins per
+ * field), build the page/pageSize/cols mutations (page resets to 1 on a
+ * size/column change), model the 36-column selector, and carry the GET/PUT
+ * preference transports. Normalization mirrors the PR1 server rules through the
+ * shared #107 registry; the server stays authoritative on save.
+ */
+
+/** Whitelisted page sizes for the animal list (#110 product decision). */
+export type PageSizeListado = 25 | 50 | 100
+
+export const PAGE_SIZE_OPTIONS_LISTADO: readonly PageSizeListado[] = [25, 50, 100]
+
+const DEFAULT_PAGE_SIZE_LISTADO: PageSizeListado = 25
+
+/** Columns that cannot be deselected (LA-080 mandatory `Código`/`Nombre`). */
+export const COLUMNAS_INMUTABLES_LISTADO: readonly AnimalListColumnId[] = ["codigo", "nombre"]
+
+/** Normalized animal-list preferences — canonical column ids + page size. */
+export interface PreferenciasListado {
+  readonly cols: readonly AnimalListColumnId[]
+  readonly pageSize: PageSizeListado
+}
+
+/** Coerce any raw page size to the whitelist, falling back to 25. */
+export function normalizarPageSizeListado(raw: number | null | undefined): PageSizeListado {
+  return raw !== null &&
+    raw !== undefined &&
+    (PAGE_SIZE_OPTIONS_LISTADO as readonly number[]).includes(raw)
+    ? (raw as PageSizeListado)
+    : DEFAULT_PAGE_SIZE_LISTADO
+}
+
+/** Valid page size from the URL; null when absent or not 25/50/100. */
+export function resolverPageSizeListado(consulta: URLSearchParams): PageSizeListado | null {
+  const raw = consulta.get("pageSize")
+  if (raw === null || raw === "") return null
+  const parsed = Number(raw)
+  return (PAGE_SIZE_OPTIONS_LISTADO as readonly number[]).includes(parsed)
+    ? (parsed as PageSizeListado)
+    : null
+}
+
+/**
+ * Normalize a raw column-id list: registered-only, dedupe (first wins),
+ * mandatory `codigo`/`nombre` injected, canonical registry order. Falls back
+ * to the 29 base columns when nothing valid survives (LA-032 fail-safe).
+ */
+export function normalizarColsListado(ids: readonly string[]): readonly AnimalListColumnId[] {
+  const vistos = new Set<string>()
+  const registrados: string[] = []
+  for (const id of ids) {
+    if (isRegisteredAnimalListColumn(id) && !vistos.has(id)) {
+      vistos.add(id)
+      registrados.push(id)
+    }
+  }
+  if (registrados.length === 0) return ANIMAL_LIST_DEFAULT_COLUMNS
+  for (const obligatoria of COLUMNAS_INMUTABLES_LISTADO) {
+    if (!vistos.has(obligatoria)) {
+      vistos.add(obligatoria)
+      registrados.push(obligatoria)
+    }
+  }
+  return registrados.sort(
+    (a, b) => animalListColumnOrdinal(a) - animalListColumnOrdinal(b),
+  ) as AnimalListColumnId[]
+}
+
+/** Recognized canonical column ids from the URL `cols`; null when absent/none. */
+export function resolverColsListado(
+  consulta: URLSearchParams,
+): readonly AnimalListColumnId[] | null {
+  const raw = consulta.get("cols")
+  if (raw === null || raw === "") return null
+  const registrados = raw
+    .split(",")
+    .map((parte) => parte.trim())
+    .filter((parte) => parte !== "" && isRegisteredAnimalListColumn(parte))
+  return registrados.length === 0 ? null : normalizarColsListado(registrados)
+}
+
+/** Preference load outcome as seen by the route. */
+export type ResultadoCargaPreferencias =
+  | { readonly tipo: "listo"; readonly preferencias: PreferenciasListado }
+  | { readonly tipo: "error" }
+
+export interface MezclaPreferenciasListado {
+  readonly efectivas: PreferenciasListado
+  /** True when a failed load and absent URL values forced the defaults. */
+  readonly avisoCarga: boolean
+}
+
+/**
+ * Merge valid URL values over loaded preferences over the 29/25 defaults.
+ * URL ownership is preserved per field: a valid URL `pageSize`/`cols` wins; an
+ * absent one falls back to preferences, then to defaults. A failed load with an
+ * absent URL value flags a retryable warning (animal-listado-query-state).
+ */
+export function mezclarPreferenciasListado(
+  consulta: URLSearchParams,
+  carga: ResultadoCargaPreferencias,
+): MezclaPreferenciasListado {
+  const urlPageSize = resolverPageSizeListado(consulta)
+  const urlCols = resolverColsListado(consulta)
+  const cargadas = carga.tipo === "listo" ? carga.preferencias : null
+  const pageSize = urlPageSize ?? cargadas?.pageSize ?? DEFAULT_PAGE_SIZE_LISTADO
+  const cols = urlCols ?? cargadas?.cols ?? ANIMAL_LIST_DEFAULT_COLUMNS
+  const avisoCarga = carga.tipo === "error" && (urlPageSize === null || urlCols === null)
+  return { efectivas: { cols, pageSize }, avisoCarga }
+}
+
+/** Page mutation: only `page` changes; page 1 canonicalizes by dropping it. */
+export function cambiarPaginaListado(consulta: URLSearchParams, pagina: number): URLSearchParams {
+  const siguiente = new URLSearchParams(consulta)
+  if (pagina <= 1) siguiente.delete("page")
+  else siguiente.set("page", String(pagina))
+  return siguiente
+}
+
+/** Page-size mutation: sets `pageSize` and resets the page to 1. */
+export function cambiarPageSizeListado(
+  consulta: URLSearchParams,
+  pageSize: PageSizeListado,
+): URLSearchParams {
+  const siguiente = consultaConPaginaInicial(consulta)
+  siguiente.set("pageSize", String(pageSize))
+  return siguiente
+}
+
+/** Column mutation: serializes canonical `cols` and resets the page to 1. */
+export function cambiarColsListado(
+  consulta: URLSearchParams,
+  cols: readonly AnimalListColumnId[],
+): URLSearchParams {
+  const siguiente = consultaConPaginaInicial(consulta)
+  siguiente.set("cols", normalizarColsListado(cols).join(","))
+  return siguiente
+}
+
+/** Column-selector row for the presentational UI. */
+export interface ColumnaSelectorListado {
+  readonly id: AnimalListColumnId
+  readonly label: string
+  readonly seleccionado: boolean
+  readonly inmutable: boolean
+}
+
+/**
+ * Builds the 36-column selector model from the effective selection. Mandatory
+ * columns are always selected and immutable; the rest reflect the selection.
+ */
+export function crearSelectorColumnasListado(
+  cols: readonly AnimalListColumnId[],
+): readonly ColumnaSelectorListado[] {
+  const seleccion = new Set<string>(cols)
+  return ANIMAL_LISTADO_COLUMN_REGISTRY.map((columna) => ({
+    id: columna.id,
+    label: columna.label,
+    seleccionado: seleccion.has(columna.id),
+    inmutable: (COLUMNAS_INMUTABLES_LISTADO as readonly string[]).includes(columna.id),
+  }))
+}
+
+/** True when the selection equals the 29 base columns at page size 25. */
+export function esPreferenciaDefectoListado(preferencias: PreferenciasListado): boolean {
+  if (preferencias.pageSize !== DEFAULT_PAGE_SIZE_LISTADO) return false
+  const defecto = ANIMAL_LIST_DEFAULT_COLUMNS
+  if (preferencias.cols.length !== defecto.length) return false
+  return defecto.every((id, indice) => preferencias.cols[indice] === id)
+}
+
+/** Preference transport options (injectable seam for tests). */
+export interface OpcionesPreferenciasListado {
+  readonly fetchImpl?: typeof fetch
+}
+
+function urlPreferencias(fincaId: string): string {
+  return `/api/fincas/${fincaId}/animales/preferencias`
+}
+
+/**
+ * GET `/api/fincas/{fincaId}/animales/preferencias`. A 200 carries the
+ * normalized `{ cols, pageSize }`; any other status or a network failure maps
+ * to `error` so the route falls back to defaults with a retryable warning.
+ */
+export async function cargarPreferenciasListado(
+  fincaId: string,
+  opciones: OpcionesPreferenciasListado = {},
+): Promise<ResultadoCargaPreferencias> {
+  const fetchImpl = opciones.fetchImpl ?? fetch
+  try {
+    const respuesta = await fetchImpl(urlPreferencias(fincaId), {
+      headers: { Accept: "application/json" },
+    })
+    if (respuesta.status !== 200) return { tipo: "error" }
+    const cuerpo = (await respuesta.json()) as { cols?: unknown; pageSize?: unknown }
+    return {
+      tipo: "listo",
+      preferencias: {
+        cols: normalizarColsListado(Array.isArray(cuerpo.cols) ? (cuerpo.cols as string[]) : []),
+        pageSize: normalizarPageSizeListado(
+          typeof cuerpo.pageSize === "number" ? cuerpo.pageSize : null,
+        ),
+      },
+    }
+  } catch {
+    return { tipo: "error" }
+  }
+}
+
+export type ResultadoGuardadoPreferencias = { readonly tipo: "exito" } | { readonly tipo: "error" }
+
+/**
+ * PUT `/api/fincas/{fincaId}/animales/preferencias` with a normalized body.
+ * Last-write-wins is enforced server-side; a non-200 or network failure maps to
+ * `error` so the route retains the session selection and offers retry.
+ */
+export async function guardarPreferenciasListado(
+  fincaId: string,
+  preferencias: PreferenciasListado,
+  opciones: OpcionesPreferenciasListado = {},
+): Promise<ResultadoGuardadoPreferencias> {
+  const fetchImpl = opciones.fetchImpl ?? fetch
+  try {
+    const respuesta = await fetchImpl(urlPreferencias(fincaId), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        cols: normalizarColsListado(preferencias.cols),
+        pageSize: preferencias.pageSize,
+      }),
+    })
+    return respuesta.status === 200 ? { tipo: "exito" } : { tipo: "error" }
+  } catch {
+    return { tipo: "error" }
   }
 }

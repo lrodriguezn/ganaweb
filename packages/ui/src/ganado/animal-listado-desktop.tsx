@@ -1,3 +1,4 @@
+import { useState } from "react"
 import type * as React from "react"
 
 import { cn } from "../lib/utils"
@@ -113,7 +114,47 @@ export interface AnimalListadoDesktopProps {
   readonly onEliminarChip?: (queryKey: string) => void
   readonly onLimpiarTodo?: () => void
   readonly onOrdenar?: (columnId: string) => void
+  /** #110: route-supplied pagination model; the UI never owns the URL. */
+  readonly paginacion?: AnimalListadoDesktopPaginacion
+  /** #110: route-supplied column-selector model (36 columns, mandatory frozen). */
+  readonly selectorColumnas?: AnimalListadoDesktopSelectorColumnas
+  /** #110: reset to 29 base columns + page size 25 (route owns the mutation). */
+  readonly onResetPreferencias?: () => void
+  /** #110: render the reset control only when the selection is non-default. */
+  readonly puedeResetear?: boolean
+  /** #110: retryable preference load/save warning; null when healthy. */
+  readonly avisoPreferencias?: AnimalListadoDesktopAvisoPreferencias | null
+  readonly onReintentarPreferencias?: () => void
   readonly className?: string
+}
+
+/** #110 presentational pagination model — the route owns URL ownership. */
+export interface AnimalListadoDesktopPaginacion {
+  readonly pagina: number
+  readonly totalPaginas: number
+  readonly pageSize: number
+  readonly pageSizes: readonly number[]
+  readonly onCambiarPagina: (pagina: number) => void
+  readonly onCambiarPageSize: (pageSize: number) => void
+}
+
+/** #110 presentational column-selector model. */
+export interface AnimalListadoDesktopSelectorColumnas {
+  readonly columnas: readonly AnimalListadoDesktopColumnaOpcion[]
+  readonly onCambiar: (ids: readonly string[]) => void
+}
+
+export interface AnimalListadoDesktopColumnaOpcion {
+  readonly id: string
+  readonly label: string
+  readonly seleccionado: boolean
+  /** Mandatory columns (`Código`/`Nombre`) cannot be deselected. */
+  readonly inmutable: boolean
+}
+
+/** #110 retryable preference warning model. */
+export interface AnimalListadoDesktopAvisoPreferencias {
+  readonly mensaje: string
 }
 
 /** Skeleton rows shown while loading (LA-060). */
@@ -563,8 +604,149 @@ function ContenidoPorEstado(props: AnimalListadoDesktopProps) {
   }
 }
 
+/**
+ * #110: presentational column selector. Renders the route-supplied 36-column
+ * model; mandatory columns stay checked and disabled. The UI only reports the
+ * resulting selection — it never owns URL, persistence, or normalization.
+ */
+function SelectorColumnas({
+  selectorColumnas,
+}: {
+  selectorColumnas: AnimalListadoDesktopSelectorColumnas
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const { columnas, onCambiar } = selectorColumnas
+  const alternar = (id: string, marcado: boolean) => {
+    const seleccionados = columnas.filter((columna) => columna.seleccionado).map((c) => c.id)
+    onCambiar(marcado ? [...seleccionados, id] : seleccionados.filter((actual) => actual !== id))
+  }
+  return (
+    <div className="relative">
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        aria-expanded={abierto}
+        onClick={() => setAbierto((valor) => !valor)}
+      >
+        Columnas
+      </Button>
+      {abierto && (
+        <fieldset
+          aria-label="Columnas visibles"
+          className="absolute z-40 mt-1 grid max-h-72 w-56 gap-1 overflow-auto rounded-card border bg-card p-3 shadow-md"
+        >
+          {columnas.map((columna) => (
+            <label key={columna.id} className="flex items-center gap-2 text-support">
+              <input
+                type="checkbox"
+                aria-label={columna.label}
+                checked={columna.seleccionado}
+                disabled={columna.inmutable}
+                onChange={(evento) => alternar(columna.id, evento.target.checked)}
+              />
+              {columna.label}
+            </label>
+          ))}
+        </fieldset>
+      )}
+    </div>
+  )
+}
+
+/** #110: presentational pagination + page-size control. */
+function PaginacionListado({
+  paginacion,
+}: {
+  paginacion: AnimalListadoDesktopPaginacion
+}) {
+  const { pagina, totalPaginas, pageSize, pageSizes, onCambiarPagina, onCambiarPageSize } =
+    paginacion
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          aria-label="Página anterior"
+          disabled={pagina <= 1}
+          onClick={() => onCambiarPagina(pagina - 1)}
+        >
+          Anterior
+        </Button>
+        <span className="text-support text-muted-foreground">
+          Página {pagina} de {totalPaginas}
+        </span>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          aria-label="Página siguiente"
+          disabled={pagina >= totalPaginas}
+          onClick={() => onCambiarPagina(pagina + 1)}
+        >
+          Siguiente
+        </Button>
+      </div>
+      <label className="flex items-center gap-2 text-support">
+        Filas por página
+        <select
+          aria-label="Filas por página"
+          value={String(pageSize)}
+          onChange={(evento) => onCambiarPageSize(Number(evento.target.value))}
+        >
+          {pageSizes.map((size) => (
+            <option key={size} value={String(size)}>
+              {size}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  )
+}
+
+/** #110: retryable preference warning. Preserves the table; retry is supplied. */
+function AvisoPreferenciasBanner({
+  aviso,
+  onReintentar,
+}: {
+  aviso: AnimalListadoDesktopAvisoPreferencias
+  onReintentar?: (() => void) | undefined
+}) {
+  return (
+    <div
+      role="alert"
+      className="flex items-center justify-between gap-4 rounded-card border bg-card px-3 py-2"
+    >
+      <p className="text-support text-muted-foreground">{aviso.mensaje}</p>
+      {onReintentar && (
+        <Button type="button" variant="secondary" size="sm" onClick={onReintentar}>
+          Reintentar
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export function AnimalListadoDesktop(props: AnimalListadoDesktopProps) {
-  const { className, estado, total, totalSinFiltro, permissions, onNuevoAnimal, onExportar } = props
+  const {
+    className,
+    estado,
+    total,
+    totalSinFiltro,
+    permissions,
+    onNuevoAnimal,
+    onExportar,
+    paginacion,
+    selectorColumnas,
+    onResetPreferencias,
+    puedeResetear = false,
+    avisoPreferencias,
+    onReintentarPreferencias,
+  } = props
+  const listoConDatos = estado === "listo" && (totalSinFiltro ?? 0) > 0
   return (
     <section className={cn("space-y-4", className)}>
       {/* LA-090: persistent live region (<output> implies role="status") —
@@ -575,8 +757,27 @@ export function AnimalListadoDesktop(props: AnimalListadoDesktopProps) {
         onNuevoAnimal={onNuevoAnimal}
         onExportar={onExportar}
       />
+      {avisoPreferencias ? (
+        <AvisoPreferenciasBanner
+          aviso={avisoPreferencias}
+          onReintentar={onReintentarPreferencias}
+        />
+      ) : null}
+      {listoConDatos && (selectorColumnas || (puedeResetear && onResetPreferencias)) ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {selectorColumnas && <SelectorColumnas selectorColumnas={selectorColumnas} />}
+          {puedeResetear && onResetPreferencias && (
+            <Button type="button" variant="secondary" size="sm" onClick={onResetPreferencias}>
+              Restablecer preferencias
+            </Button>
+          )}
+        </div>
+      ) : null}
       <ControlesConsulta {...props} />
       <ContenidoPorEstado {...props} />
+      {listoConDatos && paginacion && (total ?? 0) > 0 ? (
+        <PaginacionListado paginacion={paginacion} />
+      ) : null}
     </section>
   )
 }
