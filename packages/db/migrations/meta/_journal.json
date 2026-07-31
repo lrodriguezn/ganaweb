@@ -36,6 +36,13 @@
       "when": 1785183600000,
       "tag": "0004_animal_list_page_index_covering",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785270000000,
+      "tag": "0005_animal_listado_preferencias",
+      "breakpoints": true
     }
   ]
 }
