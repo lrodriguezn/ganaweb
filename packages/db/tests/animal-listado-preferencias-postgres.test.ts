@@ -47,7 +47,9 @@ beforeAll(async () => {
     INSERT INTO usuarios_fincas (id, usuario_id, finca_id, activo)
     VALUES (${`${fixture}-membership`}, ${authorizedUser}, ${fincaA}, 1)
   `)
-  await execute(sql`INSERT INTO usuarios_roles (id, nombre, activo) VALUES (${role}, 'Animal reader', 1)`)
+  await execute(
+    sql`INSERT INTO usuarios_roles (id, nombre, activo) VALUES (${role}, 'Animal reader', 1)`,
+  )
   await execute(sql`
     INSERT INTO roles_permisos (id, rol_id, permiso_id, activo)
     SELECT ${`${fixture}-rp`}, ${role}, id, 1
