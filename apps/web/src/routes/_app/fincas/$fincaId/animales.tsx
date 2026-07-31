@@ -39,26 +39,44 @@ import {
   type AnimalListadoDesktopModel,
   type AnimalListadoToastPayload,
   type AnimalListadoVisualPermissions,
+  PAGE_SIZE_OPTIONS_LISTADO,
+  type PageSizeListado,
+  type PreferenciasListado,
+  type ResultadoCargaPreferencias,
   type ResultadoExportacionDesktop,
   aplicarFiltroListado,
+  cambiarColsListado,
+  cambiarPaginaListado,
+  cambiarPageSizeListado,
   cargarListadoDesktop,
+  cargarPreferenciasListado,
   construirModeloListadoDesktop,
   crearChipsListado,
   crearModelosFiltroListado,
+  crearSelectorColumnasListado,
   eliminarChipListado,
+  esPreferenciaDefectoListado,
   exportarListadoDesktop,
   finalizarConsultaListado,
   formatearCeldaListado,
+  guardarPreferenciasListado,
   limpiarFiltrosListado,
+  mezclarPreferenciasListado,
+  normalizarColsListado,
+  normalizarPageSizeListado,
+  resolverColsListado,
+  resolverPageSizeListado,
   sanitizarListadoBadRequest,
   siguienteOrdenListado,
 } from "../../../../features/animal-listado/animal-listado-route-adapter.js"
 import {
   type AnimalCatalogs,
   getAnimalCatalogsAction,
+  getAnimalListadoPreferenciasAction,
   getAnimalListadoVisualPermissionsAction,
   listAnimalsAction,
 } from "../../../../server/animal-actions.js"
+import type { ResultadoPreferenciasListadoServer } from "../../../../server/animal-list-preferences.server.js"
 
 const PERMISOS_VISUALES_DENEGADOS: AnimalListadoVisualPermissions = {
   canCreate: false,
@@ -97,15 +115,20 @@ export type AnimalsLegadoData = Awaited<ReturnType<typeof listAnimalsAction>>
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales")({
   loader: async ({ params }) => {
-    const [permissions, legado, catalogs] = await Promise.all([
+    const [permissions, legado, catalogs, preferencias] = await Promise.all([
       // Fail closed: an RPC failure never produces a false grant (LA-RBAC-05).
       getAnimalListadoVisualPermissionsAction({ data: { fincaId: params.fincaId } }).catch(
         () => PERMISOS_VISUALES_DENEGADOS,
       ),
       listAnimalsAction({ data: { fincaId: params.fincaId } }),
       getAnimalCatalogsAction({ data: { fincaId: params.fincaId } }),
+      // #110: best-effort SSR preference load; a failure maps to `error` and the
+      // view falls back to 29/25 defaults with a retryable warning (PE-001–003).
+      getAnimalListadoPreferenciasAction({ data: { fincaId: params.fincaId } }).catch(() => ({
+        tipo: "error" as const,
+      })),
     ])
-    return { permissions, legado, catalogs }
+    return { permissions, legado, catalogs, preferencias }
   },
   component: AnimalsListRoute,
 })
@@ -118,6 +141,36 @@ const bottomNavItems = [
 ]
 
 const BUSQUEDA_DEBOUNCE_MS = 300
+
+/** #110: preference saves debounce so rapid column toggles coalesce (LWW). */
+const GUARDADO_PREFERENCIAS_DEBOUNCE_MS = 500
+
+const MENSAJE_AVISO_CARGA_PREFERENCIAS =
+  "No se pudieron cargar tus preferencias; se muestran los valores por defecto."
+const MENSAJE_AVISO_GUARDADO_PREFERENCIAS =
+  "No se pudieron guardar tus preferencias. Intenta de nuevo."
+
+/**
+ * Adapts the loader's serializable preference result onto the adapter's typed
+ * `ResultadoCargaPreferencias`. An `undefined` prop (e.g. the view mounted
+ * directly in tests) resolves to silent 29/25 defaults — NOT a warning — so the
+ * retryable warning only appears for a real loader failure (`{ tipo: "error" }`).
+ */
+function aResultadoCargaPreferencias(
+  preferencias: ResultadoPreferenciasListadoServer | undefined,
+): ResultadoCargaPreferencias {
+  if (preferencias === undefined) {
+    return { tipo: "listo", preferencias: { cols: normalizarColsListado([]), pageSize: 25 } }
+  }
+  if (preferencias.tipo !== "listo") return { tipo: "error" }
+  return {
+    tipo: "listo",
+    preferencias: {
+      cols: normalizarColsListado(preferencias.preferencias.cols),
+      pageSize: normalizarPageSizeListado(preferencias.preferencias.pageSize),
+    },
+  }
+}
 
 export type AnimalListadoQueryNavigation = Readonly<{
   consulta: URLSearchParams
@@ -173,6 +226,8 @@ export interface AnimalsListRouteViewProps {
   readonly permissions: AnimalListadoVisualPermissions
   readonly legado: AnimalsLegadoData
   readonly catalogs: AnimalCatalogs
+  /** #110: SSR-loaded preferences; `undefined` resolves to silent defaults. */
+  readonly preferencias?: ResultadoPreferenciasListadoServer | undefined
   /** Current URL search string — drives LA-040 sanitization reactivity. */
   readonly consulta?: string | undefined
   /** LA-091: opens the animal ficha (the route maps it to navigation). */
@@ -206,6 +261,7 @@ export function AnimalsListRouteView({
   permissions,
   legado,
   catalogs,
+  preferencias,
   consulta = "",
   onAbrirFicha,
   onIrANuevo,
@@ -223,12 +279,42 @@ export function AnimalsListRouteView({
   const sanearRef = useRef(onSanearUrl)
   sanearRef.current = onSanearUrl
 
+  // #110: preference lifecycle. The SSR load seeds the state; a failed load is
+  // retryable through the client transport. `falloGuardado` flags a failed save
+  // so the session selection is retained with a retryable warning (LWW).
+  const [cargaPreferencias, setCargaPreferencias] = useState<ResultadoCargaPreferencias>(() =>
+    aResultadoCargaPreferencias(preferencias),
+  )
+  const [falloGuardado, setFalloGuardado] = useState(false)
+  const guardadoTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const guardadoChainRef = useRef<Promise<void>>(Promise.resolve())
+
+  const consultaActual = new URLSearchParams(consulta)
+  const urlPageSize = resolverPageSizeListado(consultaActual)
+  const urlCols = resolverColsListado(consultaActual)
+  const mezcla = mezclarPreferenciasListado(consultaActual, cargaPreferencias)
+  // Effective #107 request query: the URL owns explicit values; prefs-derived
+  // values are injected only when the URL lacks them AND differ from the #107
+  // server defaults (25 / 29 base cols), so a default selection keeps a clean
+  // URL and a customized one rides along to the read model.
+  const consultaRequest = new URLSearchParams(consultaActual)
+  if (urlPageSize === null && mezcla.efectivas.pageSize !== 25) {
+    consultaRequest.set("pageSize", String(mezcla.efectivas.pageSize))
+  }
+  if (
+    urlCols === null &&
+    !esPreferenciaDefectoListado({ cols: mezcla.efectivas.cols, pageSize: 25 })
+  ) {
+    consultaRequest.set("cols", mezcla.efectivas.cols.join(","))
+  }
+  const consultaListado = consultaRequest.toString()
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: onSanearUrl is read through sanearRef so route-provided callbacks never retrigger the #107 fetch.
   useEffect(() => {
     let activo = true
     setEstado({ tipo: "cargando" })
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: each branch maps one bounded #107 outcome onto the LA-040–063 state machine.
-    void cargarListadoDesktop(fincaId, permissions, { consulta }).then((resultado) => {
+    void cargarListadoDesktop(fincaId, permissions, { consulta: consultaListado }).then((resultado) => {
       if (!activo) return
       switch (resultado.tipo) {
         case "listo": {
@@ -271,7 +357,7 @@ export function AnimalsListRouteView({
     return () => {
       activo = false
     }
-  }, [fincaId, permissions, consulta, intento])
+  }, [fincaId, permissions, consultaListado, intento])
 
   const animales = legado.tipo === "lista" ? [...legado.animales] : []
   const canCreateLegado = legado.tipo === "lista" && legado.permissions.canCreate
@@ -280,7 +366,6 @@ export function AnimalsListRouteView({
   }
 
   const modelo = estado.tipo === "listo" ? estado.modelo : null
-  const consultaActual = new URLSearchParams(consulta)
   // #111 export transport (LA-070/076): reuses the active listado query —
   // canonicalized through the read-only #111 seam — so a confirmed export and
   // any `Reintentar` preserve the active filters; the dialog adds scope/format.
@@ -329,6 +414,67 @@ export function AnimalsListRouteView({
         }
       : {}
 
+  // #110: preference lifecycle wiring. Saves are debounced and serialized so a
+  // burst of column toggles coalesces and later writes win (LWW). A failed save
+  // keeps the URL/session selection and flags a retryable warning.
+  const guardarAhora = (prefs: PreferenciasListado) => {
+    guardadoChainRef.current = guardadoChainRef.current.then(async () => {
+      const resultado = await guardarPreferenciasListado(fincaId, prefs)
+      setFalloGuardado(resultado.tipo === "error")
+    })
+  }
+  const programarGuardado = (prefs: PreferenciasListado) => {
+    if (guardadoTimerRef.current !== undefined) clearTimeout(guardadoTimerRef.current)
+    guardadoTimerRef.current = setTimeout(
+      () => guardarAhora(prefs),
+      GUARDADO_PREFERENCIAS_DEBOUNCE_MS,
+    )
+  }
+  const onCambiarPagina = (pagina: number) =>
+    onNavegarConsulta({ consulta: cambiarPaginaListado(consultaActual, pagina), replace: false })
+  const onCambiarPageSize = (pageSize: number) => {
+    const tamaño = normalizarPageSizeListado(pageSize)
+    onNavegarConsulta({ consulta: cambiarPageSizeListado(consultaActual, tamaño), replace: false })
+    programarGuardado({ cols: mezcla.efectivas.cols, pageSize: tamaño })
+  }
+  const onCambiarColumnas = (ids: readonly string[]) => {
+    const cols = normalizarColsListado(ids)
+    onNavegarConsulta({ consulta: cambiarColsListado(consultaActual, cols), replace: false })
+    programarGuardado({ cols, pageSize: mezcla.efectivas.pageSize })
+  }
+  const onResetPreferencias = () => {
+    const defecto: PreferenciasListado = { cols: normalizarColsListado([]), pageSize: 25 }
+    setCargaPreferencias({ tipo: "listo", preferencias: defecto })
+    setFalloGuardado(false)
+    const siguiente = new URLSearchParams(consultaActual)
+    siguiente.delete("pageSize")
+    siguiente.delete("cols")
+    siguiente.delete("page")
+    onNavegarConsulta({ consulta: siguiente, replace: false })
+    programarGuardado(defecto)
+  }
+  const onReintentarPreferencias = () => {
+    if (mezcla.avisoCarga) {
+      void cargarPreferenciasListado(fincaId).then(setCargaPreferencias)
+    } else if (falloGuardado) {
+      guardarAhora(mezcla.efectivas)
+    }
+  }
+
+  const paginaActual = Math.max(
+    1,
+    Number.parseInt(consultaActual.get("page") ?? "1", 10) || 1,
+  )
+  const totalPaginas =
+    modelo !== null ? Math.max(1, Math.ceil(modelo.total / mezcla.efectivas.pageSize)) : 1
+  const avisoPreferencias = mezcla.avisoCarga
+    ? { mensaje: MENSAJE_AVISO_CARGA_PREFERENCIAS }
+    : falloGuardado
+      ? { mensaje: MENSAJE_AVISO_GUARDADO_PREFERENCIAS }
+      : null
+  const puedeResetear =
+    !esPreferenciaDefectoListado(mezcla.efectivas) || urlPageSize !== null || urlCols !== null
+
   return (
     <div className="space-y-4">
       <div className="hidden md:block">
@@ -366,6 +512,22 @@ export function AnimalsListRouteView({
             const columna = columnasOrdenables.find((candidate) => candidate.id === columnId)
             if (columna) controlador.ordenar(columna.id)
           }}
+          paginacion={{
+            pagina: paginaActual,
+            totalPaginas,
+            pageSize: mezcla.efectivas.pageSize,
+            pageSizes: PAGE_SIZE_OPTIONS_LISTADO,
+            onCambiarPagina,
+            onCambiarPageSize,
+          }}
+          selectorColumnas={{
+            columnas: crearSelectorColumnasListado(mezcla.efectivas.cols),
+            onCambiar: onCambiarColumnas,
+          }}
+          onResetPreferencias={onResetPreferencias}
+          puedeResetear={puedeResetear}
+          avisoPreferencias={avisoPreferencias}
+          onReintentarPreferencias={onReintentarPreferencias}
         />
         {aviso !== null && (
           // <output> implies role="status" — the LA-040 correction is announced.
@@ -401,7 +563,7 @@ export function AnimalsListRouteView({
 }
 
 function AnimalsListRoute() {
-  const { permissions, legado, catalogs } = Route.useLoaderData()
+  const { permissions, legado, catalogs, preferencias } = Route.useLoaderData()
   const { fincaId } = Route.useParams()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -414,6 +576,7 @@ function AnimalsListRoute() {
       permissions={permissions}
       legado={legado}
       catalogs={catalogs}
+      preferencias={preferencias}
       consulta={consulta}
       onAbrirFicha={(animalId) => void navigate({ to: `/fincas/${fincaId}/animales/${animalId}` })}
       onIrANuevo={() => void navigate({ to: `/fincas/${fincaId}/animales/nuevo` })}

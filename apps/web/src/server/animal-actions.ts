@@ -190,6 +190,23 @@ export const getAnimalListadoVisualPermissionsAction = createServerFn({ method: 
     return resolverPermisosVisualesListado(data.fincaId)
   })
 
+/**
+ * #110 (PR 2): client-safe exposure of the per-user/per-finca animal-list
+ * preferences for the route loader. Mirrors the visual-permission action — the
+ * handler dynamically imports the server resolver so this module stays
+ * bundleable for the client. Fail-closed (PE-001–003): an unauthorized or
+ * failed resolution returns `{ tipo: "error" }` and the route uses 29/25
+ * defaults with a retryable warning.
+ */
+export const getAnimalListadoPreferenciasAction = createServerFn({ method: "GET" })
+  .validator((data: { fincaId: string }) => data)
+  .handler(async ({ data }) => {
+    const { resolverPreferenciasListadoServer } = await import(
+      "./animal-list-preferences.server.js"
+    )
+    return resolverPreferenciasListadoServer(data.fincaId)
+  })
+
 export const getAnimalSexoCatalogAction = createServerFn({ method: "GET" }).handler(
   async () => (await (await getRuntimeHarness()).sexoCatalog()) as AnimalSexoCatalog,
 )
