@@ -50,15 +50,14 @@ beforeAll(async () => {
   await execute(
     sql`INSERT INTO usuarios_roles (id, nombre, activo) VALUES (${role}, 'Animal reader', 1)`,
   )
-  // Seed the permission if absent (migrations create the table but no rows).
-  await execute(sql`
-    INSERT INTO usuarios_permisos (id, modulo, accion, nombre, activo)
-    VALUES (${`${fixture}-perm`}, 'animales', 'ver', 'Ver animales', 1)
-    ON CONFLICT (id) DO NOTHING
-  `)
+  // Reference the shared canonical permission (animales:ver) instead of inserting a
+  // duplicate: uq_usuarios_permisos UNIQUE (modulo, accion) rejects a second row with the
+  // same natural key on a seeded database. Mirrors animal-listado-postgres.test.ts.
   await execute(sql`
     INSERT INTO roles_permisos (id, rol_id, permiso_id, activo)
-    VALUES (${`${fixture}-rp`}, ${role}, ${`${fixture}-perm`}, 1)
+    SELECT ${`${fixture}-rp`}, ${role}, id, 1
+    FROM usuarios_permisos
+    WHERE modulo = 'animales' AND accion = 'ver'
   `)
   await execute(sql`
     INSERT INTO usuarios_roles_asignacion (id, usuario_id, rol_id, finca_id, activo)
@@ -70,7 +69,6 @@ afterAll(async () => {
   await execute(sql`DELETE FROM animal_listado_preferencias WHERE usuario_id = ${authorizedUser}`)
   await execute(sql`DELETE FROM usuarios_roles_asignacion WHERE id = ${`${fixture}-assignment`}`)
   await execute(sql`DELETE FROM roles_permisos WHERE id = ${`${fixture}-rp`}`)
-  await execute(sql`DELETE FROM usuarios_permisos WHERE id = ${`${fixture}-perm`}`)
   await execute(sql`DELETE FROM usuarios_roles WHERE id = ${role}`)
   await execute(sql`DELETE FROM usuarios_fincas WHERE id = ${`${fixture}-membership`}`)
   await execute(sql`DELETE FROM usuarios WHERE id IN (${authorizedUser}, ${outsideUser})`)
