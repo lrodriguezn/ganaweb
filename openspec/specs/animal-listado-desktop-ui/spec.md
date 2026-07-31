@@ -46,13 +46,19 @@ The UI MUST retain headers with 36–40 px loading skeletons and distinguish fin
 
 ### Requirement: Visual RBAC and Ficha Navigation
 
-`Nuevo animal` MUST render only with `animales:crear`; `Exportar` only with `animales:ver` and `reportes:exportar`. Visual gates MUST NOT replace server authorization. A row click or Enter outside a control MUST navigate to its ficha; controls retain their action.
+`Nuevo animal` MUST render only with `animales:crear`; `Exportar` only with `animales:ver` and `reportes:exportar`. When rendered, `Exportar` MUST be active and open the export dialog; it MUST NOT remain inert. Visual gates MUST NOT replace server authorization. A row click or Enter outside a control MUST navigate to its ficha; controls retain their action.
 
 #### Scenario: Permission-gated actions
 - GIVEN a viewer lacks create and export permissions
 - WHEN the list renders
 - THEN `Nuevo animal` and `Exportar` are absent
 - AND the table remains usable.
+
+#### Scenario: Exportar opens the export dialog
+- GIVEN a user with `animales:ver` and `reportes:exportar`
+- WHEN the user activates `Exportar`
+- THEN the export dialog opens
+- AND the list table and its filters remain in place.
 
 #### Scenario: Keyboard row navigation
 - GIVEN a visible row has focus
@@ -102,9 +108,12 @@ The UI MUST render #109-supplied typed filter, global-search, active-chip, clear
 
 ## Non-Goals
 
-This change MUST NOT implement #110 pagination controls, column selection, or preferences; #111 export execution, dialogs, or downloads. The UI MUST NOT add export behavior, mutate `pageSize` or `cols`, or implement offline, multi-sort, or `Lugar compra` behavior. Changes to #107, offline behavior, and `Lugar compra` are excluded.
+This change MUST NOT implement #110 pagination controls, column selection, or preferences. The UI MUST NOT mutate `pageSize` or `cols`, or implement offline, multi-sort, or `Lugar compra` behavior. Changes to #107, offline behavior, and `Lugar compra` are excluded.
+
+> Note (2026-07-31, #111): the former "#111 export execution, dialogs, or downloads" non-goal is retired — export is now implemented. `Exportar` is active and opens the export dialog (see Visual RBAC and Ficha Navigation); export behavior lives in `animal-listado-export-server` and `animal-listado-export-ui`.
 
 ## Rule Citations
 
 - LA-RBAC-02/03, LA-040–043, LA-060–063, LA-080–091; PE-001–003; T-004; IA-003.
 - LA-001, LA-010–012, LA-020–021 (added by #109).
+- LA-RBAC-03, LA-091; PE-001–003 (updated by #111: `Exportar` is now active and opens the export dialog).
