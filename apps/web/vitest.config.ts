@@ -36,6 +36,11 @@ export default defineConfig({
       // #111 PR2 — server exportadores (pure logic, node env). Scoped glob so
       // the tsx-based unit tests (run separately) are not re-executed here.
       "tests/animal-exportacion-*.test.ts",
+      // #110 PR1 — preference normalization (unit) and HTTP contract tests.
+      "src/server/animal-list-preferences.test.ts",
+      "src/server/animal-list-preferences-http.test.ts",
+      // #110 PR2 — preference lifecycle + pagination/column mutation builders.
+      "src/features/animal-listado/animal-listado-route.test.tsx",
     ],
     environment: "node",
   },
