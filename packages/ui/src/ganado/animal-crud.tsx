@@ -767,121 +767,227 @@ function useAnimalForm({
   }
 }
 
-export function AnimalFormScreen({
-  mode,
-  formVariant = "create",
-  onSave,
-  onCancel,
+function CompradoFields({
+  fechaCompra,
+  fechaNacimiento,
+  setFechaCompra,
   initialValues,
   catalogOptions,
-  currentLocation,
   fieldErrors,
-  isSubmitting = false,
-  onOrigenChange,
+}: {
+  fechaCompra: string
+  fechaNacimiento: string
+  setFechaCompra: (value: string) => void
+  initialValues?: AnimalFormInitialValues | undefined
+  catalogOptions?: AnimalFormCatalogOptions | undefined
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  return (
+    // CA-UI-022 · Comprado: Fecha compra · Precio / Peso compra · Lugar
+    <>
+      <FechaCompraField
+        value={fechaCompra}
+        minDate={fechaNacimiento ? new Date(`${fechaNacimiento}T00:00:00`) : undefined}
+        onChange={setFechaCompra}
+        fieldErrors={fieldErrors}
+      />
+      <NumericField
+        label="Precio"
+        name="precioCompra"
+        defaultValue={initialValues?.precioCompra}
+        fieldErrors={fieldErrors}
+      />
+      <NumericField
+        label="Peso compra"
+        name="pesoCompra"
+        defaultValue={initialValues?.pesoCompra}
+        fieldErrors={fieldErrors}
+      />
+      <SelectConCreacionField
+        label="Lugar de compra"
+        name="lugarCompra"
+        options={catalogOptions?.lugarCompra ?? []}
+        canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
+        defaultValue={initialValues?.lugarCompraId}
+        fieldErrors={fieldErrors}
+      />
+    </>
+  )
+}
+
+function FincaFields({
+  initialValues,
+  catalogOptions,
   currentAnimalId,
-}: AnimalFormScreenProps) {
-  const {
-    mobile,
-    origen,
-    fechaNacimiento,
-    fechaCompra,
-    comentarios,
-    isHydrated,
-    useComboboxOrigen,
-    handleOrigenChange,
-    handleEstimar,
-    formId,
-    submitForm,
-    isComprado,
-    setFechaNacimiento,
-    setFechaCompra,
-    setComentarios,
-  } = useAnimalForm({
-    mode,
-    initialValues,
-    catalogOptions,
-    currentAnimalId,
-    onOrigenChange,
-    onSave,
-    isSubmitting,
-  })
+  fieldErrors,
+}: {
+  initialValues?: AnimalFormInitialValues | undefined
+  catalogOptions?: AnimalFormCatalogOptions | undefined
+  currentAnimalId?: string | undefined
+  fieldErrors?: Record<string, string> | undefined
+}) {
+  return (
+    // CA-UI-022 · Finca: Madre · Padre
+    <>
+      <ComboboxField
+        label="Madre"
+        name="madreId"
+        options={catalogOptions?.madre ?? []}
+        defaultValue={initialValues?.madreId}
+        excludedIds={currentAnimalId ? [currentAnimalId] : []}
+        fieldErrors={fieldErrors}
+      />
+      <ComboboxField
+        label="Padre"
+        name="padreId"
+        options={catalogOptions?.padre ?? []}
+        defaultValue={initialValues?.padreId}
+        fieldErrors={fieldErrors}
+      />
+    </>
+  )
+}
 
-  const ctx: RenderFieldContext = {
-    initialValues,
-    catalogOptions,
-    fieldErrors,
-    origen,
-    fechaNacimiento,
-    comentarios,
-    handleOrigenChange,
-    handleEstimar,
-    useComboboxOrigen,
-    currentAnimalId,
-    setFechaNacimiento,
-    setComentarios,
-    mobile,
-  }
+function OrigenSection({
+  formVariant,
+  mobile,
+  origen,
+  isComprado,
+  fechaCompra,
+  fechaNacimiento,
+  setFechaCompra,
+  initialValues,
+  catalogOptions,
+  currentAnimalId,
+  fieldErrors,
+  ctx,
+}: {
+  formVariant: AnimalFormVariant
+  mobile: boolean
+  origen: OrigenKey
+  isComprado: boolean
+  fechaCompra: string
+  fechaNacimiento: string
+  setFechaCompra: (value: string) => void
+  initialValues?: AnimalFormInitialValues | undefined
+  catalogOptions?: AnimalFormCatalogOptions | undefined
+  currentAnimalId?: string | undefined
+  fieldErrors?: Record<string, string> | undefined
+  ctx: RenderFieldContext
+}) {
+  return (
+    <section aria-labelledby="origen-heading">
+      <h2
+        id="origen-heading"
+        className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2"
+      >
+        ORIGEN
+      </h2>
+      <div className={cn("gap-3", mobile ? "space-y-3" : "flex items-start gap-3")}>
+        <div className={mobile ? "w-full" : "w-[260px] shrink-0"}>
+          {renderFieldByName("origen", ctx)}
+        </div>
+        {formVariant !== "delete" ? (
+          // CA-UI-021 · Panel contenedor — único hijo, remontado por key={origen}
+          // CA-UI-023 · Altura estable: min-h-[160px] cubre el modo más alto (2 filas)
+          <div
+            key={origen}
+            className={cn(
+              "rounded-card bg-muted p-4 grid gap-3 flex-1 min-h-[160px]",
+              mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]",
+            )}
+          >
+            {isComprado ? (
+              <CompradoFields
+                fechaCompra={fechaCompra}
+                fechaNacimiento={fechaNacimiento}
+                setFechaCompra={setFechaCompra}
+                initialValues={initialValues}
+                catalogOptions={catalogOptions}
+                fieldErrors={fieldErrors}
+              />
+            ) : (
+              <FincaFields
+                initialValues={initialValues}
+                catalogOptions={catalogOptions}
+                currentAnimalId={currentAnimalId}
+                fieldErrors={fieldErrors}
+              />
+            )}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+}
 
-  const renderFieldByName = (name: string, context: RenderFieldContext): React.ReactNode => {
-    const fieldDef =
-      FORM_FIELDS.find((f) => f.name === name) ?? LOCATION_FIELDS.find((f) => f.name === name)
-    if (!fieldDef) return null
-    return renderAnimalFormField(fieldDef, context)
-  }
+function FormFooter({
+  mobile,
+  isOnline,
+  isSubmitting,
+  onCancel,
+}: {
+  mobile: boolean
+  isOnline: boolean
+  isSubmitting: boolean
+  onCancel: () => void
+}) {
+  return (
+    <footer
+      data-sticky-save="true"
+      className={cn(
+        "border-t bg-card p-4 flex items-center gap-2 z-40",
+        mobile
+          ? "fixed inset-x-0 bottom-0 min-h-20"
+          : "-mx-4 -mb-4 border-x border-b rounded-b-card justify-end",
+      )}
+    >
+      {!isOnline && (
+        <p className="mr-auto text-caption text-info-600">Se sincronizará al recuperar señal</p>
+      )}
+      {!mobile && (
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+          Cancelar
+        </Button>
+      )}
+      {/*
+            PR 2a (CA-UI-006): "min-w-[120px]" preserves button width when
+            the label flips between "Guardar" and "Guardando…".
+          */}
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        aria-busy={isSubmitting}
+        className={cn("min-w-[120px]", mobile && "w-full")}
+      >
+        {isSubmitting ? "Guardando…" : mobile ? "Guardar animal" : "Guardar"}
+      </Button>
+    </footer>
+  )
+}
 
-  // ─── Collapsible "Detalles adicionales" state machine ───
-  const hasDetailData = useMemo(() => {
-    if (formVariant !== "edit" || !initialValues) return false
-    const sexoKey = initialValues.sexoKey ?? 1
-    return Array.from(DETAIL_FIELD_NAMES).some((name) => {
-      // Exclude esDeMonta from count when not Macho
-      if (name === "esDeMonta" && sexoKey !== 0) return false
-      const val = initialValues[name as keyof AnimalFormInitialValues]
-      if (val === undefined || val === null || val === "" || val === false) return false
-      return true
-    })
-  }, [formVariant, initialValues])
+function renderFieldByName(name: string, context: RenderFieldContext): React.ReactNode {
+  const fieldDef =
+    FORM_FIELDS.find((f) => f.name === name) ?? LOCATION_FIELDS.find((f) => f.name === name)
+  if (!fieldDef) return null
+  return renderAnimalFormField(fieldDef, context)
+}
 
-  const detailCount = useMemo(() => {
-    if (!initialValues) return 0
-    const sexoKey = initialValues.sexoKey ?? 1
-    return Array.from(DETAIL_FIELD_NAMES).reduce((count, name) => {
-      if (name === "esDeMonta" && sexoKey !== 0) return count
-      const val = initialValues[name as keyof AnimalFormInitialValues]
-      if (val === undefined || val === null || val === "" || val === false) return count
-      return count + 1
-    }, 0)
-  }, [initialValues])
-
-  const detailFieldErrors = useMemo(() => {
-    if (!fieldErrors) return {}
-    const result: Record<string, string> = {}
-    for (const name of DETAIL_FIELD_NAMES) {
-      if (fieldErrors[name]) result[name] = fieldErrors[name]
-    }
-    return result
-  }, [fieldErrors])
-
-  const [collapsibleOpen, setCollapsibleOpen] = useState(formVariant === "edit" && hasDetailData)
-
-  // Force open when a detail field has a validation error (CA-UI-010)
-  useEffect(() => {
-    if (Object.keys(detailFieldErrors).length > 0 && !collapsibleOpen) {
-      setCollapsibleOpen(true)
-      // Focus the first errored field
-      const firstErrorName = Object.keys(detailFieldErrors)[0]
-      if (firstErrorName) {
-        const el = document.getElementsByName(firstErrorName)[0]
-        if (el) {
-          el.scrollIntoView({ block: "nearest" })
-        }
-      }
-    }
-  }, [JSON.stringify(detailFieldErrors)])
-
-  const sexoKey = initialValues?.sexoKey ?? 1
-  const showEsDeMonta = sexoKey === 0
-
+function UbicacionSection({
+  formVariant,
+  currentLocation,
+  initialValues,
+  fieldErrors,
+  mobile,
+  ctx,
+}: {
+  formVariant: AnimalFormVariant
+  currentLocation?: AnimalCurrentLocation | undefined
+  initialValues?: AnimalFormInitialValues | undefined
+  fieldErrors?: Record<string, string> | undefined
+  mobile: boolean
+  ctx: RenderFieldContext
+}) {
   // ─── UBICACIÓN collapsible state (CA-UI-019 / CA-UI-020) ───
   const ubicacionHasValues = useMemo(() => {
     if (formVariant === "edit" && currentLocation) {
@@ -940,7 +1046,210 @@ export function AnimalFormScreen({
         }
       }
     }
-  }, [JSON.stringify(ubicacionFieldErrors)])
+  }, [ubicacionFieldErrors, ubicacionOpen])
+
+  return (
+    <Collapsible open={ubicacionOpen} onOpenChange={setUbicacionOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2 py-0 flex items-center gap-2"
+        >
+          <span aria-hidden="true">{ubicacionOpen ? "▾" : "▸"}</span>
+          Ubicación
+          <span className="text-caption text-muted-foreground font-normal normal-case">
+            · {ubicacionSummary}
+          </span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent forceMount className="pt-2 data-[state=closed]:hidden">
+        {formVariant === "create" ? (
+          // CA-UI-019: 2 dropdowns por fila (1fr 1fr), no 4 en una fila
+          <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
+            {LOCATION_FIELDS.map((field) => renderFieldByName(field.name, ctx))}
+          </div>
+        ) : (
+          renderCurrentLocation(currentLocation)
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+function DetallesAdicionalesSection({
+  formVariant,
+  initialValues,
+  fieldErrors,
+  mobile,
+  ctx,
+  comentarios,
+  setComentarios,
+}: {
+  formVariant: AnimalFormVariant
+  initialValues?: AnimalFormInitialValues | undefined
+  fieldErrors?: Record<string, string> | undefined
+  mobile: boolean
+  ctx: RenderFieldContext
+  comentarios: string
+  setComentarios: React.Dispatch<React.SetStateAction<string>>
+}) {
+  // ─── Collapsible "Detalles adicionales" state machine ───
+  const hasDetailData = useMemo(() => {
+    if (formVariant !== "edit" || !initialValues) return false
+    const sexoKey = initialValues.sexoKey ?? 1
+    return Array.from(DETAIL_FIELD_NAMES).some((name) => {
+      if (name === "esDeMonta" && sexoKey !== 0) return false
+      const val = initialValues[name as keyof AnimalFormInitialValues]
+      if (val === undefined || val === null || val === "" || val === false) return false
+      return true
+    })
+  }, [formVariant, initialValues])
+
+  const detailCount = useMemo(() => {
+    if (!initialValues) return 0
+    const sexoKey = initialValues.sexoKey ?? 1
+    return Array.from(DETAIL_FIELD_NAMES).reduce((count, name) => {
+      if (name === "esDeMonta" && sexoKey !== 0) return count
+      const val = initialValues[name as keyof AnimalFormInitialValues]
+      if (val === undefined || val === null || val === "" || val === false) return count
+      return count + 1
+    }, 0)
+  }, [initialValues])
+
+  const detailFieldErrors = useMemo(() => {
+    if (!fieldErrors) return {}
+    const result: Record<string, string> = {}
+    for (const name of DETAIL_FIELD_NAMES) {
+      if (fieldErrors[name]) result[name] = fieldErrors[name]
+    }
+    return result
+  }, [fieldErrors])
+
+  const [collapsibleOpen, setCollapsibleOpen] = useState(formVariant === "edit" && hasDetailData)
+
+  // Force open when a detail field has a validation error (CA-UI-010)
+  useEffect(() => {
+    if (Object.keys(detailFieldErrors).length > 0 && !collapsibleOpen) {
+      setCollapsibleOpen(true)
+      const firstErrorName = Object.keys(detailFieldErrors)[0]
+      if (firstErrorName) {
+        const el = document.getElementsByName(firstErrorName)[0]
+        if (el) {
+          el.scrollIntoView({ block: "nearest" })
+        }
+      }
+    }
+  }, [detailFieldErrors, collapsibleOpen])
+
+  const sexoKey = initialValues?.sexoKey ?? 1
+  const showEsDeMonta = sexoKey === 0
+
+  return (
+    <Collapsible open={collapsibleOpen} onOpenChange={setCollapsibleOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2 py-0 flex items-center gap-2"
+        >
+          <span aria-hidden="true">{collapsibleOpen ? "▾" : "▸"}</span>
+          Detalles adicionales
+          {detailCount > 0 && (
+            <span className="text-caption text-muted-foreground font-normal normal-case">
+              · {detailCount} con datos
+            </span>
+          )}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent forceMount className="space-y-4 pt-2 pb-4 data-[state=closed]:hidden">
+        {/* Row 1: RFID + Tipo explotación + Propietario + Hierro */}
+        <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
+          {renderFieldByName("codigoRfid", ctx)}
+          {renderFieldByName("tipoExplotacionId", ctx)}
+          {renderFieldByName("propietarioId", ctx)}
+          {renderFieldByName("hierroId", ctx)}
+        </div>
+
+        {/* Row 2: Nº pezones */}
+        <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
+          {renderFieldByName("numeroPezones", ctx)}
+        </div>
+
+        {/* Row 3: Switches row */}
+        <div className="flex flex-wrap gap-4">
+          {renderFieldByName("tatuado", ctx)}
+          {renderFieldByName("herrado", ctx)}
+          {renderFieldByName("descornado", ctx)}
+          {showEsDeMonta ? renderFieldByName("esDeMonta", ctx) : null}
+        </div>
+
+        {/* Row 4: Comentarios full-width */}
+        <Field
+          key="comentarios"
+          label="Comentarios"
+          name="comentarios"
+          value={comentarios}
+          onChange={setComentarios}
+          fieldErrors={fieldErrors}
+        />
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+export function AnimalFormScreen({
+  mode,
+  formVariant = "create",
+  onSave,
+  onCancel,
+  initialValues,
+  catalogOptions,
+  currentLocation,
+  fieldErrors,
+  isSubmitting = false,
+  onOrigenChange,
+  currentAnimalId,
+}: AnimalFormScreenProps) {
+  const {
+    mobile,
+    origen,
+    fechaNacimiento,
+    fechaCompra,
+    comentarios,
+    isHydrated,
+    useComboboxOrigen,
+    handleOrigenChange,
+    handleEstimar,
+    formId,
+    submitForm,
+    isComprado,
+    setFechaNacimiento,
+    setFechaCompra,
+    setComentarios,
+  } = useAnimalForm({
+    mode,
+    initialValues,
+    catalogOptions,
+    currentAnimalId,
+    onOrigenChange,
+    onSave,
+    isSubmitting,
+  })
+
+  const ctx: RenderFieldContext = {
+    initialValues,
+    catalogOptions,
+    fieldErrors,
+    origen,
+    fechaNacimiento,
+    comentarios,
+    handleOrigenChange,
+    handleEstimar,
+    useComboboxOrigen,
+    currentAnimalId,
+    setFechaNacimiento,
+    setComentarios,
+    mobile,
+  }
 
   // CA-UI-005: sync hint is offline-only
   const isOnline = useOnlineStatus()
@@ -1012,109 +1321,30 @@ export function AnimalFormScreen({
           </section>
 
           {/* ─── ORIGEN ─── */}
-          <section aria-labelledby="origen-heading">
-            <h2
-              id="origen-heading"
-              className="text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2"
-            >
-              ORIGEN
-            </h2>
-            <div className={cn("gap-3", mobile ? "space-y-3" : "flex items-start gap-3")}>
-              <div className={mobile ? "w-full" : "w-[260px] shrink-0"}>
-                {renderFieldByName("origen", ctx)}
-              </div>
-              {formVariant !== "delete" ? (
-                // CA-UI-021 · Panel contenedor — único hijo, remontado por key={origen}
-                // CA-UI-023 · Altura estable: min-h-[160px] cubre el modo más alto (2 filas)
-                <div
-                  key={origen}
-                  className={cn(
-                    "rounded-card bg-muted p-4 grid gap-3 flex-1 min-h-[160px]",
-                    mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]",
-                  )}
-                >
-                  {isComprado ? (
-                    // CA-UI-022 · Comprado: Fecha compra · Precio / Peso compra · Lugar
-                    <>
-                      <FechaCompraField
-                        value={fechaCompra}
-                        minDate={
-                          fechaNacimiento ? new Date(`${fechaNacimiento}T00:00:00`) : undefined
-                        }
-                        onChange={setFechaCompra}
-                        fieldErrors={fieldErrors}
-                      />
-                      <NumericField
-                        label="Precio"
-                        name="precioCompra"
-                        defaultValue={initialValues?.precioCompra}
-                        fieldErrors={fieldErrors}
-                      />
-                      <NumericField
-                        label="Peso compra"
-                        name="pesoCompra"
-                        defaultValue={initialValues?.pesoCompra}
-                        fieldErrors={fieldErrors}
-                      />
-                      <SelectConCreacionField
-                        label="Lugar de compra"
-                        name="lugarCompra"
-                        options={catalogOptions?.lugarCompra ?? []}
-                        canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
-                        defaultValue={initialValues?.lugarCompraId}
-                        fieldErrors={fieldErrors}
-                      />
-                    </>
-                  ) : (
-                    // CA-UI-022 · Finca: Madre · Padre
-                    <>
-                      <ComboboxField
-                        label="Madre"
-                        name="madreId"
-                        options={catalogOptions?.madre ?? []}
-                        defaultValue={initialValues?.madreId}
-                        excludedIds={currentAnimalId ? [currentAnimalId] : []}
-                        fieldErrors={fieldErrors}
-                      />
-                      <ComboboxField
-                        label="Padre"
-                        name="padreId"
-                        options={catalogOptions?.padre ?? []}
-                        defaultValue={initialValues?.padreId}
-                        fieldErrors={fieldErrors}
-                      />
-                    </>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          </section>
+          <OrigenSection
+            formVariant={formVariant}
+            mobile={mobile}
+            origen={origen}
+            isComprado={isComprado}
+            fechaCompra={fechaCompra}
+            fechaNacimiento={fechaNacimiento}
+            setFechaCompra={setFechaCompra}
+            initialValues={initialValues}
+            catalogOptions={catalogOptions}
+            currentAnimalId={currentAnimalId}
+            fieldErrors={fieldErrors}
+            ctx={ctx}
+          />
 
           {/* ─── UBICACIÓN (Collapsible, CA-UI-019/020) ─── */}
-          <Collapsible open={ubicacionOpen} onOpenChange={setUbicacionOpen}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2 py-0 flex items-center gap-2"
-              >
-                <span aria-hidden="true">{ubicacionOpen ? "▾" : "▸"}</span>
-                Ubicación
-                <span className="text-caption text-muted-foreground font-normal normal-case">
-                  · {ubicacionSummary}
-                </span>
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent forceMount className="pt-2 data-[state=closed]:hidden">
-              {formVariant === "create" ? (
-                // CA-UI-019: 2 dropdowns por fila (1fr 1fr), no 4 en una fila
-                <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
-                  {LOCATION_FIELDS.map((field) => renderFieldByName(field.name, ctx))}
-                </div>
-              ) : (
-                renderCurrentLocation(currentLocation)
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+          <UbicacionSection
+            formVariant={formVariant}
+            currentLocation={currentLocation}
+            initialValues={initialValues}
+            fieldErrors={fieldErrors}
+            mobile={mobile}
+            ctx={ctx}
+          />
 
           {mobile && (
             <p className="rounded-card bg-info-100 text-info-600 p-3 text-support">
@@ -1123,90 +1353,22 @@ export function AnimalFormScreen({
           )}
 
           {/* ─── DETALLES ADICIONALES (Collapsible) ─── */}
-          <Collapsible open={collapsibleOpen} onOpenChange={setCollapsibleOpen}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left text-caption font-semibold uppercase tracking-wide text-muted-foreground mt-6 mb-2 py-0 flex items-center gap-2"
-              >
-                <span aria-hidden="true">{collapsibleOpen ? "▾" : "▸"}</span>
-                Detalles adicionales
-                {detailCount > 0 && (
-                  <span className="text-caption text-muted-foreground font-normal normal-case">
-                    · {detailCount} con datos
-                  </span>
-                )}
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent
-              forceMount
-              className="space-y-4 pt-2 pb-4 data-[state=closed]:hidden"
-            >
-              {/* Row 1: RFID + Tipo explotación + Propietario + Hierro */}
-              <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
-                {renderFieldByName("codigoRfid", ctx)}
-                {renderFieldByName("tipoExplotacionId", ctx)}
-                {renderFieldByName("propietarioId", ctx)}
-                {renderFieldByName("hierroId", ctx)}
-              </div>
+          <DetallesAdicionalesSection
+            formVariant={formVariant}
+            initialValues={initialValues}
+            fieldErrors={fieldErrors}
+            mobile={mobile}
+            ctx={ctx}
+            comentarios={comentarios}
+            setComentarios={setComentarios}
+          />
 
-              {/* Row 2: Nº pezones */}
-              <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "grid-cols-[1fr_1fr]")}>
-                {renderFieldByName("numeroPezones", ctx)}
-              </div>
-
-              {/* Row 3: Switches row */}
-              <div className="flex flex-wrap gap-4">
-                {renderFieldByName("tatuado", ctx)}
-                {renderFieldByName("herrado", ctx)}
-                {renderFieldByName("descornado", ctx)}
-                {showEsDeMonta ? renderFieldByName("esDeMonta", ctx) : null}
-              </div>
-
-              {/* Row 4: Comentarios full-width */}
-              <Field
-                key="comentarios"
-                label="Comentarios"
-                name="comentarios"
-                value={comentarios}
-                onChange={setComentarios}
-                fieldErrors={fieldErrors}
-              />
-            </CollapsibleContent>
-          </Collapsible>
-
-          <footer
-            data-sticky-save="true"
-            className={cn(
-              "border-t bg-card p-4 flex items-center gap-2 z-40",
-              mobile
-                ? "fixed inset-x-0 bottom-0 min-h-20"
-                : "-mx-4 -mb-4 border-x border-b rounded-b-card justify-end",
-            )}
-          >
-            {!isOnline && (
-              <p className="mr-auto text-caption text-info-600">
-                Se sincronizará al recuperar señal
-              </p>
-            )}
-            {!mobile && (
-              <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
-                Cancelar
-              </Button>
-            )}
-            {/*
-            PR 2a (CA-UI-006): "min-w-[120px]" preserves button width when
-            the label flips between "Guardar" and "Guardando…".
-          */}
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              aria-busy={isSubmitting}
-              className={cn("min-w-[120px]", mobile && "w-full")}
-            >
-              {isSubmitting ? "Guardando…" : mobile ? "Guardar animal" : "Guardar"}
-            </Button>
-          </footer>
+          <FormFooter
+            mobile={mobile}
+            isOnline={isOnline}
+            isSubmitting={isSubmitting}
+            onCancel={onCancel}
+          />
         </fieldset>
       </form>
     </section>

@@ -256,6 +256,166 @@ function modeloVacioListado(
   )
 }
 
+interface ProcesarResultadoDeps {
+  ultimoModelo: { current: AnimalListadoDesktopModel | null }
+  setAviso: (aviso: AnimalListadoToastPayload | null) => void
+  setEstado: (estado: EstadoVistaListado) => void
+  permissions: AnimalListadoVisualPermissions
+  consulta: string
+  sanearRef: { current: ((consultaSanitizada: URLSearchParams) => void) | undefined }
+}
+
+function procesarResultadoListado(
+  resultado: Awaited<ReturnType<typeof cargarListadoDesktop>>,
+  deps: ProcesarResultadoDeps,
+): void {
+  switch (resultado.tipo) {
+    case "listo": {
+      deps.ultimoModelo.current = resultado.modelo
+      deps.setAviso(null)
+      deps.setEstado({ tipo: "listo", modelo: resultado.modelo })
+      return
+    }
+    case "sin_acceso": {
+      deps.ultimoModelo.current = null // LA-041: 403 clears the data.
+      deps.setEstado({ tipo: "sin-acceso" })
+      return
+    }
+    case "error_servidor": {
+      deps.setEstado({ tipo: "error" })
+      return
+    }
+    case "consulta_invalida": {
+      // LA-040–043: retain the last valid table, strip the reported
+      // parameter (resetting the page when the dataset changes), and
+      // announce the correction. #109 owns general filter mutation.
+      const retenido = deps.ultimoModelo.current
+      const saneado = sanitizarListadoBadRequest(
+        resultado.error,
+        retenido ?? modeloVacioListado(deps.permissions),
+        new URLSearchParams(deps.consulta),
+      )
+      deps.setAviso(saneado.toast)
+      if (saneado.removedParams.length > 0) deps.sanearRef.current?.(saneado.sanitizedQuery)
+      if (retenido !== null) {
+        deps.setEstado({ tipo: "listo", modelo: retenido })
+      } else if (saneado.removedParams.length === 0) {
+        deps.setEstado({ tipo: "error" }) // nothing to retain nor to sanitize
+      }
+      // Otherwise the sanitized URL re-runs this effect and reloads.
+      return
+    }
+  }
+}
+
+/**
+ * #110: preference lifecycle hook. The SSR load seeds the state; a failed load
+ * is retryable through the client transport. `falloGuardado` flags a failed save
+ * so the session selection is retained with a retryable warning (LWW).
+ *
+ * Also owns the effective #107 request query: the URL owns explicit values;
+ * prefs-derived values are injected only when the URL lacks them AND differ from
+ * the #107 server defaults (25 / 29 base cols), so a default selection keeps a
+ * clean URL and a customized one rides along to the read model.
+ */
+function usePreferenciasListado(
+  fincaId: string,
+  preferencias: ResultadoPreferenciasListadoServer | undefined,
+  consulta: string,
+  onNavegarConsulta: (intencion: AnimalListadoQueryNavigation) => void,
+) {
+  const [cargaPreferencias, setCargaPreferencias] = useState<ResultadoCargaPreferencias>(() =>
+    aResultadoCargaPreferencias(preferencias),
+  )
+  const [falloGuardado, setFalloGuardado] = useState(false)
+  const guardadoTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const guardadoChainRef = useRef<Promise<void>>(Promise.resolve())
+
+  const consultaActual = new URLSearchParams(consulta)
+  const urlPageSize = resolverPageSizeListado(consultaActual)
+  const urlCols = resolverColsListado(consultaActual)
+  const mezcla = mezclarPreferenciasListado(consultaActual, cargaPreferencias)
+  const consultaRequest = new URLSearchParams(consultaActual)
+  if (urlPageSize === null && mezcla.efectivas.pageSize !== 25) {
+    consultaRequest.set("pageSize", String(mezcla.efectivas.pageSize))
+  }
+  if (
+    urlCols === null &&
+    !esPreferenciaDefectoListado({ cols: mezcla.efectivas.cols, pageSize: 25 })
+  ) {
+    consultaRequest.set("cols", mezcla.efectivas.cols.join(","))
+  }
+  const consultaListado = consultaRequest.toString()
+
+  // Saves are debounced and serialized so a burst of column toggles coalesces
+  // and later writes win (LWW). A failed save keeps the URL/session selection
+  // and flags a retryable warning.
+  const guardarAhora = (prefs: PreferenciasListado) => {
+    guardadoChainRef.current = guardadoChainRef.current.then(async () => {
+      const resultado = await guardarPreferenciasListado(fincaId, prefs)
+      setFalloGuardado(resultado.tipo === "error")
+    })
+  }
+  const programarGuardado = (prefs: PreferenciasListado) => {
+    if (guardadoTimerRef.current !== undefined) clearTimeout(guardadoTimerRef.current)
+    guardadoTimerRef.current = setTimeout(
+      () => guardarAhora(prefs),
+      GUARDADO_PREFERENCIAS_DEBOUNCE_MS,
+    )
+  }
+  const onCambiarPagina = (pagina: number) =>
+    onNavegarConsulta({ consulta: cambiarPaginaListado(consultaActual, pagina), replace: false })
+  const onCambiarPageSize = (pageSize: number) => {
+    const tamaño = normalizarPageSizeListado(pageSize)
+    onNavegarConsulta({ consulta: cambiarPageSizeListado(consultaActual, tamaño), replace: false })
+    programarGuardado({ cols: mezcla.efectivas.cols, pageSize: tamaño })
+  }
+  const onCambiarColumnas = (ids: readonly string[]) => {
+    const cols = normalizarColsListado(ids)
+    onNavegarConsulta({ consulta: cambiarColsListado(consultaActual, cols), replace: false })
+    programarGuardado({ cols, pageSize: mezcla.efectivas.pageSize })
+  }
+  const onResetPreferencias = () => {
+    const defecto: PreferenciasListado = { cols: normalizarColsListado([]), pageSize: 25 }
+    setCargaPreferencias({ tipo: "listo", preferencias: defecto })
+    setFalloGuardado(false)
+    const siguiente = new URLSearchParams(consultaActual)
+    siguiente.delete("pageSize")
+    siguiente.delete("cols")
+    siguiente.delete("page")
+    onNavegarConsulta({ consulta: siguiente, replace: false })
+    programarGuardado(defecto)
+  }
+  const onReintentarPreferencias = () => {
+    if (mezcla.avisoCarga) {
+      void cargarPreferenciasListado(fincaId).then(setCargaPreferencias)
+    } else if (falloGuardado) {
+      guardarAhora(mezcla.efectivas)
+    }
+  }
+
+  const avisoPreferencias = mezcla.avisoCarga
+    ? { mensaje: MENSAJE_AVISO_CARGA_PREFERENCIAS }
+    : falloGuardado
+      ? { mensaje: MENSAJE_AVISO_GUARDADO_PREFERENCIAS }
+      : null
+  const puedeResetear =
+    !esPreferenciaDefectoListado(mezcla.efectivas) || urlPageSize !== null || urlCols !== null
+
+  return {
+    consultaActual,
+    consultaListado,
+    mezcla,
+    onCambiarPagina,
+    onCambiarPageSize,
+    onCambiarColumnas,
+    onResetPreferencias,
+    onReintentarPreferencias,
+    avisoPreferencias,
+    puedeResetear,
+  }
+}
+
 export function AnimalsListRouteView({
   fincaId,
   permissions,
@@ -279,81 +439,34 @@ export function AnimalsListRouteView({
   const sanearRef = useRef(onSanearUrl)
   sanearRef.current = onSanearUrl
 
-  // #110: preference lifecycle. The SSR load seeds the state; a failed load is
-  // retryable through the client transport. `falloGuardado` flags a failed save
-  // so the session selection is retained with a retryable warning (LWW).
-  const [cargaPreferencias, setCargaPreferencias] = useState<ResultadoCargaPreferencias>(() =>
-    aResultadoCargaPreferencias(preferencias),
-  )
-  const [falloGuardado, setFalloGuardado] = useState(false)
-  const guardadoTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const guardadoChainRef = useRef<Promise<void>>(Promise.resolve())
-
-  const consultaActual = new URLSearchParams(consulta)
-  const urlPageSize = resolverPageSizeListado(consultaActual)
-  const urlCols = resolverColsListado(consultaActual)
-  const mezcla = mezclarPreferenciasListado(consultaActual, cargaPreferencias)
-  // Effective #107 request query: the URL owns explicit values; prefs-derived
-  // values are injected only when the URL lacks them AND differ from the #107
-  // server defaults (25 / 29 base cols), so a default selection keeps a clean
-  // URL and a customized one rides along to the read model.
-  const consultaRequest = new URLSearchParams(consultaActual)
-  if (urlPageSize === null && mezcla.efectivas.pageSize !== 25) {
-    consultaRequest.set("pageSize", String(mezcla.efectivas.pageSize))
-  }
-  if (
-    urlCols === null &&
-    !esPreferenciaDefectoListado({ cols: mezcla.efectivas.cols, pageSize: 25 })
-  ) {
-    consultaRequest.set("cols", mezcla.efectivas.cols.join(","))
-  }
-  const consultaListado = consultaRequest.toString()
+  const {
+    consultaActual,
+    consultaListado,
+    mezcla,
+    onCambiarPagina,
+    onCambiarPageSize,
+    onCambiarColumnas,
+    onResetPreferencias,
+    onReintentarPreferencias,
+    avisoPreferencias,
+    puedeResetear,
+  } = usePreferenciasListado(fincaId, preferencias, consulta, onNavegarConsulta)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: onSanearUrl is read through sanearRef so route-provided callbacks never retrigger the #107 fetch.
   useEffect(() => {
     let activo = true
     setEstado({ tipo: "cargando" })
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: each branch maps one bounded #107 outcome onto the LA-040–063 state machine.
     void cargarListadoDesktop(fincaId, permissions, { consulta: consultaListado }).then(
       (resultado) => {
         if (!activo) return
-        switch (resultado.tipo) {
-          case "listo": {
-            ultimoModelo.current = resultado.modelo
-            setAviso(null)
-            setEstado({ tipo: "listo", modelo: resultado.modelo })
-            return
-          }
-          case "sin_acceso": {
-            ultimoModelo.current = null // LA-041: 403 clears the data.
-            setEstado({ tipo: "sin-acceso" })
-            return
-          }
-          case "error_servidor": {
-            setEstado({ tipo: "error" })
-            return
-          }
-          case "consulta_invalida": {
-            // LA-040–043: retain the last valid table, strip the reported
-            // parameter (resetting the page when the dataset changes), and
-            // announce the correction. #109 owns general filter mutation.
-            const retenido = ultimoModelo.current
-            const saneado = sanitizarListadoBadRequest(
-              resultado.error,
-              retenido ?? modeloVacioListado(permissions),
-              new URLSearchParams(consulta),
-            )
-            setAviso(saneado.toast)
-            if (saneado.removedParams.length > 0) sanearRef.current?.(saneado.sanitizedQuery)
-            if (retenido !== null) {
-              setEstado({ tipo: "listo", modelo: retenido })
-            } else if (saneado.removedParams.length === 0) {
-              setEstado({ tipo: "error" }) // nothing to retain nor to sanitize
-            }
-            // Otherwise the sanitized URL re-runs this effect and reloads.
-            return
-          }
-        }
+        procesarResultadoListado(resultado, {
+          ultimoModelo,
+          setAviso,
+          setEstado,
+          permissions,
+          consulta,
+          sanearRef,
+        })
       },
     )
     return () => {
@@ -416,63 +529,9 @@ export function AnimalsListRouteView({
         }
       : {}
 
-  // #110: preference lifecycle wiring. Saves are debounced and serialized so a
-  // burst of column toggles coalesces and later writes win (LWW). A failed save
-  // keeps the URL/session selection and flags a retryable warning.
-  const guardarAhora = (prefs: PreferenciasListado) => {
-    guardadoChainRef.current = guardadoChainRef.current.then(async () => {
-      const resultado = await guardarPreferenciasListado(fincaId, prefs)
-      setFalloGuardado(resultado.tipo === "error")
-    })
-  }
-  const programarGuardado = (prefs: PreferenciasListado) => {
-    if (guardadoTimerRef.current !== undefined) clearTimeout(guardadoTimerRef.current)
-    guardadoTimerRef.current = setTimeout(
-      () => guardarAhora(prefs),
-      GUARDADO_PREFERENCIAS_DEBOUNCE_MS,
-    )
-  }
-  const onCambiarPagina = (pagina: number) =>
-    onNavegarConsulta({ consulta: cambiarPaginaListado(consultaActual, pagina), replace: false })
-  const onCambiarPageSize = (pageSize: number) => {
-    const tamaño = normalizarPageSizeListado(pageSize)
-    onNavegarConsulta({ consulta: cambiarPageSizeListado(consultaActual, tamaño), replace: false })
-    programarGuardado({ cols: mezcla.efectivas.cols, pageSize: tamaño })
-  }
-  const onCambiarColumnas = (ids: readonly string[]) => {
-    const cols = normalizarColsListado(ids)
-    onNavegarConsulta({ consulta: cambiarColsListado(consultaActual, cols), replace: false })
-    programarGuardado({ cols, pageSize: mezcla.efectivas.pageSize })
-  }
-  const onResetPreferencias = () => {
-    const defecto: PreferenciasListado = { cols: normalizarColsListado([]), pageSize: 25 }
-    setCargaPreferencias({ tipo: "listo", preferencias: defecto })
-    setFalloGuardado(false)
-    const siguiente = new URLSearchParams(consultaActual)
-    siguiente.delete("pageSize")
-    siguiente.delete("cols")
-    siguiente.delete("page")
-    onNavegarConsulta({ consulta: siguiente, replace: false })
-    programarGuardado(defecto)
-  }
-  const onReintentarPreferencias = () => {
-    if (mezcla.avisoCarga) {
-      void cargarPreferenciasListado(fincaId).then(setCargaPreferencias)
-    } else if (falloGuardado) {
-      guardarAhora(mezcla.efectivas)
-    }
-  }
-
   const paginaActual = Math.max(1, Number.parseInt(consultaActual.get("page") ?? "1", 10) || 1)
   const totalPaginas =
     modelo !== null ? Math.max(1, Math.ceil(modelo.total / mezcla.efectivas.pageSize)) : 1
-  const avisoPreferencias = mezcla.avisoCarga
-    ? { mensaje: MENSAJE_AVISO_CARGA_PREFERENCIAS }
-    : falloGuardado
-      ? { mensaje: MENSAJE_AVISO_GUARDADO_PREFERENCIAS }
-      : null
-  const puedeResetear =
-    !esPreferenciaDefectoListado(mezcla.efectivas) || urlPageSize !== null || urlCols !== null
 
   return (
     <div className="space-y-4">
