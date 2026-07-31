@@ -50,3 +50,4 @@ export type {
   SesionAutorizada,
   Usuario,
 } from "./usuario.js"
+export { AnimalExportacionOverflowError } from "./errores.js"

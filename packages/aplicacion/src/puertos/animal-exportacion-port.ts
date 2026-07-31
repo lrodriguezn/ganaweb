@@ -20,6 +20,9 @@
 
 import type { AnimalListadoReadFilter, AnimalListadoRow } from "./animal-listado-port.js"
 
+// Re-exported from dominio for backward compatibility (issue #134).
+export { AnimalExportacionOverflowError } from "@ganaweb/dominio"
+
 export interface AnimalExportacionRequest {
   readonly usuarioId: string
   readonly fincaId: string
@@ -34,14 +37,4 @@ export interface AnimalExportacionRequest {
 
 export interface AnimalExportacionReadPort {
   exportar(request: AnimalExportacionRequest): Promise<readonly AnimalListadoRow[]>
-}
-
-export class AnimalExportacionOverflowError extends Error {
-  readonly maxFilas: number
-
-  constructor(maxFilas: number) {
-    super(`Animal export exceeds the maximum of ${maxFilas} rows`)
-    this.name = "AnimalExportacionOverflowError"
-    this.maxFilas = maxFilas
-  }
 }

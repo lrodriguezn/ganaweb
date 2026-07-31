@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { AnimalExportacionOverflowError } from "@ganaweb/aplicacion"
+import { AnimalExportacionOverflowError } from "@ganaweb/dominio"
 import type { AnimalExportacionRequest, AnimalListadoReadRequest } from "@ganaweb/aplicacion"
 import { sql } from "drizzle-orm"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"

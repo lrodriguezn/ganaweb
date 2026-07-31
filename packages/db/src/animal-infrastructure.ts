@@ -23,7 +23,7 @@ import type {
 } from "@ganaweb/aplicacion"
 import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
 import type { ErrorValidacionAnimal } from "@ganaweb/aplicacion"
-import { AnimalExportacionOverflowError } from "@ganaweb/aplicacion"
+import { AnimalExportacionOverflowError } from "@ganaweb/dominio"
 import { type SQL, and, asc, eq, or, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 import {
