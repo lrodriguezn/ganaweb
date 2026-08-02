@@ -37,6 +37,7 @@ import { BottomNav } from "./bottom-nav"
 import { EmptyState } from "./empty-state"
 import { CategoriaBadge, EstadoAnimalBadge, EstadoBadge, SaludBadge } from "./estado-badge"
 import { MetricCard } from "./metric-card"
+import { PageHeader } from "./page-header"
 import type { AnimalResumen, DominioEvento, ItemNav } from "./types"
 
 export type AnimalListItem = AnimalResumen & {
@@ -87,15 +88,17 @@ export function AnimalListMobile({
       className="min-h-[100dvh] w-full bg-background pb-[calc(var(--h-bottomnav)+16px)]"
     >
       <header className="h-14 border-b bg-card px-4 flex items-center justify-between">
-        <div>
-          <p className="text-title font-semibold">Animales</p>
-          <p className="text-caption text-muted-foreground">Listado operativo</p>
-        </div>
-        {canCreate && (
-          <Button type="button" size="sm" onClick={onNuevoAnimal} aria-label="Nuevo animal">
-            <Plus className="size-4" aria-hidden="true" />
-          </Button>
-        )}
+        <PageHeader
+          titulo="Animales"
+          subtitulo="Listado operativo"
+          acciones={
+            canCreate ? (
+              <Button type="button" size="sm" onClick={onNuevoAnimal} aria-label="Nuevo animal">
+                <Plus className="size-4" aria-hidden="true" />
+              </Button>
+            ) : undefined
+          }
+        />
       </header>
 
       <div className="p-4 space-y-3">
@@ -2261,19 +2264,17 @@ export function AnimalDesktopScreen({
       aria-label="18 Animales · Desktop"
       className="min-h-[900px] bg-background p-6 space-y-4"
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-title font-semibold">Animales</p>
-          <p className="text-support text-muted-foreground">
-            Administra el hato activo de la finca
-          </p>
-        </div>
-        {canCreate && (
-          <Button type="button" onClick={onNuevoAnimal}>
-            Nuevo animal
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        titulo="Animales"
+        subtitulo="Administra el hato activo de la finca"
+        acciones={
+          canCreate ? (
+            <Button type="button" onClick={onNuevoAnimal}>
+              Nuevo animal
+            </Button>
+          ) : undefined
+        }
+      />
       <div className="rounded-card border bg-card p-3 flex items-center gap-2">
         <Input aria-label="Buscar animales" placeholder="Buscar por código, nombre, arete o RFID" />
         <Button type="button" variant="secondary">

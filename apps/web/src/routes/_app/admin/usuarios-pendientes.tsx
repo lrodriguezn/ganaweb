@@ -27,7 +27,7 @@ function UsuariosPendientesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 md:px-6 py-4 md:py-6 space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4">
       <header className="space-y-1">
         <h1 className="text-title font-semibold text-foreground">Usuarios pendientes</h1>
         <p className="text-support text-muted-foreground">

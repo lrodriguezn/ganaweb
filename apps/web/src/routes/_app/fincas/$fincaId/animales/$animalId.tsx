@@ -68,7 +68,7 @@ function AnimalFichaRoute() {
           onRegistrarEvento={() => {}}
         />
       </div>
-      <section className="mx-auto max-w-6xl px-4 pb-6" aria-label="Acciones de ficha">
+      <section className="mx-auto max-w-6xl pb-6" aria-label="Acciones de ficha">
         {data.timeline.nextCursor && (
           <p className="mb-3 text-support text-muted-foreground">
             La ficha tiene más eventos disponibles. Cargar más: {data.timeline.nextCursor}

@@ -4,6 +4,7 @@ import type * as React from "react"
 import { cn } from "../lib/utils"
 import { Button } from "../primitives/button"
 import { Input } from "../primitives/input"
+import { PageHeader } from "./page-header"
 
 /**
  * AnimalListadoDesktop — presentational #107-backed table for issue #108.
@@ -478,38 +479,6 @@ function textoAnuncio(
   }
 }
 
-/** LA-RBAC-02/03 toolbar: presence is permission-gated — server
- * enforcement stays authoritative. `Exportar` is active since #111: its
- * `onClick` invokes the route-supplied `onExportar`, which opens the export
- * dialog (the component owns no dialog/download/network detail). */
-function BarraAcciones({
-  permissions,
-  onNuevoAnimal,
-  onExportar,
-}: {
-  permissions: AnimalListadoDesktopPermissions
-  onNuevoAnimal?: (() => void) | undefined
-  onExportar?: (() => void) | undefined
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <p className="text-title font-semibold">Animales</p>
-      <div className="flex items-center gap-2">
-        {permissions.canCreate && (
-          <Button type="button" onClick={onNuevoAnimal}>
-            Nuevo animal
-          </Button>
-        )}
-        {permissions.canExport && (
-          <Button type="button" variant="secondary" onClick={onExportar}>
-            Exportar
-          </Button>
-        )}
-      </div>
-    </div>
-  )
-}
-
 function ContenidoListo({
   columns,
   rows,
@@ -730,6 +699,32 @@ function AvisoPreferenciasBanner({
   )
 }
 
+/** LA-RBAC-02/03: permission-gated action buttons for the PageHeader slot. */
+function AccionesListado({
+  permissions,
+  onNuevoAnimal,
+  onExportar,
+}: {
+  permissions: AnimalListadoDesktopPermissions
+  onNuevoAnimal?: (() => void) | undefined
+  onExportar?: (() => void) | undefined
+}) {
+  return (
+    <>
+      {permissions.canCreate && (
+        <Button type="button" onClick={onNuevoAnimal}>
+          Nuevo animal
+        </Button>
+      )}
+      {permissions.canExport && (
+        <Button type="button" variant="secondary" onClick={onExportar}>
+          Exportar
+        </Button>
+      )}
+    </>
+  )
+}
+
 export function AnimalListadoDesktop(props: AnimalListadoDesktopProps) {
   const {
     className,
@@ -752,10 +747,15 @@ export function AnimalListadoDesktop(props: AnimalListadoDesktopProps) {
       {/* LA-090: persistent live region (<output> implies role="status") —
           state changes are announced. */}
       <output className="sr-only">{textoAnuncio(estado, total ?? 0, totalSinFiltro ?? 0)}</output>
-      <BarraAcciones
-        permissions={permissions}
-        onNuevoAnimal={onNuevoAnimal}
-        onExportar={onExportar}
+      <PageHeader
+        titulo="Animales"
+        acciones={
+          <AccionesListado
+            permissions={permissions}
+            onNuevoAnimal={onNuevoAnimal}
+            onExportar={onExportar}
+          />
+        }
       />
       {avisoPreferencias ? (
         <AvisoPreferenciasBanner
