@@ -1,0 +1,94 @@
+name: Mejora / Refactor
+description: Mejorar, refactorizar o pagar deuda de algo que YA existe (UX, accesibilidad, rendimiento, consistencia, diseño). Para capacidades nuevas usa "Feature Request"; para bugs usa "Bug Report".
+labels: ["enhancement", "status:needs-review"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Como funciona
+
+        Usa esta plantilla cuando el cambio **mejora o reestructura algo que ya existe**, no cuando añade una capacidad nueva desde cero.
+        Ejemplos: corregir espaciado/jerarquía visual, extraer un componente duplicado, mejorar accesibilidad, reducir deuda de diseño, optimizar un flujo existente.
+
+        1. **Envia** esta solicitud -> se etiqueta automaticamente como `status:needs-review`
+        2. Un **mantenedor revisa** y agrega `status:approved` (o la cierra como fuera-de-alcance/duplicado)
+        3. **Solo entonces** se debe abrir un PR para implementarla
+
+        Los PRs que implementen mejoras sin `status:approved` en el issue vinculado seran rechazados automaticamente por CI.
+
+        Nota de triage: el mantenedor anadira `type:refactor` (sin cambio funcional) o `type:feature`/`type:docs`/`type:chore` segun corresponda; aqui no hace falta elegirlo.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight Checklist
+      options:
+        - label: Busque en [issues existentes](https://github.com/lrodriguezn/ganaweb/issues) y esto no es un duplicado
+          required: true
+        - label: Esto mejora/refactoriza algo que ya existe (no es una capacidad nueva ni un bug)
+          required: true
+        - label: Entiendo que los PRs seran rechazados si el issue vinculado no tiene `status:approved`
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area Afectada
+      description: Que area de GanaWeb afectaria esta mejora?
+      options:
+        - Web App
+        - API
+        - Base de Datos
+        - Autenticacion
+        - Reportes
+        - UI/UX
+        - Documentacion
+        - Infraestructura
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Estado Actual y Problema
+      description: Que existe hoy y por que es insuficiente. Incluye causa raiz si la conoces (archivos/lineas, comportamiento observado vs. esperado).
+      placeholder: |
+        Hoy <componente/ruta> se comporta/esta estructurado asi: ...
+        Esto causa <problema concreto: amontonamiento visual, duplicacion, deuda, a11y, rendimiento...>.
+        Causa raiz (si se conoce): <archivo:linea y por que>.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Mejora Propuesta
+      description: Como quedaria tras el cambio. Lista los pasos/acotaciones y que queda fuera de alcance.
+      placeholder: |
+        Cambio propuesto:
+          1. ...
+          2. ...
+        Fuera de alcance:
+          - ...
+        Verificacion propuesta:
+          - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas Consideradas
+      description: Otras formas de resolverlo y por que se descartan (incluye "no hacer nada").
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto Adicional
+      description: Capturas, referencias de codigo, issues relacionados.
+    validations:
+      required: false
