@@ -4,6 +4,7 @@ import type * as React from "react"
 import { cn } from "../lib/utils"
 import { Button } from "../primitives/button"
 import { Input } from "../primitives/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../primitives/select"
 import { PageHeader } from "./page-header"
 
 /**
@@ -368,27 +369,31 @@ function ControlesConsulta({
         />
       )}
       {filtros.map((filtro) => (
-        <label key={filtro.filterKey} className="grid gap-1 text-support">
-          {filtro.label}
-          <select
-            aria-label={filtro.label}
-            value={filtro.committedValue ?? ""}
-            onChange={(event) =>
+        <div key={filtro.filterKey} className="grid gap-1 text-support">
+          <span>{filtro.label}</span>
+          <Select
+            value={filtro.committedValue ?? "__all__"}
+            onValueChange={(value) =>
               onFiltrar?.({
                 filterKey: filtro.filterKey,
                 grammar: filtro.grammar,
-                value: event.target.value === "" ? null : event.target.value,
+                value: value === "__all__" ? null : value,
               })
             }
           >
-            <option value="">Todos</option>
-            {filtro.options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger aria-label={filtro.label}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {filtro.options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       ))}
       {chips.map((chip) => (
         <Button
