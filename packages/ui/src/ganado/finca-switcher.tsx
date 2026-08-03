@@ -22,6 +22,8 @@ import type { FincaResumen } from "./types"
  *
  * Reglas encapsuladas:
  * - Cada finca es una fila informada: nombre + rol + estado de sync.
+ * - Issue #144: las membresías pendientes de aprobación se muestran
+ *   deshabilitadas con badge "Pendiente" (nunca ocultas, nunca seleccionables).
  * - Sin conexión, las fincas SIN réplica del dispositivo se muestran
  *   deshabilitadas (nunca ocultas) con "Requiere conexión · sin datos locales".
  * - La activa lleva fondo de selección + check.
@@ -123,7 +125,10 @@ export function FincaList({
       <ul>
         {fincas.map((finca) => {
           const esActiva = finca.id === fincaActivaId
-          const bloqueada = offline && !finca.tieneDatosLocales
+          // Issue #144: la membresía pendiente de aprobación nunca es
+          // seleccionable, esté el dispositivo con o sin conexión.
+          const pendiente = finca.pendiente === true
+          const bloqueada = pendiente || (offline && !finca.tieneDatosLocales)
           return (
             <li key={finca.id} className="border-b last:border-b-0">
               <button
@@ -139,25 +144,12 @@ export function FincaList({
               >
                 <span className="flex-1 min-w-0">
                   <span className="block text-support font-medium truncate">{finca.nombre}</span>
-                  {bloqueada ? (
-                    <span className="block text-caption text-muted-foreground mt-0.5">
-                      Requiere conexión · sin datos locales
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2 mt-1">
-                      {/* v1.2.1: el rol es dinámico (tabla usuarios_roles);
-                          se muestra tal cual y se destaca vía esAdmin */}
-                      <EstadoBadge variant={finca.esAdmin ? "exito" : "neutral"}>
-                        {finca.rol}
-                      </EstadoBadge>
-                      <SyncEstado finca={finca} />
-                    </span>
-                  )}
+                  <EstadoFinca finca={finca} pendiente={pendiente} bloqueada={bloqueada} />
                 </span>
                 {esActiva && (
                   <Check aria-hidden="true" className="size-4 text-pasto-600 shrink-0" />
                 )}
-                {bloqueada && (
+                {bloqueada && !pendiente && (
                   <CloudOff aria-hidden="true" className="size-4 text-muted-foreground shrink-0" />
                 )}
               </button>
@@ -177,6 +169,40 @@ export function FincaList({
         </button>
       )}
     </div>
+  )
+}
+
+/** Segunda línea de la fila: estado de la membresía (issue #144) o sync. */
+function EstadoFinca({
+  finca,
+  pendiente,
+  bloqueada,
+}: {
+  finca: FincaResumen
+  pendiente: boolean
+  bloqueada: boolean
+}) {
+  if (pendiente) {
+    return (
+      <span className="flex items-center gap-2 mt-1">
+        <EstadoBadge variant="alerta">Pendiente</EstadoBadge>
+      </span>
+    )
+  }
+  if (bloqueada) {
+    return (
+      <span className="block text-caption text-muted-foreground mt-0.5">
+        Requiere conexión · sin datos locales
+      </span>
+    )
+  }
+  return (
+    <span className="flex items-center gap-2 mt-1">
+      {/* v1.2.1: el rol es dinámico (tabla usuarios_roles);
+          se muestra tal cual y se destaca vía esAdmin */}
+      <EstadoBadge variant={finca.esAdmin ? "exito" : "neutral"}>{finca.rol}</EstadoBadge>
+      <SyncEstado finca={finca} />
+    </span>
   )
 }
 
