@@ -5,7 +5,7 @@ import { renderToString } from "react-dom/server"
 
 import { act, cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 import {
   AnimalDesktopScreen,
@@ -829,29 +829,46 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(formData.get("precioCompra")).toBe("")
   })
 
-  it("serializes controlled birth and purchase dates while rejecting purchase dates before birth", async () => {
-    const user = userEvent.setup()
-    const onSave = vi.fn()
-    render(
-      <AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />,
-    )
+  // Issue #142: this test asserts hardcoded July 2026 day labels. Freeze the
+  // clock in the narrowest possible scope so the DatePicker opens in July
+  // 2026. Only Date is faked so userEvent and Testing Library keep using real
+  // timers.
+  describe("controlled date serialization", () => {
+    beforeAll(() => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+    })
 
-    await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
-    await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
-    await user.click(screen.getByRole("radio", { name: "Comprado" }))
-    await user.click(screen.getByRole("button", { name: "Fecha de compra" }))
+    afterAll(() => {
+      vi.useRealTimers()
+    })
 
-    const beforeBirth = await screen.findByRole("button", { name: /, 9 de julio de 2026/ })
-    expect(beforeBirth).toBeDisabled()
-    await user.click(await screen.findByRole("button", { name: /, 15 de julio de 2026/ }))
-    expect(screen.getByRole("button", { name: "Fecha de compra" })).toHaveTextContent("15/07/2026")
+    it("serializes controlled birth and purchase dates while rejecting purchase dates before birth", async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      render(
+        <AnimalFormScreen mode="desktop" formVariant="create" onSave={onSave} onCancel={vi.fn()} />,
+      )
 
-    await user.type(screen.getByLabelText("Código *"), "NV-DATE")
-    await user.type(screen.getByLabelText("Nombre"), "Fecha controlada")
-    await user.click(screen.getByRole("button", { name: "Guardar" }))
-    const [formData] = onSave.mock.calls[0] as [FormData]
-    expect(formData.get("fechaNacimiento")).toBe("2026-07-10")
-    expect(formData.get("fechaCompra")).toBe("2026-07-15")
+      await user.click(screen.getByRole("button", { name: "Fecha de nacimiento *" }))
+      await user.click(await screen.findByRole("button", { name: /, 10 de julio de 2026/ }))
+      await user.click(screen.getByRole("radio", { name: "Comprado" }))
+      await user.click(screen.getByRole("button", { name: "Fecha de compra" }))
+
+      const beforeBirth = await screen.findByRole("button", { name: /, 9 de julio de 2026/ })
+      expect(beforeBirth).toBeDisabled()
+      await user.click(await screen.findByRole("button", { name: /, 15 de julio de 2026/ }))
+      expect(screen.getByRole("button", { name: "Fecha de compra" })).toHaveTextContent(
+        "15/07/2026",
+      )
+
+      await user.type(screen.getByLabelText("Código *"), "NV-DATE")
+      await user.type(screen.getByLabelText("Nombre"), "Fecha controlada")
+      await user.click(screen.getByRole("button", { name: "Guardar" }))
+      const [formData] = onSave.mock.calls[0] as [FormData]
+      expect(formData.get("fechaNacimiento")).toBe("2026-07-10")
+      expect(formData.get("fechaCompra")).toBe("2026-07-15")
+    })
   })
 
   it("filters out the current animal from the madre/padre options to prevent self-parenting", async () => {
@@ -1090,6 +1107,19 @@ describe("PR3 animal UI OpenPencil parity", () => {
   })
 
   describe("viewport-flip state preservation (issue #59)", () => {
+    // Issue #142: the desktop→mobile flip test asserts a hardcoded July 2026
+    // day label. Freeze the clock for this suite so the DatePicker opens in
+    // July 2026. Only Date is faked so userEvent and Testing Library keep
+    // using real timers.
+    beforeAll(() => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+    })
+
+    afterAll(() => {
+      vi.useRealTimers()
+    })
+
     type ChangeHandler = (event: { matches: boolean }) => void
 
     function installMatchMediaWithEvents(initial: "mobile" | "desktop") {
