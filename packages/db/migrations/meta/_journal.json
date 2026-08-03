@@ -43,6 +43,13 @@
       "when": 1785270000000,
       "tag": "0005_animal_listado_preferencias",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785798805573,
+      "tag": "0006_veterinarios_es_inseminador",
+      "breakpoints": true
     }
   ]
 }

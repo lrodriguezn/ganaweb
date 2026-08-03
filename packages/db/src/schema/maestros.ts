@@ -105,6 +105,7 @@ export const veterinarios = pgTable("veterinarios", {
   direccion: text("direccion"),
   numeroRegistro: varchar("numero_registro", { length: 50 }),
   especialidad: varchar("especialidad", { length: 100 }),
+  esInseminador: integer("es_inseminador").default(0).notNull(),
   activo: integer("activo").default(1).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
