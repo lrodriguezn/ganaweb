@@ -29,6 +29,11 @@ export type SesionAutorizada = Readonly<{
   fincaActivaNombre: string
   rol: string
   permisos: readonly PermisoUsuario[]
+  /**
+   * Todas las membresías del usuario (activas y pendientes) con su rol y
+   * permisos por finca (issue #144 — selector multi-finca).
+   */
+  fincas: readonly FincaUsuarioResumen[]
 }>
 
 export type DecisionAutorizacion =

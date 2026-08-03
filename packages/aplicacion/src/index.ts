@@ -97,4 +97,9 @@ export * from "./casos-uso/listar-lugares-compra-por-finca.js"
 export * from "./casos-uso/listar-hierros-por-finca.js"
 export * from "./casos-uso/listar-propietarios-por-finca.js"
 export type * from "./puertos/auth-repository-port.js"
-export type { DecisionAutorizacion, PermisoUsuario, SesionAutorizada } from "@ganaweb/dominio"
+export type {
+  DecisionAutorizacion,
+  FincaUsuarioResumen,
+  PermisoUsuario,
+  SesionAutorizada,
+} from "@ganaweb/dominio"

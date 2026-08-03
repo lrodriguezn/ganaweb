@@ -11,10 +11,14 @@ export function cerrarSesion(deps: AuthUseCaseDeps) {
 }
 
 export function obtenerSesionActual(deps: AuthUseCaseDeps) {
-  return async (token: string | null, fincaId?: string | null) => {
+  return async (
+    token: string | null,
+    fincaId?: string | null,
+    ultimaFincaUsadaId?: string | null,
+  ) => {
     if (!token) return { tipo: "no_autenticado" } as const
     const sesion = await deps.repo.obtenerSesionPorTokenHash(deps.tokens.hashToken(token))
     if (!sesion) return { tipo: "no_autenticado" } as const
-    return deps.repo.obtenerAutorizacionUsuario(sesion.usuarioId, fincaId)
+    return deps.repo.obtenerAutorizacionUsuario(sesion.usuarioId, fincaId, ultimaFincaUsadaId)
   }
 }

@@ -85,6 +85,15 @@ describe("auth use cases", () => {
           fincaActivaNombre: "Finca 1",
           rol: "Administrador",
           permisos: [{ modulo: "usuarios", accion: "aprobar" }],
+          fincas: [
+            {
+              fincaId: "finca-1",
+              nombre: "Finca 1",
+              rol: "Administrador",
+              activo: true,
+              permisos: [{ modulo: "usuarios", accion: "aprobar" }],
+            },
+          ],
         },
       })),
     })
@@ -168,6 +177,15 @@ describe("auth use cases", () => {
           fincaActivaNombre: "Finca 1",
           rol: "Operario",
           permisos: [{ modulo: "animales", accion: "leer" }],
+          fincas: [
+            {
+              fincaId: "finca-1",
+              nombre: "Finca 1",
+              rol: "Operario",
+              activo: true,
+              permisos: [{ modulo: "animales", accion: "leer" }],
+            },
+          ],
         },
       })),
     })
@@ -180,5 +198,122 @@ describe("auth use cases", () => {
 
     expect(result).toEqual({ tipo: "no_autorizado" })
     expect(deps.repo.autorizarUsuarioFinca).not.toHaveBeenCalled()
+  })
+
+  // ---- Issue #144: sesión multi-finca ----
+
+  const sesionMultiFinca = {
+    usuarioId: "usuario-admin",
+    nombre: "Admin GanaWeb",
+    email: "admin@ganaweb.test",
+    fincaActivaId: "finca-esperanza",
+    fincaActivaNombre: "La Esperanza",
+    rol: "Administrador",
+    permisos: [
+      { modulo: "usuarios", accion: "aprobar" },
+      { modulo: "animales", accion: "crear" },
+    ],
+    fincas: [
+      {
+        fincaId: "finca-esperanza",
+        nombre: "La Esperanza",
+        rol: "Administrador",
+        activo: true,
+        permisos: [
+          { modulo: "usuarios", accion: "aprobar" },
+          { modulo: "animales", accion: "crear" },
+        ],
+      },
+      {
+        fincaId: "finca-roble",
+        nombre: "Hacienda El Roble",
+        rol: "Solo lectura",
+        activo: true,
+        permisos: [{ modulo: "animales", accion: "ver" }],
+      },
+      {
+        fincaId: "finca-nueva",
+        nombre: "Finca Nueva",
+        rol: "Autorizado",
+        activo: false,
+        permisos: [],
+      },
+    ],
+  } as const
+
+  it("exposes every user finca (with per-finca rol) in the current session (CE-1)", async () => {
+    const deps = createDeps({
+      obtenerSesionPorTokenHash: vi.fn(async () => ({
+        usuarioId: "usuario-admin",
+        sesionId: "sesion-1",
+      })),
+      obtenerAutorizacionUsuario: vi.fn(async () => ({
+        tipo: "autorizado",
+        sesion: sesionMultiFinca,
+      })),
+    })
+
+    const result = await obtenerSesionActual(deps)("token-claro")
+
+    expect(result.tipo).toBe("autorizado")
+    if (result.tipo !== "autorizado") return
+    expect(result.sesion.fincas).toHaveLength(3)
+    expect(result.sesion.fincas.map((finca) => finca.fincaId)).toEqual([
+      "finca-esperanza",
+      "finca-roble",
+      "finca-nueva",
+    ])
+    expect(result.sesion.fincas.map((finca) => finca.rol)).toEqual([
+      "Administrador",
+      "Solo lectura",
+      "Autorizado",
+    ])
+    expect(result.sesion.fincas.map((finca) => finca.activo)).toEqual([true, true, false])
+  })
+
+  it("selects the explicit finca for finca-scoped requests (CE-5)", async () => {
+    const obtenerAutorizacionUsuario = vi.fn(
+      async (_usuarioId: string, fincaId?: string | null) => ({
+        tipo: "autorizado" as const,
+        sesion: { ...sesionMultiFinca, fincaActivaId: fincaId ?? "finca-esperanza" },
+      }),
+    )
+    const deps = createDeps({
+      obtenerSesionPorTokenHash: vi.fn(async () => ({
+        usuarioId: "usuario-admin",
+        sesionId: "sesion-1",
+      })),
+      obtenerAutorizacionUsuario,
+    })
+
+    const result = await obtenerSesionActual(deps)("token-claro", "finca-roble")
+
+    expect(obtenerAutorizacionUsuario.mock.calls[0]?.[0]).toBe("usuario-admin")
+    expect(obtenerAutorizacionUsuario.mock.calls[0]?.[1]).toBe("finca-roble")
+    expect(result.tipo).toBe("autorizado")
+    if (result.tipo !== "autorizado") return
+    expect(result.sesion.fincaActivaId).toBe("finca-roble")
+  })
+
+  it("forwards the last-used finca so the repository can resolve the active one", async () => {
+    const obtenerAutorizacionUsuario = vi.fn(async () => ({
+      tipo: "autorizado" as const,
+      sesion: { ...sesionMultiFinca, fincaActivaId: "finca-roble" },
+    }))
+    const deps = createDeps({
+      obtenerSesionPorTokenHash: vi.fn(async () => ({
+        usuarioId: "usuario-admin",
+        sesionId: "sesion-1",
+      })),
+      obtenerAutorizacionUsuario,
+    })
+
+    const result = await obtenerSesionActual(deps)("token-claro", null, "finca-roble")
+
+    expect(obtenerAutorizacionUsuario.mock.calls[0]?.[1]).toBeNull()
+    expect(obtenerAutorizacionUsuario.mock.calls[0]?.[2]).toBe("finca-roble")
+    expect(result.tipo).toBe("autorizado")
+    if (result.tipo !== "autorizado") return
+    expect(result.sesion.fincaActivaId).toBe("finca-roble")
   })
 })
