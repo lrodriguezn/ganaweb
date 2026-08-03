@@ -192,7 +192,7 @@ function AppLayout() {
           }}
         />
 
-        <main className="flex-1 min-h-0 min-w-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6 pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-0">
+        <main className="relative flex-1 min-h-0 min-w-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6 pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-0">
           <Outlet />
         </main>
       </div>
