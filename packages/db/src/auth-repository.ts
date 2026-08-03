@@ -6,6 +6,7 @@ import type {
   CrearUsuarioPendienteResult,
   CredencialesUsuario,
   DecisionAutorizacion,
+  FincaUsuarioResumen,
   GuardarIntentoLoginInput,
   PermisoUsuario,
   SesionPersistida,
@@ -144,6 +145,7 @@ export class DrizzleAuthRepository implements AuthRepositoryPort {
   async obtenerAutorizacionUsuario(
     usuarioId: string,
     fincaId?: string | null,
+    ultimaFincaUsadaId?: string | null,
   ): Promise<DecisionAutorizacion> {
     const [usuario] = await this.db
       .select({ id: usuarios.id, nombre: usuarios.nombre, email: usuarios.email })
@@ -163,10 +165,21 @@ export class DrizzleAuthRepository implements AuthRepositoryPort {
       .where(eq(usuariosFincas.usuarioId, usuarioId))
       .orderBy(desc(usuariosFincas.activo), desc(usuariosFincas.createdAt))
 
-    const activeMembership = memberships.find(
-      (membership) => membership.activo === 1 && (!fincaId || membership.fincaId === fincaId),
-    )
-    if (!activeMembership) {
+    const membresiasActivas = memberships.filter((membresia) => membresia.activo === 1)
+    // Issue #144 — prioridad de resolución de la finca activa:
+    // (a) finca explícita (deep link / ruta por finca): sin membresía activa
+    //     para esa finca la decisión sigue siendo "pendiente" (denegada);
+    // (b) última finca usada persistida en el navegador (preferencia suave);
+    // (c) primera membresía activa (orden existente: activo desc, createdAt desc).
+    // Con finca explícita el filtro es duro: si no hay membresía activa para
+    // esa finca la decisión es "pendiente" (nunca cae a otra finca).
+    const membresiaActiva = fincaId
+      ? membresiasActivas.find((membresia) => membresia.fincaId === fincaId)
+      : ((ultimaFincaUsadaId
+          ? membresiasActivas.find((membresia) => membresia.fincaId === ultimaFincaUsadaId)
+          : undefined) ?? membresiasActivas[0])
+
+    if (!membresiaActiva) {
       return {
         tipo: "pendiente",
         usuarioId: usuario.id,
@@ -175,8 +188,11 @@ export class DrizzleAuthRepository implements AuthRepositoryPort {
       }
     }
 
+    // Issue #144: roles + permisos de TODAS las fincas del usuario en una sola
+    // consulta agrupada (sin N+1); el aislamiento por finca se hace al agrupar.
     const roleRows = await this.db
       .select({
+        fincaId: usuariosRolesAsignacion.fincaId,
         rol: usuariosRoles.nombre,
         modulo: usuariosPermisos.modulo,
         accion: usuariosPermisos.accion,
@@ -188,7 +204,6 @@ export class DrizzleAuthRepository implements AuthRepositoryPort {
       .where(
         and(
           eq(usuariosRolesAsignacion.usuarioId, usuarioId),
-          eq(usuariosRolesAsignacion.fincaId, activeMembership.fincaId),
           eq(usuariosRolesAsignacion.activo, 1),
           eq(usuariosRoles.activo, 1),
           eq(rolesPermisos.activo, 1),
@@ -196,20 +211,37 @@ export class DrizzleAuthRepository implements AuthRepositoryPort {
         ),
       )
 
-    const permisos: PermisoUsuario[] = roleRows.map((row) => ({
-      modulo: row.modulo,
-      accion: row.accion,
-    }))
+    const infoPorFinca = new Map<string, { rol: string; permisos: PermisoUsuario[] }>()
+    for (const row of roleRows) {
+      if (!row.fincaId) continue
+      const info = infoPorFinca.get(row.fincaId) ?? { rol: row.rol, permisos: [] }
+      info.permisos.push({ modulo: row.modulo, accion: row.accion })
+      infoPorFinca.set(row.fincaId, info)
+    }
+
+    const fincasUsuario: FincaUsuarioResumen[] = memberships.map((membresia) => {
+      const info = infoPorFinca.get(membresia.fincaId)
+      return {
+        fincaId: membresia.fincaId,
+        nombre: membresia.fincaNombre,
+        rol: info?.rol ?? "Autorizado",
+        activo: membresia.activo === 1,
+        permisos: info?.permisos ?? [],
+      }
+    })
+
+    const infoFincaActiva = infoPorFinca.get(membresiaActiva.fincaId)
     return {
       tipo: "autorizado",
       sesion: {
         usuarioId: usuario.id,
         nombre: usuario.nombre,
         email: usuario.email,
-        fincaActivaId: activeMembership.fincaId,
-        fincaActivaNombre: activeMembership.fincaNombre,
-        rol: roleRows[0]?.rol ?? "Autorizado",
-        permisos,
+        fincaActivaId: membresiaActiva.fincaId,
+        fincaActivaNombre: membresiaActiva.fincaNombre,
+        rol: infoFincaActiva?.rol ?? "Autorizado",
+        permisos: infoFincaActiva?.permisos ?? [],
+        fincas: fincasUsuario,
       },
     }
   }

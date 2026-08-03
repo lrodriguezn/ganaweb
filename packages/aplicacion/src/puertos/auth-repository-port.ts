@@ -84,9 +84,18 @@ export interface AuthRepositoryPort {
   crearSesion(input: CrearSesionInput): Promise<CrearSesionResult>
   obtenerSesionPorTokenHash(refreshTokenHash: string): Promise<SesionPersistida | null>
   revocarSesion(sesionId: string): Promise<void>
+  /**
+   * Issue #144 — prioridad de resolución de la finca activa:
+   * (a) `fincaId` explícito (deep links / rutas por finca): si no hay
+   * membresía activa para esa finca, la decisión es denegada ("pendiente");
+   * (b) `ultimaFincaUsadaId` (última finca persistida en el navegador):
+   * preferencia suave, si ya no hay acceso cae a (c);
+   * (c) primera membresía activa.
+   */
   obtenerAutorizacionUsuario(
     usuarioId: string,
     fincaId?: string | null,
+    ultimaFincaUsadaId?: string | null,
   ): Promise<DecisionAutorizacion>
   autorizarUsuarioFinca(input: {
     usuarioId: string

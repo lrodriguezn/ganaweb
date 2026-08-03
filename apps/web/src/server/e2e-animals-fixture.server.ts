@@ -44,21 +44,25 @@ export function isSafeAnimalE2eRuntime(): boolean {
 export function getAnimalE2eSession(): SesionAutorizada {
   const role = getRequestHeader("x-ganaweb-e2e-role")
   const readonly = role === "readonly"
+  const rol = readonly ? "Lectura" : "Mayordomo"
+  const permisos = readonly
+    ? [{ modulo: "animales", accion: "ver" }]
+    : [
+        { modulo: "animales", accion: "ver" },
+        { modulo: "animales", accion: "crear" },
+        { modulo: "animales", accion: "editar" },
+        { modulo: "animales", accion: "inactivar" },
+      ]
   return {
     usuarioId: readonly ? "usuario-lectura" : "usuario-operario",
     nombre: readonly ? "Lectura E2E" : "Operario E2E",
     email: readonly ? "lectura@ganaweb.test" : "operario@ganaweb.test",
     fincaActivaId: "finca-1",
     fincaActivaNombre: "Finca Demo E2E",
-    rol: readonly ? "Lectura" : "Mayordomo",
-    permisos: readonly
-      ? [{ modulo: "animales", accion: "ver" }]
-      : [
-          { modulo: "animales", accion: "ver" },
-          { modulo: "animales", accion: "crear" },
-          { modulo: "animales", accion: "editar" },
-          { modulo: "animales", accion: "inactivar" },
-        ],
+    rol,
+    permisos,
+    // Issue #144: el fixture E2E es mono-finca; la única membresía es la activa.
+    fincas: [{ fincaId: "finca-1", nombre: "Finca Demo E2E", rol, activo: true, permisos }],
   }
 }
 

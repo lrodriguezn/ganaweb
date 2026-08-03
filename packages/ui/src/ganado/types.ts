@@ -89,6 +89,11 @@ export interface FincaResumen {
   pendientes?: number
   /** ¿Existe réplica del dispositivo? Sin ella, la finca no es usable offline */
   tieneDatosLocales: boolean
+  /**
+   * Issue #144: membresía pendiente de aprobación del administrador.
+   * La fila se muestra con badge "Pendiente" y NO es seleccionable.
+   */
+  pendiente?: boolean
 }
 
 /* ---------------- Maestros / Configuración (v1.1) ---------------- */

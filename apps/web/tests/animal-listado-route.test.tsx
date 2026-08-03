@@ -542,6 +542,15 @@ function sesionAutorizada(
       fincaActivaNombre: "Finca 1",
       rol: "Mayordomo",
       permisos,
+      fincas: [
+        {
+          fincaId: fincaActivaId,
+          nombre: "Finca 1",
+          rol: "Mayordomo",
+          activo: true,
+          permisos,
+        },
+      ],
     },
   }
 }

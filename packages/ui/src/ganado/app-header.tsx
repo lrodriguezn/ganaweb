@@ -1,8 +1,9 @@
-import { Search } from "lucide-react"
+import { ChevronDown, Search } from "lucide-react"
 
 import { cn } from "../lib/utils"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../primitives/dropdown-menu"
 import { AvatarMenu } from "./avatar-menu"
-import { FincaSwitcher } from "./finca-switcher"
+import { FincaList, FincaSwitcher } from "./finca-switcher"
 import { SyncPill } from "./sync-pill"
 import { ThemeToggle } from "./theme-toggle"
 import type { EstadoSync, FincaResumen } from "./types"
@@ -19,6 +20,8 @@ import type { EstadoSync, FincaResumen } from "./types"
  *   [ Finca · Subtítulo de sync ]
  *   (sin búsqueda, sin SyncPill, sin ThemeToggle: el BottomNav ya
  *    tiene la FAB; el toggle de tema vive en Configuración)
+ *   Issue #144: tocar el bloque de finca abre el selector multi-finca
+ *   (el mismo <FincaList/> del desktop, dentro de un DropdownMenu).
  *
  * Reglas encapsuladas:
  * - Reutiliza `FincaSwitcher`, `SyncPill` y `ThemeToggle` existentes.
@@ -73,16 +76,42 @@ export function AppHeader({
         className,
       )}
     >
-      {/* ---- Mobile (< md): finca name + sync subtitle ---- */}
+      {/* ---- Mobile (< md): finca name + sync subtitle ----
+          Issue #144: el bloque de finca abre el selector (mismo <FincaList/>
+          del desktop). DropdownMenu de Radix = SSR-safe (el contenido solo se
+          monta al abrir), sin hydration mismatch. */}
       <div className="flex md:hidden flex-1 min-w-0 items-center">
-        <div className="min-w-0">
-          <p className="text-[15px] font-medium leading-tight truncate">
-            {activa ? activa.nombre : "GanaWeb"}
-          </p>
-          <p className="text-caption text-muted-foreground leading-tight">
-            {subtituloSync(estadoSync, pendientes, offline)}
-          </p>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Cambiar finca"
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1 text-left",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            )}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium leading-tight truncate">
+                {activa ? activa.nombre : "GanaWeb"}
+              </span>
+              <span className="block text-caption text-muted-foreground leading-tight">
+                {subtituloSync(estadoSync, pendientes, offline)}
+              </span>
+            </span>
+            <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            side="bottom"
+            className="w-[320px] max-w-[calc(100vw-24px)] p-0 rounded-card"
+          >
+            <FincaList
+              fincas={fincas}
+              fincaActivaId={fincaActivaId}
+              offline={offline}
+              onSeleccionar={onCambiarFinca}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* ---- Desktop (md+): FincaSwitcher (left) ---- */}

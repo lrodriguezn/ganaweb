@@ -3,20 +3,8 @@ import { describe, expect, it } from "vitest"
 import { DrizzleAuthRepository } from "../src/auth-repository.js"
 import { usuariosFincas, usuariosRolesAsignacion } from "../src/schema/index.js"
 
-function conditionContains(condition: unknown, columnName: string, value: unknown): boolean {
-  if (!condition || typeof condition !== "object") return false
-  const chunks = (condition as { queryChunks?: unknown[] }).queryChunks ?? []
-  return chunks.some((chunk, index) => {
-    if (conditionContains(chunk, columnName, value)) return true
-    const maybeColumn = chunk as { name?: string }
-    if (maybeColumn.name !== columnName) return false
-    return chunks.slice(index + 1).some((next) => (next as { value?: unknown }).value === value)
-  })
-}
-
 class SelectQuery {
   private tableName = ""
-  private condition: unknown
 
   constructor(private readonly data: AuthRepositoryData) {}
 
@@ -29,8 +17,7 @@ class SelectQuery {
     return this
   }
 
-  where(condition: unknown) {
-    this.condition = condition
+  where() {
     return this
   }
 
@@ -54,16 +41,8 @@ class SelectQuery {
     if (this.tableName === "usuarios") return [this.data.usuario]
     if (this.tableName === getTableName(usuariosFincas)) return this.data.memberships
     if (this.tableName === getTableName(usuariosRolesAsignacion)) {
-      const fincaId = this.data.memberships.find((membership) => membership.activo === 1)?.fincaId
-      this.data.roleWhereScopedToActiveFinca = conditionContains(
-        this.condition,
-        "finca_id",
-        fincaId,
-      )
-      if (!this.data.roleWhereScopedToActiveFinca) return this.data.roles
+      this.data.roleQueryCount += 1
       return this.data.roles
-        .filter((role) => role.fincaId === fincaId)
-        .map(({ fincaId: _fincaId, ...role }) => role)
     }
     return []
   }
@@ -72,8 +51,8 @@ class SelectQuery {
 type AuthRepositoryData = {
   usuario: { id: string; nombre: string; email: string }
   memberships: { fincaId: string; fincaNombre: string; activo: number; createdAt: Date }[]
-  roles: { fincaId: string; rol: string; modulo: string; accion: string }[]
-  roleWhereScopedToActiveFinca: boolean
+  roles: { fincaId: string | null; rol: string; modulo: string; accion: string }[]
+  roleQueryCount: number
 }
 
 function fakeDb(data: AuthRepositoryData) {
@@ -82,45 +61,191 @@ function fakeDb(data: AuthRepositoryData) {
   }
 }
 
-describe("DrizzleAuthRepository authorization contract", () => {
-  it("executes finca-scoped role permission lookup for the active membership", async () => {
-    const data: AuthRepositoryData = {
-      usuario: { id: "usuario-1", nombre: "Usuario Uno", email: "uno@ganaweb.test" },
-      memberships: [
-        {
-          fincaId: "finca-1",
-          fincaNombre: "Finca Uno",
-          activo: 1,
-          createdAt: new Date("2026-01-02"),
-        },
-        {
-          fincaId: "finca-2",
-          fincaNombre: "Finca Dos",
-          activo: 1,
-          createdAt: new Date("2026-01-01"),
-        },
-      ],
-      roles: [
-        { fincaId: "finca-1", rol: "Operario", modulo: "animales", accion: "ver" },
-        { fincaId: "finca-2", rol: "Admin Externo", modulo: "usuarios", accion: "aprobar" },
-      ],
-      roleWhereScopedToActiveFinca: false,
-    }
+/** Espejo del seed demo: admin con dos fincas activas + una membresía pendiente. */
+function multiFincaData(): AuthRepositoryData {
+  return {
+    usuario: { id: "usuario-admin", nombre: "Admin GanaWeb", email: "admin@ganaweb.test" },
+    memberships: [
+      {
+        fincaId: "finca-esperanza",
+        fincaNombre: "La Esperanza",
+        activo: 1,
+        createdAt: new Date("2026-01-02"),
+      },
+      {
+        fincaId: "finca-roble",
+        fincaNombre: "Hacienda El Roble",
+        activo: 1,
+        createdAt: new Date("2026-01-01"),
+      },
+      {
+        fincaId: "finca-nueva",
+        fincaNombre: "Finca Nueva",
+        activo: 0,
+        createdAt: new Date("2026-01-03"),
+      },
+    ],
+    roles: [
+      { fincaId: "finca-esperanza", rol: "Administrador", modulo: "usuarios", accion: "aprobar" },
+      { fincaId: "finca-esperanza", rol: "Administrador", modulo: "animales", accion: "crear" },
+      { fincaId: "finca-esperanza", rol: "Administrador", modulo: "animales", accion: "editar" },
+      { fincaId: "finca-roble", rol: "Solo lectura", modulo: "animales", accion: "ver" },
+    ],
+    roleQueryCount: 0,
+  }
+}
+
+describe("DrizzleAuthRepository multi-finca authorization contract (issue #144)", () => {
+  it("exposes every membership with per-finca rol, activo and permisos (CE-1)", async () => {
+    const data = multiFincaData()
     const repository = new DrizzleAuthRepository(fakeDb(data) as never)
 
-    const decision = await repository.obtenerAutorizacionUsuario("usuario-1", "finca-1")
+    const decision = await repository.obtenerAutorizacionUsuario("usuario-admin", "finca-esperanza")
 
-    expect(data.roleWhereScopedToActiveFinca).toBe(true)
-    expect(decision).toMatchObject({
-      tipo: "autorizado",
-      sesion: {
-        fincaActivaId: "finca-1",
-        fincaActivaNombre: "Finca Uno",
+    expect(decision.tipo).toBe("autorizado")
+    if (decision.tipo !== "autorizado") return
+    expect(decision.sesion.fincaActivaId).toBe("finca-esperanza")
+    expect(decision.sesion.rol).toBe("Administrador")
+    expect(decision.sesion.fincas).toEqual([
+      {
+        fincaId: "finca-esperanza",
+        nombre: "La Esperanza",
+        rol: "Administrador",
+        activo: true,
+        permisos: [
+          { modulo: "usuarios", accion: "aprobar" },
+          { modulo: "animales", accion: "crear" },
+          { modulo: "animales", accion: "editar" },
+        ],
+      },
+      {
+        fincaId: "finca-roble",
+        nombre: "Hacienda El Roble",
+        rol: "Solo lectura",
+        activo: true,
         permisos: [{ modulo: "animales", accion: "ver" }],
       },
+      {
+        fincaId: "finca-nueva",
+        nombre: "Finca Nueva",
+        rol: "Autorizado",
+        activo: false,
+        permisos: [],
+      },
+    ])
+    // Una única consulta agrupada de roles/permisos (sin N+1).
+    expect(data.roleQueryCount).toBe(1)
+  })
+
+  it("keeps the active session scoped to the active finca permissions (CE-2)", async () => {
+    const data = multiFincaData()
+    const repository = new DrizzleAuthRepository(fakeDb(data) as never)
+
+    const decision = await repository.obtenerAutorizacionUsuario("usuario-admin", "finca-roble")
+
+    expect(decision.tipo).toBe("autorizado")
+    if (decision.tipo !== "autorizado") return
+    expect(decision.sesion.fincaActivaId).toBe("finca-roble")
+    expect(decision.sesion.fincaActivaNombre).toBe("Hacienda El Roble")
+    expect(decision.sesion.rol).toBe("Solo lectura")
+    expect(decision.sesion.permisos).toEqual([{ modulo: "animales", accion: "ver" }])
+    expect(decision.sesion.permisos).not.toContainEqual({ modulo: "animales", accion: "crear" })
+    expect(decision.sesion.permisos).not.toContainEqual({ modulo: "animales", accion: "editar" })
+    expect(decision.sesion.permisos).not.toContainEqual({ modulo: "usuarios", accion: "aprobar" })
+  })
+
+  it("resolves explicit finca over last-used finca (prioridad a > b)", async () => {
+    const repository = new DrizzleAuthRepository(fakeDb(multiFincaData()) as never)
+
+    const decision = await repository.obtenerAutorizacionUsuario(
+      "usuario-admin",
+      "finca-roble",
+      "finca-esperanza",
+    )
+
+    expect(decision.tipo).toBe("autorizado")
+    if (decision.tipo !== "autorizado") return
+    expect(decision.sesion.fincaActivaId).toBe("finca-roble")
+  })
+
+  it("resolves last-used finca over the first active membership (prioridad b > c)", async () => {
+    const repository = new DrizzleAuthRepository(fakeDb(multiFincaData()) as never)
+
+    const decision = await repository.obtenerAutorizacionUsuario(
+      "usuario-admin",
+      null,
+      "finca-roble",
+    )
+
+    expect(decision.tipo).toBe("autorizado")
+    if (decision.tipo !== "autorizado") return
+    // Sin última finca usada ganaría finca-esperanza (createdAt más reciente).
+    expect(decision.sesion.fincaActivaId).toBe("finca-roble")
+  })
+
+  it("falls back to the first active membership when last-used is stale", async () => {
+    const repository = new DrizzleAuthRepository(fakeDb(multiFincaData()) as never)
+
+    const decision = await repository.obtenerAutorizacionUsuario(
+      "usuario-admin",
+      null,
+      "finca-inexistente",
+    )
+
+    expect(decision.tipo).toBe("autorizado")
+    if (decision.tipo !== "autorizado") return
+    expect(decision.sesion.fincaActivaId).toBe("finca-esperanza")
+  })
+
+  it("falls back to the first active membership when last-used points at a pending membership", async () => {
+    const repository = new DrizzleAuthRepository(fakeDb(multiFincaData()) as never)
+
+    const decision = await repository.obtenerAutorizacionUsuario(
+      "usuario-admin",
+      null,
+      "finca-nueva",
+    )
+
+    expect(decision.tipo).toBe("autorizado")
+    if (decision.tipo !== "autorizado") return
+    expect(decision.sesion.fincaActivaId).toBe("finca-esperanza")
+  })
+
+  it("denies an explicit finca without active membership (deep link sin acceso)", async () => {
+    const repository = new DrizzleAuthRepository(fakeDb(multiFincaData()) as never)
+
+    // Membresía pendiente (activo=0): el deep link se deniega como antes.
+    await expect(
+      repository.obtenerAutorizacionUsuario("usuario-admin", "finca-nueva"),
+    ).resolves.toEqual({
+      tipo: "pendiente",
+      usuarioId: "usuario-admin",
+      nombre: "Admin GanaWeb",
+      email: "admin@ganaweb.test",
     })
-    if (decision.tipo === "autorizado") {
-      expect(decision.sesion.permisos).not.toContainEqual({ modulo: "usuarios", accion: "aprobar" })
-    }
+    // Finca sin membresía alguna: mismo rechazo.
+    await expect(
+      repository.obtenerAutorizacionUsuario("usuario-admin", "finca-ajena"),
+    ).resolves.toMatchObject({ tipo: "pendiente" })
+  })
+
+  it("keeps the pending decision when the user has no active membership at all", async () => {
+    const data = multiFincaData()
+    data.memberships = [
+      {
+        fincaId: "finca-nueva",
+        fincaNombre: "Finca Nueva",
+        activo: 0,
+        createdAt: new Date("2026-01-03"),
+      },
+    ]
+    const repository = new DrizzleAuthRepository(fakeDb(data) as never)
+
+    await expect(repository.obtenerAutorizacionUsuario("usuario-admin")).resolves.toEqual({
+      tipo: "pendiente",
+      usuarioId: "usuario-admin",
+      nombre: "Admin GanaWeb",
+      email: "admin@ganaweb.test",
+    })
   })
 })

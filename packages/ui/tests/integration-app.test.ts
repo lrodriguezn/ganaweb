@@ -151,7 +151,9 @@ describe("PR6.T-006.4 — _app.tsx shell wiring (D7, D9, D14)", () => {
     // The shell MUST use the real auth session as the identity source.
     // Stale demo constants must not come back because they diverge from
     // server authorization and break app-shell/user-info coherence.
-    expect(source).toMatch(/getCurrentSession\(\)/)
+    // Issue #144: the call now passes the finca from the URL (deep-link
+    // auto-activation), so the guard matches the data-carrying shape.
+    expect(source).toMatch(/getCurrentSession\(\s*\{\s*data:\s*\{\s*fincaId:/)
     expect(source).toMatch(/return\s+\{\s*sesion:\s*decision\.sesion\s*\}/)
     expect(source).not.toMatch(/export\s+const\s+USUARIO_DEMO\b/)
   })
