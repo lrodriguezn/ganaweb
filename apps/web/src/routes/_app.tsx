@@ -45,7 +45,7 @@
  * **Cerrar sesión**: usa el server function real y luego vuelve a `/login`.
  */
 
-import type { PermisoUsuario } from "@ganaweb/aplicacion"
+import type { FincaUsuarioResumen, PermisoUsuario } from "@ganaweb/aplicacion"
 import {
   AppHeader,
   BottomNav,
@@ -59,6 +59,7 @@ import {
   createFileRoute,
   redirect,
   useNavigate,
+  useRouter,
   useRouterState,
 } from "@tanstack/react-router"
 import { Calendar, CheckSquare, Home, Menu, PawPrint } from "lucide-react"
@@ -67,11 +68,24 @@ import {
   initials,
   logoutAction,
   protectedRouteRedirect,
+  switchFincaAction,
 } from "../server/auth.js"
 
+/** Issue #144 (deep links): finca presente en la URL, si la hay. */
+const RUTA_FINCA = /^\/fincas\/([^/]+)/
+
+function extraerFincaIdDeRuta(pathname: string): string | null {
+  return pathname.match(RUTA_FINCA)?.[1] ?? null
+}
+
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async () => {
-    const decision = await getCurrentSession()
+  beforeLoad: async ({ location }) => {
+    // Issue #144: si la URL apunta a una finca concreta, se pasa a la sesión
+    // para activarla automáticamente (solo si hay membresía activa; sin
+    // acceso la decisión se deniega como antes).
+    const decision = await getCurrentSession({
+      data: { fincaId: extraerFincaIdDeRuta(location.pathname) },
+    })
     const redirectTo = protectedRouteRedirect(decision)
     if (redirectTo) throw redirect({ to: redirectTo })
     if (decision.tipo !== "autorizado") throw redirect({ to: "/login" })
@@ -130,26 +144,42 @@ function deriveActivoId(pathname: string): string {
   return segment || "inicio"
 }
 
+/**
+ * Issue #144 — misma regla de esAdmin que se usaba para la finca única:
+ * aprobar usuarios o administrar configuración.
+ */
+function tienePermisoAdministrador(permisos: readonly PermisoUsuario[]): boolean {
+  return permisos.some(
+    (permiso: PermisoUsuario) =>
+      (permiso.modulo === "usuarios" && permiso.accion === "aprobar") ||
+      (permiso.modulo === "configuracion" && permiso.accion === "administrar"),
+  )
+}
+
+function aFincaResumen(finca: FincaUsuarioResumen): FincaResumen {
+  return {
+    id: finca.fincaId,
+    nombre: finca.nombre,
+    rol: finca.rol,
+    esAdmin: tienePermisoAdministrador(finca.permisos),
+    pendiente: !finca.activo,
+    // Non-goal #144: sin estado offline por finca; se mantiene el
+    // comportamiento actual (sincronizado, con datos locales).
+    sync: "sincronizado",
+    tieneDatosLocales: true,
+  }
+}
+
 function AppLayout() {
   const { sesion } = Route.useRouteContext()
   const navigate = useNavigate()
+  const router = useRouter()
   // D9: el activo se deriva del pathname actual. `select` proyecta a
   // string para que la suscripción sea barata (un solo re-render cuando
   // cambia la ruta, no en cada tick del store del router).
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const activoId = deriveActivoId(pathname)
-  const fincaActiva: FincaResumen = {
-    id: sesion.fincaActivaId,
-    nombre: sesion.fincaActivaNombre,
-    rol: sesion.rol,
-    esAdmin: sesion.permisos.some(
-      (permiso: PermisoUsuario) =>
-        (permiso.modulo === "usuarios" && permiso.accion === "aprobar") ||
-        (permiso.modulo === "configuracion" && permiso.accion === "administrar"),
-    ),
-    sync: "sincronizado",
-    tieneDatosLocales: true,
-  }
+  const fincas: FincaResumen[] = sesion.fincas.map(aFincaResumen)
   const itemsSidebar = ITEMS_SIDEBAR.map((item) =>
     item.id === "animales" ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` } : item,
   )
@@ -161,6 +191,23 @@ function AppLayout() {
     // biome-ignore lint/suspicious/noConsole: pendiente de cablear a router real
     console.log("[shell] navigate:", item.href)
     void navigate({ to: item.href })
+  }
+
+  // Issue #144 — cambio de finca activa sin reautenticarse:
+  // 1) el server function valida la membresía y persiste la última finca;
+  // 2) se navega a la página equivalente de la nueva finca;
+  // 3) se invalida el router para que el shell relea la sesión (RBAC por
+  //    finca recalculado) con la nueva finca activa.
+  const cambiarFinca = async (finca: FincaResumen) => {
+    if (finca.pendiente || finca.id === sesion.fincaActivaId) return
+    const resultado = await switchFincaAction({ data: { fincaId: finca.id } })
+    if (resultado.tipo !== "autorizado") return
+    const fincaAnterior = sesion.fincaActivaId
+    const destino = pathname.includes(`/fincas/${fincaAnterior}`)
+      ? pathname.replace(`/fincas/${fincaAnterior}`, `/fincas/${finca.id}`)
+      : "/"
+    await navigate({ to: destino })
+    await router.invalidate()
   }
 
   return (
@@ -175,7 +222,7 @@ function AppLayout() {
 
       <div className="flex flex-col flex-1 min-h-0 min-w-0">
         <AppHeader
-          fincas={[fincaActiva]}
+          fincas={fincas}
           fincaActivaId={sesion.fincaActivaId}
           offline={false}
           estadoSync={ESTADO_SYNC_DEMO}
@@ -185,11 +232,7 @@ function AppLayout() {
           onCerrarSesion={onCerrarSesion}
           onBuscar={() => logPendingNavigation("/buscar")}
           onSync={() => logPendingNavigation("/sync")}
-          onCambiarFinca={(f: FincaResumen) => {
-            // biome-ignore lint/suspicious/noConsole: pendiente de cablear a server fn
-            console.log("[shell] cambiar finca:", f.id)
-            void navigate({ to: "/" })
-          }}
+          onCambiarFinca={cambiarFinca}
         />
 
         <main className="relative flex-1 min-h-0 min-w-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6 pb-[calc(var(--h-bottomnav)+env(safe-area-inset-bottom))] md:pb-0">

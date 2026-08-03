@@ -94,7 +94,12 @@ interface AnimalListFilters {
 
 interface AnimalActionHarnessDeps {
   readonly deps: AnimalUseCaseDeps
-  readonly getSession: () => Promise<SesionAutorizada | null>
+  /**
+   * Issue #144: recibe la finca solicitada para resolver la sesión contra
+   * esa finca (preferencia; la autorización sigue siendo la de la finca
+   * activa resuelta, exigida por `denyAnimalRouteAccess`).
+   */
+  readonly getSession: (fincaId?: string) => Promise<SesionAutorizada | null>
   /**
    * Catalog used to revalidate a string `sexoKey` submission on the
    * `create` arm. The runtime harness always provides one; the
@@ -107,7 +112,7 @@ interface AnimalActionHarnessDeps {
 
 interface AnimalRuntimeHarnessOptions {
   readonly depsFactory?: AnimalRuntimeDepsFactory | null
-  readonly getSession?: () => Promise<SesionAutorizada | null>
+  readonly getSession?: (fincaId?: string) => Promise<SesionAutorizada | null>
   readonly catalogoSexo?: CatalogoGlobalPort
   readonly catalogPorts?: AnimalCatalogPorts
 }
@@ -828,7 +833,7 @@ export function createAnimalActionHarness({
 }: AnimalActionHarnessDeps) {
   return {
     async list(input: { readonly fincaId: string } & AnimalListFilters) {
-      const session = await getSession()
+      const session = await getSession(input.fincaId)
       if (!session) return { tipo: "no_autenticado" as const }
       const denied = denyAnimalRouteAccess(session, input.fincaId, "ver")
       if (denied) return denied
@@ -844,7 +849,7 @@ export function createAnimalActionHarness({
     },
 
     async ficha(input: AnimalIdWebInput & { readonly cursorTimeline?: string }) {
-      const session = await getSession()
+      const session = await getSession(input.fincaId)
       if (!session) return { tipo: "no_autenticado" as const }
       const denied = denyAnimalRouteAccess(session, input.fincaId, "ver")
       if (denied) return denied
@@ -870,7 +875,7 @@ export function createAnimalActionHarness({
     },
 
     async create(input: CreateAnimalWebInput) {
-      const session = await getSession()
+      const session = await getSession(input.fincaId)
       if (!session) return { tipo: "no_autenticado" as const }
       const denied = denyAnimalRouteAccess(session, input.fincaId, "crear")
       if (denied) return denied
@@ -909,7 +914,7 @@ export function createAnimalActionHarness({
     },
 
     async update(input: UpdateAnimalWebInput) {
-      const session = await getSession()
+      const session = await getSession(input.fincaId)
       if (!session) return { tipo: "no_autenticado" as const }
       const denied = denyAnimalRouteAccess(session, input.fincaId, "editar")
       if (denied) return denied
@@ -925,7 +930,7 @@ export function createAnimalActionHarness({
     },
 
     async delete(input: DeleteAnimalWebInput) {
-      const session = await getSession()
+      const session = await getSession(input.fincaId)
       if (!session) return { tipo: "no_autenticado" as const }
       if (session.fincaActivaId !== input.fincaId) return { tipo: "finca_no_autorizada" as const }
       if (!hasAnimalPermission(session, "inactivar") && !hasAnimalPermission(session, "eliminar")) {
@@ -943,7 +948,7 @@ export function createAnimalActionHarness({
     },
 
     async reactivate(input: ReactivateAnimalWebInput) {
-      const session = await getSession()
+      const session = await getSession(input.fincaId)
       if (!session) return { tipo: "no_autenticado" as const }
       const denied = denyAnimalRouteAccess(session, input.fincaId, "inactivar")
       if (denied) return denied
@@ -959,7 +964,7 @@ export function createAnimalActionHarness({
     },
 
     async attachImage(input: AttachAnimalImageWebInput) {
-      const session = await getSession()
+      const session = await getSession(input.fincaId)
       if (!session) return { tipo: "no_autenticado" as const }
       const denied = denyAnimalRouteAccess(session, input.fincaId, "editar")
       if (denied) return denied
@@ -1030,13 +1035,21 @@ async function listAnimalsForFinca(
   return knownDemo.filter((animal): animal is AnimalRegistro => Boolean(animal))
 }
 
-async function getAuthorizedSession(): Promise<SesionAutorizada | null> {
+async function getAuthorizedSession(fincaId?: string): Promise<SesionAutorizada | null> {
   if (isAnimalE2eEnabled()) return getAnimalE2eSession()
 
   const { getAuthDeps } = await import("./auth-deps.server.js")
-  const { readSessionToken } = await import("./session-cookie.server.js")
+  const { readFincaActivaCookie, readSessionToken } = await import("./session-cookie.server.js")
   const { obtenerSesionActual } = await import("@ganaweb/aplicacion")
-  const decision = await obtenerSesionActual(getAuthDeps())(readSessionToken())
+  // Issue #144 (deep links): la finca solicitada se pasa como preferencia
+  // suave (slot de última finca usada). NO es un permiso: si el usuario no
+  // tiene membresía activa ahí, la sesión resuelve a otra finca y
+  // `denyAnimalRouteAccess` rechaza por `fincaActivaId !== fincaId`.
+  const decision = await obtenerSesionActual(getAuthDeps())(
+    readSessionToken(),
+    null,
+    fincaId ?? readFincaActivaCookie(),
+  )
   return decision.tipo === "autorizado" ? decision.sesion : null
 }
 

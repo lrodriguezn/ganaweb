@@ -20,6 +20,15 @@ function authorizedSession(overrides: Partial<SesionAutorizada> = {}): SesionAut
     fincaActivaNombre: "Finca 1",
     rol: "Administrador",
     permisos: [{ modulo: "usuarios", accion: "aprobar" }],
+    fincas: [
+      {
+        fincaId: "finca-1",
+        nombre: "Finca 1",
+        rol: "Administrador",
+        activo: true,
+        permisos: [{ modulo: "usuarios", accion: "aprobar" }],
+      },
+    ],
     ...overrides,
   }
 }

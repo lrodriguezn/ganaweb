@@ -1,5 +1,6 @@
 import {
   type AuthRepositoryPort,
+  type AuthUseCaseDeps,
   type DecisionAutorizacion,
   type SesionAutorizada,
   type UsuarioPendiente,
@@ -11,7 +12,14 @@ import {
 } from "@ganaweb/aplicacion"
 import { createServerFn } from "@tanstack/react-start"
 
-type AuthOperation = "session" | "register" | "login" | "logout" | "pending-list" | "approval"
+type AuthOperation =
+  | "session"
+  | "register"
+  | "login"
+  | "logout"
+  | "pending-list"
+  | "approval"
+  | "switch-finca"
 
 function logAuthFailure(
   operation: AuthOperation,
@@ -62,22 +70,49 @@ export async function approvePendingUserForDecision(
   })
 }
 
-export const getCurrentSession = createServerFn({ method: "GET" }).handler(async () => {
-  try {
-    const { getAnimalE2eSession, isAnimalE2eEnabled } = await import(
-      "./e2e-animals-fixture.server.js"
-    )
-    if (isAnimalE2eEnabled()) return { tipo: "autorizado" as const, sesion: getAnimalE2eSession() }
+/**
+ * Issue #144 — lectura de sesión con la última finca usada del navegador.
+ * `fincaId` explícito (deep links) tiene prioridad y es filtro duro; la
+ * cookie de última finca es solo una preferencia validada en el repositorio.
+ */
+async function leerDecisionSesionActual(fincaId?: string | null): Promise<DecisionAutorizacion> {
+  const { getAuthDeps } = await import("./auth-deps.server.js")
+  const { readFincaActivaCookie, readSessionToken } = await import("./session-cookie.server.js")
+  const deps = getAuthDeps()
+  return obtenerSesionActual(deps)(readSessionToken(), fincaId, readFincaActivaCookie())
+}
 
-    const { getAuthDeps } = await import("./auth-deps.server.js")
-    const { readSessionToken } = await import("./session-cookie.server.js")
-    const deps = getAuthDeps()
-    return await obtenerSesionActual(deps)(readSessionToken())
-  } catch (error) {
-    logAuthFailure("session", error)
-    throw error
-  }
-})
+export const getCurrentSession = createServerFn({ method: "GET" })
+  .validator((data: { fincaId?: string | null }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const { getAnimalE2eSession, isAnimalE2eEnabled } = await import(
+        "./e2e-animals-fixture.server.js"
+      )
+      if (isAnimalE2eEnabled())
+        return { tipo: "autorizado" as const, sesion: getAnimalE2eSession() }
+
+      const { readFincaActivaCookie, setFincaActivaCookie } = await import(
+        "./session-cookie.server.js"
+      )
+      const fincaUltimoUso = readFincaActivaCookie()
+      const decision = await leerDecisionSesionActual(data.fincaId)
+      // Issue #144 — deep link / corrección de cookie stale: si la finca
+      // resuelta difiere de la persistida, actualizarla. Fail-safe: escribir
+      // la cookie nunca debe romper la lectura de la sesión.
+      if (decision.tipo === "autorizado" && decision.sesion.fincaActivaId !== fincaUltimoUso) {
+        try {
+          setFincaActivaCookie(decision.sesion.fincaActivaId)
+        } catch (cookieError) {
+          logAuthFailure("session", cookieError)
+        }
+      }
+      return decision
+    } catch (error) {
+      logAuthFailure("session", error)
+      throw error
+    }
+  })
 
 export const registerAction = createServerFn({ method: "POST" })
   .validator(
@@ -135,9 +170,8 @@ export const logoutAction = createServerFn({ method: "POST" }).handler(async () 
 export const listPendingUsersAction = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const { getAuthDeps } = await import("./auth-deps.server.js")
-    const { readSessionToken } = await import("./session-cookie.server.js")
     const deps = getAuthDeps()
-    const decision = await obtenerSesionActual(deps)(readSessionToken())
+    const decision = await leerDecisionSesionActual()
     const pendingUsers = await listPendingUsersForDecision(decision, deps.repo)
     if (
       decision.tipo === "autorizado" &&
@@ -165,12 +199,56 @@ export const approvePendingUserAction = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const { getAuthDeps } = await import("./auth-deps.server.js")
-      const { readSessionToken } = await import("./session-cookie.server.js")
       const deps = getAuthDeps()
-      const decision = await obtenerSesionActual(deps)(readSessionToken())
+      const decision = await leerDecisionSesionActual()
       return await approvePendingUserForDecision(decision, data, deps)
     } catch (error) {
       logAuthFailure("approval", error, { usuarioId: data.usuarioId, fincaId: data.fincaId })
+      throw error
+    }
+  })
+
+/**
+ * Issue #144 — núcleo puro del cambio de finca activa (testeable sin
+ * runtime HTTP). El `fincaId` destino se pasa como finca explícita: sin
+ * membresía activa para esa finca la decisión se deniega (`sin_acceso`),
+ * nunca se lanza.
+ */
+export type CambiarFincaResult =
+  | Readonly<{ tipo: "autorizado"; sesion: SesionAutorizada }>
+  | Readonly<{ tipo: "sin_acceso" }>
+
+export async function cambiarFincaActiva(
+  deps: AuthUseCaseDeps,
+  input: {
+    token: string | null
+    fincaId: string
+    persistirFincaActiva?: (fincaId: string) => void
+  },
+): Promise<CambiarFincaResult> {
+  const decision = await obtenerSesionActual(deps)(input.token, input.fincaId)
+  if (decision.tipo !== "autorizado") return { tipo: "sin_acceso" }
+  try {
+    input.persistirFincaActiva?.(decision.sesion.fincaActivaId)
+  } catch {
+    // La última finca es una preferencia: su persistencia nunca rompe el cambio.
+  }
+  return { tipo: "autorizado", sesion: decision.sesion }
+}
+
+export const switchFincaAction = createServerFn({ method: "POST" })
+  .validator((data: { fincaId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const { getAuthDeps } = await import("./auth-deps.server.js")
+      const { readSessionToken, setFincaActivaCookie } = await import("./session-cookie.server.js")
+      return await cambiarFincaActiva(getAuthDeps(), {
+        token: readSessionToken(),
+        fincaId: data.fincaId,
+        persistirFincaActiva: setFincaActivaCookie,
+      })
+    } catch (error) {
+      logAuthFailure("switch-finca", error, { fincaId: data.fincaId })
       throw error
     }
   })

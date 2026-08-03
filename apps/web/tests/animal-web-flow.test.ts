@@ -30,6 +30,20 @@ function session(overrides: Partial<SesionAutorizada> = {}): SesionAutorizada {
       { modulo: "animales", accion: "editar" },
       { modulo: "animales", accion: "inactivar" },
     ],
+    fincas: [
+      {
+        fincaId: "finca-1",
+        nombre: "Finca 1",
+        rol: "Mayordomo",
+        activo: true,
+        permisos: [
+          { modulo: "animales", accion: "ver" },
+          { modulo: "animales", accion: "crear" },
+          { modulo: "animales", accion: "editar" },
+          { modulo: "animales", accion: "inactivar" },
+        ],
+      },
+    ],
     ...overrides,
   }
 }
