@@ -1,7 +1,8 @@
 # Issues de GitHub — Listado de Animales Mobile (v1.1)
 
-> Propuesta local; **no crea issues en GitHub**. Fuente de verdad:
-> `requisito_listado_animales_mobile.md` **v1.1** (reglas LM-xxx + LM-RBAC-xx).
+> **Issues creados en GitHub** (#153–#158; ver números en cada sección). Fuente
+> de verdad: `requisito_listado_animales_mobile.md` **v1.1** (reglas LM-xxx +
+> LM-RBAC-xx).
 >
 > **Estructura**: Épica + sub-issues (decisión del maintainer). El borrador v1.0
 > era un solo issue de feature porque la spec v1.0 tenía 11 reglas en una sola
@@ -16,11 +17,13 @@
 ## ÉPICA
 ═══════════════════════════════════════════════════════════════════
 
+**Issue**: [#154](https://github.com/lrodriguezn/ganaweb/issues/154)
+
 **Título**: `[Épica] Listado de Animales Mobile — card enriquecida + filtro rápido + scroll infinito (v1.1)`
 
 **Dueño**: Product/Tech Lead
 
-**Labels**: `epic`, `feature`, `módulo:animales`, `mobile`
+**Labels**: `enhancement`, `type:feature`, `status:needs-review`, `priority:medium`, `area:web`
 
 ```markdown
 ## Objetivo
@@ -38,17 +41,17 @@ Ante contradicción: reportar, no resolver en el issue.
 
 ## ⚠️ Bloqueado por
 
-- #_ **BUG-DATA-001** — el listado muestra "Novilla/Sana" fijo (incluso en
+- #153 **BUG-DATA-001** — el listado muestra "Novilla/Sana" fijo (incluso en
   machos). La card enriquecida asume que categoría y salud se leen correctamente.
   El sub-issue 1 ya lee valores reales en el nuevo endpoint, pero el bug debe
   cerrarse para corregir el mapper legado y el género del badge de salud.
 
 ## Sub-issues y orden
 
-- [ ] 1. Contrato mobile, DTO, consulta e índices (backend) — bloquea 2, 3 y 4
-- [ ] 2. Card enriquecida, badges, RBAC visual y accesibilidad — depende de 1
-- [ ] 3. Filtro rápido, buscador y selector de propietario — depende de 1 y 2
-- [ ] 4. Scroll infinito y estados de interfaz — depende de 1 y 2
+- [ ] #155 Contrato mobile, DTO, consulta e índices (backend) — bloquea 2, 3 y 4
+- [ ] #156 Card enriquecida, badges, RBAC visual y accesibilidad — depende de 1
+- [ ] #157 Filtro rápido, buscador y selector de propietario — depende de 1 y 2
+- [ ] #158 Scroll infinito y estados de interfaz — depende de 1 y 2
 
 ## Lo que NO cambia
 
@@ -69,11 +72,13 @@ selección múltiple, y offline LM-011 (dependencia futura, gate `no-sqlite`).
 ## SUB-ISSUE 1 — Contrato mobile, DTO, consulta e índices
 ═══════════════════════════════════════════════════════════════════
 
+**Issue**: [#155](https://github.com/lrodriguezn/ganaweb/issues/155)
+
 **Título**: `Listado mobile: implementar contrato server-side dedicado v1.1`
 
 **Dueño**: Backend/API; Backend/Database para índices
 
-**Labels**: `feature`, `backend`, `database`, `módulo:animales`, `mobile`
+**Labels**: `enhancement`, `type:feature`, `status:needs-review`, `priority:medium`, `area:web`
 
 ```markdown
 ## Alcance
@@ -141,11 +146,13 @@ los filtros y el scroll infinito.
 ## SUB-ISSUE 2 — Card enriquecida, badges, RBAC visual y accesibilidad
 ═══════════════════════════════════════════════════════════════════
 
+**Issue**: [#156](https://github.com/lrodriguezn/ganaweb/issues/156)
+
 **Título**: `Listado mobile: card enriquecida con procedencia, badges y a11y`
 
 **Dueño**: Frontend; QA para accesibilidad y temas
 
-**Labels**: `feature`, `frontend`, `a11y`, `módulo:animales`, `mobile`
+**Labels**: `enhancement`, `type:feature`, `status:needs-review`, `priority:medium`, `area:ui`
 
 ```markdown
 ## Alcance
@@ -198,11 +205,13 @@ requisito. Depende del contrato (sub-issue 1).
 ## SUB-ISSUE 3 — Filtro rápido, buscador y selector de propietario
 ═══════════════════════════════════════════════════════════════════
 
+**Issue**: [#157](https://github.com/lrodriguezn/ganaweb/issues/157)
+
 **Título**: `Listado mobile: chips de filtro rápido, buscador y selector de propietario`
 
 **Dueño**: Frontend
 
-**Labels**: `feature`, `frontend`, `módulo:animales`, `mobile`
+**Labels**: `enhancement`, `type:feature`, `status:needs-review`, `priority:medium`, `area:ui`
 
 ```markdown
 ## Alcance
@@ -244,11 +253,13 @@ Implementar §4 (LM-005..008, LM-014, LM-015) del requisito. Depende de 1 y 2.
 ## SUB-ISSUE 4 — Scroll infinito y estados de interfaz
 ═══════════════════════════════════════════════════════════════════
 
+**Issue**: [#158](https://github.com/lrodriguezn/ganaweb/issues/158)
+
 **Título**: `Listado mobile: scroll infinito y estados de interfaz`
 
 **Dueño**: Frontend
 
-**Labels**: `feature`, `frontend`, `módulo:animales`, `mobile`
+**Labels**: `enhancement`, `type:feature`, `status:needs-review`, `priority:medium`, `area:ui`
 
 ```markdown
 ## Alcance
@@ -286,9 +297,11 @@ Implementar §6 (LM-030) y §7 (LM-009) del requisito. Depende de 1 y 2.
 ## ISSUE DE BUG (dependencia bloqueante)
 ═══════════════════════════════════════════════════════════════════
 
-**Título**: `[Bug] Listado muestra siempre "Novilla / Sana" (incluso en machos)`
+**Issue**: [#153](https://github.com/lrodriguezn/ganaweb/issues/153)
 
-**Labels**: `bug`, `backend`, `data`, `módulo:animales`, `prioridad:alta`
+**Título**: `[Bug] Listado mobile muestra siempre "Novilla / Sana" (incluso en machos)`
+
+**Labels**: `bug`, `type:bug`, `status:needs-review`, `priority:high`, `area:web`
 
 ```markdown
 ## Descripción
@@ -334,24 +347,30 @@ etiqueta en femenino fijo): debe concordar con el sexo del animal.
 
 ## Bloquea a
 
-- #_ Épica Listado Animales Mobile (la card enriquecida depende de que estos
+- #154 Épica Listado Animales Mobile (la card enriquecida depende de que estos
   campos se lean bien).
 ```
 
 ---
 
 ═══════════════════════════════════════════════════════════════════
-## Cómo usar esto en GitHub
+## Estado en GitHub (issues ya creados)
 ═══════════════════════════════════════════════════════════════════
 
-1. Crea primero el **issue de bug** (BUG-DATA-001); anota su número.
-2. Crea la **épica**; reemplaza el `#_` de "Bloqueado por" con el número del bug.
-3. Crea los **sub-issues 1–4** y vincúlalos a la épica (tasklist del cuerpo o
-   "Development"/references de GitHub).
-4. En el bug, reemplaza el `#_` de "Bloquea a" con el número de la épica
-   (enlace recíproco — GitHub los conecta).
-5. Verifica los **labels** reales del repo antes de aplicarlos (los de arriba
-   siguen la convención del desktop, pero deben existir en el repo).
+| # | Issue | Rol |
+|---|---|---|
+| #153 | [Bug] Listado mobile muestra siempre "Novilla / Sana" | BUG-DATA-001, bloqueante |
+| #154 | [Épica] Listado de Animales Mobile v1.1 | épica, bloqueada por #153 |
+| #155 | Contrato mobile, DTO, consulta e índices | backend, bloquea #156–#158 |
+| #156 | Card enriquecida, badges, RBAC visual y a11y | depende de #155 |
+| #157 | Chips filtro rápido, buscador, selector propietario | depende de #155, #156 |
+| #158 | Scroll infinito y estados de interfaz | depende de #155, #156 |
+
+Todos nacen con `status:needs-review`. Un mantenedor debe añadir
+`status:approved` antes de que cualquier PR vinculado pase el gate de CI
+(ver `CONTRIBUTING.md`). Los labels de arriba son los reales aplicados; los del
+borrador original (`epic`, `módulo:animales`, `mobile`, `backend`, `a11y`,
+`prioridad:alta`, etc.) no existen en el repo y se mapearon a los existentes.
 
 ### Por qué épica + sub-issues (y no un solo feature como el borrador v1.0)
 
