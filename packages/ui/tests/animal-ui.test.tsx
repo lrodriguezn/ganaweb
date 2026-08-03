@@ -1854,7 +1854,10 @@ describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
                 grammar: "in",
                 label: "Raza",
                 committedValue: "raza-uuid",
-                options: [{ value: "raza-uuid", label: "Brahman" }],
+                options: [
+                  { value: "raza-uuid", label: "Brahman" },
+                  { value: "raza-uuid-2", label: "Cebú" },
+                ],
               },
             ],
             chips: [{ queryKey: "f.razaId", label: "Raza", valueLabel: "Brahman" }],
@@ -1865,17 +1868,24 @@ describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
       )
 
       expect(screen.getByRole("searchbox", { name: "Buscar animales" })).toHaveValue("Luna")
-      expect(screen.getByRole("combobox", { name: "Raza" })).toHaveValue("raza-uuid")
+      // #141 migrated the filter to Radix Select: the trigger is a combobox
+      // button whose visible text is the committed option LABEL, and the
+      // stable ID travels through the onFiltrar payload instead of a value
+      // attribute.
+      expect(screen.getByRole("combobox", { name: "Raza" })).toHaveTextContent("Brahman")
       expect(
         screen.getByRole("button", { name: "Quitar filtro Raza: Brahman" }),
       ).toBeInTheDocument()
 
-      await user.selectOptions(screen.getByRole("combobox", { name: "Raza" }), "raza-uuid")
+      // Pick a non-committed option: Radix Select is controlled here and does
+      // not emit onValueChange when the already-committed value is re-picked.
+      await user.click(screen.getByRole("combobox", { name: "Raza" }))
+      await user.click(await screen.findByRole("option", { name: "Cebú" }))
       expect(onFiltrar).toHaveBeenCalledTimes(1)
       expect(onFiltrar).toHaveBeenCalledWith({
         filterKey: "razaId",
         grammar: "in",
-        value: "raza-uuid",
+        value: "raza-uuid-2",
       })
 
       await user.click(screen.getByRole("button", { name: "Quitar filtro Raza: Brahman" }))

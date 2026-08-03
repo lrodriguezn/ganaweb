@@ -390,7 +390,12 @@ describe("#109 route query controller (Unit 2)", () => {
     fetchMock.mockResolvedValue(respuestaHttp(respuestaDto()))
     const { navegar } = montarVista()
 
-    await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Raza" }), "raza-1")
+    // #141 migrated the filter to Radix Select: the trigger is a combobox
+    // button and the options render in a portal, so selectOptions no longer
+    // applies — open the listbox and pick the option by its visible label.
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("combobox", { name: "Raza" }))
+    await user.click(await screen.findByRole("option", { name: "Holstein" }))
 
     expect(navegar).toHaveBeenCalledWith({
       consulta: new URLSearchParams("f.razaId=in%3Araza-1"),
