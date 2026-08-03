@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useState } from "react"
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 import { DatePicker } from "../src/primitives/date-picker"
 
@@ -27,6 +27,18 @@ beforeAll(() => {
 afterEach(() => cleanup())
 
 describe("DatePicker primitive", () => {
+  // Issue #142: freeze the clock so the calendar opens in July 2026, where the
+  // hardcoded day labels live. Only Date is faked so userEvent and Testing
+  // Library keep using real timers.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  })
+
+  afterAll(() => {
+    vi.useRealTimers()
+  })
+
   it("emits ISO yyyy-mm-dd when a date is picked and exposes aria attributes on the trigger", async () => {
     const user = userEvent.setup()
 
@@ -248,6 +260,18 @@ function openCalendar(value = "", maxDate?: Date) {
 }
 
 describe("DatePicker BUG-004 — tokenized calendar styling", () => {
+  // Issue #142: freeze the clock so the calendar opens in July 2026, where the
+  // hardcoded day labels live. Only Date is faked so userEvent and Testing
+  // Library keep using real timers.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  })
+
+  afterAll(() => {
+    vi.useRealTimers()
+  })
+
   it("renders the dropdown caption label with text-support + font-semibold tokens (14px / 600)", async () => {
     const user = userEvent.setup()
     render(openCalendar())
@@ -362,6 +386,18 @@ describe("DatePicker BUG-004 — tokenized calendar styling", () => {
 })
 
 describe("DatePicker footerChildren slot (CA-UI-013)", () => {
+  // Issue #142: keep the clock frozen for consistency with the other
+  // DatePicker suites. Only Date is faked so userEvent and Testing Library
+  // keep using real timers.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  })
+
+  afterAll(() => {
+    vi.useRealTimers()
+  })
+
   it("renders NO footer block inside the popover when footerChildren is omitted (backward compat)", async () => {
     const user = userEvent.setup()
     render(<DatePicker name="fecha" value="" onChange={() => {}} />)
