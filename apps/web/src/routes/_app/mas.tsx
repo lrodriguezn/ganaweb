@@ -51,7 +51,7 @@ function Mas() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4 md:space-y-6">
       {/* ---- Header: "Más" (REQ-MM-001) ---- */}
       <header>
         <h1 className="text-title font-semibold text-foreground">Más</h1>

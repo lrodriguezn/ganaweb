@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_app/")({
 
 function Dashboard() {
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4 md:space-y-6">
       {/* ---- Header: título + fecha + CTA ---- */}
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">

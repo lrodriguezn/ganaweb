@@ -52,7 +52,7 @@ function AnimalImagesRoute() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-4">
+    <div className="mx-auto max-w-5xl">
       <AnimalGallery
         images={images}
         onAddImage={() => document.getElementById("animal-image-input")?.click()}
