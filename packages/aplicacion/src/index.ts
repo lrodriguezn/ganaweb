@@ -82,6 +82,13 @@ export type {
   CatalogoPadresPort,
   ParentComboboxOption,
 } from "./puertos/catalogo-padres-port.js"
+export type {
+  DatosMaestroNormalizados,
+  FamiliaMaestro,
+  FincaEscrituraPort,
+  MaestroEscrituraPort,
+  RegistroMaestroScope,
+} from "./puertos/maestro-escritura-port.js"
 export * from "./casos-uso/animales/index.js"
 export * from "./casos-uso/auth/index.js"
 export * from "./casos-uso/listar-catalogo-sexo.js"
@@ -96,6 +103,7 @@ export * from "./casos-uso/listar-grupos-por-finca.js"
 export * from "./casos-uso/listar-lugares-compra-por-finca.js"
 export * from "./casos-uso/listar-hierros-por-finca.js"
 export * from "./casos-uso/listar-propietarios-por-finca.js"
+export * from "./casos-uso/maestros/index.js"
 export type * from "./puertos/auth-repository-port.js"
 export type {
   DecisionAutorizacion,
