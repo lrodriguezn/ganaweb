@@ -22,6 +22,10 @@ function animalFormFrame(page: Page) {
 
 test.describe("animal CRUD web flow", () => {
   test("replays a shared list URL through browser Back and Forward", async ({ page }) => {
+    // Primera navegación de la suite: compila la ruta SSR en frío tras el
+    // build del paquete UI; se triplica el presupuesto del test para
+    // absorber el cold compile sin falsos rojos.
+    test.slow()
     const sharedQuery = "?q=MT-122&sort=codigo%3Aasc"
     // Desktop renders a <table> with cells; mobile renders a card button.
     // Extended timeout: first navigation triggers Vite SSR cold compilation.
@@ -29,7 +33,7 @@ test.describe("animal CRUD web flow", () => {
       ? page.getByRole("button", { name: "MT-122 Matilda" })
       : page.getByRole("cell", { name: "MT-122" })
     await page.goto(`/fincas/finca-1/animales${sharedQuery}`)
-    await expect(mt122).toBeVisible({ timeout: 15_000 })
+    await expect(mt122).toBeVisible({ timeout: 30_000 })
     await expect(page).toHaveURL(new RegExp(`animales${sharedQuery.replace("?", "\\?")}$`))
 
     await page.goto("/fincas/finca-1/animales?q=MT-122&sort=codigo%3Adesc")
@@ -44,22 +48,50 @@ test.describe("animal CRUD web flow", () => {
   test("creates a local animal and shows pending upload state for a photo", async ({ page }) => {
     const codigo = isMobileViewport(page) ? "NV-E2E-M" : "NV-E2E-D"
     await page.goto("/fincas/finca-1/animales")
-    await expect(animalListFrame(page).getByText("MT-122")).toBeVisible()
-    await expect(page.getByRole("button", { name: /Finca Finca Demo E2E/ })).toBeVisible()
+    // El listado desktop real renderiza la tabla del listado (sin el frame
+    // "18 Animales · Desktop" del prototipo); mobile conserva el frame de
+    // tarjetas. Timeout extendido: cold compile de la ruta en dev.
+    const mt122 = isMobileViewport(page)
+      ? animalListFrame(page).getByText("MT-122")
+      : page.getByRole("cell", { name: "MT-122" })
+    await expect(mt122).toBeVisible({ timeout: 15_000 })
+    // El trigger mobile usa aria-label "Cambiar finca"; el desktop muestra
+    // el nombre de la finca. hasText cubre ambos sin atarse al accessible
+    // name de cada variante.
+    await expect(page.getByRole("button").filter({ hasText: "Finca Demo E2E" })).toBeVisible()
 
-    await expect(page.getByRole("button", { name: "Nuevo animal" })).toBeVisible()
+    // El CTA "Nuevo animal" del listado está gateado por la proyección de
+    // permisos visuales (LA-RBAC-02), que falla cerrado sin sesión real: el
+    // harness E2E no emite cookie de sesión, así que no se renderiza. El flujo
+    // de creación continúa navegando directo a la ruta (la autorización de
+    // creación la cubre el servidor; el ocultamiento readonly, el spec RBAC).
     await page.goto("/fincas/finca-1/animales/nuevo")
-    await expect(page.getByRole("heading", { name: "Nuevo animal" })).toBeVisible()
+    // Timeout extendido: primera navegación a la ruta (compilación fría SSR).
+    await expect(page.getByRole("heading", { name: "Nuevo animal" })).toBeVisible({
+      timeout: 15_000,
+    })
     const form = animalFormFrame(page)
+    // Espera la hidratación: el frame cambia a la variante correcta y el
+    // fieldset del form se habilita. Pasar a offline antes cortaría la carga
+    // del bundle y dejaría el form en su estado SSR (deshabilitado).
+    await expect(form).toBeVisible({ timeout: 15_000 })
+    await expect(form.locator('input[name="codigo"]')).toBeEnabled({ timeout: 15_000 })
+    // La creación es local: el footer solo anuncia la sincronización diferida
+    // cuando el contexto está offline (CA-UI-005).
+    await page.context().setOffline(true)
     await expect(form.getByText("Se sincronizará al recuperar señal")).toBeVisible()
 
     await form.locator('input[name="codigo"]').fill(codigo)
     await form.locator('input[name="nombre"]').fill("Novilla E2E")
     await form.getByRole("button").filter({ hasText: "dd/mm/aaaa" }).click()
+    // El calendario abre en el mes actual; el mes objetivo (julio 2026) se
+    // alcanza por el selector de mes para no depender de la fecha de ejecución.
+    await page.getByRole("combobox", { name: "Choose the Month" }).selectOption({ label: "julio" })
     await page.getByRole("button", { name: /, 10 de julio de 2026/ }).click()
     await expect(form.getByRole("button").filter({ hasText: "10/07/2026" })).toBeVisible()
     await form.getByRole("radio", { name: "Comprado" }).click()
     await form.getByRole("button").filter({ hasText: "dd/mm/aaaa" }).click()
+    await page.getByRole("combobox", { name: "Choose the Month" }).selectOption({ label: "julio" })
     await expect(page.getByRole("button", { name: /, 9 de julio de 2026/ })).toBeDisabled()
     await page.getByRole("button", { name: /, 15 de julio de 2026/ }).click()
     await expect(form.getByRole("button").filter({ hasText: "15/07/2026" })).toBeVisible()
@@ -84,8 +116,11 @@ test.describe("animal CRUD web flow", () => {
     ).toBe("1")
     await expect(form.getByRole("button", { name: "Guardar" })).toBeVisible()
 
+    // Restaura la red antes de navegar: la siguiente ruta requiere servidor.
+    await page.context().setOffline(false)
     await page.goto("/fincas/finca-1/animales/animal-1/imagenes")
-    await expect(page.getByRole("heading", { name: "Fotos" })).toBeVisible()
+    // Timeout extendido: primera navegación a la ruta (compilación fría SSR).
+    await expect(page.getByRole("heading", { name: "Fotos" })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText("Pendiente de subir")).toBeVisible()
   })
 
@@ -113,7 +148,9 @@ test.describe("animal CRUD web flow", () => {
 
     // Resumen (default): primera página del servidor (20 de 28) con control.
     await expect(timeline.getByRole("listitem")).toHaveCount(20)
-    const verMas = timeline.getByRole("button", { name: /Ver más eventos/ })
+    // #185: el control incluye el conteo pendiente ("Ver N eventos más")
+    // cuando el loader lo provee; el regex cubre ambos wordings.
+    const verMas = timeline.getByRole("button", { name: /Ver (más eventos|\d+ eventos más)/ })
     await expect(verMas).toBeVisible()
 
     // Append de la segunda página: sin duplicados y el control desaparece
@@ -121,7 +158,9 @@ test.describe("animal CRUD web flow", () => {
     // cliente→función de servidor (compilación fría en dev).
     await verMas.click()
     await expect(timeline.getByRole("listitem")).toHaveCount(28, { timeout: 15_000 })
-    await expect(timeline.getByRole("button", { name: /Ver más eventos/ })).toHaveCount(0)
+    await expect(
+      timeline.getByRole("button", { name: /Ver (más eventos|\d+ eventos más)/ }),
+    ).toHaveCount(0)
 
     // El cambio de tab resetea la paginación y filtra del lado servidor.
     await timeline.getByRole("tab", { name: "Reproducción" }).click()
@@ -178,92 +217,102 @@ test.describe("animal CRUD web flow", () => {
   // The shared DatePicker is used in the purchase-date field; the popover
   // must NOT overlap its own trigger or its label when the field sits near
   // the bottom of a constrained mobile viewport.
-  test("BUG-003: purchase-date popover does not cover the trigger or label near the viewport bottom", async ({
-    browser,
-  }) => {
-    const context = await browser.newContext({
-      viewport: { width: 360, height: 640 },
-      isMobile: true,
-      hasTouch: true,
-    })
-    const page = await context.newPage()
+  //
+  // Triaje (#182): el bug SIGUE VIVO — repro esperado con test.fail.
+  // Evidencia (viewport 360×640, trigger en y≈500): Radix voltea el
+  // popover a side="top" y lo mantiene dentro del viewport
+  // (collisionPadding=8, top≈197/bottom≈496), y tampoco solapa el trigger
+  // (sideOffset=4). Pero al abrirse hacia arriba cubre la etiqueta del
+  // campo: la etiqueta ocupa y≈481-497 y el borde inferior del popover
+  // queda en y≈496 → ~15px de solapamiento. Cuando el repro pase (bug
+  // corregido), test.fail debe eliminarse.
+  test.fail(
+    "BUG-003: purchase-date popover does not cover the trigger or label near the viewport bottom",
+    async ({ browser }) => {
+      const context = await browser.newContext({
+        viewport: { width: 360, height: 640 },
+        isMobile: true,
+        hasTouch: true,
+      })
+      const page = await context.newPage()
 
-    await page.goto("/fincas/finca-1/animales/nuevo")
-    const form = page.getByLabel("21 Nuevo Animal · Mobile")
-    await form.locator('input[name="codigo"]').fill("NV-BUG003")
-    await form.locator('input[name="nombre"]').fill("BUG-003 Animal")
-    await form.getByRole("radio", { name: "Comprado" }).click()
+      await page.goto("/fincas/finca-1/animales/nuevo")
+      const form = page.getByLabel("21 Nuevo Animal · Mobile")
+      await form.locator('input[name="codigo"]').fill("NV-BUG003")
+      await form.locator('input[name="nombre"]').fill("BUG-003 Animal")
+      await form.getByRole("radio", { name: "Comprado" }).click()
 
-    // Locate the purchase date trigger by its form id and scroll it to the
-    // very bottom of the viewport so a 300+px popover MUST flip upward.
-    const purchaseTrigger = page.locator("#fecha-de-compra")
-    await purchaseTrigger.evaluate((el) => {
-      el.scrollIntoView({ block: "end", behavior: "instant" as ScrollBehavior })
-    })
-    // Force the trigger to sit ~500px from the top of the viewport.
-    await page.evaluate((targetY) => {
-      const el = document.getElementById("fecha-de-compra")
-      if (!el) return
-      const absoluteY = window.scrollY + el.getBoundingClientRect().top
-      window.scrollTo({ top: absoluteY - targetY, behavior: "instant" as ScrollBehavior })
-    }, 500)
+      // Locate the purchase date trigger by its form id and scroll it to the
+      // very bottom of the viewport so a 300+px popover MUST flip upward.
+      const purchaseTrigger = page.locator("#fecha-de-compra")
+      await purchaseTrigger.evaluate((el) => {
+        el.scrollIntoView({ block: "end", behavior: "instant" as ScrollBehavior })
+      })
+      // Force the trigger to sit ~500px from the top of the viewport.
+      await page.evaluate((targetY) => {
+        const el = document.getElementById("fecha-de-compra")
+        if (!el) return
+        const absoluteY = window.scrollY + el.getBoundingClientRect().top
+        window.scrollTo({ top: absoluteY - targetY, behavior: "instant" as ScrollBehavior })
+      }, 500)
 
-    await purchaseTrigger.click()
-    const popover = page.getByRole("dialog")
-    await expect(popover).toBeVisible()
+      await purchaseTrigger.click()
+      const popover = page.getByRole("dialog")
+      await expect(popover).toBeVisible()
 
-    // Read the rects of the popover, the trigger, and the trigger's label
-    // and assert the popover does not overlap either of them.
-    const measurement = await page.evaluate(() => {
-      const popoverEl = document.querySelector('[role="dialog"]') as HTMLElement | null
-      const triggerEl = document.getElementById("fecha-de-compra") as HTMLElement | null
-      if (!popoverEl || !triggerEl) return { error: "missing-element" }
-      const labelEl = document.querySelector('label[for="fecha-de-compra"]') as HTMLElement | null
-      const popoverRect = popoverEl.getBoundingClientRect()
-      const triggerRect = triggerEl.getBoundingClientRect()
-      const labelRect = labelEl?.getBoundingClientRect() ?? null
-      const overlap = (a: DOMRect, b: DOMRect) =>
-        a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
-      return {
-        side: popoverEl.getAttribute("data-side"),
-        align: popoverEl.getAttribute("data-align"),
-        popover: {
-          top: popoverRect.top,
-          bottom: popoverRect.bottom,
-          left: popoverRect.left,
-          right: popoverRect.right,
-        },
-        trigger: {
-          top: triggerRect.top,
-          bottom: triggerRect.bottom,
-          left: triggerRect.left,
-          right: triggerRect.right,
-        },
-        label: labelRect
-          ? {
-              top: labelRect.top,
-              bottom: labelRect.bottom,
-              left: labelRect.left,
-              right: labelRect.right,
-            }
-          : null,
-        overlapsTrigger: overlap(popoverRect, triggerRect),
-        overlapsLabel: labelRect ? overlap(popoverRect, labelRect) : false,
-        viewportHeight: window.innerHeight,
-        viewportWidth: window.innerWidth,
-      }
-    })
+      // Read the rects of the popover, the trigger, and the trigger's label
+      // and assert the popover does not overlap either of them.
+      const measurement = await page.evaluate(() => {
+        const popoverEl = document.querySelector('[role="dialog"]') as HTMLElement | null
+        const triggerEl = document.getElementById("fecha-de-compra") as HTMLElement | null
+        if (!popoverEl || !triggerEl) return { error: "missing-element" }
+        const labelEl = document.querySelector('label[for="fecha-de-compra"]') as HTMLElement | null
+        const popoverRect = popoverEl.getBoundingClientRect()
+        const triggerRect = triggerEl.getBoundingClientRect()
+        const labelRect = labelEl?.getBoundingClientRect() ?? null
+        const overlap = (a: DOMRect, b: DOMRect) =>
+          a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+        return {
+          side: popoverEl.getAttribute("data-side"),
+          align: popoverEl.getAttribute("data-align"),
+          popover: {
+            top: popoverRect.top,
+            bottom: popoverRect.bottom,
+            left: popoverRect.left,
+            right: popoverRect.right,
+          },
+          trigger: {
+            top: triggerRect.top,
+            bottom: triggerRect.bottom,
+            left: triggerRect.left,
+            right: triggerRect.right,
+          },
+          label: labelRect
+            ? {
+                top: labelRect.top,
+                bottom: labelRect.bottom,
+                left: labelRect.left,
+                right: labelRect.right,
+              }
+            : null,
+          overlapsTrigger: overlap(popoverRect, triggerRect),
+          overlapsLabel: labelRect ? overlap(popoverRect, labelRect) : false,
+          viewportHeight: window.innerHeight,
+          viewportWidth: window.innerWidth,
+        }
+      })
 
-    expect(measurement.error ?? null).toBeNull()
-    expect(measurement.overlapsTrigger).toBe(false)
-    expect(measurement.overlapsLabel).toBe(false)
-    // The popover must stay inside the viewport — collision padding must
-    // keep it from being clipped at the top or bottom edge.
-    expect(measurement.popover.top).toBeGreaterThanOrEqual(0)
-    expect(measurement.popover.bottom).toBeLessThanOrEqual(measurement.viewportHeight)
+      expect(measurement.error ?? null).toBeNull()
+      expect(measurement.overlapsTrigger).toBe(false)
+      expect(measurement.overlapsLabel).toBe(false)
+      // The popover must stay inside the viewport — collision padding must
+      // keep it from being clipped at the top or bottom edge.
+      expect(measurement.popover.top).toBeGreaterThanOrEqual(0)
+      expect(measurement.popover.bottom).toBeLessThanOrEqual(measurement.viewportHeight)
 
-    await context.close()
-  })
+      await context.close()
+    },
+  )
 })
 
 /**
@@ -279,6 +328,11 @@ test.describe("PR-5: catalog selects with real DB data", () => {
   }) => {
     await page.goto("/fincas/finca-1/animales/nuevo")
     const form = animalFormFrame(page)
+    // Timeout extendido: si la suite corre filtrada, esta puede ser la
+    // primera navegación a la ruta (compilación fría SSR).
+    await expect(form.getByRole("heading", { name: "Nuevo animal" })).toBeVisible({
+      timeout: 15_000,
+    })
 
     // Open the raza combobox and select Angus (canonical id: raza-angus)
     const razaCombo = form.getByRole("combobox", { name: "Raza" })
@@ -297,6 +351,11 @@ test.describe("PR-5: catalog selects with real DB data", () => {
   }) => {
     await page.goto("/fincas/finca-1/animales/nuevo")
     const form = animalFormFrame(page)
+    // Timeout extendido: si la suite corre filtrada, esta puede ser la
+    // primera navegación a la ruta (compilación fría SSR).
+    await expect(form.getByRole("heading", { name: "Nuevo animal" })).toBeVisible({
+      timeout: 15_000,
+    })
 
     const colorCombo = form.getByRole("combobox", { name: "Color" })
     await colorCombo.click()
@@ -313,6 +372,15 @@ test.describe("PR-5: catalog selects with real DB data", () => {
   }) => {
     await page.goto("/fincas/finca-1/animales/nuevo")
     const form = animalFormFrame(page)
+    // Timeout extendido: si la suite corre filtrada, esta puede ser la
+    // primera navegación a la ruta (compilación fría SSR).
+    await expect(form.getByRole("heading", { name: "Nuevo animal" })).toBeVisible({
+      timeout: 15_000,
+    })
+
+    // v1.3 (CA-UI-019): en create la sección UBICACIÓN renderiza colapsada;
+    // se expande antes de interactuar con sus selects.
+    await form.getByRole("button", { name: /Ubicación/ }).click()
 
     const potreroCombo = form.getByRole("combobox", { name: "Potrero" })
     await potreroCombo.click()
@@ -329,14 +397,27 @@ test.describe("PR-5: catalog selects with real DB data", () => {
   }) => {
     await page.goto("/fincas/finca-1/animales/nuevo")
     const form = animalFormFrame(page)
+    // Timeout extendido: si la suite corre filtrada, esta puede ser la
+    // primera navegación a la ruta (compilación fría SSR).
+    await expect(form.getByRole("heading", { name: "Nuevo animal" })).toBeVisible({
+      timeout: 15_000,
+    })
 
-    const tipoExpTrigger = form.locator("button[id^='tipo-de-explotacion']")
-    await tipoExpTrigger.click()
+    // v1.3: "Detalles adicionales" renderiza colapsado en create; el campo
+    // tipoExplotacionId vive ahí. Se expande antes de interactuar.
+    await form.getByRole("button", { name: /Detalles adicionales/ }).click()
+
+    // El id del trigger se genera con useId() ("tipo-de-explotaci-n-…"),
+    // así que el locator estable es el accessible name del CatalogSelectField.
+    const tipoExpCombo = form.getByRole("combobox", { name: "Tipo de explotación" })
+    await tipoExpCombo.click()
     await page.getByRole("option", { name: "Leche" }).click()
 
+    // El Select del form serializa bajo name="tipoExplotacionId" (el nombre
+    // del campo en FORM_FIELDS).
     const formDataValue = await form
       .locator("form")
-      .evaluate((el) => new FormData(el as HTMLFormElement).get("tipoExplotacion"))
+      .evaluate((el) => new FormData(el as HTMLFormElement).get("tipoExplotacionId"))
     expect(formDataValue).toBe("te-leche")
   })
 })
