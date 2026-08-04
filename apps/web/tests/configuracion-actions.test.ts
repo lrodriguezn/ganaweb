@@ -684,6 +684,78 @@ async function testRbacDenegaciones() {
   assert.equal(resumenWildcard.tipo, "resumen", "el wildcard *:* permite leer el hub")
 }
 
+/**
+ * Issue #152 (criterio 11, TS-004(4)): caso explícito "Solo-lectura" — una
+ * sesión autorizada de OTRO módulo (animales:ver, rol Lectura) no ve el hub
+ * ni puede escribir aunque se invoque el harness directamente (PE-002). Los
+ * permisos de otro módulo no conceden `configuracion:*` (CM-021).
+ */
+async function testInvarianteSoloLecturaTS004() {
+  const sesionSoloLectura = session({
+    usuarioId: "usuario-lectura",
+    nombre: "Lectura E2E",
+    email: "lectura@ganaweb.test",
+    rol: "Lectura",
+    permisos: [{ modulo: "animales", accion: "ver" }],
+  })
+  const fakes = fakeDeps()
+  const soloLectura = harnessCon(fakes, async () => sesionSoloLectura)
+
+  assert.deepEqual(
+    await soloLectura.resumen({ fincaId: "finca-1" }),
+    { tipo: "permiso_denegado", permiso: "configuracion:ver" },
+    "Solo-lectura no ve el hub",
+  )
+  assert.deepEqual(await soloLectura.listar({ fincaId: "finca-1", maestro: "veterinarios" }), {
+    tipo: "permiso_denegado",
+    permiso: "configuracion:ver",
+  })
+  assert.deepEqual(await soloLectura.listarCatalogoGlobal({ catalogo: "razas" }), {
+    tipo: "permiso_denegado",
+    permiso: "configuracion:ver",
+  })
+  assert.deepEqual(
+    await soloLectura.crear({
+      fincaId: "finca-1",
+      maestro: "veterinarios",
+      datos: { nombre: "X" },
+    }),
+    { tipo: "permiso_denegado", permiso: "configuracion:crear" },
+    "Solo-lectura no crea aunque invoque la función directamente",
+  )
+  assert.deepEqual(
+    await soloLectura.editar({
+      fincaId: "finca-1",
+      maestro: "veterinarios",
+      id: "maestro-1",
+      datos: { nombre: "X" },
+    }),
+    { tipo: "permiso_denegado", permiso: "configuracion:editar" },
+  )
+  assert.deepEqual(
+    await soloLectura.cambiarEstado({
+      fincaId: "finca-1",
+      maestro: "veterinarios",
+      id: "maestro-1",
+      activo: false,
+    }),
+    { tipo: "permiso_denegado", permiso: "configuracion:inactivar" },
+  )
+  assert.deepEqual(await soloLectura.editarFinca({ fincaId: "finca-1", datos: { nombre: "X" } }), {
+    tipo: "permiso_denegado",
+    permiso: "configuracion:editar",
+  })
+  assert.deepEqual(
+    await soloLectura.obtenerDatosFinca({ fincaId: "finca-1" }),
+    { tipo: "permiso_denegado", permiso: "configuracion:ver" },
+    "Solo-lectura no lee los datos de la finca",
+  )
+  assert.equal(fakes.llamadasEscritura.length, 0, "la denegación no toca los puertos")
+  assert.equal(fakes.llamadasFinca.length, 0, "la denegación no toca los puertos")
+  assert.equal(fakes.llamadasListado.length, 0, "la denegación no toca los puertos")
+  assert.equal(fakes.llamadasCatalogo.length, 0, "la denegación no toca los puertos")
+}
+
 async function testScopeFincaPrimero() {
   const fakes = fakeDeps({
     registros: new Map([["maestro-ajeno", { id: "maestro-ajeno", fincaId: "finca-2" }]]),
@@ -1119,6 +1191,7 @@ async function run() {
   await testResumenHubCompleto()
   await testResumenDegradacionPorItem()
   await testRbacDenegaciones()
+  await testInvarianteSoloLecturaTS004()
   await testScopeFincaPrimero()
   await testGuardiaEscrituraCM025()
   await testEscrituraMapeoUnoAUno()

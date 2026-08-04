@@ -9,6 +9,9 @@ export default defineConfig({
   forbidOnly: true,
   retries: 0,
   workers: 1,
+  // Cold-start de Vite SSR + hidratación: los flujos de configuración hacen
+  // varias navegaciones y cada ruta compila bajo demanda en dev.
+  timeout: 120_000,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL,
@@ -29,6 +32,18 @@ export default defineConfig({
     {
       name: "animales-mobile",
       testMatch: /animales\.spec\.ts/,
+      use: { ...devices["Pixel 5"] },
+    },
+    // Issue #152 (RF-CONFIG-MAESTROS v1.0): suite E2E de Configuración ·
+    // Maestros contra la BD real (finca-1 del fixture de configuración).
+    {
+      name: "configuracion-desktop",
+      testMatch: /configuracion\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 900 } },
+    },
+    {
+      name: "configuracion-mobile",
+      testMatch: /configuracion\.spec\.ts/,
       use: { ...devices["Pixel 5"] },
     },
   ],

@@ -59,8 +59,46 @@ function readE2eRoleHeader(): string | undefined {
   }
 }
 
+/**
+ * Issue #152 (CM-021): rol E2E "admin" — Administrador con animales:* y
+ * configuracion:ver/crear/editar/inactivar. Según el seed de roles sólo el
+ * Administrador posee `configuracion:*`; este rol es el vehículo de los
+ * flujos de escritura del hub/CRUD en `configuracion.spec.ts`.
+ */
+const PERMISOS_ADMIN_E2E = [
+  { modulo: "animales", accion: "ver" },
+  { modulo: "animales", accion: "crear" },
+  { modulo: "animales", accion: "editar" },
+  { modulo: "animales", accion: "inactivar" },
+  { modulo: "configuracion", accion: "ver" },
+  { modulo: "configuracion", accion: "crear" },
+  { modulo: "configuracion", accion: "editar" },
+  { modulo: "configuracion", accion: "inactivar" },
+] as const
+
 export function getAnimalE2eSession(): SesionAutorizada {
   const role = readE2eRoleHeader()
+  if (role === "admin") {
+    const permisos = [...PERMISOS_ADMIN_E2E]
+    return {
+      usuarioId: "usuario-admin",
+      nombre: "Admin E2E",
+      email: "admin@ganaweb.test",
+      fincaActivaId: "finca-1",
+      fincaActivaNombre: "Finca Demo E2E",
+      rol: "Administrador",
+      permisos,
+      fincas: [
+        {
+          fincaId: "finca-1",
+          nombre: "Finca Demo E2E",
+          rol: "Administrador",
+          activo: true,
+          permisos,
+        },
+      ],
+    }
+  }
   const readonly = role === "readonly"
   const rol = readonly ? "Lectura" : "Mayordomo"
   const permisos = readonly

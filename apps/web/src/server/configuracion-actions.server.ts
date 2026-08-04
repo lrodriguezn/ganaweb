@@ -498,6 +498,19 @@ function getConfiguredConfiguracionDeps(
 }
 
 async function getAuthorizedSession(fincaId?: string): Promise<SesionAutorizada | null> {
+  // Issue #152: hook E2E (patrón de `animal-actions.server.ts`). La sesión
+  // sale del fixture (header `x-ganaweb-e2e-role`: admin/readonly/default);
+  // los datos NO — los maestros del E2E viven en la BD real bajo finca-1,
+  // cuya existencia se garantiza aquí de forma idempotente (FK finca_id).
+  const { getAnimalE2eSession, isAnimalE2eEnabled } = await import(
+    "./e2e-animals-fixture.server.js"
+  )
+  if (isAnimalE2eEnabled()) {
+    const { ensureConfiguracionE2eFinca } = await import("./e2e-configuracion-fixture.server.js")
+    await ensureConfiguracionE2eFinca()
+    return getAnimalE2eSession()
+  }
+
   const { getAuthDeps } = await import("./auth-deps.server.js")
   const { readFincaActivaCookie, readSessionToken } = await import("./session-cookie.server.js")
   const { obtenerSesionActual } = await import("@ganaweb/aplicacion")
