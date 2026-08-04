@@ -22,8 +22,8 @@
 
 - [x] 2.1 RED: `packages/dominio/tests/animal-ficha.test.ts` — `calcularEdadMeses` (birth present/absent), `calcularGdp` (2 weighings; 1 → null), `derivarResumenReproductivo` (servicio/palpación/gestación/partos/IEP/días abiertos; male TR-013 → empty; TR-014 events over cache).
 - [x] 2.2 GREEN: create `packages/dominio/src/animal-ficha.ts` (pure functions, injected `hoy`).
-- [ ] 2.3 Create `packages/aplicacion/src/puertos/animal-ficha-resumen-port.ts` (raza/color, potrero/lote/grupo, last 2 weighings, reproductive sequence, latest condition).
-- [ ] 2.4 RED: full vs empty history in `packages/aplicacion/tests/animal-use-cases.test.ts` (missing → null, never fabricated); GREEN: aggregate in `obtenerFichaAnimal` (`packages/aplicacion/src/casos-uso/animales/index.ts`).
+- [x] 2.3 Create `packages/aplicacion/src/puertos/animal-ficha-resumen-port.ts` (raza/color, potrero/lote/grupo, last 2 weighings, reproductive sequence, latest condition).
+- [x] 2.4 RED: full vs empty history in `packages/aplicacion/tests/animal-use-cases.test.ts` (missing → null, never fabricated); GREEN: aggregate in `obtenerFichaAnimal` (`packages/aplicacion/src/casos-uso/animales/index.ts`).
 - [ ] 2.5 Implement `DrizzleAnimalFichaReadModel` in `packages/db/src/animal-infrastructure.ts`.
 - [ ] 2.6 RED+GREEN integration: `packages/db/tests/animal-ficha-postgres.test.ts`.
 - [ ] 2.7 Map resumen in `apps/web/src/server/animal-actions.server.ts`; assert DTO in `animal-web-flow.test.ts`.

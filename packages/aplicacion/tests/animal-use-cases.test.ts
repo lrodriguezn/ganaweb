@@ -171,6 +171,19 @@ describe("animal use cases", () => {
       genealogia: { madre: null, padre: null, crias: [] },
       estadoBanner: null,
       timeline: { items: [{ id: "ev-1" }], nextCursor: "cursor-2" },
+      // Without a configured read model the resumen stays fully absent —
+      // obtenerFichaAnimal never fabricates summary values.
+      resumen: {
+        raza: null,
+        color: null,
+        potrero: null,
+        lote: null,
+        grupo: null,
+        edadMeses: null,
+        ultimoPeso: null,
+        reproduccion: null,
+        condicionCorporal: null,
+      },
     })
     expect(d.timeline.listarPagina).toHaveBeenCalledWith({
       animalId: "animal-1",
@@ -178,6 +191,171 @@ describe("animal use cases", () => {
       cursor: "cursor-1",
       limit: 20,
     })
+  })
+
+  it("aggregates the enriched ficha resumen from the read model and dominio derivations", async () => {
+    const d = deps()
+    d.animales.obtenerPorIdYFinca = vi.fn(async () => ({
+      id: "animal-1",
+      fincaId: "finca-1",
+      codigo: "MT-122",
+      nombre: "Lucera",
+      sexoKey: 1 as const,
+      version: 1,
+      activo: true,
+      usuarioCreadoPor: "usuario-1",
+      creadoEn: new Date("2026-07-12T08:00:00Z"),
+      fechaNacimiento: Date.UTC(2024, 0, 15) / 1000,
+    }))
+    const fichaResumen = {
+      obtener: vi.fn(async () => ({
+        raza: "Holstein",
+        color: "Blanco y negro",
+        potrero: "Potrero Norte",
+        lote: "Lote A",
+        grupo: "Grupo Vientres",
+        pesajes: [
+          { fecha: "2026-07-01", pesoKg: 410 },
+          { fecha: "2026-06-01", pesoKg: 380 },
+        ],
+        servicios: [
+          { fecha: "2026-06-20", tipo: "inseminacion", efectivo: null },
+          { fecha: "2025-05-01", tipo: "inseminacion", efectivo: true },
+        ],
+        palpaciones: [{ fecha: "2026-07-15", resultado: "prenada", diasGestacion: 45 }],
+        partos: [
+          { fecha: "2025-03-01", tipoParto: "normal" },
+          { fecha: "2024-03-01", tipoParto: "normal" },
+        ],
+        condicionCorporal: { valor: 3.5, etiqueta: "Ideal", fecha: "2026-07-20" },
+      })),
+    }
+    const reloj = { ahora: vi.fn(() => new Date(Date.UTC(2026, 7, 4))) }
+
+    const result = await obtenerFichaAnimal({ ...d, fichaResumen, reloj })({
+      sesion: { ...sesionCrear, permisos: [{ modulo: "animales", accion: "ver" }] },
+      animalId: "animal-1",
+    })
+
+    expect(fichaResumen.obtener).toHaveBeenCalledWith("animal-1", "finca-1")
+    expect(result).toEqual({
+      tipo: "ficha",
+      animal: expect.objectContaining({ id: "animal-1", codigo: "MT-122" }),
+      imagenes: expect.any(Array),
+      genealogia: { madre: null, padre: null, crias: [] },
+      estadoBanner: null,
+      timeline: expect.any(Object),
+      resumen: {
+        raza: "Holstein",
+        color: "Blanco y negro",
+        potrero: "Potrero Norte",
+        lote: "Lote A",
+        grupo: "Grupo Vientres",
+        edadMeses: 30,
+        ultimoPeso: { fecha: "2026-07-01", pesoKg: 410, gdpKgDia: 1 },
+        reproduccion: {
+          ultimoServicio: { fecha: "2026-06-20", detalle: "inseminacion" },
+          ultimaPalpacion: { fecha: "2026-07-15", resultado: "prenada" },
+          gestacionDias: 65,
+          partos: { total: 2, ultimaFecha: "2025-03-01" },
+          iepDias: 365,
+          diasAbiertos: 61,
+        },
+        condicionCorporal: { valor: 3.5, etiqueta: "Ideal", fecha: "2026-07-20" },
+      },
+    })
+  })
+
+  it("returns absent summary fields for an animal without history (never fabricated)", async () => {
+    const d = deps()
+    const fichaResumen = {
+      obtener: vi.fn(async () => ({
+        raza: null,
+        color: null,
+        potrero: null,
+        lote: null,
+        grupo: null,
+        pesajes: [],
+        servicios: [],
+        palpaciones: [],
+        partos: [],
+        condicionCorporal: null,
+      })),
+    }
+    const reloj = { ahora: vi.fn(() => new Date(Date.UTC(2026, 7, 4))) }
+
+    const result = await obtenerFichaAnimal({ ...d, fichaResumen, reloj })({
+      sesion: { ...sesionCrear, permisos: [{ modulo: "animales", accion: "ver" }] },
+      animalId: "animal-1",
+    })
+
+    expect(result).toEqual({
+      tipo: "ficha",
+      animal: expect.objectContaining({ id: "animal-1" }),
+      imagenes: expect.any(Array),
+      genealogia: { madre: null, padre: null, crias: [] },
+      estadoBanner: null,
+      timeline: expect.any(Object),
+      resumen: {
+        raza: null,
+        color: null,
+        potrero: null,
+        lote: null,
+        grupo: null,
+        edadMeses: null,
+        ultimoPeso: null,
+        // Hembra without events: the summary exists but every field is absent.
+        reproduccion: {
+          ultimoServicio: null,
+          ultimaPalpacion: null,
+          gestacionDias: null,
+          partos: null,
+          iepDias: null,
+          diasAbiertos: null,
+        },
+        condicionCorporal: null,
+      },
+    })
+  })
+
+  it("keeps the edad derivation even when the read model has no projection", async () => {
+    const d = deps()
+    d.animales.obtenerPorIdYFinca = vi.fn(async () => ({
+      id: "animal-1",
+      fincaId: "finca-1",
+      codigo: "MT-122",
+      nombre: "Lucera",
+      sexoKey: 1 as const,
+      version: 1,
+      activo: true,
+      usuarioCreadoPor: "usuario-1",
+      creadoEn: new Date("2026-07-12T08:00:00Z"),
+      fechaNacimiento: Date.UTC(2024, 0, 15) / 1000,
+    }))
+    const fichaResumen = { obtener: vi.fn(async () => null) }
+    const reloj = { ahora: vi.fn(() => new Date(Date.UTC(2026, 7, 4))) }
+
+    const result = await obtenerFichaAnimal({ ...d, fichaResumen, reloj })({
+      sesion: { ...sesionCrear, permisos: [{ modulo: "animales", accion: "ver" }] },
+      animalId: "animal-1",
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        tipo: "ficha",
+        resumen: {
+          raza: null,
+          color: null,
+          potrero: null,
+          lote: null,
+          grupo: null,
+          edadMeses: 30,
+          ultimoPeso: null,
+          reproduccion: null,
+          condicionCorporal: null,
+        },
+      }),
+    )
   })
 
   it("queues data outbox and binary queue separately for offline image add on create", async () => {
