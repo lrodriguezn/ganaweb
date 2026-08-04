@@ -51,7 +51,15 @@ import { EmptyState } from "./empty-state"
 import { CategoriaBadge, EstadoAnimalBadge, EstadoBadge, SaludBadge } from "./estado-badge"
 import { MetricCard } from "./metric-card"
 import { PageHeader } from "./page-header"
-import type { AnimalFichaResumen, AnimalResumen, DominioEvento, ItemNav, Sexo } from "./types"
+import type {
+  AnimalFichaResumen,
+  AnimalResumen,
+  CategoriaReproductiva,
+  DominioEvento,
+  ItemNav,
+  Salud,
+  Sexo,
+} from "./types"
 
 export type AnimalListItem = AnimalResumen & {
   imagenPrincipalUrl?: string | null
@@ -89,11 +97,79 @@ export interface AnimalTimelineItem {
   estadoLocal?: "pendiente" | "sincronizado"
 }
 
+/**
+ * Issue #156 (RF-ANIM-LIST-M v1.1, LM-001): contrato presentacional de la
+ * card mobile. Espejo estructural del DTO #155 (`AnimalMobileRow`): el
+ * servidor ya resuelve el texto legible (CA-UI-001) y packages/ui no importa
+ * web/aplicacion. Las keys estables se mapean a las uniones del dominio en la
+ * propia card para que el color/género de los badges siga en estado-badge.tsx.
+ */
+export interface AnimalMobileKeyLabel {
+  readonly key: string
+  readonly label: string
+}
+
+export interface AnimalMobileIdLabel {
+  readonly id: string
+  readonly label: string
+}
+
+export interface AnimalMobileMadre {
+  readonly codigo: string
+  readonly nombre: string | null
+}
+
+export interface AnimalMobileListItem {
+  readonly id: string
+  readonly codigo: string
+  /** `''` si el animal no tiene nombre registrado (LM-002). */
+  readonly nombre: string
+  readonly sexo: AnimalMobileKeyLabel
+  readonly raza: AnimalMobileIdLabel | null
+  /** `null` cuando el valor almacenado es `no_aplica`, nulo o desconocido. */
+  readonly categoriaReproductiva: AnimalMobileKeyLabel | null
+  readonly salud: AnimalMobileKeyLabel
+  readonly esDeMonta: boolean
+  readonly propietario: AnimalMobileIdLabel | null
+  /** `null` solo si no hay `codigo_madre` ni `madre_id`. */
+  readonly madre: AnimalMobileMadre | null
+  /** El DTO #155 aún no viaja con imagen; sin URL se muestra el placeholder. */
+  readonly imagenPrincipalUrl?: string | null
+}
+
+// Issue #156: el DTO mobile viaja con keys estables; la card las traduce a las
+// uniones del dominio para reutilizar CategoriaBadge/SaludBadge (#153).
+const SEXO_POR_KEY: Readonly<Record<string, Sexo>> = {
+  "0": "macho",
+  "1": "hembra",
+  "2": "pajuela",
+}
+
+const SALUD_POR_KEY: Readonly<Record<string, Salud>> = {
+  "0": "sano",
+  "1": "enfermo",
+}
+
+const CATEGORIA_REPRODUCTIVA_KEYS: ReadonlySet<string> = new Set<string>([
+  "vacia",
+  "servida",
+  "prenada",
+  "parida",
+  "novilla",
+  "no_aplica",
+])
+
+function aCategoriaReproductiva(key: string | undefined): CategoriaReproductiva | null {
+  return key !== undefined && CATEGORIA_REPRODUCTIVA_KEYS.has(key)
+    ? (key as CategoriaReproductiva)
+    : null
+}
+
 export interface AnimalListMobileProps {
-  animales: AnimalListItem[]
+  animales: readonly AnimalMobileListItem[]
   selectedIds?: string[]
   canCreate?: boolean
-  onPressAnimal: (animal: AnimalListItem) => void
+  onPressAnimal: (animal: AnimalMobileListItem) => void
   onNuevoAnimal: () => void
   bottomNavItems: ItemNav[]
 }
@@ -118,7 +194,14 @@ export function AnimalListMobile({
           subtitulo="Listado operativo"
           acciones={
             canCreate ? (
-              <Button type="button" size="sm" onClick={onNuevoAnimal} aria-label="Nuevo animal">
+              // LM-040: objetivo táctil mínimo 44×44px vía token --h-touch.
+              <Button
+                type="button"
+                size="sm"
+                className="min-h-[--h-touch] min-w-[--h-touch]"
+                onClick={onNuevoAnimal}
+                aria-label="Nuevo animal"
+              >
                 <Plus className="size-4" aria-hidden="true" />
               </Button>
             ) : undefined
@@ -173,17 +256,31 @@ export function AnimalListMobile({
   )
 }
 
+/**
+ * Issue #156 (LM-001): jerarquía de la card mobile — identidad, naturaleza,
+ * estado (badges) y procedencia. LM-002: nombre ausente → solo codigo (sin
+ * relleno de guion); madre ausente → "Madre: sin registrar"; propietario nulo
+ * → la línea se omite. LM-003: la card entera es un botón navegable por
+ * teclado; el chevron es decorativo. La ubicación (potrero·lote) vive en la
+ * ficha, no en la card.
+ */
 function AnimalResultCard({
   animal,
   selected,
   onPress,
 }: {
-  animal: AnimalListItem
+  animal: AnimalMobileListItem
   selected: boolean
   onPress: () => void
 }) {
-  const ubicacion = [animal.potrero, animal.lote].filter(Boolean).join(" · ")
-  const label = [animal.codigoAnimal, animal.nombreAnimal].filter(Boolean).join(" ")
+  const sexo = SEXO_POR_KEY[animal.sexo.key]
+  const salud = SALUD_POR_KEY[animal.salud.key]
+  const categoria = aCategoriaReproductiva(animal.categoriaReproductiva?.key)
+  const naturaleza = [animal.sexo.label, animal.raza?.label].filter(Boolean).join(" · ")
+  const madre = animal.madre
+    ? [animal.madre.codigo, animal.madre.nombre].filter(Boolean).join(" · ")
+    : null
+  const label = [animal.codigo, animal.nombre].filter(Boolean).join(" ")
   return (
     <button
       type="button"
@@ -199,7 +296,7 @@ function AnimalResultCard({
       {animal.imagenPrincipalUrl ? (
         <img
           src={animal.imagenPrincipalUrl}
-          alt={`Foto principal de ${animal.nombreAnimal ?? animal.codigoAnimal}`}
+          alt={`Foto principal de ${animal.nombre || animal.codigo}`}
           className="size-12 rounded-card object-cover border"
         />
       ) : (
@@ -207,28 +304,39 @@ function AnimalResultCard({
           className="size-12 rounded-card bg-muted border grid place-items-center"
           aria-hidden="true"
         >
-          <PawPrint className="size-5 text-muted-foreground" />
+          <PawPrint className="size-5 text-muted-foreground" aria-hidden="true" />
         </span>
       )}
       <span className="min-w-0 flex-1">
         <span className="text-section block truncate">
-          <span className="font-semibold">{animal.codigoAnimal}</span>
-          {animal.nombreAnimal && (
-            <span className="font-normal text-muted-foreground"> {animal.nombreAnimal}</span>
+          <span className="font-semibold">{animal.codigo}</span>
+          {animal.nombre && (
+            <span className="font-normal text-muted-foreground"> {animal.nombre}</span>
           )}
         </span>
+        <span className="text-caption text-muted-foreground block truncate">{naturaleza}</span>
         <span className="mt-1 flex flex-wrap gap-1.5">
-          {animal.categoriaReproductiva && animal.categoriaReproductiva !== "no_aplica" ? (
-            <CategoriaBadge categoria={animal.categoriaReproductiva} />
+          {categoria !== null && categoria !== "no_aplica" ? (
+            <CategoriaBadge categoria={categoria} />
           ) : animal.esDeMonta ? (
             // Issue #153: macho de monta sin categoría reproductiva aplicable.
             <EstadoBadge variant="neutral">Reproductor</EstadoBadge>
           ) : null}
-          <SaludBadge salud={animal.salud} sexo={animal.sexo} />
+          {salud !== undefined ? (
+            <SaludBadge salud={salud} {...(sexo !== undefined ? { sexo } : {})} />
+          ) : (
+            // Key corrupta: se anuncia la etiqueta del servidor sin inventar color.
+            <EstadoBadge variant="neutral">{animal.salud.label}</EstadoBadge>
+          )}
         </span>
-        {ubicacion && (
-          <span className="mt-1 text-caption text-muted-foreground block">{ubicacion}</span>
-        )}
+        <span className="mt-2 block space-y-0.5 border-t border-border pt-1.5 text-caption text-muted-foreground">
+          {animal.propietario && (
+            <span className="block truncate">Propietario: {animal.propietario.label}</span>
+          )}
+          <span className="block truncate">
+            {madre !== null ? `Madre: ${madre}` : "Madre: sin registrar"}
+          </span>
+        </span>
       </span>
       <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
     </button>

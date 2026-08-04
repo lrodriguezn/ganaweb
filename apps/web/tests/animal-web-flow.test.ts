@@ -997,7 +997,7 @@ async function testRouteFilesWireUiAndActions() {
   )
   assert.ok(all.includes("AnimalFichaDesktopScreen"), "ficha route must compose PR3 ficha UI")
   assert.ok(all.includes("AnimalFichaMobileScreen"), "ficha route must compose PR3 mobile ficha UI")
-  assert.ok(all.includes("listAnimalsAction"), "routes must use server actions/loaders")
+  assert.ok(all.includes("getAnimalMobileListAction"), "routes must use server actions/loaders")
   assert.ok(all.includes("createAnimalAction"), "create route must use server action")
   assert.ok(!all.includes('codigo: "TEMP"'), "create route must not submit a hard-coded code")
   assert.ok(

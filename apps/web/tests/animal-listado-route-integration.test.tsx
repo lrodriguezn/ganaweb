@@ -3,15 +3,17 @@
 /**
  * #108 (PR 3) — route wiring integration: the desktop branch consumes the #107
  * endpoint through the typed route adapter and renders `AnimalListadoDesktop`;
- * the legacy list action remains the mobile-only data source; ficha navigation
- * is wired through spies (the route maps them to TanStack navigation).
+ * the mobile branch consumes the #155 mobile contract resolved by the loader
+ * (issue #156); ficha navigation is wired through spies (the route maps them to
+ * TanStack navigation).
  *
  * The route is exercised through the exported `AnimalsListRouteView` so the
- * loader data (visual permission projection + legacy list) can be pinned
+ * loader data (visual permission projection + mobile first page) can be pinned
  * without a TanStack Start runtime — the same pattern as
  * `animal-create-e2e.test.tsx`. The #107 transport is stubbed at the `fetch`
  * seam; the adapter, the LA-040–063 state machine, and the presentational
- * table run for real.
+ * table run for real. The loader-side mobile resolver is pinned separately in
+ * `animal-mobile-list-loader.test.ts` (focused stubbed-deps coverage).
  */
 
 import "@testing-library/jest-dom/vitest"
@@ -37,8 +39,9 @@ import type {
 // Start runtime is required. The view consumes loader data through props, so
 // the stubs are inert.
 vi.mock("../src/server/animal-actions.js", () => ({
-  listAnimalsAction: vi.fn(),
+  getAnimalMobileListAction: vi.fn(),
   getAnimalCatalogsAction: vi.fn(),
+  getAnimalListadoPreferenciasAction: vi.fn(),
   getAnimalListadoVisualPermissionsAction: vi.fn(),
 }))
 
@@ -175,25 +178,35 @@ const catalogos: AnimalCatalogs = {
   padre: catalogoVacio,
 }
 
-function legadoLista(): AnimalsListRouteViewProps["legado"] {
+function listadoMobileLista(): AnimalsListRouteViewProps["listadoMobile"] {
   return {
     tipo: "lista",
-    animales: [
-      {
-        id: "animal-legado",
-        codigoAnimal: "LEG-001",
-        nombreAnimal: "Legada",
-        sexo: "hembra",
-        salud: "sano",
-        estadoActual: "activo",
-      },
-    ],
-    permissions: { canCreate: false },
-  } as unknown as AnimalsListRouteViewProps["legado"]
+    resultado: {
+      data: [
+        {
+          id: "animal-mobile",
+          codigo: "MOB-001",
+          nombre: "Mobile",
+          sexo: { key: "1", label: "Hembra" },
+          raza: { id: "raza-1", label: "Holstein" },
+          categoriaReproductiva: { key: "prenada", label: "Preñada" },
+          salud: { key: "0", label: "Sano" },
+          esDeMonta: false,
+          propietario: { id: "prop-1", label: "Don Juan" },
+          madre: { codigo: "MT-101", nombre: "Estrella" },
+        },
+      ],
+      page: 1,
+      pageSize: 25,
+      total: 1,
+      totalSinFiltro: 1,
+      hayMas: false,
+    },
+  }
 }
 
-function legadoDenegado(): AnimalsListRouteViewProps["legado"] {
-  return { tipo: "permiso_denegado" } as unknown as AnimalsListRouteViewProps["legado"]
+function listadoMobileDenegado(): AnimalsListRouteViewProps["listadoMobile"] {
+  return { tipo: "permiso_denegado" }
 }
 
 function montarVista(iniciales: Partial<AnimalsListRouteViewProps> = {}) {
@@ -208,7 +221,7 @@ function montarVista(iniciales: Partial<AnimalsListRouteViewProps> = {}) {
     <AnimalsListRouteView
       fincaId="finca-1"
       permissions={permisosCompletos}
-      legado={legadoLista()}
+      listadoMobile={listadoMobileLista()}
       catalogs={catalogos}
       onAbrirFicha={espias.ficha}
       onIrANuevo={espias.nuevo}
@@ -249,22 +262,28 @@ describe("Route wiring — the desktop branch consumes only #107 (task 3.1)", ()
     expect(screen.getByText("2 animales")).toBeInTheDocument()
   })
 
-  it("keeps the legacy action mobile-only — #107 rows never feed the mobile list", async () => {
+  it("the mobile branch renders the #155 first page — #107 rows never feed the mobile list", async () => {
     fetchMock.mockResolvedValue(respuestaHttp(respuestaDto()))
     montarVista()
 
     await screen.findByText("MT-001")
     const tabla = screen.getByRole("table", { name: "Listado de animales" })
-    expect(within(tabla).queryByText("LEG-001")).not.toBeInTheDocument()
+    expect(within(tabla).queryByText("MOB-001")).not.toBeInTheDocument()
 
     const movil = screen.getByLabelText("03 Animales · Mobile")
-    expect(within(movil).getByText("LEG-001")).toBeInTheDocument()
+    const card = within(movil).getByRole("button", { name: /MOB-001 Mobile/ })
     expect(within(movil).queryByText("MT-001")).not.toBeInTheDocument()
+    // Real categoria/salud + procedencia resuelta (issue #156, LM-001).
+    expect(within(card).getByText("Preñada")).toBeInTheDocument()
+    expect(within(card).getByText("Sana")).toBeInTheDocument()
+    expect(within(card).getByText("Hembra · Holstein")).toBeInTheDocument()
+    expect(within(card).getByText("Propietario: Don Juan")).toBeInTheDocument()
+    expect(within(card).getByText("Madre: MT-101 · Estrella")).toBeInTheDocument()
   })
 
-  it("renders the #107 desktop table even when the legacy action denies the mobile branch", async () => {
+  it("renders the #107 desktop table even when the loader denies the mobile branch", async () => {
     fetchMock.mockResolvedValue(respuestaHttp(respuestaDto()))
-    montarVista({ legado: legadoDenegado() })
+    montarVista({ listadoMobile: listadoMobileDenegado() })
 
     // Wait for real #107 data (the skeleton table shares the same aria-label).
     await screen.findByText("MT-001")
@@ -371,17 +390,48 @@ describe("Route wiring — the desktop branch consumes only #107 (task 3.1)", ()
     await screen.findByText("MT-001")
 
     const user = userEvent.setup()
-    expect(screen.getByRole("button", { name: "Nuevo animal" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Exportar" })).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Nuevo animal" }))
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    // Both branches expose "Nuevo animal" with a full grant — click the
+    // desktop one (the button NOT inside the mobile section).
+    const botonesNuevo = screen.getAllByRole("button", { name: "Nuevo animal" })
+    expect(botonesNuevo.length).toBe(2)
+    const botonEscritorio = botonesNuevo.find((boton) => !movil.contains(boton))
+    expect(botonEscritorio).toBeDefined()
+    await user.click(botonEscritorio as HTMLElement)
     expect(nuevo).toHaveBeenCalledTimes(1)
 
     rerenderCon({ permissions: { canCreate: false, canExport: false } })
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Nuevo animal" })).not.toBeInTheDocument(),
+      expect(screen.queryAllByRole("button", { name: "Nuevo animal" })).toHaveLength(0),
     )
     expect(screen.queryByRole("button", { name: "Exportar" })).not.toBeInTheDocument()
     expect(await screen.findByText("MT-001")).toBeInTheDocument()
+  })
+
+  it("LM-RBAC-03: the mobile '+' sources canCreate from the loader permissions projection", async () => {
+    fetchMock.mockResolvedValue(respuestaHttp(respuestaDto()))
+    const { nuevo, rerenderCon } = montarVista()
+    await screen.findByText("MT-001")
+
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    const botonNuevo = within(movil).getByRole("button", { name: "Nuevo animal" })
+    await userEvent.setup().click(botonNuevo)
+    expect(nuevo).toHaveBeenCalledTimes(1)
+
+    // A viewer without animales:crear loses the mobile '+' even with data.
+    rerenderCon({ permissions: { canCreate: false, canExport: true } })
+    await waitFor(() =>
+      expect(
+        within(screen.getByLabelText("03 Animales · Mobile")).queryByRole("button", {
+          name: "Nuevo animal",
+        }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(
+      within(screen.getByLabelText("03 Animales · Mobile")).getByRole("button", {
+        name: /MOB-001 Mobile/,
+      }),
+    ).toBeInTheDocument()
   })
 })
 

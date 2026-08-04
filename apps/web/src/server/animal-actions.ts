@@ -174,6 +174,22 @@ export const listAnimalsAction = createServerFn({ method: "GET" })
   .handler(async ({ data }) => (await getRuntimeHarness()).list(data))
 
 /**
+ * Issue #156: client-safe exposure of the mobile animal list first-page
+ * resolver (#155 contract) for the route loader. Mirrors the visual-permission
+ * action — the handler dynamically imports the server resolver so this module
+ * stays bundleable for the client. Fail closed (LM-RBAC-01/02): any denial or
+ * failure resolves `{ tipo: "permiso_denegado" }`, never a thrown loader.
+ */
+export const getAnimalMobileListAction = createServerFn({ method: "GET" })
+  .validator((data: { fincaId: string }) => data)
+  .handler(async ({ data }) => {
+    const { resolverListadoMobileServer } = await import("./animal-mobile-list.server.js")
+    return resolverListadoMobileServer(data.fincaId)
+  })
+
+export type { ResultadoListadoMobileServer } from "./animal-mobile-list.server.js"
+
+/**
  * #108 (PR 3): client-safe exposure of the fail-closed visual permission
  * projection for the desktop animal list (LA-RBAC-02/03). Mirrors the
  * `listAnimalsAction` pattern — the handler dynamically imports the server

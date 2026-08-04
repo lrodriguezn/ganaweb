@@ -1,10 +1,13 @@
 /**
- * Animals list route — #108 desktop wiring (PR 3).
+ * Animals list route — #108 desktop wiring (PR 3) + #156 mobile wiring.
  *
  * Data flow (design.md):
  * - loader ─> `getAnimalListadoVisualPermissionsAction(fincaId)` — fail-closed
  *   visual projection `{ canCreate, canExport }` (LA-RBAC-02/03, LA-RBAC-05).
- * - loader ─> legacy `listAnimalsAction` — MOBILE branch only (AnimalListMobile).
+ * - loader ─> `getAnimalMobileListAction(fincaId)` — MOBILE branch only
+ *   (AnimalListMobile): first page of the #155 mobile contract resolved
+ *   server-side through the read model (issue #156; no self-fetch to the HTTP
+ *   endpoint). Fail-closed `permiso_denegado` on denial/failure.
  * - view ─> GET `/api/fincas/{fincaId}/animales` (#107 authorization) through
  *   the typed route adapter -> `AnimalListadoDesktop` (DESKTOP branch only).
  *
@@ -13,7 +16,7 @@
  * retain the last valid model, strip invalid URL parameters, announce the
  * correction — is client-stateful by contract ("the frontend owns the visual
  * behavior and URL sanitization"). The loader keeps the projection and the
- * legacy mobile data exactly as designed.
+ * mobile first page exactly as designed.
  *
  * Rollback surface: revert this file to the legacy `AnimalDesktopScreen`
  * wiring (the component remains exported by `@ganaweb/ui`); #107, the
@@ -21,6 +24,8 @@
  * Boundaries: no filters/search/order (#109) or pagination/selector/preferences
  * (#110). Since #111 the desktop `Exportar` button opens `AnimalExportacionDialog`,
  * whose transport reuses the active query through `exportarListadoDesktop`.
+ * Mobile chips/search (#157) and infinite-scroll states (#158) are separate
+ * issues — the loader resolves page 1 only.
  */
 import {
   AnimalExportacionDialog,
@@ -71,10 +76,11 @@ import {
 } from "../../../../features/animal-listado/animal-listado-route-adapter.js"
 import {
   type AnimalCatalogs,
+  type ResultadoListadoMobileServer,
   getAnimalCatalogsAction,
   getAnimalListadoPreferenciasAction,
   getAnimalListadoVisualPermissionsAction,
-  listAnimalsAction,
+  getAnimalMobileListAction,
 } from "../../../../server/animal-actions.js"
 import type { ResultadoPreferenciasListadoServer } from "../../../../server/animal-list-preferences.server.js"
 
@@ -82,6 +88,9 @@ const PERMISOS_VISUALES_DENEGADOS: AnimalListadoVisualPermissions = {
   canCreate: false,
   canExport: false,
 }
+
+/** Fail-closed mobile first page — mirrors the visual projection catch. */
+const LISTADO_MOBILE_DENEGADO: ResultadoListadoMobileServer = { tipo: "permiso_denegado" }
 
 /**
  * Projects the web export transport's rich result (it carries the #107
@@ -110,17 +119,21 @@ function aResultadoExportacionDialog(
   }
 }
 
-/** Legacy mobile list result — the desktop branch never consumes it. */
-export type AnimalsLegadoData = Awaited<ReturnType<typeof listAnimalsAction>>
+/** Mobile first page (#155 contract) — the desktop branch never consumes it. */
+export type AnimalsListadoMobileData = ResultadoListadoMobileServer
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales")({
   loader: async ({ params }) => {
-    const [permissions, legado, catalogs, preferencias] = await Promise.all([
+    const [permissions, listadoMobile, catalogs, preferencias] = await Promise.all([
       // Fail closed: an RPC failure never produces a false grant (LA-RBAC-05).
       getAnimalListadoVisualPermissionsAction({ data: { fincaId: params.fincaId } }).catch(
         () => PERMISOS_VISUALES_DENEGADOS,
       ),
-      listAnimalsAction({ data: { fincaId: params.fincaId } }),
+      // Issue #156: the read model resolves the #155 first page server-side;
+      // a denial/failure keeps the fail-closed denied state (LM-RBAC-01/02).
+      getAnimalMobileListAction({ data: { fincaId: params.fincaId } }).catch(
+        () => LISTADO_MOBILE_DENEGADO,
+      ),
       getAnimalCatalogsAction({ data: { fincaId: params.fincaId } }),
       // #110: best-effort SSR preference load; a failure maps to `error` and the
       // view falls back to 29/25 defaults with a retryable warning (PE-001–003).
@@ -128,7 +141,7 @@ export const Route = createFileRoute("/_app/fincas/$fincaId/animales")({
         tipo: "error" as const,
       })),
     ])
-    return { permissions, legado, catalogs, preferencias }
+    return { permissions, listadoMobile, catalogs, preferencias }
   },
   component: AnimalsListRoute,
 })
@@ -224,7 +237,8 @@ export function crearControladorConsultaListado(
 export interface AnimalsListRouteViewProps {
   readonly fincaId: string
   readonly permissions: AnimalListadoVisualPermissions
-  readonly legado: AnimalsLegadoData
+  /** Issue #156: SSR first page of the #155 mobile contract (loader-resolved). */
+  readonly listadoMobile: AnimalsListadoMobileData
   readonly catalogs: AnimalCatalogs
   /** #110: SSR-loaded preferences; `undefined` resolves to silent defaults. */
   readonly preferencias?: ResultadoPreferenciasListadoServer | undefined
@@ -419,7 +433,7 @@ function usePreferenciasListado(
 export function AnimalsListRouteView({
   fincaId,
   permissions,
-  legado,
+  listadoMobile,
   catalogs,
   preferencias,
   consulta = "",
@@ -474,10 +488,11 @@ export function AnimalsListRouteView({
     }
   }, [fincaId, permissions, consultaListado, intento])
 
-  const animales = legado.tipo === "lista" ? [...legado.animales] : []
-  const canCreateLegado = legado.tipo === "lista" && legado.permissions.canCreate
+  // Issue #156: the mobile branch consumes the #155 contract resolved by the
+  // loader; `canCreate` comes from the visual projection (LM-RBAC-03).
+  const filasMobile = listadoMobile.tipo === "lista" ? listadoMobile.resultado.data : []
   const goNew = () => {
-    if (canCreateLegado) onIrANuevo()
+    if (permissions.canCreate) onIrANuevo()
   }
 
   const modelo = estado.tipo === "listo" ? estado.modelo : null
@@ -596,14 +611,14 @@ export function AnimalsListRouteView({
       </div>
       <div className="md:hidden">
         <AnimalListMobile
-          animales={animales}
-          canCreate={canCreateLegado}
+          animales={filasMobile}
+          canCreate={permissions.canCreate}
           onPressAnimal={(animal) => onAbrirFicha(animal.id)}
           onNuevoAnimal={goNew}
           bottomNavItems={bottomNavItems}
         />
       </div>
-      {legado.tipo === "permiso_denegado" && (
+      {listadoMobile.tipo === "permiso_denegado" && (
         <p className="text-support text-muted-foreground">No tienes permiso para ver animales.</p>
       )}
       <span className="sr-only">{Calendar.displayName}</span>
@@ -621,7 +636,7 @@ export function AnimalsListRouteView({
 }
 
 function AnimalsListRoute() {
-  const { permissions, legado, catalogs, preferencias } = Route.useLoaderData()
+  const { permissions, listadoMobile, catalogs, preferencias } = Route.useLoaderData()
   const { fincaId } = Route.useParams()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -632,7 +647,7 @@ function AnimalsListRoute() {
     <AnimalsListRouteView
       fincaId={fincaId}
       permissions={permissions}
-      legado={legado}
+      listadoMobile={listadoMobile}
       catalogs={catalogs}
       preferencias={preferencias}
       consulta={consulta}
