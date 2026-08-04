@@ -8,6 +8,10 @@
  * higiene del cursor manipulado (threat matrix: decodificar, validar,
  * bind — nunca lanzar ni inyectar).
  *
+ * #181: paridad con el read-model del resumen — los eventos anidados en un
+ * registro grupal anulado se excluyen del timeline (y reaparecen si el
+ * registro vuelve a estar vigente).
+ *
  * Patrón de `animal-ficha-postgres.test.ts`: prefijo de fixture aleatorio,
  * semillas en beforeAll, limpieza en afterAll, skip en CI. Requiere
  * Postgres real (DATABASE_URL).
@@ -28,6 +32,11 @@ const animalFull = `${fixture}-animal-full`
 const animalEmpty = `${fixture}-animal-empty`
 const animalPaginado = `${fixture}-animal-paginado`
 const animalOther = `${fixture}-animal-other`
+const animalAnulados = `${fixture}-animal-anulados`
+const animalReactivado = `${fixture}-animal-reactivado`
+const registroAnulado = `${fixture}-reg-anulado`
+const registroVigente = `${fixture}-reg-vigente`
+const registroReactivado = `${fixture}-reg-reactivado`
 
 async function execute(statement: ReturnType<typeof sql>) {
   return db.execute(statement)
@@ -117,6 +126,84 @@ beforeAll(async () => {
       (${`${fixture}-peso-p2`}, ${animalPaginado}, '2026-02-02', '302.00'),
       (${`${fixture}-peso-p3`}, ${animalPaginado}, '2026-02-03', '304.00')
   `)
+
+  // #181 — registros grupales: uno anulado, uno vigente y uno que se
+  // reactiva durante la prueba; animales dedicados para no alterar las
+  // cuentas de las pruebas existentes.
+  await execute(sql`
+    INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo)
+    VALUES
+      (${animalAnulados}, ${fincaA}, ${`${fixture}-T5`}, 'Anulados', 1, 1),
+      (${animalReactivado}, ${fincaA}, ${`${fixture}-T6`}, 'Reactivado', 1, 1)
+  `)
+  await execute(sql`
+    INSERT INTO registros_grupales (id, finca_id, tipo_evento, total_animales, anulado_en)
+    VALUES
+      (${registroAnulado}, ${fincaA}, 'pesaje', 1, now()),
+      (${registroVigente}, ${fincaA}, 'pesaje', 1, NULL),
+      (${registroReactivado}, ${fincaA}, 'pesaje', 1, now())
+  `)
+  // Un evento por cada tabla con registro_grupal_id (9 fuentes), anidado en
+  // el registro anulado y en el vigente.
+  await execute(sql`
+    INSERT INTO pesos (id, animal_id, registro_grupal_id, fecha, peso_kg)
+    VALUES
+      (${`${fixture}-anu-peso`}, ${animalAnulados}, ${registroAnulado}, '2026-07-11', '400.00'),
+      (${`${fixture}-vig-peso`}, ${animalAnulados}, ${registroVigente}, '2026-07-01', '390.00')
+  `)
+  await execute(sql`
+    INSERT INTO producciones_lacteas (id, animal_id, registro_grupal_id, fecha, cantidad_am, cantidad_pm)
+    VALUES
+      (${`${fixture}-anu-produccion`}, ${animalAnulados}, ${registroAnulado}, '2026-07-12', '6.00', '5.00'),
+      (${`${fixture}-vig-produccion`}, ${animalAnulados}, ${registroVigente}, '2026-07-02', '6.00', '5.00')
+  `)
+  await execute(sql`
+    INSERT INTO servicios (id, animal_id, registro_grupal_id, fecha, tipo)
+    VALUES
+      (${`${fixture}-anu-servicio`}, ${animalAnulados}, ${registroAnulado}, '2026-07-13', 'monta'),
+      (${`${fixture}-vig-servicio`}, ${animalAnulados}, ${registroVigente}, '2026-07-03', 'monta')
+  `)
+  await execute(sql`
+    INSERT INTO palpaciones (id, animal_id, registro_grupal_id, fecha, resultado)
+    VALUES
+      (${`${fixture}-anu-palpacion`}, ${animalAnulados}, ${registroAnulado}, '2026-07-14', 'vacia'),
+      (${`${fixture}-vig-palpacion`}, ${animalAnulados}, ${registroVigente}, '2026-07-04', 'vacia')
+  `)
+  await execute(sql`
+    INSERT INTO partos (id, animal_id, registro_grupal_id, fecha, tipo_parto)
+    VALUES
+      (${`${fixture}-anu-parto`}, ${animalAnulados}, ${registroAnulado}, '2026-07-15', 'normal'),
+      (${`${fixture}-vig-parto`}, ${animalAnulados}, ${registroVigente}, '2026-07-05', 'normal')
+  `)
+  await execute(sql`
+    INSERT INTO aplicaciones_sanitarias (id, animal_id, registro_grupal_id, producto_id, fecha, dosis)
+    VALUES
+      (${`${fixture}-anu-aplicacion`}, ${animalAnulados}, ${registroAnulado}, ${producto}, '2026-07-16', '1.00'),
+      (${`${fixture}-vig-aplicacion`}, ${animalAnulados}, ${registroVigente}, ${producto}, '2026-07-06', '1.00')
+  `)
+  await execute(sql`
+    INSERT INTO revisiones_veterinarias (id, animal_id, registro_grupal_id, fecha, tipo_diagnostico)
+    VALUES
+      (${`${fixture}-anu-revision`}, ${animalAnulados}, ${registroAnulado}, '2026-07-17', 'vitaminas'),
+      (${`${fixture}-vig-revision`}, ${animalAnulados}, ${registroVigente}, '2026-07-07', 'vitaminas')
+  `)
+  await execute(sql`
+    INSERT INTO ventas (id, animal_id, registro_grupal_id, fecha, comprador)
+    VALUES
+      (${`${fixture}-anu-venta`}, ${animalAnulados}, ${registroAnulado}, '2026-07-18', 'Subasta'),
+      (${`${fixture}-vig-venta`}, ${animalAnulados}, ${registroVigente}, '2026-07-08', 'Subasta')
+  `)
+  await execute(sql`
+    INSERT INTO animales_ubicacion_historico (id, animal_id, registro_grupal_id, fecha, motivo)
+    VALUES
+      (${`${fixture}-anu-reubicacion`}, ${animalAnulados}, ${registroAnulado}, '2026-07-19T10:00:00Z', 'Traslado'),
+      (${`${fixture}-vig-reubicacion`}, ${animalAnulados}, ${registroVigente}, '2026-07-09T10:00:00Z', 'Traslado')
+  `)
+  // Evento del registro que se reactiva durante la prueba.
+  await execute(sql`
+    INSERT INTO pesos (id, animal_id, registro_grupal_id, fecha, peso_kg)
+    VALUES (${`${fixture}-react-peso`}, ${animalReactivado}, ${registroReactivado}, '2026-07-21', '350.00')
+  `)
 })
 
 afterAll(async () => {
@@ -131,6 +218,7 @@ afterAll(async () => {
   await execute(sql`DELETE FROM animales_condicion_corporal WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM producciones_lacteas WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM pesos WHERE id LIKE ${`${fixture}%`}`)
+  await execute(sql`DELETE FROM registros_grupales WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM productos_sanitarios WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM animales WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM fincas WHERE id LIKE ${`${fixture}%`}`)
@@ -354,5 +442,64 @@ describe.skipIf(process.env.CI === "true")("DrizzleAnimalTimelineRepository (Pos
       limit: 20,
     })
     expect(inexistente.items).toEqual([])
+  })
+
+  it("excludes events nested in annulled group records across every group-derived branch (#181)", async () => {
+    const repo = new DrizzleAnimalTimelineRepository(db)
+
+    const pagina = await repo.listarPagina({
+      animalId: animalAnulados,
+      fincaId: fincaA,
+      limit: 20,
+    })
+
+    // Solo los 9 eventos del registro vigente; ninguno del anulado.
+    expect(pagina.items.map((item) => item.id).sort()).toEqual(
+      [
+        `${fixture}-vig-peso`,
+        `${fixture}-vig-produccion`,
+        `${fixture}-vig-servicio`,
+        `${fixture}-vig-palpacion`,
+        `${fixture}-vig-parto`,
+        `${fixture}-vig-aplicacion`,
+        `${fixture}-vig-revision`,
+        `${fixture}-vig-venta`,
+        `${fixture}-vig-reubicacion`,
+      ].sort(),
+    )
+    for (const item of pagina.items) {
+      expect(item.id).not.toContain("-anu-")
+    }
+    expect(pagina.nextCursor).toBeUndefined()
+  })
+
+  it("shows the event again when the group record is no longer annulled (#181)", async () => {
+    const repo = new DrizzleAnimalTimelineRepository(db)
+
+    const anulado = await repo.listarPagina({
+      animalId: animalReactivado,
+      fincaId: fincaA,
+      limit: 20,
+    })
+    expect(anulado.items).toEqual([])
+
+    await execute(sql`
+      UPDATE registros_grupales SET anulado_en = NULL, updated_at = now()
+      WHERE id = ${registroReactivado}
+    `)
+
+    const vigente = await repo.listarPagina({
+      animalId: animalReactivado,
+      fincaId: fincaA,
+      limit: 20,
+    })
+    expect(vigente.items).toHaveLength(1)
+    expect(vigente.items[0]).toMatchObject({
+      id: `${fixture}-react-peso`,
+      dominio: "produccion",
+      tipo: "pesaje",
+      fecha: "2026-07-21",
+      detalle: "350.00 kg",
+    })
   })
 })
