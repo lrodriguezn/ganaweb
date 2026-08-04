@@ -161,3 +161,38 @@ export function rutaConfiguracionMaestro(fincaId: string, id: MaestroHubId): str
   const definicion = MAESTROS_HUB.find((item) => item.id === id)
   return `/fincas/${fincaId}/configuracion/${definicion?.slug ?? id}`
 }
+
+/**
+ * S-1 (issue #149, CM-009): filas consolidadas mobile. El diseño
+ * (frame-20188) agrupa maestros en UNA fila de 56px con conteo compuesto
+ * ("1 · 8 · 4"); cada fila abre la pantalla de sub-menú del grupo
+ * (`rutaConfiguracionGrupo`) con una fila por maestro y su conteo,
+ * preservando el diseño sin ocultar maestros.
+ */
+export interface FilaConsolidadaMovil {
+  readonly id: string
+  readonly label: string
+  readonly miembros: readonly MaestroHubId[]
+}
+
+export const FILAS_CONSOLIDADAS_MOVIL: readonly FilaConsolidadaMovil[] = [
+  {
+    id: "ubicacion",
+    label: "Predios · Potreros · Sectores",
+    miembros: ["predio", "potreros", "sectores"],
+  },
+  {
+    id: "clasificacion-comercial",
+    label: "Causas de muerte · Lugares de compra",
+    miembros: ["causasMuerte", "lugaresCompras"],
+  },
+]
+
+export function filaConsolidadaPorId(id: string): FilaConsolidadaMovil | undefined {
+  return FILAS_CONSOLIDADAS_MOVIL.find((fila) => fila.id === id)
+}
+
+/** S-1 (issue #149): ruta del sub-menú mobile de un grupo consolidado. */
+export function rutaConfiguracionGrupo(fincaId: string, grupoId: string): string {
+  return `/fincas/${fincaId}/configuracion/grupo/${grupoId}`
+}
