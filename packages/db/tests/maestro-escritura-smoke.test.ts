@@ -436,4 +436,42 @@ describe.skipIf(!dbSmoke)("Issue #147: escritura y conteos de maestros (smoke Po
       calidades: baselineCalidades + fixtureCalidadIds.length,
     })
   })
+
+  it("CM-040/CM-061: el conteo de inseminadores refleja el flag tras editarlo", async () => {
+    // Finca dedicada: no interferir con las cantidades del test CM-061.
+    const fincaFlagId = `finca-test-flag-${crypto.randomUUID()}`
+    await db.insert(fincas).values({
+      id: fincaFlagId,
+      codigo: `TST${fincaFlagId.slice(-6).toUpperCase()}`,
+      nombre: "Finca Prueba Flag",
+    })
+    try {
+      const creado = await adapter.crear("veterinarios", fincaFlagId, {
+        nombre: "Vet Flag Editable",
+      })
+      expect(creado.tipo).toBe("creado")
+      if (creado.tipo !== "creado") return
+
+      // Sin flag → no cuenta como inseminador.
+      expect(await conteos.contarPorFamilia(fincaFlagId, "inseminadores")).toBe(0)
+
+      // Editar el flag a 1 → el conteo (individual y agregado) lo refleja.
+      const conFlag = await adapter.editar("veterinarios", fincaFlagId, creado.id, {
+        es_inseminador: 1,
+      })
+      expect(conFlag.tipo).toBe("actualizado")
+      expect(await conteos.contarPorFamilia(fincaFlagId, "inseminadores")).toBe(1)
+      expect((await conteos.contarTodo(fincaFlagId)).inseminadores).toBe(1)
+
+      // Quitar el flag → vuelve a 0 (el conteo es en vivo, CM-007).
+      const sinFlag = await adapter.editar("veterinarios", fincaFlagId, creado.id, {
+        es_inseminador: 0,
+      })
+      expect(sinFlag.tipo).toBe("actualizado")
+      expect(await conteos.contarPorFamilia(fincaFlagId, "inseminadores")).toBe(0)
+    } finally {
+      await db.delete(veterinarios).where(eq(veterinarios.fincaId, fincaFlagId))
+      await db.delete(fincas).where(eq(fincas.id, fincaFlagId))
+    }
+  })
 })

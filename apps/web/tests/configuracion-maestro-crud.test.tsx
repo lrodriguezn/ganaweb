@@ -670,8 +670,10 @@ describe("Ruta $maestro — RBAC y loader (CM-021)", () => {
     expect(destinoRedirect(capturado)).toBe("/")
   })
 
-  it("slug desconocido o de otro issue redirige al hub", () => {
-    for (const slug of ["no-existe", "razas", "predio", "calidades"]) {
+  it("slug desconocido o de otra sección redirige al hub", () => {
+    // Issue #152: "razas"/"calidades" ya NO redirigen — la ruta única
+    // `$maestro.tsx` también despacha los catálogos globales (CM-025).
+    for (const slug of ["no-existe", "predio"]) {
       let capturado: unknown = null
       try {
         beforeLoad({

@@ -1,18 +1,15 @@
 /**
- * Catálogos globales solo lectura — Razas / Tipos de explotación /
- * Calidades (issue #151, RF-CONFIG-MAESTROS v1.0, CM-025/CM-053/CM-054).
+ * Catálogos globales solo lectura — vista y definición (issue #151,
+ * RF-CONFIG-MAESTROS v1.0, CM-025/CM-053/CM-054).
  *
- * Decisión de diseño: UNA ruta parametrizada `$catalogo.tsx` en vez de tres
- * rutas hermanas — las tres vistas son idénticas salvo título y columnas
- * (CM-054), y los slugs de `MAESTROS_HUB` ("razas", "tipos-explotacion",
- * "calidades") ya fijan las URLs `/fincas/$fincaId/configuracion/<slug>`
- * que genera `rutaConfiguracionMaestro`. Un slug desconocido redirige al
- * hub (fail-closed, mismo patrón que `grupo/$grupoId.tsx`); los segmentos
- * estáticos `predio` y `grupo` tienen prioridad sobre `$catalogo` en el
- * enrutador.
+ * Issue #152: la vista vivía en la ruta `$catalogo.tsx`, un segmento
+ * dinámico hermano de `$maestro.tsx` — TanStack Router registra el primero
+ * y sombrea al segundo (los CRUD de maestros quedaban inalcanzables). La
+ * ruta es ahora ÚNICA (`$maestro.tsx`) y despacha por slug; este módulo
+ * conserva la definición de los catálogos y la vista presentacional.
  *
- * CM-053: listas SOLO lectura de registros activos con búsqueda (acá
- * client-side sobre las filas del loader) y nota muted de gestión global.
+ * CM-053: listas SOLO lectura de registros activos con búsqueda
+ * (client-side sobre las filas del loader) y nota muted de gestión global.
  * CM-025: CERO affordances de escritura — las filas no son botones y no
  * hay acciones de crear/editar/inactivar en ninguna parte de la vista.
  *
@@ -25,15 +22,9 @@ import type {
   FilaCatalogoGlobalConfiguracion,
 } from "@ganaweb/aplicacion"
 import { EmptyState, Input, Label } from "@ganaweb/ui"
-import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router"
 import { AlertCircle, ChevronLeft, Inbox, SearchX } from "lucide-react"
 import { useMemo, useState } from "react"
-import {
-  MAESTROS_HUB,
-  type MaestroHubId,
-} from "../../../../../configuracion/definicion-maestros.js"
-import { puedeVerConfiguracion } from "../../../../../configuracion/permisos-configuracion.js"
-import { listarCatalogoGlobalAction } from "../../../../../server/configuracion-actions.js"
+import { MAESTROS_HUB, type MaestroHubId } from "./definicion-maestros.js"
 
 export interface DefinicionCatalogoRuta {
   readonly slug: string
@@ -71,48 +62,6 @@ export function catalogoPorSlug(slug: string): DefinicionCatalogoRuta | undefine
 export type ConfiguracionCatalogoLoaderResult =
   | { readonly tipo: "lista"; readonly filas: readonly FilaCatalogoGlobalConfiguracion[] }
   | { readonly tipo: "error" }
-
-export const Route = createFileRoute("/_app/fincas/$fincaId/configuracion/$catalogo")({
-  beforeLoad: ({ context, params }) => {
-    if (!puedeVerConfiguracion(context.sesion.permisos)) throw redirect({ to: "/" })
-    if (!catalogoPorSlug(params.catalogo)) {
-      throw redirect({ to: `/fincas/${params.fincaId}/configuracion` })
-    }
-  },
-  loader: async ({ params }) => {
-    const definicion = catalogoPorSlug(params.catalogo)
-    if (!definicion) return { tipo: "error" } as const // inalcanzable: beforeLoad redirige
-    const resultado = await listarCatalogoGlobalAction({
-      data: { catalogo: definicion.catalogo },
-    }).catch(() => null)
-    if (resultado === null) return { tipo: "error" } as const
-    if (resultado.tipo === "no_autenticado") throw redirect({ to: "/login" })
-    if (resultado.tipo === "finca_no_autorizada" || resultado.tipo === "permiso_denegado") {
-      throw redirect({ to: "/" })
-    }
-    return { tipo: "lista", filas: resultado.filas } as const
-  },
-  pendingComponent: ConfiguracionCatalogoSkeleton,
-  component: ConfiguracionCatalogo,
-})
-
-function ConfiguracionCatalogo() {
-  const resultado = Route.useLoaderData()
-  const params = Route.useParams()
-  const navigate = useNavigate()
-  const router = useRouter()
-  const definicion = catalogoPorSlug(params.catalogo)
-  if (!definicion) return null // inalcanzable: beforeLoad redirige
-  return (
-    <ConfiguracionCatalogoView
-      fincaId={params.fincaId}
-      definicion={definicion}
-      resultado={resultado}
-      onNavegar={(ruta) => void navigate({ to: ruta })}
-      onReintentar={() => void router.invalidate()}
-    />
-  )
-}
 
 /** Búsqueda insensible: minúsculas y sin diacríticos (es-CO). */
 function normalizarBusqueda(texto: string): string {
@@ -309,22 +258,5 @@ function ListaCatalogoMobile({
         )
       })}
     </ul>
-  )
-}
-
-/** Skeleton mientras corre el loader (CM-014, patrón del hub). */
-const CLAVES_SKELETON_CATALOGO = ["sk-1", "sk-2", "sk-3", "sk-4"] as const
-
-function ConfiguracionCatalogoSkeleton() {
-  return (
-    <div className="mx-auto max-w-6xl space-y-4" aria-busy="true">
-      <div className="h-5 w-48 rounded bg-muted animate-pulse" />
-      <div className="h-10 w-full max-w-sm rounded-md bg-muted animate-pulse" />
-      <div className="space-y-2">
-        {CLAVES_SKELETON_CATALOGO.map((clave) => (
-          <div key={clave} className="h-14 rounded-card bg-muted animate-pulse" />
-        ))}
-      </div>
-    </div>
   )
 }

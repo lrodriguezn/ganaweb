@@ -4,8 +4,9 @@
  * Issue #151 — catálogos globales solo lectura (RF-CONFIG-MAESTROS v1.0,
  * CM-025/CM-053/CM-054).
  *
- * UNA ruta parametrizada `$catalogo.tsx` sirve Razas, Tipos de explotación
- * y Calidades (los slugs de MAESTROS_HUB fijan las URLs). Cubre:
+ * Los tres catálogos (Razas, Tipos de explotación, Calidades) se sirven desde
+ * la ruta ÚNICA `$maestro.tsx` (issue #152: antes había un `$catalogo.tsx`
+ * hermano que sombreaba los CRUD). Cubre:
  * - beforeLoad: gate configuracion:ver + slug desconocido → redirect al hub.
  * - Loader: denials → redirects, fallo RPC → {tipo:"error"}.
  * - Vista: columnas por catálogo (CM-054: razas agrega origen y
@@ -22,11 +23,11 @@ import type { FilaCatalogoGlobalConfiguracion } from "@ganaweb/aplicacion"
 import { isRedirect } from "@tanstack/react-router"
 import {
   CATALOGOS_RUTA,
-  Route as CatalogoRoute,
   ConfiguracionCatalogoView,
   catalogoPorSlug,
   filtrarFilas,
-} from "../src/routes/_app/fincas/$fincaId/configuracion/$catalogo.js"
+} from "../src/configuracion/catalogo-global.js"
+import { Route as CatalogoRoute } from "../src/routes/_app/fincas/$fincaId/configuracion/$maestro.js"
 import { listarCatalogoGlobalAction } from "../src/server/configuracion-actions.js"
 
 vi.mock("../src/server/configuracion-actions.js", () => ({
@@ -74,10 +75,10 @@ function destinoRedirect(valor: unknown): string | null {
 
 const beforeLoadCatalogo = CatalogoRoute.options.beforeLoad as unknown as (opts: {
   context: { sesion: typeof SESION_CON_VER | typeof SESION_SIN_VER }
-  params: { fincaId: string; catalogo: string }
+  params: { fincaId: string; maestro: string }
 }) => void
 const loaderCatalogo = CatalogoRoute.options.loader as unknown as (opts: {
-  params: { fincaId: string; catalogo: string }
+  params: { fincaId: string; maestro: string }
 }) => Promise<unknown>
 
 describe("catálogos — definición (slugs de MAESTROS_HUB)", () => {
@@ -100,7 +101,7 @@ describe("catálogos — RBAC y routing", () => {
     try {
       beforeLoadCatalogo({
         context: { sesion: SESION_SIN_VER },
-        params: { fincaId: FINCA_ID, catalogo: "razas" },
+        params: { fincaId: FINCA_ID, maestro: "razas" },
       })
     } catch (error) {
       capturado = error
@@ -113,7 +114,7 @@ describe("catálogos — RBAC y routing", () => {
     try {
       beforeLoadCatalogo({
         context: { sesion: SESION_CON_VER },
-        params: { fincaId: FINCA_ID, catalogo: "veterinarios" },
+        params: { fincaId: FINCA_ID, maestro: "no-existe" },
       })
     } catch (error) {
       capturado = error
@@ -126,7 +127,7 @@ describe("catálogos — RBAC y routing", () => {
       expect(() =>
         beforeLoadCatalogo({
           context: { sesion: SESION_CON_VER },
-          params: { fincaId: FINCA_ID, catalogo: slug },
+          params: { fincaId: FINCA_ID, maestro: slug },
         }),
       ).not.toThrow()
     }
@@ -135,7 +136,7 @@ describe("catálogos — RBAC y routing", () => {
   it("loader: no_autenticado redirige a '/login'", async () => {
     vi.mocked(listarCatalogoGlobalAction).mockResolvedValueOnce({ tipo: "no_autenticado" })
     const capturado = await loaderCatalogo({
-      params: { fincaId: FINCA_ID, catalogo: "razas" },
+      params: { fincaId: FINCA_ID, maestro: "razas" },
     }).catch((error: unknown) => error)
     expect(destinoRedirect(capturado)).toBe("/login")
   })
@@ -143,14 +144,14 @@ describe("catálogos — RBAC y routing", () => {
   it("loader: finca_no_autorizada redirige a '/'", async () => {
     vi.mocked(listarCatalogoGlobalAction).mockResolvedValueOnce({ tipo: "finca_no_autorizada" })
     const capturado = await loaderCatalogo({
-      params: { fincaId: FINCA_ID, catalogo: "razas" },
+      params: { fincaId: FINCA_ID, maestro: "razas" },
     }).catch((error: unknown) => error)
     expect(destinoRedirect(capturado)).toBe("/")
   })
 
   it("loader: fallo RPC devuelve {tipo:'error'} (fail-closed)", async () => {
     vi.mocked(listarCatalogoGlobalAction).mockRejectedValueOnce(new Error("rpc caido"))
-    const resultado = await loaderCatalogo({ params: { fincaId: FINCA_ID, catalogo: "razas" } })
+    const resultado = await loaderCatalogo({ params: { fincaId: FINCA_ID, maestro: "razas" } })
     expect(resultado).toEqual({ tipo: "error" })
   })
 
@@ -159,7 +160,7 @@ describe("catálogos — RBAC y routing", () => {
       tipo: "lista",
       filas: FILAS_RAZAS,
     })
-    const resultado = await loaderCatalogo({ params: { fincaId: FINCA_ID, catalogo: "razas" } })
+    const resultado = await loaderCatalogo({ params: { fincaId: FINCA_ID, maestro: "razas" } })
     expect(resultado).toEqual({ tipo: "lista", filas: FILAS_RAZAS })
     expect(vi.mocked(listarCatalogoGlobalAction)).toHaveBeenCalledWith({
       data: { catalogo: "razas" },
