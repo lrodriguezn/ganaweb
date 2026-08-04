@@ -24,5 +24,12 @@ export default defineConfig({
     include: ["tests/**/*.test.{ts,tsx}"],
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
+    // The userEvent + Radix interaction tests (form selects, popovers,
+    // viewport flips) exceed vitest's 5s default when turbo runs every
+    // package suite concurrently on loaded machines — they then fail with
+    // "Test timed out" or keystroke interleaving. 15s keeps the suite
+    // honest under concurrency without masking real hangs.
+    testTimeout: 15000,
+    hookTimeout: 15000,
   },
 })
