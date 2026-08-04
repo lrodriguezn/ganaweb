@@ -101,9 +101,22 @@ export type {
   RegistroMaestroScope,
 } from "./puertos/maestro-escritura-port.js"
 export type {
+  ConteoCatalogoGlobalClave,
+  ConteoFamiliaClave,
   ConteosMaestrosPort,
   ConteosMaestrosResultado,
 } from "./puertos/conteos-maestros-port.js"
+export type {
+  MaestroFila,
+  MaestroListadoOpciones,
+  MaestroListadoPort,
+  MaestroListadoResultado,
+} from "./puertos/maestro-listado-port.js"
+export type {
+  CatalogoGlobalConfiguracion,
+  CatalogoGlobalConfiguracionPort,
+  FilaCatalogoGlobalConfiguracion,
+} from "./puertos/catalogo-global-configuracion-port.js"
 export * from "./casos-uso/animales/index.js"
 export * from "./casos-uso/auth/index.js"
 export * from "./casos-uso/listar-catalogo-sexo.js"

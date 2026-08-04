@@ -1,14 +1,18 @@
 import type {
   CalidadOption,
   CatalogoAnimalMaestroPort,
+  CatalogoGlobalConfiguracion,
+  CatalogoGlobalConfiguracionPort,
   CatalogoMaestroOption,
   ColorOption,
+  FilaCatalogoGlobalConfiguracion,
   RazaOption,
   TablaMaestro,
   TipoExplotacionOption,
 } from "@ganaweb/aplicacion"
-import { eq } from "drizzle-orm"
+import { and, eq, ilike } from "drizzle-orm"
 import type { DbClient } from "./client.js"
+import { escaparBusquedaIlike } from "./maestro-listado-infrastructure.js"
 import {
   configCalidadAnimal,
   configColores,
@@ -23,9 +27,16 @@ import {
  * ADR-002: One adapter per family (not per table).
  *
  * PR-1: "raza". PR-2: adds "color" and "calidad".
+ *
+ * Issue #148 (CM-053/CM-054): also implements
+ * CatalogoGlobalConfiguracionPort on the SAME class (CM-061: extend
+ * existing adapters, don't duplicate) — read-only lists of activo=1
+ * records with optional case-insensitive search over nombre.
  */
 export class DrizzleCatalogoAnimalMaestroAdapter
-  implements CatalogoAnimalMaestroPort<TablaMaestro, CatalogoMaestroOption>
+  implements
+    CatalogoAnimalMaestroPort<TablaMaestro, CatalogoMaestroOption>,
+    CatalogoGlobalConfiguracionPort
 {
   constructor(private readonly db: DbClient) {}
 
@@ -43,6 +54,96 @@ export class DrizzleCatalogoAnimalMaestroAdapter
         return this.listarCalidades()
       case "tipoExplotacion":
         return this.listarTiposExplotacion()
+      default:
+        return []
+    }
+  }
+
+  /**
+   * CM-053/CM-054: lista solo lectura de registros activo=1 con búsqueda
+   * opcional (ILIKE case-insensitive) sobre nombre, orden nombre asc.
+   * `origen`/`tipoProduccion` solo existen en razas.
+   */
+  async listarParaConfiguracion(
+    catalogo: CatalogoGlobalConfiguracion,
+    opciones?: { readonly busqueda?: string },
+  ): Promise<readonly FilaCatalogoGlobalConfiguracion[]> {
+    const busqueda = opciones?.busqueda?.trim()
+
+    switch (catalogo) {
+      case "razas": {
+        const filas = await this.db
+          .select({
+            id: configRazas.id,
+            nombre: configRazas.nombre,
+            descripcion: configRazas.descripcion,
+            origen: configRazas.origen,
+            tipoProduccion: configRazas.tipoProduccion,
+          })
+          .from(configRazas)
+          .where(
+            and(
+              eq(configRazas.activo, 1),
+              busqueda
+                ? ilike(configRazas.nombre, `%${escaparBusquedaIlike(busqueda)}%`)
+                : undefined,
+            ),
+          )
+          .orderBy(configRazas.nombre)
+        return filas.map((fila) => ({
+          id: fila.id,
+          nombre: fila.nombre,
+          descripcion: fila.descripcion,
+          origen: fila.origen,
+          tipoProduccion: fila.tipoProduccion,
+        }))
+      }
+      case "tiposExplotacion": {
+        const filas = await this.db
+          .select({
+            id: configTiposExplotacion.id,
+            nombre: configTiposExplotacion.nombre,
+            descripcion: configTiposExplotacion.descripcion,
+          })
+          .from(configTiposExplotacion)
+          .where(
+            and(
+              eq(configTiposExplotacion.activo, 1),
+              busqueda
+                ? ilike(configTiposExplotacion.nombre, `%${escaparBusquedaIlike(busqueda)}%`)
+                : undefined,
+            ),
+          )
+          .orderBy(configTiposExplotacion.nombre)
+        return filas.map((fila) => ({
+          id: fila.id,
+          nombre: fila.nombre,
+          descripcion: fila.descripcion,
+        }))
+      }
+      case "calidades": {
+        const filas = await this.db
+          .select({
+            id: configCalidadAnimal.id,
+            nombre: configCalidadAnimal.nombre,
+            descripcion: configCalidadAnimal.descripcion,
+          })
+          .from(configCalidadAnimal)
+          .where(
+            and(
+              eq(configCalidadAnimal.activo, 1),
+              busqueda
+                ? ilike(configCalidadAnimal.nombre, `%${escaparBusquedaIlike(busqueda)}%`)
+                : undefined,
+            ),
+          )
+          .orderBy(configCalidadAnimal.nombre)
+        return filas.map((fila) => ({
+          id: fila.id,
+          nombre: fila.nombre,
+          descripcion: fila.descripcion,
+        }))
+      }
       default:
         return []
     }
