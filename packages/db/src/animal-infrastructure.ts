@@ -1410,7 +1410,11 @@ export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
     readonly cursor?: string
     readonly dominio?: DominioEventoAnimal
     readonly limit: 20
-  }): Promise<{ readonly items: readonly TimelineItemAnimalDto[]; readonly nextCursor?: string }> {
+  }): Promise<{
+    readonly items: readonly TimelineItemAnimalDto[]
+    readonly nextCursor?: string
+    readonly pendientes?: number
+  }> {
     const db = currentDb(this.db)
     const [animal] = await db
       .select({ id: animales.id })
@@ -1428,8 +1432,12 @@ export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
     const union = ramas
       .map((rama) => sqlRama(rama, consulta.animalId, cursor))
       .reduce((acumulada, rama) => sql`${acumulada} UNION ALL ${rama}`)
+    // Issue #183: `COUNT(*) OVER ()` cuenta la unión COMPLETA tras el cursor
+    // de entrada (misma unión/filtro/condición de cursor que la página — la
+    // ventana se evalúa antes del LIMIT), así el conteo pendiente es
+    // consistente con el tab activo (D2) sin segunda ronda a la base.
     const filas = (await db.execute(
-      sql`SELECT id, fecha, dominio, tipo, detalle FROM (${union}) AS evento ORDER BY fecha DESC, id DESC LIMIT ${
+      sql`SELECT id, fecha, dominio, tipo, detalle, (COUNT(*) OVER ())::int AS total_tras_cursor FROM (${union}) AS evento ORDER BY fecha DESC, id DESC LIMIT ${
         consulta.limit + 1
       }`,
     )) as unknown as readonly {
@@ -1438,6 +1446,7 @@ export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
       readonly dominio: DominioEventoAnimal
       readonly tipo: string
       readonly detalle: string | null
+      readonly total_tras_cursor: number
     }[]
 
     const items = filas.slice(0, consulta.limit).map((fila) => ({
@@ -1449,7 +1458,12 @@ export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
     }))
     const ultimo = items[items.length - 1]
     if (filas.length > consulta.limit && ultimo) {
-      return { items, nextCursor: codificarCursorTimeline(ultimo) }
+      const totalTrasCursor = Number(filas[0]?.total_tras_cursor ?? 0)
+      return {
+        items,
+        nextCursor: codificarCursorTimeline(ultimo),
+        ...(totalTrasCursor > items.length ? { pendientes: totalTrasCursor - items.length } : {}),
+      }
     }
     return { items }
   }

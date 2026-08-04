@@ -29,5 +29,15 @@ export interface TimelineAnimalPort {
     /** Filtro de dominio para las tabs de la ficha (D2: lado servidor). */
     readonly dominio?: DominioEventoAnimal
     readonly limit: 20
-  }): Promise<{ readonly items: readonly TimelineItemAnimalDto[]; readonly nextCursor?: string }>
+  }): Promise<{
+    readonly items: readonly TimelineItemAnimalDto[]
+    readonly nextCursor?: string
+    /**
+     * Issue #183: eventos que faltan por servir BAJO EL MISMO filtro de
+     * dominio, después de la página devuelta. Presente solo cuando hay
+     * `nextCursor`; ausente cuando el conteo no está disponible (la UI
+     * degrada al wording sin conteo).
+     */
+    readonly pendientes?: number
+  }>
 }
