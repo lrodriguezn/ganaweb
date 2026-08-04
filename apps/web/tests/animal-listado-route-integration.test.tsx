@@ -288,7 +288,12 @@ describe("Route wiring — the desktop branch consumes only #107 (task 3.1)", ()
     // Wait for real #107 data (the skeleton table shares the same aria-label).
     await screen.findByText("MT-001")
     expect(screen.getByRole("table", { name: "Listado de animales" })).toBeInTheDocument()
-    expect(screen.getByText("No tienes permiso para ver animales.")).toBeInTheDocument()
+    // #158 (LM-030.5): the loader denial renders the distinguishable mobile
+    // denied state with a safe return — never data nor filters.
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    expect(within(movil).getByText("No tienes acceso a esta finca")).toBeInTheDocument()
+    expect(within(movil).getByRole("button", { name: "Volver" })).toBeInTheDocument()
+    expect(within(movil).queryByRole("group", { name: "Filtros rápidos" })).not.toBeInTheDocument()
   })
 
   it("403 clears the data, states no access, and offers a safe return", async () => {
@@ -876,7 +881,7 @@ describe("Issue #157 — mobile filters wired to the #155 endpoint", () => {
     expect(url).not.toContain("Do%C3%B1a") // labels never travel in the request
   })
 
-  it("a failed filter fetch retains the last valid list — never crashes nor empties", async () => {
+  it("a failed filter fetch surfaces the retriable error state — never a silent empty list (LM-023)", async () => {
     let primeraLlamada = true
     fetchPorRama(() => {
       if (primeraLlamada) {
@@ -899,8 +904,10 @@ describe("Issue #157 — mobile filters wired to the #155 endpoint", () => {
 
     await user.click(within(movil).getByRole("button", { name: "Enfermas" }))
     await waitFor(() => expect(llamadasMobile()).toHaveLength(2))
-    // The failed second request keeps the previous page on screen.
-    expect(within(movil).getByRole("button", { name: /PRE-001/ })).toBeInTheDocument()
+    // #158 (LM-023/LM-030.6): a 500 enters the explicit error state with
+    // Reintentar — never a silent empty list nor a crash.
+    expect(await within(movil).findByText("Error al cargar los animales")).toBeInTheDocument()
+    expect(within(movil).getByRole("button", { name: "Reintentar" })).toBeInTheDocument()
     expect(within(movil).queryByText("Ningún animal coincide")).not.toBeInTheDocument()
   })
 

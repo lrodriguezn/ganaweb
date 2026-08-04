@@ -50,6 +50,9 @@ export default defineConfig({
       "tests/configuracion-hub-route.test.tsx",
       // #157 — mobile list client adapter (URL building + #155 outcome mapping).
       "tests/animal-mobile-list-adapter.test.ts",
+      // #158 — mobile list state machine: infinite-scroll accumulation,
+      // distinguishable states (LM-030) and LM-023 error semantics.
+      "tests/animal-mobile-list-states.test.tsx",
     ],
     environment: "node",
   },

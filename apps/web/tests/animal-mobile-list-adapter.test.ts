@@ -8,7 +8,10 @@
  *
  * Grammar (RF-ANIM-LIST-M v1.1 §4, LM-009/LM-014): filters travel by key/id
  * with grammar `in:<valor>` — NEVER labels (LA-001/CA-UI-001); every filter
- * change requests `page=1` (#158 owns infinite-scroll accumulation).
+ * change requests `page=1`, and #158 requests `page=N` for infinite-scroll
+ * accumulation through the `pagina` option. LM-023: a 400 maps to
+ * `consulta_invalida` carrying the parsed `ApiErrorDto` (sanitization by
+ * `campo` lives in `sanitizarFiltrosMobilePorCampo`).
  */
 import type { AnimalMobileListReadResult } from "@ganaweb/aplicacion"
 import { describe, expect, it, vi } from "vitest"
@@ -16,6 +19,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   cargarListadoMobile,
   construirConsultaListadoMobile,
+  sanitizarFiltrosMobilePorCampo,
 } from "../src/features/animales-mobile/animal-mobile-list-adapter.js"
 import type { FiltrosListadoMobile } from "../src/features/animales-mobile/animal-mobile-list-adapter.js"
 
@@ -108,6 +112,17 @@ describe("URL building from the mobile filter state (LM-005/006/009)", () => {
       new URLSearchParams(construirConsultaListadoMobile({ ...filtrosDefecto, q: "   " })).has("q"),
     ).toBe(false)
   })
+
+  it("builds page=N for infinite-scroll accumulation, keeping filters intact (LM-009)", () => {
+    const parametros = new URLSearchParams(
+      construirConsultaListadoMobile({ chip: "prenadas", propietarioId: "prop-2", q: "luna" }, 3),
+    )
+    expect(parametros.get("page")).toBe("3")
+    expect(parametros.get("pageSize")).toBe("25")
+    expect(parametros.get("f.categoriaReproductivaKey")).toBe("in:prenada")
+    expect(parametros.get("f.propietarioId")).toBe("in:prop-2")
+    expect(parametros.get("q")).toBe("luna")
+  })
 })
 
 describe("Outcome mapping through the fetchImpl seam (LM-009)", () => {
@@ -136,7 +151,7 @@ describe("Outcome mapping through the fetchImpl seam (LM-009)", () => {
     })
   })
 
-  it("400 → error_servidor (the client only emits valid filter state)", async () => {
+  it("400 → consulta_invalida carrying the parsed ApiErrorDto with its campo (LM-023)", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(
@@ -146,8 +161,37 @@ describe("Outcome mapping through the fetchImpl seam (LM-009)", () => {
         ),
       )
     expect(await cargarListadoMobile("finca-1", filtrosDefecto, { fetchImpl })).toEqual({
+      tipo: "consulta_invalida",
+      error: {
+        error: "bad_request",
+        campo: "q",
+        motivo: "q no puede estar vacío",
+        requestId: "r2",
+      },
+    })
+  })
+
+  it("a 400 with an unparseable body degrades to error_servidor, never a crash", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      status: 400,
+      json: async () => {
+        throw new Error("cuerpo inválido")
+      },
+    })
+    expect(await cargarListadoMobile("finca-1", filtrosDefecto, { fetchImpl })).toEqual({
       tipo: "error_servidor",
     })
+  })
+
+  it("the pagina option requests page=N on the mobile endpoint (LM-009)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(respuestaHttp(paginaMobile({ page: 2 })))
+    await cargarListadoMobile("finca-1", filtrosDefecto, { fetchImpl, pagina: 2 })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    const url = fetchImpl.mock.calls[0]?.[0] as string
+    const parametros = new URLSearchParams(url.slice(url.indexOf("?") + 1))
+    expect(parametros.get("page")).toBe("2")
+    expect(parametros.get("pageSize")).toBe("25")
   })
 
   it("500 → error_servidor", async () => {
@@ -183,5 +227,46 @@ describe("Outcome mapping through the fetchImpl seam (LM-009)", () => {
     expect(await cargarListadoMobile("finca-1", filtrosDefecto, { fetchImpl })).toEqual({
       tipo: "error_servidor",
     })
+  })
+})
+
+describe("400 filter sanitization by ApiErrorDto campo (LM-023)", () => {
+  const filtrosActivos: FiltrosListadoMobile = {
+    chip: "prenadas",
+    propietarioId: "prop-1",
+    q: "luna",
+  }
+
+  it("campo q clears the search and keeps chip/propietario", () => {
+    const saneado = sanitizarFiltrosMobilePorCampo(filtrosActivos, "q")
+    expect(saneado).toEqual({ chip: "prenadas", propietarioId: "prop-1", q: "" })
+  })
+
+  it("campo f.categoriaReproductivaKey resets the chip to todas", () => {
+    const saneado = sanitizarFiltrosMobilePorCampo(filtrosActivos, "f.categoriaReproductivaKey")
+    expect(saneado).toEqual({ chip: "todas", propietarioId: "prop-1", q: "luna" })
+  })
+
+  it("campo f.saludKey resets the chip to todas", () => {
+    const saneado = sanitizarFiltrosMobilePorCampo(
+      { ...filtrosActivos, chip: "enfermas" },
+      "f.saludKey",
+    )
+    expect(saneado).toEqual({ chip: "todas", propietarioId: "prop-1", q: "luna" })
+  })
+
+  it("campo f.propietarioId clears the propietario selection", () => {
+    const saneado = sanitizarFiltrosMobilePorCampo(filtrosActivos, "f.propietarioId")
+    expect(saneado).toEqual({ chip: "prenadas", propietarioId: null, q: "luna" })
+  })
+
+  it("page/pageSize are transport-only — the filters are returned unchanged", () => {
+    expect(sanitizarFiltrosMobilePorCampo(filtrosActivos, "page")).toEqual(filtrosActivos)
+    expect(sanitizarFiltrosMobilePorCampo(filtrosActivos, "pageSize")).toEqual(filtrosActivos)
+  })
+
+  it("an unknown or absent campo leaves the filters unchanged", () => {
+    expect(sanitizarFiltrosMobilePorCampo(filtrosActivos, null)).toEqual(filtrosActivos)
+    expect(sanitizarFiltrosMobilePorCampo(filtrosActivos, "f.desconocido")).toEqual(filtrosActivos)
   })
 })

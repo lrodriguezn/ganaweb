@@ -27,7 +27,7 @@ import {
   X,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
-import { useEffect, useId, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import type * as React from "react"
 
 import { cn } from "../lib/utils"
@@ -194,6 +194,26 @@ export interface AnimalListMobileFiltrosProps {
   readonly cargando?: boolean
 }
 
+/**
+ * Issue #158 (LM-030): estados explícitos y distinguibles del listado
+ * mobile. La ruta es dueña de la máquina de estados; packages/ui solo
+ * renderiza el estado discriminado y dispara callbacks. `sin_acceso` y
+ * `error` cargan su propia acción de recuperación para que cada estado sea
+ * autocontenido (nunca se confunden entre sí).
+ */
+export type AnimalListMobileEstado =
+  | { readonly tipo: "cargando_inicial" }
+  | { readonly tipo: "listo" }
+  | { readonly tipo: "sin_acceso"; readonly onVolver: () => void }
+  | { readonly tipo: "error"; readonly onReintentar: () => void }
+
+/** Issue #158 (LM-009): orquestación del scroll infinito (dueña: la ruta). */
+export interface AnimalListMobileScrollInfinitoProps {
+  readonly hayMas: boolean
+  readonly cargandoMas: boolean
+  readonly onCargarMas: () => void
+}
+
 export interface AnimalListMobileProps {
   animales: readonly AnimalMobileListItem[]
   selectedIds?: string[]
@@ -203,6 +223,12 @@ export interface AnimalListMobileProps {
   bottomNavItems: ItemNav[]
   /** Issue #157: sin `filtros` el listado conserva el modo SSR inicial. */
   filtros?: AnimalListMobileFiltrosProps
+  /** Issue #158 (LM-030): estado discriminado; sin él, modo SSR #156/#157. */
+  estado?: AnimalListMobileEstado
+  /** Issue #158 (LM-009): scroll infinito — solo relevante en estado listo. */
+  scrollInfinito?: AnimalListMobileScrollInfinitoProps
+  /** Issue #158 (LM-030.3): total SIN filtros — finca vacía vs sin resultados. */
+  totalSinFiltro?: number
 }
 
 const CHIPS_LISTADO_MOBILE: readonly {
@@ -341,7 +367,138 @@ function FiltrosListadoMobile({
   )
 }
 
-/** Contenido del listado mobile: estado vacío (LM-008) o cards (LM-001). */
+const SKELETONS_CARGA_INICIAL = 3
+
+/** Placeholder con la anatomía de la card (imagen + texto), sin librerías. */
+function CardSkeletonMobile() {
+  return (
+    <div className="rounded-card border bg-card p-3" aria-hidden="true">
+      <div className="flex gap-3">
+        <div className="size-16 shrink-0 animate-pulse rounded-control bg-muted" />
+        <div className="flex-1 space-y-2 py-1">
+          <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Issue #158 (LM-030.1): loading inicial — skeletons con anuncio polite. */
+function ListadoMobileCargandoInicial() {
+  return (
+    // <output> implica role="status" — el anuncio es una región live polite.
+    <output className="block" data-testid="listado-mobile-skeletons">
+      <span className="sr-only">Cargando animales…</span>
+      <div className="space-y-2">
+        {Array.from({ length: SKELETONS_CARGA_INICIAL }, (_, indice) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton slots are static placeholders
+          <CardSkeletonMobile key={indice} />
+        ))}
+      </div>
+    </output>
+  )
+}
+
+/**
+ * Issue #158 (LM-009/LM-040): pie del scroll infinito. Un centinela
+ * observado con IntersectionObserver dispara `onCargarMas` al hacerse
+ * visible — solo si `hayMas` y sin carga en vuelo (leídos del ref para no
+ * duplicar peticiones). "Cargando más…" se anuncia en una región live
+ * persistente. Sin IntersectionObserver (SSR) la lista no auto-carga.
+ */
+function PieScrollInfinito({
+  scrollInfinito,
+}: {
+  scrollInfinito: AnimalListMobileScrollInfinitoProps
+}) {
+  const [centinela, setCentinela] = useState<HTMLDivElement | null>(null)
+  const actual = useRef(scrollInfinito)
+  actual.current = scrollInfinito
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: las props vigentes se leen del ref `actual`; los campos primitivos re-observan al cambiar.
+  useEffect(() => {
+    if (centinela === null) return
+    if (typeof IntersectionObserver === "undefined") return
+    const observador = new IntersectionObserver((entradas) => {
+      const vigente = actual.current
+      if (!vigente.hayMas || vigente.cargandoMas) return
+      if (entradas.some((entrada) => entrada.isIntersecting)) vigente.onCargarMas()
+    })
+    observador.observe(centinela)
+    return () => observador.disconnect()
+  }, [centinela, scrollInfinito.hayMas, scrollInfinito.cargandoMas])
+
+  return (
+    <div aria-live="polite" className="py-2 text-center text-support text-muted-foreground">
+      {scrollInfinito.cargandoMas ? (
+        <p>Cargando más…</p>
+      ) : scrollInfinito.hayMas ? (
+        <div
+          ref={setCentinela}
+          data-testid="centinela-scroll-infinito"
+          aria-hidden="true"
+          className="h-px"
+        />
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Issue #158 (LM-030.3/4) + #157 (LM-008): resolución del estado vacío —
+ * sin resultados con filtros, finca vacía, o genérico.
+ */
+function EstadoVacioListadoMobile({
+  hayFiltrosActivos,
+  filtros,
+  canCreate,
+  onNuevoAnimal,
+  totalSinFiltro,
+}: {
+  hayFiltrosActivos: boolean
+  filtros: AnimalListMobileFiltrosProps | undefined
+  canCreate: boolean
+  onNuevoAnimal: () => void
+  totalSinFiltro: number | undefined
+}) {
+  if (hayFiltrosActivos && filtros) {
+    return (
+      <EmptyState
+        icon={PawPrint}
+        title="Ningún animal coincide"
+        description="Ajusta o quita los filtros para ver más resultados."
+        actionLabel="Quitar filtro"
+        onAction={filtros.onQuitarFiltros}
+      />
+    )
+  }
+  // LM-030.3: la finca no tiene animales — dedicado, con acción de alta.
+  if (totalSinFiltro === 0) {
+    return (
+      <EmptyState
+        icon={PawPrint}
+        title="Aún no hay animales en esta finca"
+        description="Registra tu primer animal para empezar a llevar el control del hato."
+        {...(canCreate ? { actionLabel: "Registrar animal", onAction: onNuevoAnimal } : {})}
+      />
+    )
+  }
+  return (
+    <EmptyState
+      icon={PawPrint}
+      title="No hay animales con estos filtros"
+      description="Ajusta la búsqueda o registra un nuevo animal para esta finca."
+      {...(canCreate ? { actionLabel: "Registrar animal", onAction: onNuevoAnimal } : {})}
+    />
+  )
+}
+
+/**
+ * Contenido del listado mobile: estados distinguibles (LM-030), estado vacío
+ * (LM-008) o cards (LM-001) + pie de scroll infinito (LM-009).
+ */
 function ContenidoListadoMobile({
   animales,
   selectedIds,
@@ -350,6 +507,9 @@ function ContenidoListadoMobile({
   onNuevoAnimal,
   filtros,
   hayFiltrosActivos,
+  estado,
+  totalSinFiltro,
+  scrollInfinito,
 }: {
   animales: readonly AnimalMobileListItem[]
   selectedIds: string[]
@@ -358,43 +518,65 @@ function ContenidoListadoMobile({
   onNuevoAnimal: () => void
   filtros: AnimalListMobileFiltrosProps | undefined
   hayFiltrosActivos: boolean
+  estado: AnimalListMobileEstado | undefined
+  totalSinFiltro: number | undefined
+  scrollInfinito: AnimalListMobileScrollInfinitoProps | undefined
 }) {
-  if (animales.length === 0) {
-    if (hayFiltrosActivos && filtros) {
-      return (
-        <EmptyState
-          icon={PawPrint}
-          title="Ningún animal coincide"
-          description="Ajusta o quita los filtros para ver más resultados."
-          actionLabel="Quitar filtro"
-          onAction={filtros.onQuitarFiltros}
-        />
-      )
-    }
+  // Issue #158 (LM-030): los estados explícitos tienen prioridad y nunca se
+  // confunden con la lista ni con los estados vacíos.
+  if (estado?.tipo === "cargando_inicial") return <ListadoMobileCargandoInicial />
+  if (estado?.tipo === "sin_acceso") {
     return (
       <EmptyState
         icon={PawPrint}
-        title="No hay animales con estos filtros"
-        description="Ajusta la búsqueda o registra un nuevo animal para esta finca."
-        {...(canCreate ? { actionLabel: "Registrar animal", onAction: onNuevoAnimal } : {})}
+        title="No tienes acceso a esta finca"
+        description="Tu sesión no tiene permisos sobre esta finca. Regresa a un lugar seguro."
+        actionLabel="Volver"
+        onAction={estado.onVolver}
+      />
+    )
+  }
+  if (estado?.tipo === "error") {
+    return (
+      <EmptyState
+        icon={PawPrint}
+        title="Error al cargar los animales"
+        description="No se pudo cargar el listado. Intenta de nuevo en unos momentos."
+        actionLabel="Reintentar"
+        onAction={estado.onReintentar}
+      />
+    )
+  }
+
+  if (animales.length === 0) {
+    return (
+      <EstadoVacioListadoMobile
+        hayFiltrosActivos={hayFiltrosActivos}
+        filtros={filtros}
+        canCreate={canCreate}
+        onNuevoAnimal={onNuevoAnimal}
+        totalSinFiltro={totalSinFiltro}
       />
     )
   }
   return (
-    <div
-      className={cn("space-y-2", filtros?.cargando && "opacity-60")}
-      aria-label="Lista de animales"
-      {...(filtros?.cargando ? { "aria-busy": true } : {})}
-    >
-      {animales.map((animal) => (
-        <AnimalResultCard
-          key={animal.id}
-          animal={animal}
-          selected={selectedIds.includes(animal.id)}
-          onPress={() => onPressAnimal(animal)}
-        />
-      ))}
-    </div>
+    <>
+      <div
+        className={cn("space-y-2", filtros?.cargando && "opacity-60")}
+        aria-label="Lista de animales"
+        {...(filtros?.cargando ? { "aria-busy": true } : {})}
+      >
+        {animales.map((animal) => (
+          <AnimalResultCard
+            key={animal.id}
+            animal={animal}
+            selected={selectedIds.includes(animal.id)}
+            onPress={() => onPressAnimal(animal)}
+          />
+        ))}
+      </div>
+      {scrollInfinito && <PieScrollInfinito scrollInfinito={scrollInfinito} />}
+    </>
   )
 }
 
@@ -406,6 +588,9 @@ export function AnimalListMobile({
   onNuevoAnimal,
   bottomNavItems,
   filtros,
+  estado,
+  scrollInfinito,
+  totalSinFiltro,
 }: AnimalListMobileProps) {
   // Issue #157: con filtros activos el estado vacío ofrece quitarlos (LM-008).
   const hayFiltrosActivos =
@@ -413,6 +598,8 @@ export function AnimalListMobile({
     (filtros.chipActivo !== "todas" ||
       filtros.propietarioId !== null ||
       filtros.busqueda.trim() !== "")
+  // LM-030.5: el acceso denegado se renderiza sin datos ni filtros previos.
+  const sinAcceso = estado?.tipo === "sin_acceso"
   return (
     <section
       data-testid="op-frame-0185"
@@ -442,23 +629,25 @@ export function AnimalListMobile({
 
       <div className="p-4 space-y-3">
         {/* LM-005: los chips de filtro rápido quedan por encima de la lista. */}
-        {filtros && <FiltrosListadoMobile filtros={filtros} />}
+        {filtros && !sinAcceso && <FiltrosListadoMobile filtros={filtros} />}
 
-        <label className="min-h-[--h-touch] rounded-control border bg-card px-3 flex items-center gap-2">
-          <Search className="size-4 text-muted-foreground" aria-hidden="true" />
-          <span className="sr-only">Buscar animal</span>
-          {/* LM-007/LM-014: input controlado; el debounce vive en la ruta. */}
-          <input
-            className="min-w-0 flex-1 bg-transparent text-support outline-none placeholder:text-muted-foreground"
-            placeholder="Buscar por código, nombre o arete"
-            {...(filtros
-              ? {
-                  value: filtros.busqueda,
-                  onChange: (evento) => filtros.onBuscar(evento.target.value),
-                }
-              : {})}
-          />
-        </label>
+        {!sinAcceso && (
+          <label className="min-h-[--h-touch] rounded-control border bg-card px-3 flex items-center gap-2">
+            <Search className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span className="sr-only">Buscar animal</span>
+            {/* LM-007/LM-014: input controlado; el debounce vive en la ruta. */}
+            <input
+              className="min-w-0 flex-1 bg-transparent text-support outline-none placeholder:text-muted-foreground"
+              placeholder="Buscar por código, nombre o arete"
+              {...(filtros
+                ? {
+                    value: filtros.busqueda,
+                    onChange: (evento) => filtros.onBuscar(evento.target.value),
+                  }
+                : {})}
+            />
+          </label>
+        )}
 
         <ContenidoListadoMobile
           animales={animales}
@@ -468,6 +657,11 @@ export function AnimalListMobile({
           onNuevoAnimal={onNuevoAnimal}
           filtros={filtros}
           hayFiltrosActivos={hayFiltrosActivos}
+          estado={estado}
+          totalSinFiltro={totalSinFiltro}
+          scrollInfinito={
+            estado === undefined || estado.tipo === "listo" ? scrollInfinito : undefined
+          }
         />
       </div>
 

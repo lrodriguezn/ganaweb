@@ -1,6 +1,6 @@
-import type { AnimalMobileListReadResult } from "@ganaweb/aplicacion"
+import type { AnimalMobileListReadResult, AnimalMobileRow } from "@ganaweb/aplicacion"
 /**
- * Animals list route — #108 desktop wiring (PR 3) + #156 mobile wiring.
+ * Animals list route — #108 desktop wiring (PR 3) + #156/#157/#158 mobile wiring.
  *
  * Data flow (design.md):
  * - loader ─> `getAnimalListadoVisualPermissionsAction(fincaId)` — fail-closed
@@ -19,25 +19,38 @@ import type { AnimalMobileListReadResult } from "@ganaweb/aplicacion"
  * behavior and URL sanitization"). The loader keeps the projection and the
  * mobile first page exactly as designed.
  *
+ * Mobile state machine (#158, LM-030/LM-009/LM-023): the SSR first page seeds
+ * the accumulation; filter changes refetch page 1 (replacing it); the
+ * IntersectionObserver sentinel appends page N+1 while `hayMas`; 400 sanitizes
+ * the offending filter + toast + retains the list + refetches page 1; 403
+ * clears the data to the denied state; 500/timeout/network enters the
+ * retriable error state (never a silent empty list).
+ *
+ * LM-011 (offline, future — gate `no-sqlite`): when the local replica exists,
+ * the same mobile use case runs against SQLite WASM; the client adapter
+ * (`cargarListadoMobile`) is the seam that swaps transport for replica, so
+ * this route wiring stays unchanged. No offline code today — the gate forbids it.
+ *
  * Rollback surface: revert this file to the legacy `AnimalDesktopScreen`
  * wiring (the component remains exported by `@ganaweb/ui`); #107, the
  * adapter, the projection, and the mobile branch stay untouched.
  * Boundaries: no filters/search/order (#109) or pagination/selector/preferences
  * (#110). Since #111 the desktop `Exportar` button opens `AnimalExportacionDialog`,
  * whose transport reuses the active query through `exportarListadoDesktop`.
- * Mobile chips/search/propietario (#157) run client-side through the
- * `cargarListadoMobile` adapter (page 1 on every filter change); the
- * infinite-scroll states (#158) remain a separate issue — the loader
- * resolves page 1 only.
+ * Mobile chips/search/propietario (#157) plus infinite scroll and the
+ * distinguishable states (#158) run client-side through the
+ * `cargarListadoMobile` adapter against the #155 contract.
  */
 import {
   AnimalExportacionDialog,
   type AnimalExportacionTransporte,
   AnimalListMobile,
+  type AnimalListMobileEstado,
   AnimalListadoDesktop,
   type AnimalListadoDesktopRow,
   type ResultadoExportacionDialog,
   Toaster,
+  toast,
 } from "@ganaweb/ui"
 import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
 import { Calendar, CheckSquare, Home, Menu, PawPrint } from "lucide-react"
@@ -79,7 +92,10 @@ import {
 } from "../../../../features/animal-listado/animal-listado-route-adapter.js"
 import {
   type ChipListadoMobile,
+  type FiltrosListadoMobile,
+  type ResultadoListadoMobileCliente,
   cargarListadoMobile,
+  sanitizarFiltrosMobilePorCampo,
 } from "../../../../features/animales-mobile/animal-mobile-list-adapter.js"
 import {
   type AnimalCatalogs,
@@ -437,22 +453,105 @@ function usePreferenciasListado(
   }
 }
 
+/** Infinite-scroll accumulation (#158, LM-009): pages 1..N of the #155 DTO. */
+interface AcumuladoListadoMobile {
+  readonly animales: readonly AnimalMobileRow[]
+  readonly pagina: number
+  readonly hayMas: boolean
+  readonly total: number
+  readonly totalSinFiltro: number
+}
+
+type VistaListadoMobile = "cargando_inicial" | "listo" | "sin_acceso" | "error"
+
+/** LM-023 (400): transport-only fields retry as-is; anything else is a filter. */
+function campoSaneableMobile(campo: string | null): boolean {
+  return (
+    campo === "q" ||
+    campo === "f.categoriaReproductivaKey" ||
+    campo === "f.saludKey" ||
+    campo === "f.propietarioId" ||
+    campo === "page" ||
+    campo === "pageSize"
+  )
+}
+
+function aAcumuladoListadoMobile(resultado: AnimalMobileListReadResult): AcumuladoListadoMobile {
+  return {
+    animales: resultado.data,
+    pagina: resultado.page,
+    hayMas: resultado.hayMas,
+    total: resultado.total,
+    totalSinFiltro: resultado.totalSinFiltro,
+  }
+}
+
 /**
- * Issue #157 (LM-005..009, LM-014, LM-015): client state for the mobile
- * quick filters, search, and propietario selector. The SSR first page seeds
- * the list without fetching; every filter change requests page 1 through the
- * #155 client adapter and replaces the list (infinite-scroll accumulation is
- * #158). A failed request retains the last valid page — never crashes, never
- * empties. The desktop branch never reads this state.
+ * LM-009: page 1 replaces the accumulation; page N+1 appends to it. A stale
+ * page (epoch-guarded upstream) can neither replace nor append.
+ */
+function acumularPaginaMobile(
+  previo: AcumuladoListadoMobile | null,
+  resultado: AnimalMobileListReadResult,
+): AcumuladoListadoMobile {
+  if (previo === null || resultado.page <= 1) return aAcumuladoListadoMobile(resultado)
+  return {
+    ...previo,
+    animales: [...previo.animales, ...resultado.data],
+    pagina: resultado.page,
+    hayMas: resultado.hayMas,
+    total: resultado.total,
+    totalSinFiltro: resultado.totalSinFiltro,
+  }
+}
+
+function sembrarListadoMobile(listadoMobile: AnimalsListadoMobileData): {
+  acumulado: AcumuladoListadoMobile | null
+  vista: VistaListadoMobile
+} {
+  if (listadoMobile.tipo === "permiso_denegado") return { acumulado: null, vista: "sin_acceso" }
+  return { acumulado: aAcumuladoListadoMobile(listadoMobile.resultado), vista: "listo" }
+}
+
+/**
+ * Issue #157/#158 (LM-005..009, LM-014, LM-015, LM-023, LM-030): client state
+ * machine for the mobile list. The SSR first page seeds the accumulation
+ * without fetching; every filter change requests page 1 (replacing the
+ * accumulation); `cargarMas` appends page N+1 while `hayMas` (LM-009).
+ * Error semantics (LM-023): 400 sanitizes the offending filter, toasts,
+ * retains the last valid list and refetches page 1; 403 clears the data to
+ * the denied state; 500/timeout/network enters the retriable error state —
+ * never a silent empty list. The desktop branch never reads this state.
  */
 function useFiltrosListadoMobile(fincaId: string, listadoMobile: AnimalsListadoMobileData) {
   const [chip, setChip] = useState<ChipListadoMobile>("todas")
   const [propietarioId, setPropietarioId] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState("")
   const [busquedaAplicada, setBusquedaAplicada] = useState("")
-  const [paginaCliente, setPaginaCliente] = useState<AnimalMobileListReadResult | null>(null)
+
+  const semilla = sembrarListadoMobile(listadoMobile)
+  const [acumulado, setAcumulado] = useState<AcumuladoListadoMobile | null>(semilla.acumulado)
+  const [vista, setVista] = useState<VistaListadoMobile>(semilla.vista)
   const [cargando, setCargando] = useState(false)
+  const [cargandoMas, setCargandoMas] = useState(false)
+  /** Failed request's page — `Reintentar` refetches exactly that request. */
+  const [paginaFallida, setPaginaFallida] = useState<number | null>(null)
+  const [intento, setIntento] = useState(0)
   const primeraRender = useRef(true)
+  /** Epoch guard: a stale response never mutates the machine (LA-045 style). */
+  const epocaRef = useRef(0)
+
+  const filtrosActuales: FiltrosListadoMobile = { chip, propietarioId, q: busquedaAplicada }
+  const filtrosRef = useRef(filtrosActuales)
+  filtrosRef.current = filtrosActuales
+  const acumuladoRef = useRef(acumulado)
+  acumuladoRef.current = acumulado
+  const vistaRef = useRef(vista)
+  vistaRef.current = vista
+  const cargandoRef = useRef(cargando)
+  cargandoRef.current = cargando
+  const cargandoMasRef = useRef(cargandoMas)
+  cargandoMasRef.current = cargandoMas
 
   // LM-014: the search debounces 300 ms in the route layer; packages/ui stays
   // dumb. "Quitar filtro" applies the cleared input immediately so it issues
@@ -462,28 +561,110 @@ function useFiltrosListadoMobile(fincaId: string, listadoMobile: AnimalsListadoM
     return () => clearTimeout(temporizador)
   }, [busqueda])
 
-  // LM-009: any chip/propietario/search change fetches page 1; the initial
-  // render uses the SSR page without fetching.
+  const procesarResultadoMobile = (
+    resultado: ResultadoListadoMobileCliente,
+    contexto: { readonly filtros: FiltrosListadoMobile; readonly pagina: number },
+  ) => {
+    switch (resultado.tipo) {
+      case "listo": {
+        setCargando(false)
+        setCargandoMas(false)
+        setPaginaFallida(null)
+        setAcumulado((previo) => acumularPaginaMobile(previo, resultado.resultado))
+        setVista("listo")
+        return
+      }
+      case "consulta_invalida": {
+        // LM-023 (400): sanitize the offending filter, announce the
+        // correction, retain the last valid list, and refetch page 1. An
+        // unidentifiable campo is not safely correctable — error state.
+        const campo = resultado.error.campo
+        if (!campoSaneableMobile(campo)) {
+          setCargando(false)
+          setCargandoMas(false)
+          setPaginaFallida(1)
+          setVista("error")
+          return
+        }
+        toast({
+          title: "Parámetros de la consulta corregidos",
+          description: resultado.error.motivo,
+        })
+        const saneado = sanitizarFiltrosMobilePorCampo(contexto.filtros, campo)
+        setChip(saneado.chip)
+        setPropietarioId(saneado.propietarioId)
+        setBusqueda(saneado.q)
+        setBusquedaAplicada(saneado.q)
+        setCargandoMas(false)
+        setCargando(acumuladoRef.current !== null && vistaRef.current === "listo")
+        // The sanitized state (and/or `intento`) re-runs the page-1 effect.
+        setIntento((actual) => actual + 1)
+        return
+      }
+      case "sin_acceso": {
+        // LM-030.5: denial clears any previous data.
+        setCargando(false)
+        setCargandoMas(false)
+        setPaginaFallida(null)
+        setAcumulado(null)
+        setVista("sin_acceso")
+        return
+      }
+      case "error_servidor": {
+        // LM-023/LM-030.6: explicit retriable error — never a silent empty
+        // list. The accumulation is retained for a page N+1 retry append.
+        setCargando(false)
+        setCargandoMas(false)
+        setPaginaFallida(contexto.pagina)
+        setVista("error")
+        return
+      }
+    }
+  }
+
+  const ejecutarCargaPaginaSiguiente = (pagina: number, filtros: FiltrosListadoMobile) => {
+    const epoca = ++epocaRef.current
+    // Synchronous guard: repeated sentinel intersections before the re-render
+    // must not dispatch duplicate requests (LM-009).
+    cargandoMasRef.current = true
+    setCargandoMas(true)
+    setVista("listo")
+    void cargarListadoMobile(fincaId, filtros, { pagina }).then((resultado) => {
+      if (epocaRef.current !== epoca) return
+      procesarResultadoMobile(resultado, { filtros, pagina })
+    })
+  }
+
+  // LM-009: any chip/propietario/search change fetches page 1 and replaces
+  // the accumulation; the initial render uses the SSR page without fetching.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the pre-fetch visible state is read through refs so retained data never re-triggers the fetch.
   useEffect(() => {
     if (primeraRender.current) {
       primeraRender.current = false
       return
     }
-    let activo = true
-    setCargando(true)
+    const epoca = ++epocaRef.current
+    // LM-030.1: skeletons only when there is no valid list to retain.
+    if (acumuladoRef.current !== null && vistaRef.current === "listo") {
+      setCargando(true)
+      setCargandoMas(false)
+    } else {
+      setCargando(false)
+      setCargandoMas(false)
+      setVista("cargando_inicial")
+    }
     void cargarListadoMobile(fincaId, { chip, propietarioId, q: busquedaAplicada }).then(
       (resultado) => {
-        if (!activo) return
-        setCargando(false)
-        if (resultado.tipo === "listo") setPaginaCliente(resultado.resultado)
+        if (epocaRef.current !== epoca) return
+        procesarResultadoMobile(resultado, {
+          filtros: { chip, propietarioId, q: busquedaAplicada },
+          pagina: 1,
+        })
       },
     )
-    return () => {
-      activo = false
-    }
-  }, [fincaId, chip, propietarioId, busquedaAplicada])
+  }, [fincaId, chip, propietarioId, busquedaAplicada, intento])
 
-  // A finca switch resets the filter state back to the SSR first page.
+  // A finca switch resets the machine back to the (new) SSR first page.
   const [fincaActual, setFincaActual] = useState(fincaId)
   if (fincaActual !== fincaId) {
     setFincaActual(fincaId)
@@ -491,9 +672,15 @@ function useFiltrosListadoMobile(fincaId: string, listadoMobile: AnimalsListadoM
     setPropietarioId(null)
     setBusqueda("")
     setBusquedaAplicada("")
-    setPaginaCliente(null)
+    const siguiente = sembrarListadoMobile(listadoMobile)
+    setAcumulado(siguiente.acumulado)
+    setVista(siguiente.vista)
     setCargando(false)
+    setCargandoMas(false)
+    setPaginaFallida(null)
+    setIntento(0)
     primeraRender.current = true
+    epocaRef.current += 1
   }
 
   const quitarFiltros = () => {
@@ -503,7 +690,32 @@ function useFiltrosListadoMobile(fincaId: string, listadoMobile: AnimalsListadoM
     setBusquedaAplicada("")
   }
 
-  const pagina = paginaCliente ?? (listadoMobile.tipo === "lista" ? listadoMobile.resultado : null)
+  /** LM-009: sentinel callback — guarded against duplicate in-flight loads. */
+  const cargarMas = () => {
+    const actual = acumuladoRef.current
+    if (
+      vistaRef.current !== "listo" ||
+      actual === null ||
+      !actual.hayMas ||
+      cargandoRef.current ||
+      cargandoMasRef.current
+    ) {
+      return
+    }
+    ejecutarCargaPaginaSiguiente(actual.pagina + 1, filtrosRef.current)
+  }
+
+  /** LM-030.6: Reintentar refetches exactly the failed request. */
+  const reintentar = () => {
+    if (vistaRef.current !== "error" || paginaFallida === null) return
+    if (paginaFallida === 1) {
+      // The page-1 effect owns the request; the filters are unchanged since the
+      // failure (any filter change would have left the error state already).
+      setIntento((actual) => actual + 1)
+      return
+    }
+    ejecutarCargaPaginaSiguiente(paginaFallida, filtrosRef.current)
+  }
 
   return {
     chip,
@@ -512,9 +724,16 @@ function useFiltrosListadoMobile(fincaId: string, listadoMobile: AnimalsListadoM
     setPropietarioId,
     busqueda,
     setBusqueda,
-    pagina,
-    cargando,
     quitarFiltros,
+    vista,
+    animales: acumulado?.animales ?? [],
+    total: acumulado?.total ?? 0,
+    totalSinFiltro: acumulado?.totalSinFiltro ?? 0,
+    hayMas: acumulado?.hayMas ?? false,
+    cargando,
+    cargandoMas,
+    onCargarMas: cargarMas,
+    onReintentar: reintentar,
   }
 }
 
@@ -576,12 +795,26 @@ export function AnimalsListRouteView({
     }
   }, [fincaId, permissions, consultaListado, intento])
 
-  // Issue #157: mobile quick filters/search/propietario client state.
+  // Issue #157/#158: mobile list client state machine (filters, infinite
+  // scroll accumulation, and the LM-030 distinguishable states).
   const filtrosMobile = useFiltrosListadoMobile(fincaId, listadoMobile)
 
   // Issue #156: the mobile branch consumes the #155 contract resolved by the
   // loader; `canCreate` comes from the visual projection (LM-RBAC-03).
-  const filasMobile = filtrosMobile.pagina?.data ?? []
+  const filasMobile = filtrosMobile.animales
+  const estadoMobile: AnimalListMobileEstado = (() => {
+    switch (filtrosMobile.vista) {
+      case "cargando_inicial":
+        return { tipo: "cargando_inicial" }
+      case "listo":
+        return { tipo: "listo" }
+      case "sin_acceso":
+        // LM-030.5: denial with safe back navigation (LA-041 seam).
+        return { tipo: "sin_acceso", onVolver }
+      case "error":
+        return { tipo: "error", onReintentar: filtrosMobile.onReintentar }
+    }
+  })()
   const goNew = () => {
     if (permissions.canCreate) onIrANuevo()
   }
@@ -707,8 +940,11 @@ export function AnimalsListRouteView({
           onPressAnimal={(animal) => onAbrirFicha(animal.id)}
           onNuevoAnimal={goNew}
           bottomNavItems={bottomNavItems}
-          {...(listadoMobile.tipo === "lista"
-            ? {
+          estado={estadoMobile}
+          totalSinFiltro={filtrosMobile.totalSinFiltro}
+          {...(filtrosMobile.vista === "sin_acceso"
+            ? {}
+            : {
                 filtros: {
                   chipActivo: filtrosMobile.chip,
                   onChip: filtrosMobile.setChip,
@@ -722,17 +958,23 @@ export function AnimalsListRouteView({
                   onPropietario: filtrosMobile.setPropietarioId,
                   busqueda: filtrosMobile.busqueda,
                   onBuscar: filtrosMobile.setBusqueda,
-                  total: filtrosMobile.pagina?.total ?? 0,
+                  total: filtrosMobile.total,
                   onQuitarFiltros: filtrosMobile.quitarFiltros,
                   cargando: filtrosMobile.cargando,
+                },
+              })}
+          {...(filtrosMobile.vista === "listo"
+            ? {
+                // LM-009: infinite scroll — the sentinel appends page N+1.
+                scrollInfinito: {
+                  hayMas: filtrosMobile.hayMas,
+                  cargandoMas: filtrosMobile.cargandoMas,
+                  onCargarMas: filtrosMobile.onCargarMas,
                 },
               }
             : {})}
         />
       </div>
-      {listadoMobile.tipo === "permiso_denegado" && (
-        <p className="text-support text-muted-foreground">No tienes permiso para ver animales.</p>
-      )}
       <span className="sr-only">{Calendar.displayName}</span>
       {/* #111: the export dialog (LA-070/074) opens from the desktop Exportar
           button; it portals to <body>, so it is unaffected by the desktop-only

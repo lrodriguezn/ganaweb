@@ -3270,3 +3270,233 @@ describe("Issue #157 — filtros rápidos, buscador y propietario del listado mo
     expect(filtros.onBuscar).toHaveBeenCalledWith("MT-12")
   })
 })
+
+/**
+ * Issue #158 (RF-ANIM-LIST-M v1.1 §6 LM-030, §7 LM-009): estados de interfaz
+ * distinguibles e scroll infinito del listado mobile. packages/ui sigue
+ * presentacional: recibe el estado discriminado + callbacks desde la ruta.
+ * jsdom no implementa IntersectionObserver, así que se simula globalmente
+ * (mismo patrón que los stubs de pointer-capture del beforeAll del archivo).
+ */
+type EntradaInterseccionSimulada = { readonly isIntersecting: boolean }
+type CallbackInterseccionSimulada = (entradas: readonly EntradaInterseccionSimulada[]) => void
+const callbacksObservadorSimulados = new Set<CallbackInterseccionSimulada>()
+
+class IntersectionObserverSimulado {
+  private readonly callback: CallbackInterseccionSimulada
+
+  constructor(callback: CallbackInterseccionSimulada) {
+    this.callback = callback
+  }
+
+  observe() {
+    callbacksObservadorSimulados.add(this.callback)
+  }
+
+  unobserve() {
+    callbacksObservadorSimulados.delete(this.callback)
+  }
+
+  disconnect() {
+    callbacksObservadorSimulados.delete(this.callback)
+  }
+
+  takeRecords() {
+    return []
+  }
+}
+
+function simularInterseccionCentinela() {
+  for (const callback of [...callbacksObservadorSimulados]) {
+    callback([{ isIntersecting: true }])
+  }
+}
+
+describe("Issue #158 — estados distinguibles e scroll infinito del listado mobile (LM-030/LM-009)", () => {
+  beforeAll(() => {
+    vi.stubGlobal("IntersectionObserver", IntersectionObserverSimulado)
+  })
+
+  afterAll(() => {
+    vi.unstubAllGlobals()
+  })
+
+  afterEach(() => {
+    callbacksObservadorSimulados.clear()
+  })
+
+  it("LM-030.1: initial loading renders card skeletons, never an empty state", () => {
+    render(
+      <AnimalListMobile
+        animales={[]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        estado={{ tipo: "cargando_inicial" }}
+      />,
+    )
+
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando animales…")
+    expect(screen.getByTestId("listado-mobile-skeletons")).toBeInTheDocument()
+    expect(screen.queryByText("No hay animales con estos filtros")).not.toBeInTheDocument()
+    expect(screen.queryByText("Aún no hay animales en esta finca")).not.toBeInTheDocument()
+  })
+
+  it("LM-030.2/LM-040: the loading-more footer announces 'Cargando más…' via aria-live", () => {
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        estado={{ tipo: "listo" }}
+        scrollInfinito={{ hayMas: true, cargandoMas: true, onCargarMas: vi.fn() }}
+      />,
+    )
+
+    const pie = screen.getByText("Cargando más…")
+    expect(pie.closest('[aria-live="polite"]')).not.toBeNull()
+    // While a page is in flight the sentinel is not mounted (no duplicate loads).
+    expect(screen.queryByTestId("centinela-scroll-infinito")).not.toBeInTheDocument()
+    // The existing list stays visible (LM-030.2).
+    expect(screen.getByRole("button", { name: /MT-122 Luna/ })).toBeInTheDocument()
+  })
+
+  it("LM-009: the sentinel mounts when hayMas and no load is in flight", () => {
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        estado={{ tipo: "listo" }}
+        scrollInfinito={{ hayMas: true, cargandoMas: false, onCargarMas: vi.fn() }}
+      />,
+    )
+
+    expect(screen.getByTestId("centinela-scroll-infinito")).toBeInTheDocument()
+    expect(screen.queryByText("Cargando más…")).not.toBeInTheDocument()
+  })
+
+  it("LM-009: the sentinel intersection fires onCargarMas exactly once", () => {
+    const onCargarMas = vi.fn()
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        estado={{ tipo: "listo" }}
+        scrollInfinito={{ hayMas: true, cargandoMas: false, onCargarMas }}
+      />,
+    )
+
+    simularInterseccionCentinela()
+    expect(onCargarMas).toHaveBeenCalledTimes(1)
+  })
+
+  it("LM-009: never loads more when hayMas=false or a load is already in flight", () => {
+    const onCargarMas = vi.fn()
+    const { rerender } = render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        estado={{ tipo: "listo" }}
+        scrollInfinito={{ hayMas: false, cargandoMas: false, onCargarMas }}
+      />,
+    )
+    expect(screen.queryByTestId("centinela-scroll-infinito")).not.toBeInTheDocument()
+
+    rerender(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        estado={{ tipo: "listo" }}
+        scrollInfinito={{ hayMas: true, cargandoMas: true, onCargarMas }}
+      />,
+    )
+    simularInterseccionCentinela()
+    expect(onCargarMas).not.toHaveBeenCalled()
+  })
+
+  it("LM-030.3: empty finca offers registering the first animal when canCreate", async () => {
+    const onNuevoAnimal = vi.fn()
+    render(
+      <AnimalListMobile
+        animales={[]}
+        canCreate
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={onNuevoAnimal}
+        bottomNavItems={nav}
+        estado={{ tipo: "listo" }}
+        totalSinFiltro={0}
+      />,
+    )
+
+    expect(screen.getByText("Aún no hay animales en esta finca")).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole("button", { name: "Registrar animal" }))
+    expect(onNuevoAnimal).toHaveBeenCalledTimes(1)
+  })
+
+  it("LM-030.3/LM-RBAC-03: empty finca without canCreate shows no create action", () => {
+    render(
+      <AnimalListMobile
+        animales={[]}
+        canCreate={false}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        estado={{ tipo: "listo" }}
+        totalSinFiltro={0}
+      />,
+    )
+
+    expect(screen.getByText("Aún no hay animales en esta finca")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Registrar animal" })).not.toBeInTheDocument()
+  })
+
+  it("LM-030.6: the error state offers Reintentar and hides any data", async () => {
+    const onReintentar = vi.fn()
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        estado={{ tipo: "error", onReintentar }}
+      />,
+    )
+
+    expect(screen.getByText("Error al cargar los animales")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /MT-122 Luna/ })).not.toBeInTheDocument()
+    expect(screen.queryByText("Aún no hay animales en esta finca")).not.toBeInTheDocument()
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Reintentar" }))
+    expect(onReintentar).toHaveBeenCalledTimes(1)
+  })
+
+  it("LM-030.5: access denied clears the data, hides filters, and offers a safe return", async () => {
+    const onVolver = vi.fn()
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtrosMobile({ total: 1 })}
+        estado={{ tipo: "sin_acceso", onVolver }}
+      />,
+    )
+
+    expect(screen.getByText("No tienes acceso a esta finca")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /MT-122 Luna/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole("group", { name: "Filtros rápidos" })).not.toBeInTheDocument()
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Volver" }))
+    expect(onVolver).toHaveBeenCalledTimes(1)
+  })
+})
