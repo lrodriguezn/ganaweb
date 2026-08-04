@@ -159,6 +159,14 @@ export interface MaestroResumen {
    * card muestra "—" en vez del número. El hub SIEMPRE renderiza las 15.
    */
   degradado?: boolean
+  /**
+   * CM-007 (issue #151): etiqueta del estado vacío cuando el vacío NO es
+   * bloqueante — p. ej. la card Predios muestra "Incompleto" si la finca
+   * no tiene sus datos básicos completos, en vez de "Vacío". Ausente →
+   * la card muestra "Vacío" (comportamiento original). `degradado` y
+   * `requeridoPara` tienen prioridad sobre esta etiqueta.
+   */
+  etiquetaVacio?: string
   /** Si está vacío Y algún proceso lo requiere: texto de la dependencia */
   requeridoPara?: string // ej: "Servicios IA"
   ruta: string // ruta del CRUD, ej: "/configuracion/veterinarios"

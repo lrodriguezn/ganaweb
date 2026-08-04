@@ -308,6 +308,49 @@ describe.skipIf(!dbSmoke)("Issue #147: escritura y conteos de maestros (smoke Po
     expect(inexistente).toEqual({ tipo: "no_encontrado" })
   })
 
+  it("obtenerDatosBasicos lee la finca y refleja la edición (CM-050, issue #151)", async () => {
+    // Finca dedicada: no mutar otraFincaId (el test CM-007 posterior la
+    // necesita sin ubicación).
+    const fincaLecturaId = `finca-test-lectura-${crypto.randomUUID()}`
+    await db.insert(fincas).values({
+      id: fincaLecturaId,
+      codigo: `TST${fincaLecturaId.slice(-6).toUpperCase()}`,
+      nombre: "Finca Prueba Lectura",
+    })
+    try {
+      const inicial = await adapter.obtenerDatosBasicos(fincaLecturaId)
+      expect(inicial).toEqual({
+        codigo: expect.stringMatching(/^TST/),
+        nombre: "Finca Prueba Lectura",
+        departamento: null,
+        municipio: null,
+        vereda: null,
+        areaHectareas: 0,
+        capacidadMaxima: 0,
+        tipoExplotacionId: null,
+      })
+
+      const editado = await adapter.actualizarDatosBasicos(fincaLecturaId, {
+        municipio: "Yarumal",
+        area_hectareas: 12.5,
+        tipo_explotacion_id: fixtureTipoExplotacionId,
+      })
+      expect(editado.tipo).toBe("actualizado")
+
+      const actualizado = await adapter.obtenerDatosBasicos(fincaLecturaId)
+      expect(actualizado).toMatchObject({
+        nombre: "Finca Prueba Lectura",
+        municipio: "Yarumal",
+        areaHectareas: 12.5,
+        tipoExplotacionId: fixtureTipoExplotacionId,
+      })
+    } finally {
+      await db.delete(fincas).where(eq(fincas.id, fincaLecturaId))
+    }
+
+    expect(await adapter.obtenerDatosBasicos(`finca-inexistente-${crypto.randomUUID()}`)).toBeNull()
+  })
+
   it("CM-061: conteos agregados reflejan las cantidades sembradas", async () => {
     // Cantidades conocidas: 2 potreros activos + 1 inactivo, 1 veterinario
     // inseminador + 1 sin flag, 1 grupo. Finca con nombre + departamento.

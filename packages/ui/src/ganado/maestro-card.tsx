@@ -11,7 +11,8 @@ import type { MaestroResumen } from "./types"
  * Reglas encapsuladas:
  * - Card con conteo de registros; si está vacío Y bloquea un proceso,
  *   alerta danger: "Vacío · requerido para {proceso}". Vacío no bloqueante:
- *   alerta "Vacío" en color alerta (frame-20073).
+ *   alerta "Vacío" en color alerta (frame-20073), o `etiquetaVacio` si
+ *   viene (CM-007, issue #151: Predios muestra "Incompleto").
  * - CM-014: item degradado muestra "—" en el conteo, sin alerta de vacío;
  *   el hub sigue renderizando.
  * - CM-006/CM-008: `registrosSecundario` renderiza el doble conteo "N · M"
@@ -78,7 +79,8 @@ export function MaestroCard({
         ) : vacio ? (
           <span className="flex items-center gap-1 text-caption text-alerta-600 mt-0.5">
             <AlertCircle aria-hidden="true" className="size-3 shrink-0" />
-            Vacío
+            {/* CM-007 (issue #151): p. ej. Predios muestra "Incompleto". */}
+            {maestro.etiquetaVacio ?? "Vacío"}
           </span>
         ) : (
           <span className="block text-caption text-muted-foreground mt-0.5 num">

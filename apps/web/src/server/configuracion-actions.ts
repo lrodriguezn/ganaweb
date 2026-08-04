@@ -11,6 +11,7 @@
 
 import type {
   CatalogoGlobalConfiguracion,
+  DatosBasicosFinca,
   FamiliaMaestro,
   FilaCatalogoGlobalConfiguracion,
   MaestroFila,
@@ -88,6 +89,10 @@ export interface EditarFincaWebInput {
   readonly datos: Readonly<Record<string, string | number | null>>
 }
 
+export interface ObtenerDatosFincaWebInput {
+  readonly fincaId: string
+}
+
 export type ResumenMaestrosServerResult =
   | ConfiguracionServerDenial
   | { readonly tipo: "resumen"; readonly items: readonly MaestroResumen[] }
@@ -131,6 +136,16 @@ export type EditarFincaServerResult =
   | ConfiguracionServerDenial
   | { readonly tipo: "actualizado" }
   | { readonly tipo: "validacion"; readonly errores: readonly ConfiguracionServerError[] }
+  | { readonly tipo: "no_encontrado" }
+  | { readonly tipo: "error"; readonly detalle: string }
+
+/**
+ * Issue #151 (CM-050): lectura de los datos básicos de la finca para la
+ * vista del predio. `DatosBasicosFinca` es data plana serializable.
+ */
+export type ObtenerDatosFincaServerResult =
+  | ConfiguracionServerDenial
+  | { readonly tipo: "finca"; readonly datos: DatosBasicosFinca }
   | { readonly tipo: "no_encontrado" }
   | { readonly tipo: "error"; readonly detalle: string }
 
@@ -187,4 +202,11 @@ export const editarFincaAction = createServerFn({ method: "POST" })
   .handler(
     async ({ data }) =>
       (await (await getRuntimeHarness()).editarFinca(data)) as EditarFincaServerResult,
+  )
+
+export const obtenerDatosFincaAction = createServerFn({ method: "GET" })
+  .validator((data: ObtenerDatosFincaWebInput) => data)
+  .handler(
+    async ({ data }) =>
+      (await (await getRuntimeHarness()).obtenerDatosFinca(data)) as ObtenerDatosFincaServerResult,
   )

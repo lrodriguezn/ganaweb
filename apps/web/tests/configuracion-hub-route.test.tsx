@@ -219,6 +219,41 @@ describe("ConfiguracionHubView — desktop (CM-003..CM-008)", () => {
   })
 })
 
+describe("ConfiguracionHubView — CM-007 (card Predios)", () => {
+  function itemsPredioIncompleto(): MaestroResumen[] {
+    return itemsDisenio().map((item) =>
+      item.id === "predio" ? { ...item, registros: 0, etiquetaVacio: "Incompleto" } : item,
+    )
+  }
+
+  it("finca completa: la card Predios muestra '1 registro'", () => {
+    render(
+      <ConfiguracionHubView
+        fincaId={FINCA_ID}
+        resultado={{ tipo: "resumen", items: itemsDisenio() }}
+        onNavegar={() => {}}
+        onReintentar={() => {}}
+      />,
+    )
+    // Desktop card (mobile va consolidada en "Predios · Potreros · Sectores").
+    expect(screen.getAllByText("1 registro").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("finca incompleta: la card Predios muestra 'Incompleto' en vez de 'Vacío'", () => {
+    render(
+      <ConfiguracionHubView
+        fincaId={FINCA_ID}
+        resultado={{ tipo: "resumen", items: itemsPredioIncompleto() }}
+        onNavegar={() => {}}
+        onReintentar={() => {}}
+      />,
+    )
+    const cardPredios = screen.getByRole("button", { name: /^PrediosIncompleto/ })
+    expect(within(cardPredios).getByText("Incompleto")).toBeInTheDocument()
+    expect(within(cardPredios).queryByText(/Vacío/)).not.toBeInTheDocument()
+  })
+})
+
 describe("ConfiguracionHubView — mobile (CM-009/CM-010)", () => {
   it("filas consolidadas con conteo compuesto y globales presentes, en orden del diseño", () => {
     render(
@@ -346,6 +381,24 @@ describe("ConfiguracionGrupoView — sub-menú mobile (S-1)", () => {
   it("miembrosDeFila preserva el orden de la definición", () => {
     const miembros = miembrosDeFila(filaUbicacion, itemsDisenio())
     expect(miembros.map((m) => m.id)).toEqual(["predio", "potreros", "sectores"])
+  })
+
+  it("CM-007: la fila del predio muestra 'Incompleto' si la finca está incompleta", () => {
+    render(
+      <ConfiguracionGrupoView
+        fincaId={FINCA_ID}
+        fila={filaUbicacion}
+        resultado={{
+          tipo: "resumen",
+          items: itemsDisenio().map((item) =>
+            item.id === "predio" ? { ...item, registros: 0, etiquetaVacio: "Incompleto" } : item,
+          ),
+        }}
+        onNavegar={() => {}}
+        onReintentar={() => {}}
+      />,
+    )
+    expect(screen.getByText("Incompleto")).toBeInTheDocument()
   })
 
   it("back navega al hub", async () => {

@@ -94,6 +94,41 @@ describe("MaestroCard — conteos", () => {
     expect(container.querySelector(".text-alerta-600")).not.toBeNull()
   })
 
+  it("CM-007: etiquetaVacio reemplaza 'Vacío' en el vacío no bloqueante", () => {
+    const { container } = render(
+      <MaestroCard
+        maestro={maestro({ id: "predio", registros: 0, etiquetaVacio: "Incompleto" })}
+        onPress={() => {}}
+      />,
+    )
+    expect(screen.getByText("Incompleto")).toBeInTheDocument()
+    expect(screen.queryByText("Vacío")).not.toBeInTheDocument()
+    // Conserva el color alerta del vacío no bloqueante.
+    expect(container.querySelector(".text-alerta-600")).not.toBeNull()
+  })
+
+  it("CM-007: el vacío bloqueante ignora etiquetaVacio (muestra la dependencia)", () => {
+    render(
+      <MaestroCard
+        maestro={maestro({ registros: 0, requeridoPara: "Servicios IA", etiquetaVacio: "Otro" })}
+        onPress={() => {}}
+      />,
+    )
+    expect(screen.getByText(/Vacío · requerido para Servicios IA/)).toBeInTheDocument()
+    expect(screen.queryByText("Otro")).not.toBeInTheDocument()
+  })
+
+  it("CM-007: degradado tiene prioridad sobre etiquetaVacio ('—')", () => {
+    render(
+      <MaestroCard
+        maestro={maestro({ registros: 0, degradado: true, etiquetaVacio: "Incompleto" })}
+        onPress={() => {}}
+      />,
+    )
+    expect(screen.getByText("—")).toBeInTheDocument()
+    expect(screen.queryByText("Incompleto")).not.toBeInTheDocument()
+  })
+
   it("invoca onPress con el maestro", async () => {
     const user = userEvent.setup()
     const onPress = vi.fn()

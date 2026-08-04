@@ -2,11 +2,19 @@
  * Adaptador Drizzle de escritura de Configuración · Maestros (issue #147,
  * RF-CONFIG-MAESTROS v1.0).
  *
- * Una sola clase implementa `MaestroEscrituraPort` (11 familias) y
- * `FincaEscrituraPort` (CM-050): comparten el mismo cliente, la misma
- * semántica de campos presentes (lo ausente no se toca) y la misma
- * traducción de errores (CM-032). Separarlas en dos clases duplicaría el
- * mapeo data-driven sin beneficio.
+ * Una sola clase implementa `MaestroEscrituraPort` (11 familias),
+ * `FincaEscrituraPort` y `FincaLecturaPort` (CM-050): comparten el mismo
+ * cliente, la misma semántica de campos presentes (lo ausente no se toca)
+ * y la misma traducción de errores (CM-032). Separarlas en dos clases
+ * duplicaría el mapeo data-driven sin beneficio.
+ *
+ * Decisión issue #151 (CM-061): la lectura de los datos básicos de la
+ * finca (`obtenerDatosBasicos`) vive en ESTA misma clase en vez de un
+ * `DrizzleFincaLecturaAdapter` separado — la lectura y la escritura de la
+ * finca usan el mismo cliente y el mismo mapeo de columnas de la tabla
+ * `fincas` (`COLUMNAS_FINCA`), y `createConfiguracionDeps` ya cablea una
+ * única instancia para escritura+finca. Un adaptador extra sólo añadiría
+ * infraestructura duplicada.
  *
  * Diseño data-driven: `FAMILIAS` declara la tabla y el mapeo de claves
  * snake_case de `DatosMaestroNormalizados` a columnas Drizzle de cada
@@ -30,9 +38,11 @@
  */
 
 import type {
+  DatosBasicosFinca,
   DatosMaestroNormalizados,
   FamiliaMaestro,
   FincaEscrituraPort,
+  FincaLecturaPort,
   MaestroEscrituraPort,
   RegistroMaestroScope,
 } from "@ganaweb/aplicacion"
@@ -279,10 +289,13 @@ function mapearDatos(
 }
 
 /**
- * Adaptador de escritura de maestros y de la finca. Ver el header del
- * archivo para las reglas (CM-024, CM-032, CM-040, CM-050, RN-050).
+ * Adaptador de escritura y lectura de maestros y de la finca. Ver el header
+ * del archivo para las reglas (CM-024, CM-032, CM-040, CM-050, CM-061,
+ * RN-050).
  */
-export class DrizzleMaestroEscrituraAdapter implements MaestroEscrituraPort, FincaEscrituraPort {
+export class DrizzleMaestroEscrituraAdapter
+  implements MaestroEscrituraPort, FincaEscrituraPort, FincaLecturaPort
+{
   constructor(private readonly db: DbClient) {}
 
   async obtenerPorId(familia: FamiliaMaestro, id: string): Promise<RegistroMaestroScope | null> {
@@ -405,6 +418,41 @@ export class DrizzleMaestroEscrituraAdapter implements MaestroEscrituraPort, Fin
       return resultado.count === 0 ? { tipo: "no_encontrado" } : { tipo: "actualizado" }
     } catch {
       return { tipo: "error", detalle: "No se pudo actualizar la finca." }
+    }
+  }
+
+  /**
+   * CM-050 (issue #151): lectura de los datos básicos de la finca para
+   * precargar la vista del predio. No filtra por `activo`: la finca llega
+   * por la sesión autorizada (scope ya aplicado aguas arriba) y la
+   * escritura (`actualizarDatosBasicos`) tampoco filtra por activo.
+   */
+  async obtenerDatosBasicos(fincaId: string): Promise<DatosBasicosFinca | null> {
+    const filas = await this.db
+      .select({
+        codigo: fincas.codigo,
+        nombre: fincas.nombre,
+        departamento: fincas.departamento,
+        municipio: fincas.municipio,
+        vereda: fincas.vereda,
+        areaHectareas: fincas.areaHectareas,
+        capacidadMaxima: fincas.capacidadMaxima,
+        tipoExplotacionId: fincas.tipoExplotacionId,
+      })
+      .from(fincas)
+      .where(eq(fincas.id, fincaId))
+      .limit(1)
+    const fila = filas[0]
+    if (!fila) return null
+    return {
+      codigo: fila.codigo,
+      nombre: fila.nombre,
+      departamento: fila.departamento,
+      municipio: fila.municipio,
+      vereda: fila.vereda,
+      areaHectareas: fila.areaHectareas,
+      capacidadMaxima: fila.capacidadMaxima,
+      tipoExplotacionId: fila.tipoExplotacionId,
     }
   }
 }

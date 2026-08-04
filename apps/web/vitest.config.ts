@@ -48,6 +48,10 @@ export default defineConfig({
       // #149 — hub Configuración · Maestros: vistas desktop/mobile, sub-menú
       // de grupos (S-1), estados CM-014 y redirects RBAC de las rutas.
       "tests/configuracion-hub-route.test.tsx",
+      // #151 — predio (CM-050/CM-051): formulario de la finca, solo lectura
+      // sin permiso, y catálogos globales solo lectura (CM-025/CM-053/CM-054).
+      "tests/configuracion-predio-route.test.tsx",
+      "tests/configuracion-catalogos-route.test.tsx",
       // #157 — mobile list client adapter (URL building + #155 outcome mapping).
       "tests/animal-mobile-list-adapter.test.ts",
       // #158 — mobile list state machine: infinite-scroll accumulation,

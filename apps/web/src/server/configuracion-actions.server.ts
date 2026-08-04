@@ -16,8 +16,10 @@ import type {
   ConteoFamiliaClave,
   ConteosMaestrosPort,
   ConteosMaestrosResultado,
+  DatosBasicosFinca,
   FamiliaMaestro,
   FincaEscrituraPort,
+  FincaLecturaPort,
   MaestroEscrituraPort,
   MaestroListadoOpciones,
   MaestroListadoPort,
@@ -47,6 +49,8 @@ export type ConfiguracionDenial =
 export interface ConfiguracionDeps {
   readonly escritura: MaestroEscrituraPort
   readonly finca: FincaEscrituraPort
+  /** Issue #151 (CM-050): lectura de los datos básicos de la finca. */
+  readonly fincaLectura: FincaLecturaPort
   readonly conteos: ConteosMaestrosPort
   readonly listado: MaestroListadoPort
   readonly catalogos: CatalogoGlobalConfiguracionPort
@@ -57,6 +61,8 @@ export function createConfiguracionDeps(client: DbClient): ConfiguracionDeps {
   return {
     escritura,
     finca: escritura,
+    // CM-061: el mismo adaptador implementa la lectura de la finca.
+    fincaLectura: escritura,
     conteos: new DrizzleConteosMaestrosAdapter(client),
     listado: new DrizzleMaestroListadoAdapter(client),
     catalogos: new DrizzleCatalogoAnimalMaestroAdapter(client),
@@ -132,6 +138,10 @@ export interface EditarFincaInput {
   readonly datos: Readonly<Record<string, unknown>>
 }
 
+export interface ObtenerDatosFincaInput {
+  readonly fincaId: string
+}
+
 interface ConfiguracionActionHarnessDeps {
   readonly deps: ConfiguracionDeps
   readonly getSession: (fincaId?: string) => Promise<SesionAutorizada | null>
@@ -192,6 +202,20 @@ function esConteo(valor: unknown): valor is number {
 
 type ItemResumenBase = Omit<MaestroResumen, "registros">
 
+/**
+ * CM-007 (issue #151): la card Predios del hub refleja el estado de los
+ * datos básicos de la finca — "1 registro" si están completos, o
+ * registros 0 + `etiquetaVacio: "Incompleto"` (MaestroCard lo renderiza
+ * en vez de "Vacío").
+ */
+const ETIQUETA_PREDIO_INCOMPLETO = "Incompleto"
+
+function itemPredio(base: ItemResumenBase, completa: boolean): MaestroResumen {
+  return completa
+    ? { ...base, registros: 1 }
+    : { ...base, registros: 0, etiquetaVacio: ETIQUETA_PREDIO_INCOMPLETO }
+}
+
 function itemBase(definicion: DefinicionMaestroHub, fincaId: string): ItemResumenBase {
   return {
     id: definicion.id,
@@ -219,7 +243,7 @@ function itemDesdeConteos(
       return itemConConteo(base, conteos.inseminadores)
     case "predio":
       return typeof conteos.fincaCompleta === "boolean"
-        ? { ...base, registros: conteos.fincaCompleta ? 1 : 0 }
+        ? itemPredio(base, conteos.fincaCompleta)
         : { ...base, registros: 0, degradado: true }
     case "lotesGrupos": {
       const lotes = conteos.porMaestro?.lotes
@@ -285,7 +309,7 @@ async function itemEnDegradacion(
     }
     case "predio": {
       const valor = await conteoFamiliaSeguro(conteos, fincaId, "fincaCompleta")
-      return valor === null ? degradado : { ...base, registros: valor }
+      return valor === null ? degradado : itemPredio(base, valor === 1)
     }
     case "lotesGrupos": {
       const [lotes, grupos] = await Promise.all([
@@ -423,6 +447,33 @@ export function createConfiguracionActionHarness({
 
       return editarFinca(deps.finca)({ fincaId: input.fincaId, datos: input.datos })
     },
+
+    /**
+     * Issue #151 (CM-050): datos básicos de la finca para precargar la
+     * vista del predio. Gate `configuracion:ver` + scope de la finca
+     * activa; unión serializable (CM-042). Un fallo del puerto degrada a
+     * `{tipo:"error"}` con mensaje fijo (sin filtrar detalles internos).
+     */
+    async obtenerDatosFinca(
+      input: ObtenerDatosFincaInput,
+    ): Promise<
+      | ConfiguracionDenial
+      | { readonly tipo: "finca"; readonly datos: DatosBasicosFinca }
+      | { readonly tipo: "no_encontrado" }
+      | { readonly tipo: "error"; readonly detalle: string }
+    > {
+      const session = await getSession(input.fincaId)
+      const denied = denyConfiguracionAccess(session, input.fincaId, "ver")
+      if (denied) return denied
+
+      try {
+        const datos = await deps.fincaLectura.obtenerDatosBasicos(input.fincaId)
+        if (!datos) return { tipo: "no_encontrado" }
+        return { tipo: "finca", datos }
+      } catch {
+        return { tipo: "error", detalle: "No se pudieron cargar los datos de la finca." }
+      }
+    },
   }
 }
 
@@ -491,5 +542,7 @@ export function createConfiguracionRuntimeHarness({
       runWithHarness((harness) => harness.cambiarEstado(input)),
     editarFinca: (input: EditarFincaInput) =>
       runWithHarness((harness) => harness.editarFinca(input)),
+    obtenerDatosFinca: (input: ObtenerDatosFincaInput) =>
+      runWithHarness((harness) => harness.obtenerDatosFinca(input)),
   }
 }

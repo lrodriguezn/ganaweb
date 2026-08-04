@@ -4,6 +4,7 @@ import type {
   ConteoCatalogoGlobalClave,
   ConteoFamiliaClave,
   ConteosMaestrosResultado,
+  DatosBasicosFinca,
   FamiliaMaestro,
   FilaCatalogoGlobalConfiguracion,
   MaestroListadoOpciones,
@@ -92,6 +93,7 @@ interface FakeConfiguracion {
   readonly deps: ConfiguracionDeps
   readonly llamadasEscritura: LlamadaEscritura[]
   readonly llamadasFinca: readonly unknown[][]
+  readonly llamadasFincaLectura: readonly string[]
   readonly llamadasListado: LlamadaListado[]
   readonly llamadasCatalogo: LlamadaCatalogo[]
   readonly llamadasConteos: { readonly metodo: string; readonly args: readonly unknown[] }[]
@@ -153,11 +155,26 @@ interface FakeOverrides {
     | { readonly tipo: "no_encontrado" }
     | { readonly tipo: "error"; readonly detalle: string }
   >
+  readonly obtenerDatosBasicos?: (fincaId: string) => Promise<DatosBasicosFinca | null>
+}
+
+function datosFincaFixture(): DatosBasicosFinca {
+  return {
+    codigo: "FIN001",
+    nombre: "Finca La Esperanza",
+    departamento: "Antioquia",
+    municipio: "Yarumal",
+    vereda: "El Silencio",
+    areaHectareas: 42.5,
+    capacidadMaxima: 100,
+    tipoExplotacionId: "tipo-1",
+  }
 }
 
 function fakeDeps(overrides: FakeOverrides = {}): FakeConfiguracion {
   const llamadasEscritura: LlamadaEscritura[] = []
   const llamadasFinca: unknown[][] = []
+  const llamadasFincaLectura: string[] = []
   const llamadasListado: LlamadaListado[] = []
   const llamadasCatalogo: LlamadaCatalogo[] = []
   const llamadasConteos: { metodo: string; args: readonly unknown[] }[] = []
@@ -201,6 +218,14 @@ function fakeDeps(overrides: FakeOverrides = {}): FakeConfiguracion {
           : { tipo: "actualizado" }
       },
     },
+    fincaLectura: {
+      async obtenerDatosBasicos(fincaId) {
+        llamadasFincaLectura.push(fincaId)
+        return overrides.obtenerDatosBasicos
+          ? overrides.obtenerDatosBasicos(fincaId)
+          : datosFincaFixture()
+      },
+    },
     conteos: {
       async contarTodo(fincaId) {
         llamadasConteos.push({ metodo: "contarTodo", args: [fincaId] })
@@ -242,6 +267,7 @@ function fakeDeps(overrides: FakeOverrides = {}): FakeConfiguracion {
     deps,
     llamadasEscritura,
     llamadasFinca,
+    llamadasFincaLectura,
     llamadasListado,
     llamadasCatalogo,
     llamadasConteos,
@@ -408,6 +434,11 @@ async function testResumenHubCompleto() {
   assert.equal(porId.get("propietarios")?.registros, 2)
   assert.equal(porId.get("inseminadores")?.registros, 2, "inseminadores usa el conteo CM-040")
   assert.equal(porId.get("predio")?.registros, 1, "predio cuenta 1 si la finca está completa")
+  assert.equal(
+    porId.get("predio")?.etiquetaVacio,
+    undefined,
+    "predio completa no lleva etiqueta de vacío (CM-007)",
+  )
   assert.equal(porId.get("lotesGrupos")?.registros, 6, "lotesGrupos: registros = lotes")
   assert.equal(
     porId.get("lotesGrupos")?.registrosSecundario,
@@ -432,10 +463,16 @@ async function testResumenHubCompleto() {
   const resultadoIncompleto = await harnessCon(fakesIncompleta).resumen({ fincaId: "finca-1" })
   assert.equal(resultadoIncompleto.tipo, "resumen")
   if (resultadoIncompleto.tipo !== "resumen") return
+  const predioIncompleto = resultadoIncompleto.items.find((item) => item.id === "predio")
   assert.equal(
-    resultadoIncompleto.items.find((item) => item.id === "predio")?.registros,
+    predioIncompleto?.registros,
     0,
     "predio cuenta 0 si la finca está incompleta (CM-007)",
+  )
+  assert.equal(
+    predioIncompleto?.etiquetaVacio,
+    "Incompleto",
+    "predio incompleta lleva etiquetaVacio 'Incompleto' (CM-007)",
   )
 }
 
@@ -491,6 +528,11 @@ async function testResumenDegradacionPorItem() {
   assert.equal(porId.get("veterinarios")?.degradado, undefined)
   assert.equal(porId.get("inseminadores")?.registros, 2)
   assert.equal(porId.get("predio")?.registros, 1)
+  assert.equal(
+    porId.get("predio")?.etiquetaVacio,
+    undefined,
+    "predio completa vía degradación no lleva etiqueta (CM-007)",
+  )
   assert.equal(porId.get("lotesGrupos")?.registros, 6)
   assert.equal(porId.get("lotesGrupos")?.registrosSecundario, 7)
   assert.equal(porId.get("razas")?.registros, 5)
@@ -513,6 +555,26 @@ async function testResumenDegradacionPorItem() {
     },
     { registros: 0, registrosSecundario: 0, degradado: true },
     "si una de las dos familias de Lotes · Grupos falla, la card completa degrada",
+  )
+
+  const fakesPredioCero = fakeDeps({
+    contarTodo: async () => {
+      throw new Error("aggregate count failed")
+    },
+    contarPorFamilia: async (_fincaId, familia) => (familia === "fincaCompleta" ? 0 : 1),
+  })
+  const resultadoPredioCero = await harnessCon(fakesPredioCero).resumen({ fincaId: "finca-1" })
+  assert.equal(resultadoPredioCero.tipo, "resumen")
+  if (resultadoPredioCero.tipo !== "resumen") return
+  const predioCero = resultadoPredioCero.items.find((item) => item.id === "predio")
+  assert.deepEqual(
+    {
+      registros: predioCero?.registros,
+      etiquetaVacio: predioCero?.etiquetaVacio,
+      degradado: predioCero?.degradado,
+    },
+    { registros: 0, etiquetaVacio: "Incompleto", degradado: undefined },
+    "degradación por item: fincaCompleta 0 → 'Incompleto' (CM-007)",
   )
 }
 
@@ -858,6 +920,53 @@ async function testEscrituraMapeoUnoAUno() {
   )
 }
 
+async function testObtenerDatosFinca() {
+  const fakes = fakeDeps()
+  const harness = harnessCon(fakes)
+  assert.deepEqual(
+    await harness.obtenerDatosFinca({ fincaId: "finca-1" }),
+    { tipo: "finca", datos: datosFincaFixture() },
+    "con configuracion:ver y scope devuelve los datos básicos (CM-050)",
+  )
+  assert.deepEqual(fakes.llamadasFincaLectura, ["finca-1"], "el puerto recibe el fincaId")
+
+  const fakesSinFinca = fakeDeps({ obtenerDatosBasicos: async () => null })
+  assert.deepEqual(
+    await harnessCon(fakesSinFinca).obtenerDatosFinca({ fincaId: "finca-1" }),
+    { tipo: "no_encontrado" },
+    "puerto null → no_encontrado",
+  )
+
+  const fakesRoto = fakeDeps({
+    obtenerDatosBasicos: async () => {
+      throw new Error("connection refused at 10.0.0.1:5432 secret-detail")
+    },
+  })
+  assert.deepEqual(
+    await harnessCon(fakesRoto).obtenerDatosFinca({ fincaId: "finca-1" }),
+    { tipo: "error", detalle: "No se pudieron cargar los datos de la finca." },
+    "el fallo del puerto degrada a error con mensaje fijo (sin filtrar detalles)",
+  )
+
+  const fakesDenegado = fakeDeps()
+  const sinSesion = harnessCon(fakesDenegado, async () => null)
+  assert.deepEqual(await sinSesion.obtenerDatosFinca({ fincaId: "finca-1" }), {
+    tipo: "no_autenticado",
+  })
+  const otraFinca = harnessCon(fakesDenegado, async () => session({ fincaActivaId: "finca-2" }))
+  assert.deepEqual(await otraFinca.obtenerDatosFinca({ fincaId: "finca-1" }), {
+    tipo: "finca_no_autorizada",
+  })
+  const sinVer = harnessCon(fakesDenegado, async () =>
+    session({ permisos: [{ modulo: "configuracion", accion: "editar" }] }),
+  )
+  assert.deepEqual(await sinVer.obtenerDatosFinca({ fincaId: "finca-1" }), {
+    tipo: "permiso_denegado",
+    permiso: "configuracion:ver",
+  })
+  assert.equal(fakesDenegado.llamadasFincaLectura.length, 0, "la denegación no toca el puerto")
+}
+
 async function testListarPassThrough() {
   const fakes = fakeDeps()
   const harness = harnessCon(fakes)
@@ -926,6 +1035,8 @@ async function testRuntimeHarnessRequiereAdaptadores() {
     datos: { nombre: "Runtime" },
   })
   assert.equal(creado.tipo, "creado")
+  const fincaRuntime = await runtime.obtenerDatosFinca({ fincaId: "finca-1" })
+  assert.equal(fincaRuntime.tipo, "finca", "el runtime harness expone obtenerDatosFinca")
 }
 
 async function testSerializabilidadDeResultados() {
@@ -972,6 +1083,17 @@ async function testSerializabilidadDeResultados() {
       activo: false,
     }),
     await harness.editarFinca({ fincaId: "finca-1", datos: { nombre: "S" } }),
+    await harness.obtenerDatosFinca({ fincaId: "finca-1" }),
+    await harnessCon(fakeDeps({ obtenerDatosBasicos: async () => null })).obtenerDatosFinca({
+      fincaId: "finca-1",
+    }),
+    await harnessCon(
+      fakeDeps({
+        obtenerDatosBasicos: async () => {
+          throw new Error("db down")
+        },
+      }),
+    ).obtenerDatosFinca({ fincaId: "finca-1" }),
     await harnessCon(fakeDeps(), async () => null).resumen({ fincaId: "finca-1" }),
     await harnessCon(fakeDeps(), async () => session({ fincaActivaId: "finca-2" })).resumen({
       fincaId: "finca-1",
@@ -1000,6 +1122,7 @@ async function run() {
   await testScopeFincaPrimero()
   await testGuardiaEscrituraCM025()
   await testEscrituraMapeoUnoAUno()
+  await testObtenerDatosFinca()
   await testListarPassThrough()
   await testRuntimeHarnessRequiereAdaptadores()
   await testSerializabilidadDeResultados()

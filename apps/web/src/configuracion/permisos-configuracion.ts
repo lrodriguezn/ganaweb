@@ -19,6 +19,7 @@ export function puedeCrearConfiguracion(permisos: readonly Permiso[]): boolean {
   return tienePermiso(crearPermisos([...permisos]), "configuracion", "crear")
 }
 
+/** CM-050 (issue #151): sin configuracion:editar el predio es solo lectura. */
 export function puedeEditarConfiguracion(permisos: readonly Permiso[]): boolean {
   return tienePermiso(crearPermisos([...permisos]), "configuracion", "editar")
 }
