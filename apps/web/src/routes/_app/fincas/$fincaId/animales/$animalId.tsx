@@ -52,6 +52,8 @@ export interface AnimalFichaRouteViewData {
   readonly timeline: {
     readonly items: readonly AnimalTimelineItem[]
     readonly nextCursor?: string
+    /** Issue #183: conteo pendiente bajo el filtro activo ("Ver N eventos más"). */
+    readonly eventosPendientes?: number
   }
   readonly permissions: { readonly canInactivate: boolean }
 }
@@ -72,6 +74,8 @@ interface EstadoTimelineFicha {
   readonly items: readonly AnimalTimelineItem[]
   readonly nextCursor?: string
   readonly dominio?: DominioEvento
+  /** Issue #183: conteo pendiente bajo el filtro activo, si el servidor lo reporta. */
+  readonly eventosPendientes?: number
 }
 
 /**
@@ -102,6 +106,9 @@ export function AnimalFichaRouteView({
   const [estadoTimeline, setEstadoTimeline] = useState<EstadoTimelineFicha>({
     items: data.timeline.items,
     ...(data.timeline.nextCursor ? { nextCursor: data.timeline.nextCursor } : {}),
+    ...(data.timeline.eventosPendientes != null
+      ? { eventosPendientes: data.timeline.eventosPendientes }
+      : {}),
   })
 
   const cambiarTabTimeline = async (dominio?: DominioEvento) => {
@@ -117,6 +124,9 @@ export function AnimalFichaRouteView({
       items: resultado.timeline.items,
       ...(resultado.timeline.nextCursor ? { nextCursor: resultado.timeline.nextCursor } : {}),
       ...(dominio ? { dominio } : {}),
+      ...(resultado.timeline.eventosPendientes != null
+        ? { eventosPendientes: resultado.timeline.eventosPendientes }
+        : {}),
     })
   }
 
@@ -135,6 +145,9 @@ export function AnimalFichaRouteView({
       items: [...estadoTimeline.items, ...resultado.timeline.items],
       ...(resultado.timeline.nextCursor ? { nextCursor: resultado.timeline.nextCursor } : {}),
       ...(estadoTimeline.dominio ? { dominio: estadoTimeline.dominio } : {}),
+      ...(resultado.timeline.eventosPendientes != null
+        ? { eventosPendientes: resultado.timeline.eventosPendientes }
+        : {}),
     })
   }
 
@@ -146,6 +159,9 @@ export function AnimalFichaRouteView({
           timeline={[...estadoTimeline.items]}
           {...(data.resumen ? { resumen: data.resumen } : {})}
           {...(estadoTimeline.nextCursor ? { nextCursor: estadoTimeline.nextCursor } : {})}
+          {...(estadoTimeline.eventosPendientes != null
+            ? { eventosPendientes: estadoTimeline.eventosPendientes }
+            : {})}
           {...(estadoTimeline.dominio ? { dominioActivo: estadoTimeline.dominio } : {})}
           {...(onVolverAListado ? { onVolverAListado } : {})}
           {...(onEditar ? { onEdit: onEditar } : {})}

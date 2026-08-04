@@ -217,6 +217,7 @@ describe("animal ficha route — server-driven timeline (redesign-ficha-animal s
   function paginaTimeline(
     items: readonly { readonly id: string; readonly titulo: string; readonly dominio: string }[],
     nextCursor?: string,
+    eventosPendientes?: number,
   ) {
     return {
       tipo: "ficha" as const,
@@ -229,6 +230,30 @@ describe("animal ficha route — server-driven timeline (redesign-ficha-animal s
           titulo: item.titulo,
         })),
         ...(nextCursor ? { nextCursor } : {}),
+        ...(eventosPendientes != null ? { eventosPendientes } : {}),
+      },
+    }
+  }
+
+  function fichaConPaginaInicial(eventosPendientes?: number): AnimalFichaRouteViewProps {
+    const base = fichaProps()
+    return {
+      ...base,
+      data: {
+        ...base.data,
+        timeline: {
+          items: [
+            {
+              id: "ev-1",
+              dominio: "produccion",
+              tipo: "pesaje",
+              fecha: "2026-07-01",
+              titulo: "Pesaje página 1",
+            },
+          ],
+          nextCursor: "cursor-x",
+          ...(eventosPendientes != null ? { eventosPendientes } : {}),
+        },
       },
     }
   }
@@ -258,27 +283,7 @@ describe("animal ficha route — server-driven timeline (redesign-ficha-animal s
     vi.mocked(getAnimalFichaAction).mockResolvedValueOnce(
       paginaTimeline([{ id: "ev-2", titulo: "Pesaje página 2", dominio: "produccion" }]),
     )
-    const base = fichaProps()
-    render(
-      <AnimalFichaRouteView
-        {...base}
-        data={{
-          ...base.data,
-          timeline: {
-            items: [
-              {
-                id: "ev-1",
-                dominio: "produccion",
-                tipo: "pesaje",
-                fecha: "2026-07-01",
-                titulo: "Pesaje página 1",
-              },
-            ],
-            nextCursor: "cursor-x",
-          },
-        }}
-      />,
-    )
+    render(<AnimalFichaRouteView {...fichaConPaginaInicial()} />)
 
     await user.click(await screen.findByRole("button", { name: "Ver más eventos" }))
 
@@ -310,5 +315,58 @@ describe("animal ficha route — server-driven timeline (redesign-ficha-animal s
         tabTimeline: "reproduccion",
       },
     })
+  })
+
+  it("renders 'Ver N eventos más' with the loader pending count (#183)", () => {
+    render(<AnimalFichaRouteView {...fichaConPaginaInicial(8)} />)
+
+    const ficha = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    expect(ficha.getByRole("button", { name: "Ver 8 eventos más" })).toBeInTheDocument()
+  })
+
+  it("updates the pending count as pages are appended and hides the control on the last page (#183)", async () => {
+    const user = userEvent.setup()
+    const fichaAction = vi.mocked(getAnimalFichaAction)
+    fichaAction
+      .mockResolvedValueOnce(
+        paginaTimeline(
+          [{ id: "ev-2", titulo: "Pesaje página 2", dominio: "produccion" }],
+          "cursor-y",
+          3,
+        ),
+      )
+      .mockResolvedValueOnce(
+        paginaTimeline([{ id: "ev-3", titulo: "Pesaje página 3", dominio: "produccion" }]),
+      )
+    render(<AnimalFichaRouteView {...fichaConPaginaInicial(8)} />)
+
+    const ficha = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    await user.click(await ficha.findByRole("button", { name: "Ver 8 eventos más" }))
+    // El conteo se actualiza con la respuesta de la página anexada.
+    expect(await ficha.findByRole("button", { name: "Ver 3 eventos más" })).toBeInTheDocument()
+
+    await user.click(ficha.getByRole("button", { name: "Ver 3 eventos más" }))
+    // Última página: el control desaparece (sin cursor ni conteo).
+    await waitFor(() => {
+      expect(ficha.queryByRole("button", { name: /eventos más/ })).not.toBeInTheDocument()
+      expect(ficha.queryByRole("button", { name: "Ver más eventos" })).not.toBeInTheDocument()
+    })
+  })
+
+  it("shows the filtered pending count after switching a tab (#183)", async () => {
+    const user = userEvent.setup()
+    vi.mocked(getAnimalFichaAction).mockResolvedValueOnce(
+      paginaTimeline(
+        [{ id: "srv-1", titulo: "Servicio IA", dominio: "reproduccion" }],
+        "cursor-r",
+        12,
+      ),
+    )
+    render(<AnimalFichaRouteView {...fichaProps()} />)
+
+    await user.click(await screen.findByRole("tab", { name: "Reproducción" }))
+
+    const ficha = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    expect(await ficha.findByRole("button", { name: "Ver 12 eventos más" })).toBeInTheDocument()
   })
 })

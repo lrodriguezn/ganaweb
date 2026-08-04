@@ -2172,6 +2172,20 @@ describe("redesign-ficha-animal — desktop ficha visual shell", () => {
 
       expect(screen.getByRole("button", { name: "Ver más eventos" })).toBeInTheDocument()
     })
+
+    it("uses the singular wording when exactly one event is pending (#183)", () => {
+      render(
+        <AnimalFichaDesktopScreen
+          animal={animalDiseno}
+          timeline={eventosMultiDominio}
+          nextCursor="cursor-2"
+          eventosPendientes={1}
+          onLoadMore={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole("button", { name: "Ver 1 evento más" })).toBeInTheDocument()
+    })
   })
 
   describe("screen action wiring", () => {
