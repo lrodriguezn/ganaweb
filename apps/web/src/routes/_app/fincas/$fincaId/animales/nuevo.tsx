@@ -3,8 +3,12 @@
 import { useState } from "react"
 
 import { AnimalFormScreen } from "@ganaweb/ui"
-import type { AnimalFormCatalogOptions } from "@ganaweb/ui"
+import type { AnimalFormCatalogOptions, SelectOption } from "@ganaweb/ui"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+  CrearMaestroInline,
+  type MaestroInlineCreable,
+} from "../../../../../configuracion/crear-maestro-inline.js"
 import { parseEsCONumber } from "../../../../../lib/parsers/es-co-number.js"
 import {
   type AnimalCatalogs,
@@ -25,9 +29,10 @@ export const Route = createFileRoute("/_app/fincas/$fincaId/animales/nuevo")({
 })
 
 /**
- * CA-UI-002: the "+ Crear nuevo" affordance on Raza / Color / Lugar de
- * compra is gated on the user having `configuracion:crear`. Calidad
- * never exposes the affordance per the v1.3 spec.
+ * CA-UI-002 / CM-043 (issue #150): el affordance "+ Crear nuevo" queda
+ * limitado a maestros POR FINCA (lugar de compra) y gateado en
+ * `configuracion:crear`. Los catálogos globales (raza/color/calidad) NO
+ * tienen creación desde la finca (CM-025).
  */
 function hasConfiguracionCrear(
   permisos: readonly { readonly modulo: string; readonly accion: string }[],
@@ -217,20 +222,27 @@ export function NewAnimalRouteView({
   // PR-5: real DB catalogs from the composite loader. If catalogs are not
   // available (loader failure), all options default to empty (no_disponible).
   const catalogOptions: AnimalFormCatalogOptions = catalogs ? catalogsToFormOptions(catalogs) : {}
-  // The "+ Crear nuevo" affordance on Raza / Color / Lugar de compra is
-  // gated on the user having `configuracion:crear`. The parent `_app` route
-  // resolves the session in its `beforeLoad`; the canCreateCatalog default
-  // stays "all false" so a misconfigured parent never accidentally grants
-  // catalog creation. A real loader would read this from the session.
+  // CM-043 (issue #150): creación inline de maestros por finca desde el
+  // `SelectConCreacion`. El affordance se gatea en `configuracion:crear`;
+  // los catálogos globales (raza/color/calidad) no tienen creación (CM-025).
   const canCreateCatalog = readCanCreateCatalog()
+  const [maestroInline, setMaestroInline] = useState<MaestroInlineCreable | null>(null)
+  const [lugaresCreados, setLugaresCreados] = useState<readonly SelectOption[]>([])
+  const [creacionInline, setCreacionInline] = useState<{
+    readonly campo: "lugarCompra"
+    readonly value: string
+  } | null>(null)
   const catalogOptionsConPermisos: AnimalFormCatalogOptions = {
     ...catalogOptions,
+    lugarCompra: [...(catalogOptions.lugarCompra ?? []), ...lugaresCreados],
     canCreateCatalog: {
-      raza: canCreateCatalog,
-      color: canCreateCatalog,
+      raza: false,
+      color: false,
       calidad: false,
       lugarCompra: canCreateCatalog,
     },
+    onCreateCatalog: { lugarCompra: () => setMaestroInline("lugares_compras") },
+    ...(creacionInline ? { creacionInline } : {}),
   }
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const save = async (formData: FormData) => {
@@ -266,6 +278,21 @@ export function NewAnimalRouteView({
         onSave={save}
         onCancel={() => history.back()}
       />
+      {maestroInline ? (
+        <CrearMaestroInline
+          fincaId={fincaId}
+          maestro={maestroInline}
+          onCerrar={() => setMaestroInline(null)}
+          onCreado={(registro) => {
+            setLugaresCreados((previos) => [
+              ...previos,
+              { value: registro.id, label: registro.nombre },
+            ])
+            setCreacionInline({ campo: "lugarCompra", value: registro.id })
+            setMaestroInline(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

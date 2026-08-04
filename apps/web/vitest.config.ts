@@ -53,6 +53,12 @@ export default defineConfig({
       // #158 — mobile list state machine: infinite-scroll accumulation,
       // distinguishable states (LM-030) and LM-023 error semantics.
       "tests/animal-mobile-list-states.test.tsx",
+      // #150 — CRUD genérico de maestros: tabla, búsqueda S-2, tabs
+      // Lotes·Grupos, formulario data-driven, inactivar/activar y RBAC.
+      "tests/configuracion-maestro-crud.test.tsx",
+      // #150 CM-043 — creación inline de maestros por finca desde los
+      // formularios de animales (SelectConCreacion).
+      "tests/animal-creacion-inline.test.tsx",
     ],
     environment: "node",
   },
