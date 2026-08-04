@@ -730,3 +730,205 @@ describe("#111 export wiring (PR6) — Exportar opens the dialog and confirms a 
     expect(screen.getByRole("table", { name: "Listado de animales" })).toBeInTheDocument()
   })
 })
+
+/**
+ * Issue #157 (RF-ANIM-LIST-M v1.1 §4) — mobile quick filters, search, and
+ * propietario selector wired to the #155 endpoint through the client adapter.
+ * The desktop branch stays untouched: only `/animales/mobile` calls are
+ * asserted here. LM-009: every filter change requests page 1; the SSR first
+ * page seeds the list without any client fetch; #158 owns infinite scroll.
+ */
+function paginaMobileDto(
+  overrides: Partial<{
+    data: readonly unknown[]
+    total: number
+    totalSinFiltro: number
+    hayMas: boolean
+  }> = {},
+) {
+  return {
+    data: [
+      {
+        id: "animal-mobile",
+        codigo: "MOB-001",
+        nombre: "Mobile",
+        sexo: { key: "1", label: "Hembra" },
+        raza: { id: "raza-1", label: "Holstein" },
+        categoriaReproductiva: { key: "prenada", label: "Preñada" },
+        salud: { key: "0", label: "Sano" },
+        esDeMonta: false,
+        propietario: { id: "prop-1", label: "Don Juan" },
+        madre: { codigo: "MT-101", nombre: "Estrella" },
+      },
+    ],
+    page: 1,
+    pageSize: 25,
+    total: 1,
+    totalSinFiltro: 1,
+    hayMas: false,
+    ...overrides,
+  }
+}
+
+const filaPreñadaMobile = {
+  id: "animal-prenada",
+  codigo: "PRE-001",
+  nombre: "Preñada Uno",
+  sexo: { key: "1", label: "Hembra" },
+  raza: { id: "raza-1", label: "Holstein" },
+  categoriaReproductiva: { key: "prenada", label: "Preñada" },
+  salud: { key: "0", label: "Sano" },
+  esDeMonta: false,
+  propietario: { id: "prop-1", label: "Don Juan" },
+  madre: null,
+}
+
+const catalogosConPropietario: AnimalCatalogs = {
+  ...catalogos,
+  propietario: {
+    tipo: "disponible",
+    options: [
+      { value: "prop-1", label: "Don Juan" },
+      { value: "prop-2", label: "Doña Ana" },
+    ],
+  },
+}
+
+function llamadasMobile(): string[] {
+  return fetchMock.mock.calls
+    .map((llamada) => String(llamada[0]))
+    .filter((url) => url.includes("/animales/mobile"))
+}
+
+function fetchPorRama(mobile: () => Response) {
+  fetchMock.mockImplementation(async (url: string) =>
+    url.includes("/animales/mobile") ? mobile() : respuestaHttp(respuestaDto()),
+  )
+}
+
+describe("Issue #157 — mobile filters wired to the #155 endpoint", () => {
+  it("initial render uses the SSR first page without any mobile fetch", async () => {
+    fetchMock.mockResolvedValue(respuestaHttp(respuestaDto()))
+    montarVista({ catalogs: catalogosConPropietario })
+
+    await screen.findByText("MT-001") // desktop fetch settled
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    expect(within(movil).getByRole("button", { name: /MOB-001 Mobile/ })).toBeInTheDocument()
+    // The quick filters render with the SSR counter; no `/animales/mobile` hit.
+    expect(within(movil).getByText("1 animal")).toBeInTheDocument()
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(1))
+    expect(llamadasMobile()).toHaveLength(0)
+  })
+
+  it("a chip change fetches page 1 with the filter key and swaps the list", async () => {
+    fetchPorRama(() => respuestaHttp(paginaMobileDto({ data: [filaPreñadaMobile], total: 1 })))
+    montarVista({ catalogs: catalogosConPropietario })
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+
+    await userEvent.setup().click(within(movil).getByRole("button", { name: "Preñadas" }))
+
+    await waitFor(() => expect(llamadasMobile()).toHaveLength(1))
+    const parametros = new URLSearchParams(llamadasMobile()[0].split("?")[1])
+    expect(parametros.get("page")).toBe("1")
+    expect(parametros.get("pageSize")).toBe("25")
+    expect(parametros.get("f.categoriaReproductivaKey")).toBe("in:prenada")
+
+    await waitFor(() =>
+      expect(within(movil).queryByRole("button", { name: /MOB-001/ })).not.toBeInTheDocument(),
+    )
+    expect(within(movil).getByRole("button", { name: /PRE-001 Preñada Uno/ })).toBeInTheDocument()
+  })
+
+  it("search debounces 300 ms and fires a single q request (LM-014)", async () => {
+    fetchPorRama(() => respuestaHttp(paginaMobileDto()))
+    montarVista({ catalogs: catalogosConPropietario })
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    const input = within(movil).getByPlaceholderText("Buscar por código, nombre o arete")
+
+    await userEvent.setup({ delay: null }).type(input, "abc")
+    // Before the debounce window closes there is no mobile request.
+    expect(llamadasMobile()).toHaveLength(0)
+
+    await waitFor(() => expect(llamadasMobile()).toHaveLength(1), { timeout: 2000 })
+    const parametros = new URLSearchParams(llamadasMobile()[0].split("?")[1])
+    expect(parametros.get("q")).toBe("abc")
+    expect(parametros.get("page")).toBe("1")
+  })
+
+  it("the propietario selector combines with the active chip (AND) by id, never label", async () => {
+    fetchPorRama(() => respuestaHttp(paginaMobileDto({ data: [filaPreñadaMobile], total: 1 })))
+    montarVista({ catalogs: catalogosConPropietario })
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    const user = userEvent.setup()
+
+    await user.click(within(movil).getByRole("button", { name: "Preñadas" }))
+    await waitFor(() => expect(llamadasMobile()).toHaveLength(1))
+
+    await user.click(within(movil).getByRole("button", { name: /Propietario/ }))
+    const selector = await screen.findByRole("dialog", { name: "Filtrar por propietario" })
+    await user.click(within(selector).getByRole("button", { name: "Doña Ana" }))
+
+    await waitFor(() => expect(llamadasMobile()).toHaveLength(2))
+    const url = llamadasMobile()[1]
+    const parametros = new URLSearchParams(url.split("?")[1])
+    expect(parametros.get("f.categoriaReproductivaKey")).toBe("in:prenada")
+    expect(parametros.get("f.propietarioId")).toBe("in:prop-2")
+    expect(url).not.toContain("Do%C3%B1a") // labels never travel in the request
+  })
+
+  it("a failed filter fetch retains the last valid list — never crashes nor empties", async () => {
+    let primeraLlamada = true
+    fetchPorRama(() => {
+      if (primeraLlamada) {
+        primeraLlamada = false
+        return respuestaHttp(paginaMobileDto({ data: [filaPreñadaMobile], total: 1 }))
+      }
+      return respuestaHttp(
+        { error: "server_error", campo: null, motivo: "Fallo", requestId: "r1" },
+        500,
+      )
+    })
+    montarVista({ catalogs: catalogosConPropietario })
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    const user = userEvent.setup()
+
+    await user.click(within(movil).getByRole("button", { name: "Preñadas" }))
+    await waitFor(() =>
+      expect(within(movil).getByRole("button", { name: /PRE-001/ })).toBeInTheDocument(),
+    )
+
+    await user.click(within(movil).getByRole("button", { name: "Enfermas" }))
+    await waitFor(() => expect(llamadasMobile()).toHaveLength(2))
+    // The failed second request keeps the previous page on screen.
+    expect(within(movil).getByRole("button", { name: /PRE-001/ })).toBeInTheDocument()
+    expect(within(movil).queryByText("Ningún animal coincide")).not.toBeInTheDocument()
+  })
+
+  it("'Quitar filtro' clears chips+search and refetches page 1 without filters", async () => {
+    let llamadas = 0
+    fetchPorRama(() => {
+      llamadas += 1
+      return llamadas === 1
+        ? respuestaHttp(paginaMobileDto({ data: [], total: 0, totalSinFiltro: 1 }))
+        : respuestaHttp(paginaMobileDto())
+    })
+    montarVista({ catalogs: catalogosConPropietario })
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    const user = userEvent.setup()
+
+    await user.click(within(movil).getByRole("button", { name: "Enfermas" }))
+    expect(await within(movil).findByText("Ningún animal coincide")).toBeInTheDocument()
+
+    await user.click(within(movil).getByRole("button", { name: "Quitar filtro" }))
+    await waitFor(() => expect(llamadasMobile()).toHaveLength(2))
+    const parametros = new URLSearchParams(llamadasMobile()[1].split("?")[1])
+    expect(parametros.get("page")).toBe("1")
+    expect(parametros.has("q")).toBe(false)
+    expect([...parametros.keys()].some((key) => key.startsWith("f."))).toBe(false)
+
+    await waitFor(() =>
+      expect(within(movil).getByRole("button", { name: /MOB-001/ })).toBeInTheDocument(),
+    )
+    expect(llamadas).toBeGreaterThanOrEqual(2)
+  })
+})

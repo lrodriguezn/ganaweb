@@ -48,6 +48,8 @@ export default defineConfig({
       // #149 — hub Configuración · Maestros: vistas desktop/mobile, sub-menú
       // de grupos (S-1), estados CM-014 y redirects RBAC de las rutas.
       "tests/configuracion-hub-route.test.tsx",
+      // #157 — mobile list client adapter (URL building + #155 outcome mapping).
+      "tests/animal-mobile-list-adapter.test.ts",
     ],
     environment: "node",
   },
