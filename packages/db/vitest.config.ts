@@ -16,6 +16,11 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   test: {
     allowOnly: false,
+    // Los smoke tests (DB_SMOKE=true) siembran catálogos globales compartidos
+    // (config_razas, config_tipos_explotacion, config_calidad_animal); en
+    // paralelo se interfieren entre archivos (conteos ajenos). La suite es
+    // corta: serializarla hace el CI determinista.
+    fileParallelism: false,
     include: ["tests/**/*.test.ts"],
     coverage: {
       provider: "v8",
