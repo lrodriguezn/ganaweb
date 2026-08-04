@@ -18,6 +18,8 @@ import {
   AnimalGenealogy,
   type AnimalListItem,
   AnimalListMobile,
+  type AnimalListMobileFiltrosProps,
+  type AnimalListMobilePropietarioOpcion,
   type AnimalMobileListItem,
   AnimalTimeline,
 } from "../src"
@@ -3036,5 +3038,235 @@ describe("Issue #153 (BUG-DATA-001) — badges de AnimalCard", () => {
     const card = screen.getByRole("button", { name: /HC-002/ })
     expect(within(card).getByText("Preñada")).toBeInTheDocument()
     expect(within(card).queryByText("Reproductor")).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * Issue #157 (RF-ANIM-LIST-M v1.1 §4): chips de filtro rápido, buscador
+ * controlado y selector de propietario del listado mobile. packages/ui es
+ * presentacional: el estado vive en la ruta; aquí se afirman contratos de
+ * props/callbacks (LM-005..008, LM-014, LM-015).
+ */
+function filtrosMobile(overrides: Partial<AnimalListMobileFiltrosProps> = {}) {
+  return {
+    chipActivo: "todas" as const,
+    onChip: vi.fn(),
+    propietarioOpciones: [] as readonly AnimalListMobilePropietarioOpcion[],
+    propietarioId: null,
+    onPropietario: vi.fn(),
+    busqueda: "",
+    onBuscar: vi.fn(),
+    total: 0,
+    onQuitarFiltros: vi.fn(),
+    ...overrides,
+  }
+}
+
+describe("Issue #157 — filtros rápidos, buscador y propietario del listado mobile", () => {
+  it("renders the four quick-filter chips above the list with thumb-tappable height", () => {
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtrosMobile({ total: 1 })}
+      />,
+    )
+
+    const movil = screen.getByLabelText("03 Animales · Mobile")
+    const grupo = within(movil).getByRole("group", { name: "Filtros rápidos" })
+    expect(within(grupo).getByRole("button", { name: "Todas" })).toBeInTheDocument()
+    expect(within(grupo).getByRole("button", { name: "Preñadas" })).toBeInTheDocument()
+    expect(within(grupo).getByRole("button", { name: "Enfermas" })).toBeInTheDocument()
+    expect(within(grupo).getByRole("button", { name: /Propietario/ })).toBeInTheDocument()
+    // LM-005: los chips quedan por encima de la lista de animales.
+    const lista = within(movil).getByLabelText("Lista de animales")
+    expect(grupo.compareDocumentPosition(lista) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Objetivo táctil mínimo vía token --h-touch (≥44px).
+    expect(within(grupo).getByRole("button", { name: "Todas" }).className).toContain(
+      "min-h-[--h-touch]",
+    )
+  })
+
+  it("marks exactly one predefined chip active (bg-primary) and reports chip changes", async () => {
+    const filtros = filtrosMobile({ chipActivo: "prenadas", total: 1 })
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtros}
+      />,
+    )
+
+    const prenadas = screen.getByRole("button", { name: "Preñadas" })
+    const todas = screen.getByRole("button", { name: "Todas" })
+    expect(prenadas).toHaveAttribute("aria-pressed", "true")
+    expect(prenadas).toHaveAttribute("data-state", "active")
+    expect(prenadas.className).toContain("bg-primary")
+    expect(todas).toHaveAttribute("aria-pressed", "false")
+    expect(todas).toHaveAttribute("data-state", "inactive")
+    expect(todas.className).not.toContain("bg-primary")
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: "Enfermas" }))
+    expect(filtros.onChip).toHaveBeenCalledTimes(1)
+    expect(filtros.onChip).toHaveBeenCalledWith("enfermas")
+    await user.click(todas)
+    expect(filtros.onChip).toHaveBeenCalledWith("todas")
+  })
+
+  it("disables the propietario chip with a hint when the finca has no propietarios", async () => {
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtrosMobile({ propietarioOpciones: [], total: 1 })}
+      />,
+    )
+
+    const chip = screen.getByRole("button", { name: /Propietario/ })
+    expect(chip).toBeDisabled()
+    expect(chip).toHaveAttribute("title", "Esta finca no tiene propietarios registrados")
+    await userEvent.setup().click(chip)
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("opens a selector listing propietario names plus 'Todos los propietarios', reporting ids", async () => {
+    const filtros = filtrosMobile({
+      propietarioOpciones: [
+        { id: "prop-1", label: "Don Juan" },
+        { id: "prop-2", label: "Doña Ana" },
+      ],
+      total: 1,
+    })
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtros}
+      />,
+    )
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: /Propietario/ }))
+
+    const selector = screen.getByRole("dialog", { name: "Filtrar por propietario" })
+    expect(within(selector).getByText("Don Juan")).toBeInTheDocument()
+    expect(within(selector).getByText("Doña Ana")).toBeInTheDocument()
+    // CA-UI-001: el selector muestra nombres, nunca ids.
+    expect(within(selector).queryByText("prop-1")).not.toBeInTheDocument()
+    expect(within(selector).queryByText("prop-2")).not.toBeInTheDocument()
+
+    await user.click(within(selector).getByRole("button", { name: "Doña Ana" }))
+    expect(filtros.onPropietario).toHaveBeenCalledTimes(1)
+    expect(filtros.onPropietario).toHaveBeenCalledWith("prop-2")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /Propietario/ }))
+    await user.click(screen.getByRole("button", { name: "Todos los propietarios" }))
+    expect(filtros.onPropietario).toHaveBeenLastCalledWith(null)
+  })
+
+  it("marks the propietario chip active with the selected name when a propietario is chosen", () => {
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtrosMobile({
+          propietarioOpciones: [{ id: "prop-1", label: "Don Juan" }],
+          propietarioId: "prop-1",
+          total: 1,
+        })}
+      />,
+    )
+
+    const chip = screen.getByRole("button", { name: /Don Juan/ })
+    expect(chip).toHaveAttribute("data-state", "active")
+    expect(chip.className).toContain("bg-primary")
+  })
+
+  it("announces the result counter with aria-live='polite'", () => {
+    const { rerender } = render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtrosMobile({ total: 18 })}
+      />,
+    )
+
+    const contador = screen.getByText("18 animales")
+    expect(contador.closest('[aria-live="polite"]')).not.toBeNull()
+
+    rerender(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtrosMobile({ total: 1 })}
+      />,
+    )
+    expect(screen.getByText("1 animal")).toBeInTheDocument()
+  })
+
+  it("shows 'Ningún animal coincide' with 'Quitar filtro' when filters leave no results", async () => {
+    const filtros = filtrosMobile({ chipActivo: "enfermas", total: 0 })
+    render(
+      <AnimalListMobile
+        animales={[]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtros}
+      />,
+    )
+
+    expect(screen.getByText("Ningún animal coincide")).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole("button", { name: "Quitar filtro" }))
+    expect(filtros.onQuitarFiltros).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the general empty state when there are no animals and no active filters", () => {
+    render(
+      <AnimalListMobile
+        animales={[]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtrosMobile({ total: 0 })}
+      />,
+    )
+
+    expect(screen.getByText("No hay animales con estos filtros")).toBeInTheDocument()
+    expect(screen.queryByText("Ningún animal coincide")).not.toBeInTheDocument()
+  })
+
+  it("wires the search input as controlled (value + onChange)", async () => {
+    const filtros = filtrosMobile({ busqueda: "MT-1", total: 1 })
+    render(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+        filtros={filtros}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText("Buscar por código, nombre o arete")
+    expect(input).toHaveValue("MT-1")
+    await userEvent.setup().type(input, "2")
+    expect(filtros.onBuscar).toHaveBeenCalledWith("MT-12")
   })
 })

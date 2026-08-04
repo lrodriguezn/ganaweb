@@ -1,3 +1,4 @@
+import type { AnimalMobileListReadResult } from "@ganaweb/aplicacion"
 /**
  * Animals list route — #108 desktop wiring (PR 3) + #156 mobile wiring.
  *
@@ -24,8 +25,10 @@
  * Boundaries: no filters/search/order (#109) or pagination/selector/preferences
  * (#110). Since #111 the desktop `Exportar` button opens `AnimalExportacionDialog`,
  * whose transport reuses the active query through `exportarListadoDesktop`.
- * Mobile chips/search (#157) and infinite-scroll states (#158) are separate
- * issues — the loader resolves page 1 only.
+ * Mobile chips/search/propietario (#157) run client-side through the
+ * `cargarListadoMobile` adapter (page 1 on every filter change); the
+ * infinite-scroll states (#158) remain a separate issue — the loader
+ * resolves page 1 only.
  */
 import {
   AnimalExportacionDialog,
@@ -74,6 +77,10 @@ import {
   sanitizarListadoBadRequest,
   siguienteOrdenListado,
 } from "../../../../features/animal-listado/animal-listado-route-adapter.js"
+import {
+  type ChipListadoMobile,
+  cargarListadoMobile,
+} from "../../../../features/animales-mobile/animal-mobile-list-adapter.js"
 import {
   type AnimalCatalogs,
   type ResultadoListadoMobileServer,
@@ -430,6 +437,87 @@ function usePreferenciasListado(
   }
 }
 
+/**
+ * Issue #157 (LM-005..009, LM-014, LM-015): client state for the mobile
+ * quick filters, search, and propietario selector. The SSR first page seeds
+ * the list without fetching; every filter change requests page 1 through the
+ * #155 client adapter and replaces the list (infinite-scroll accumulation is
+ * #158). A failed request retains the last valid page — never crashes, never
+ * empties. The desktop branch never reads this state.
+ */
+function useFiltrosListadoMobile(fincaId: string, listadoMobile: AnimalsListadoMobileData) {
+  const [chip, setChip] = useState<ChipListadoMobile>("todas")
+  const [propietarioId, setPropietarioId] = useState<string | null>(null)
+  const [busqueda, setBusqueda] = useState("")
+  const [busquedaAplicada, setBusquedaAplicada] = useState("")
+  const [paginaCliente, setPaginaCliente] = useState<AnimalMobileListReadResult | null>(null)
+  const [cargando, setCargando] = useState(false)
+  const primeraRender = useRef(true)
+
+  // LM-014: the search debounces 300 ms in the route layer; packages/ui stays
+  // dumb. "Quitar filtro" applies the cleared input immediately so it issues
+  // one request instead of two.
+  useEffect(() => {
+    const temporizador = setTimeout(() => setBusquedaAplicada(busqueda), BUSQUEDA_DEBOUNCE_MS)
+    return () => clearTimeout(temporizador)
+  }, [busqueda])
+
+  // LM-009: any chip/propietario/search change fetches page 1; the initial
+  // render uses the SSR page without fetching.
+  useEffect(() => {
+    if (primeraRender.current) {
+      primeraRender.current = false
+      return
+    }
+    let activo = true
+    setCargando(true)
+    void cargarListadoMobile(fincaId, { chip, propietarioId, q: busquedaAplicada }).then(
+      (resultado) => {
+        if (!activo) return
+        setCargando(false)
+        if (resultado.tipo === "listo") setPaginaCliente(resultado.resultado)
+      },
+    )
+    return () => {
+      activo = false
+    }
+  }, [fincaId, chip, propietarioId, busquedaAplicada])
+
+  // A finca switch resets the filter state back to the SSR first page.
+  const [fincaActual, setFincaActual] = useState(fincaId)
+  if (fincaActual !== fincaId) {
+    setFincaActual(fincaId)
+    setChip("todas")
+    setPropietarioId(null)
+    setBusqueda("")
+    setBusquedaAplicada("")
+    setPaginaCliente(null)
+    setCargando(false)
+    primeraRender.current = true
+  }
+
+  const quitarFiltros = () => {
+    setChip("todas")
+    setPropietarioId(null)
+    setBusqueda("")
+    setBusquedaAplicada("")
+  }
+
+  const pagina = paginaCliente ?? (listadoMobile.tipo === "lista" ? listadoMobile.resultado : null)
+
+  return {
+    chip,
+    setChip,
+    propietarioId,
+    setPropietarioId,
+    busqueda,
+    setBusqueda,
+    pagina,
+    cargando,
+    quitarFiltros,
+  }
+}
+
 export function AnimalsListRouteView({
   fincaId,
   permissions,
@@ -488,9 +576,12 @@ export function AnimalsListRouteView({
     }
   }, [fincaId, permissions, consultaListado, intento])
 
+  // Issue #157: mobile quick filters/search/propietario client state.
+  const filtrosMobile = useFiltrosListadoMobile(fincaId, listadoMobile)
+
   // Issue #156: the mobile branch consumes the #155 contract resolved by the
   // loader; `canCreate` comes from the visual projection (LM-RBAC-03).
-  const filasMobile = listadoMobile.tipo === "lista" ? listadoMobile.resultado.data : []
+  const filasMobile = filtrosMobile.pagina?.data ?? []
   const goNew = () => {
     if (permissions.canCreate) onIrANuevo()
   }
@@ -616,6 +707,27 @@ export function AnimalsListRouteView({
           onPressAnimal={(animal) => onAbrirFicha(animal.id)}
           onNuevoAnimal={goNew}
           bottomNavItems={bottomNavItems}
+          {...(listadoMobile.tipo === "lista"
+            ? {
+                filtros: {
+                  chipActivo: filtrosMobile.chip,
+                  onChip: filtrosMobile.setChip,
+                  // LM-015/CA-UI-001: el catálogo SSR ya viene por finca y
+                  // solo activos; el selector muestra el label y viaja el id.
+                  propietarioOpciones: catalogs.propietario.options.map((opcion) => ({
+                    id: opcion.value,
+                    label: opcion.label,
+                  })),
+                  propietarioId: filtrosMobile.propietarioId,
+                  onPropietario: filtrosMobile.setPropietarioId,
+                  busqueda: filtrosMobile.busqueda,
+                  onBuscar: filtrosMobile.setBusqueda,
+                  total: filtrosMobile.pagina?.total ?? 0,
+                  onQuitarFiltros: filtrosMobile.quitarFiltros,
+                  cargando: filtrosMobile.cargando,
+                },
+              }
+            : {})}
         />
       </div>
       {listadoMobile.tipo === "permiso_denegado" && (

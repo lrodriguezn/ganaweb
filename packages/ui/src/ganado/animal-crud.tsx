@@ -165,6 +165,35 @@ function aCategoriaReproductiva(key: string | undefined): CategoriaReproductiva 
     : null
 }
 
+/**
+ * Issue #157 (RF-ANIM-LIST-M v1.1 §4, LM-005/006): chips de filtro rápido del
+ * listado mobile. Todas/Preñadas/Enfermas son mutuamente excluyentes (Todas =
+ * sin filtro); el propietario se combina con el chip activo (AND) y viaja por
+ * id hacia el endpoint #155, nunca por label (LA-001/CA-UI-001).
+ */
+export type AnimalListMobileChipId = "todas" | "prenadas" | "enfermas"
+
+export interface AnimalListMobilePropietarioOpcion {
+  readonly id: string
+  readonly label: string
+}
+
+export interface AnimalListMobileFiltrosProps {
+  readonly chipActivo: AnimalListMobileChipId
+  readonly onChip: (chip: AnimalListMobileChipId) => void
+  readonly propietarioOpciones: readonly AnimalListMobilePropietarioOpcion[]
+  /** Id del propietario seleccionado; `null` = todos los propietarios. */
+  readonly propietarioId: string | null
+  readonly onPropietario: (propietarioId: string | null) => void
+  readonly busqueda: string
+  readonly onBuscar: (texto: string) => void
+  /** LM-008: total CON filtros para el contador anunciado con aria-live. */
+  readonly total: number
+  readonly onQuitarFiltros: () => void
+  /** Feedback mínimo mientras llega la página 1 solicitada (#158 amplía). */
+  readonly cargando?: boolean
+}
+
 export interface AnimalListMobileProps {
   animales: readonly AnimalMobileListItem[]
   selectedIds?: string[]
@@ -172,6 +201,201 @@ export interface AnimalListMobileProps {
   onPressAnimal: (animal: AnimalMobileListItem) => void
   onNuevoAnimal: () => void
   bottomNavItems: ItemNav[]
+  /** Issue #157: sin `filtros` el listado conserva el modo SSR inicial. */
+  filtros?: AnimalListMobileFiltrosProps
+}
+
+const CHIPS_LISTADO_MOBILE: readonly {
+  id: AnimalListMobileChipId
+  label: string
+}[] = [
+  { id: "todas", label: "Todas" },
+  { id: "prenadas", label: "Preñadas" },
+  { id: "enfermas", label: "Enfermas" },
+]
+
+function ChipFiltro({
+  activo,
+  disabled = false,
+  title,
+  onClick,
+  children,
+}: {
+  activo: boolean
+  disabled?: boolean
+  title?: string | undefined
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      {...(title ? { title } : {})}
+      aria-pressed={activo}
+      data-state={activo ? "active" : "inactive"}
+      onClick={onClick}
+      className={cn(
+        // LM-005/LM-040: objetivo táctil mínimo vía token --h-touch (≥44px).
+        "min-h-[--h-touch] shrink-0 rounded-full px-4 text-support font-medium transition-colors",
+        activo ? "bg-primary text-primary-foreground" : "border bg-card",
+        disabled && "opacity-50",
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+function FiltrosListadoMobile({
+  filtros,
+}: {
+  filtros: AnimalListMobileFiltrosProps
+}) {
+  // LM-015: la apertura del selector es estado puramente presentacional.
+  const [selectorAbierto, setSelectorAbierto] = useState(false)
+  const sinPropietarios = filtros.propietarioOpciones.length === 0
+  const propietarioSeleccionado =
+    filtros.propietarioId !== null
+      ? (filtros.propietarioOpciones.find((opcion) => opcion.id === filtros.propietarioId) ?? null)
+      : null
+
+  return (
+    <>
+      {/* biome-ignore lint/a11y/useSemanticElements: the quick-filter chips are a toolbar-like button group, not a form fieldset; role=group matches the WAI-ARIA APG pattern. */}
+      <div role="group" aria-label="Filtros rápidos" className="flex gap-2 overflow-x-auto pb-1">
+        {CHIPS_LISTADO_MOBILE.map((chip) => (
+          <ChipFiltro
+            key={chip.id}
+            activo={filtros.chipActivo === chip.id}
+            onClick={() => filtros.onChip(chip.id)}
+          >
+            {chip.label}
+          </ChipFiltro>
+        ))}
+        <ChipFiltro
+          activo={propietarioSeleccionado !== null}
+          disabled={sinPropietarios}
+          title={sinPropietarios ? "Esta finca no tiene propietarios registrados" : undefined}
+          onClick={() => setSelectorAbierto(true)}
+        >
+          <span className="flex items-center gap-1">
+            {propietarioSeleccionado?.label ?? "Propietario"}
+            <ChevronDown className="size-4" aria-hidden="true" />
+          </span>
+        </ChipFiltro>
+      </div>
+
+      {/* LM-008: contador discreto anunciado con aria-live="polite". */}
+      <p aria-live="polite" className="text-support text-muted-foreground">
+        {filtros.total} {filtros.total === 1 ? "animal" : "animales"}
+      </p>
+
+      {selectorAbierto && !sinPropietarios && (
+        <div className="fixed inset-0 z-30">
+          <button
+            type="button"
+            aria-label="Cerrar selector de propietario"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setSelectorAbierto(false)}
+          />
+          {/* biome-ignore lint/a11y/useSemanticElements: bottom-sheet overlay following the WAI-ARIA APG dialog pattern; a native <dialog> would need showModal/top-layer management the presentational component must not own. */}
+          <div
+            role="dialog"
+            aria-label="Filtrar por propietario"
+            className="absolute inset-x-0 bottom-0 max-h-[60dvh] overflow-y-auto rounded-t-card border bg-card p-4 pb-[calc(var(--h-bottomnav)+16px)]"
+          >
+            <p className="text-section font-semibold mb-2">Propietario</p>
+            <div className="space-y-1">
+              <button
+                type="button"
+                className="min-h-[--h-touch] w-full rounded-control px-3 text-left text-support hover:bg-muted"
+                onClick={() => {
+                  filtros.onPropietario(null)
+                  setSelectorAbierto(false)
+                }}
+              >
+                Todos los propietarios
+              </button>
+              {filtros.propietarioOpciones.map((opcion) => (
+                <button
+                  key={opcion.id}
+                  type="button"
+                  className={cn(
+                    "min-h-[--h-touch] w-full rounded-control px-3 text-left text-support hover:bg-muted",
+                    opcion.id === filtros.propietarioId && "bg-primary text-primary-foreground",
+                  )}
+                  onClick={() => {
+                    filtros.onPropietario(opcion.id)
+                    setSelectorAbierto(false)
+                  }}
+                >
+                  {opcion.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Contenido del listado mobile: estado vacío (LM-008) o cards (LM-001). */
+function ContenidoListadoMobile({
+  animales,
+  selectedIds,
+  canCreate,
+  onPressAnimal,
+  onNuevoAnimal,
+  filtros,
+  hayFiltrosActivos,
+}: {
+  animales: readonly AnimalMobileListItem[]
+  selectedIds: string[]
+  canCreate: boolean
+  onPressAnimal: (animal: AnimalMobileListItem) => void
+  onNuevoAnimal: () => void
+  filtros: AnimalListMobileFiltrosProps | undefined
+  hayFiltrosActivos: boolean
+}) {
+  if (animales.length === 0) {
+    if (hayFiltrosActivos && filtros) {
+      return (
+        <EmptyState
+          icon={PawPrint}
+          title="Ningún animal coincide"
+          description="Ajusta o quita los filtros para ver más resultados."
+          actionLabel="Quitar filtro"
+          onAction={filtros.onQuitarFiltros}
+        />
+      )
+    }
+    return (
+      <EmptyState
+        icon={PawPrint}
+        title="No hay animales con estos filtros"
+        description="Ajusta la búsqueda o registra un nuevo animal para esta finca."
+        {...(canCreate ? { actionLabel: "Registrar animal", onAction: onNuevoAnimal } : {})}
+      />
+    )
+  }
+  return (
+    <div
+      className={cn("space-y-2", filtros?.cargando && "opacity-60")}
+      aria-label="Lista de animales"
+      {...(filtros?.cargando ? { "aria-busy": true } : {})}
+    >
+      {animales.map((animal) => (
+        <AnimalResultCard
+          key={animal.id}
+          animal={animal}
+          selected={selectedIds.includes(animal.id)}
+          onPress={() => onPressAnimal(animal)}
+        />
+      ))}
+    </div>
+  )
 }
 
 export function AnimalListMobile({
@@ -181,7 +405,14 @@ export function AnimalListMobile({
   onPressAnimal,
   onNuevoAnimal,
   bottomNavItems,
+  filtros,
 }: AnimalListMobileProps) {
+  // Issue #157: con filtros activos el estado vacío ofrece quitarlos (LM-008).
+  const hayFiltrosActivos =
+    filtros !== undefined &&
+    (filtros.chipActivo !== "todas" ||
+      filtros.propietarioId !== null ||
+      filtros.busqueda.trim() !== "")
   return (
     <section
       data-testid="op-frame-0185"
@@ -210,34 +441,34 @@ export function AnimalListMobile({
       </header>
 
       <div className="p-4 space-y-3">
+        {/* LM-005: los chips de filtro rápido quedan por encima de la lista. */}
+        {filtros && <FiltrosListadoMobile filtros={filtros} />}
+
         <label className="min-h-[--h-touch] rounded-control border bg-card px-3 flex items-center gap-2">
           <Search className="size-4 text-muted-foreground" aria-hidden="true" />
           <span className="sr-only">Buscar animal</span>
+          {/* LM-007/LM-014: input controlado; el debounce vive en la ruta. */}
           <input
             className="min-w-0 flex-1 bg-transparent text-support outline-none placeholder:text-muted-foreground"
             placeholder="Buscar por código, nombre o arete"
+            {...(filtros
+              ? {
+                  value: filtros.busqueda,
+                  onChange: (evento) => filtros.onBuscar(evento.target.value),
+                }
+              : {})}
           />
         </label>
 
-        {animales.length === 0 ? (
-          <EmptyState
-            icon={PawPrint}
-            title="No hay animales con estos filtros"
-            description="Ajusta la búsqueda o registra un nuevo animal para esta finca."
-            {...(canCreate ? { actionLabel: "Registrar animal", onAction: onNuevoAnimal } : {})}
-          />
-        ) : (
-          <div className="space-y-2" aria-label="Lista de animales">
-            {animales.map((animal) => (
-              <AnimalResultCard
-                key={animal.id}
-                animal={animal}
-                selected={selectedIds.includes(animal.id)}
-                onPress={() => onPressAnimal(animal)}
-              />
-            ))}
-          </div>
-        )}
+        <ContenidoListadoMobile
+          animales={animales}
+          selectedIds={selectedIds}
+          canCreate={canCreate}
+          onPressAnimal={onPressAnimal}
+          onNuevoAnimal={onNuevoAnimal}
+          filtros={filtros}
+          hayFiltrosActivos={hayFiltrosActivos}
+        />
       </div>
 
       {selectedIds.length > 0 && (
