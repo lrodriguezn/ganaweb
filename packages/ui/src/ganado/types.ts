@@ -103,6 +103,17 @@ export interface MaestroResumen {
   nombre: string // "Veterinarios", "Hierros", "Motivos de venta"
   grupo: "personas" | "ubicacion" | "clasificacion"
   registros: number
+  /**
+   * CM-008: conteo secundario para el doble conteo "N · M" de la card
+   * Lotes · Grupos (`registros` = lotes, `registrosSecundario` = grupos).
+   * Sólo lo emite el hub de Configuración (issue #148).
+   */
+  registrosSecundario?: number
+  /**
+   * CM-014: el conteo de esta card falló y el hub degradó por item; la
+   * card muestra "—" en vez del número. El hub SIEMPRE renderiza las 15.
+   */
+  degradado?: boolean
   /** Si está vacío Y algún proceso lo requiere: texto de la dependencia */
   requeridoPara?: string // ej: "Servicios IA"
   ruta: string // ruta del CRUD, ej: "/configuracion/veterinarios"
