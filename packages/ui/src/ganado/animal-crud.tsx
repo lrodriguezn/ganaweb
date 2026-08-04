@@ -44,14 +44,26 @@ export type AnimalListItem = AnimalResumen & {
   imagenPrincipalUrl?: string | null
 }
 
+/**
+ * Tipo de evento del timeline. Incluye los tipos de registro (peso, vacuna,
+ * …) y los tipos canónicos de la unión de tablas de eventos (pesaje,
+ * condicion, vacunacion, revision, venta, muerte) mapeados por dominio en
+ * el repositorio del timeline.
+ */
 export type AnimalTimelineTipo =
   | "peso"
+  | "pesaje"
   | "vacuna"
+  | "vacunacion"
   | "servicio"
   | "palpacion"
   | "parto"
   | "produccion"
+  | "condicion"
+  | "revision"
   | "reubicacion"
+  | "venta"
+  | "muerte"
   | "foto"
 
 export interface AnimalTimelineItem {
