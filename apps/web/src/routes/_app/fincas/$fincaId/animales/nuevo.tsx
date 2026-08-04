@@ -88,7 +88,7 @@ export function buildCreateAnimalInputFromFormData(
     "raza",
     "color",
     "calidad",
-    "tipoExplotacion",
+    "tipoExplotacionId",
     "lugarCompra",
     "madreId",
     "padreId",
