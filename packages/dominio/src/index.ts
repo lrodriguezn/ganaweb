@@ -40,6 +40,22 @@ export {
   validarTipoArchivoImagenAnimal,
   validarLimiteImagenesAnimal,
 } from "./animal.js"
+export type {
+  DatosMaestroNormalizados,
+  ErrorValidacionMaestro,
+  EspecificacionCampoMaestro,
+  EspecificacionFamiliaMaestro,
+  FamiliaMaestro,
+  ResultadoValidacionMaestro,
+  TipoCampoMaestro,
+  ValorCampoMaestro,
+} from "./maestros.js"
+export {
+  ESPECIFICACIONES_MAESTROS,
+  validarDatosFinca,
+  validarDatosMaestro,
+  validarNombreUnicoMaestro,
+} from "./maestros.js"
 export type { ReferenciaAnimal, ResultadoValidacion } from "./rn-001.js"
 export { validarCodigoUnicoPorFinca } from "./rn-001.js"
 export type {

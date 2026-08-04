@@ -36,6 +36,14 @@
     "./catalogo-padres-infrastructure": {
       "types": "./src/catalogo-padres-infrastructure.ts",
       "import": "./src/catalogo-padres-infrastructure.ts"
+    },
+    "./maestro-escritura-infrastructure": {
+      "types": "./src/maestro-escritura-infrastructure.ts",
+      "import": "./src/maestro-escritura-infrastructure.ts"
+    },
+    "./conteos-maestros-infrastructure": {
+      "types": "./src/conteos-maestros-infrastructure.ts",
+      "import": "./src/conteos-maestros-infrastructure.ts"
     }
   },
   "scripts": {
