@@ -3128,12 +3128,24 @@ export interface AnimalFichaDesktopScreenProps {
   nextCursor?: string
   /** Eventos de la siguiente página, cuando el modelo de lectura lo provee. */
   eventosPendientes?: number
+  /**
+   * Slice 3 (D2): dominio del tab activo cuando el filtrado lo hace el
+   * servidor. Ausente = Resumen (todos los dominios).
+   */
+  dominioActivo?: DominioEvento
   canEdit?: boolean
   canCreateEvents?: boolean
   onVolverAListado?: () => void
   onEdit?: () => void
   onRegistrarEvento?: () => void
   onLoadMore?: () => void
+  /**
+   * Slice 3 (D2): con este callback la tarjeta de timeline es controlada —
+   * cada cambio de tab delega en el servidor (reset de paginación) y la UI
+   * no vuelve a filtrar la página recibida. Sin callback conserva el
+   * filtrado local (uso standalone).
+   */
+  onTabChange?: (dominio?: DominioEvento) => void
 }
 
 /* ---------------- Ficha desktop: cards + timeline con tabs ---------------- */
@@ -3303,33 +3315,50 @@ function TimelineFicha({
   eventos,
   nextCursor,
   eventosPendientes,
+  dominioActivo,
+  onTabChange,
   onLoadMore,
 }: {
   eventos: AnimalTimelineItem[]
   nextCursor?: string
   eventosPendientes?: number
+  dominioActivo?: DominioEvento
+  onTabChange?: (dominio?: DominioEvento) => void
   onLoadMore?: () => void
 }) {
-  const [tabActiva, setTabActiva] = useState(TAB_RESUMEN.key)
-  const tab = TABS_TIMELINE.find((candidate) => candidate.key === tabActiva) ?? TAB_RESUMEN
+  const [tabLocal, setTabLocal] = useState(TAB_RESUMEN.key)
+  // Slice 3 (D2): con `onTabChange` la tarjeta es controlada — el servidor
+  // filtra por dominio y la UI renderiza la página recibida sin re-filtrar.
+  const controlado = onTabChange != null
+  const claveActiva = controlado
+    ? (TABS_TIMELINE.find((candidate) => candidate.dominio === dominioActivo) ?? TAB_RESUMEN).key
+    : tabLocal
+  const tab = TABS_TIMELINE.find((candidate) => candidate.key === claveActiva) ?? TAB_RESUMEN
   const ordenados = [...eventos].sort((a, b) => b.fecha.localeCompare(a.fecha))
-  const visibles = tab.dominio
-    ? ordenados.filter((evento) => evento.dominio === tab.dominio)
-    : ordenados
+  const visibles =
+    !controlado && tab.dominio
+      ? ordenados.filter((evento) => evento.dominio === tab.dominio)
+      : ordenados
+
+  const seleccionar = (candidate: TabTimeline) => {
+    if (controlado) onTabChange?.(candidate.dominio)
+    else setTabLocal(candidate.key)
+  }
 
   return (
     <section aria-label="Timeline" className="rounded-card border bg-card p-4 space-y-3">
+      <h2 className="text-section font-semibold">Timeline</h2>
       <div role="tablist" aria-label="Filtrar eventos por dominio" className="flex flex-wrap gap-2">
         {TABS_TIMELINE.map((candidate) => (
           <button
             key={candidate.key}
             type="button"
             role="tab"
-            aria-selected={tabActiva === candidate.key}
-            onClick={() => setTabActiva(candidate.key)}
+            aria-selected={claveActiva === candidate.key}
+            onClick={() => seleccionar(candidate)}
             className={cn(
               "min-h-[--h-touch] rounded-full border px-4 text-support font-medium",
-              tabActiva === candidate.key
+              claveActiva === candidate.key
                 ? "border-transparent bg-primary text-primary-foreground"
                 : "bg-card text-muted-foreground hover:bg-muted/50",
             )}
@@ -3434,12 +3463,14 @@ export function AnimalFichaDesktopScreen({
   resumen,
   nextCursor,
   eventosPendientes,
+  dominioActivo,
   canEdit = true,
   canCreateEvents = true,
   onVolverAListado,
   onEdit,
   onRegistrarEvento,
   onLoadMore,
+  onTabChange,
 }: AnimalFichaDesktopScreenProps) {
   return (
     <section
@@ -3462,6 +3493,8 @@ export function AnimalFichaDesktopScreen({
           eventos={timeline}
           {...(nextCursor ? { nextCursor } : {})}
           {...(eventosPendientes != null ? { eventosPendientes } : {})}
+          {...(dominioActivo ? { dominioActivo } : {})}
+          {...(onTabChange ? { onTabChange } : {})}
           {...(onLoadMore ? { onLoadMore } : {})}
         />
       </div>

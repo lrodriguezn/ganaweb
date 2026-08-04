@@ -22,6 +22,7 @@ import type {
   RazaOption,
   SectorOption,
   SesionAutorizada,
+  TimelineItemAnimalDto,
   TipoExplotacionOption,
 } from "@ganaweb/aplicacion"
 import { ETIQUETAS_CATEGORIA_REPRODUCTIVA } from "@ganaweb/db/animal-mobile-list-infrastructure"
@@ -287,6 +288,232 @@ export function addAnimalE2eRecord(input: {
   })
 }
 
+/**
+ * redesign-ficha-animal (slice 3, task 3.6): timeline E2E honesto. El doble
+ * del puerto deja de devolver 21 items fijos con cursor constante y pasa a
+ * filtrar por dominio + paginar por cursor keyset, igual que el repositorio
+ * real (D1/D3). 28 eventos en 4 dominios: 20 caben en la primera página y
+ * dejan `nextCursor`; cada dominio tiene su propio conjunto filtrable.
+ */
+const EVENTOS_TIMELINE_E2E: readonly TimelineItemAnimalDto[] = [
+  // Producción — pesajes (9)
+  {
+    id: "e2e-peso-09",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2026-07-15",
+    detalle: "445 kg",
+  },
+  {
+    id: "e2e-peso-08",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2026-06-15",
+    detalle: "432 kg",
+  },
+  {
+    id: "e2e-peso-07",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2026-05-15",
+    detalle: "420 kg",
+  },
+  {
+    id: "e2e-peso-06",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2026-04-15",
+    detalle: "407 kg",
+  },
+  {
+    id: "e2e-peso-05",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2026-03-15",
+    detalle: "395 kg",
+  },
+  {
+    id: "e2e-peso-04",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2026-02-15",
+    detalle: "382 kg",
+  },
+  {
+    id: "e2e-peso-03",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2026-01-15",
+    detalle: "370 kg",
+  },
+  {
+    id: "e2e-peso-02",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2025-12-15",
+    detalle: "357 kg",
+  },
+  {
+    id: "e2e-peso-01",
+    dominio: "produccion",
+    tipo: "pesaje",
+    fecha: "2025-11-15",
+    detalle: "345 kg",
+  },
+  // Producción — lácteos (4) y condición corporal (2)
+  {
+    id: "e2e-lacteo-04",
+    dominio: "produccion",
+    tipo: "produccion",
+    fecha: "2026-07-10",
+    detalle: "18 L",
+  },
+  {
+    id: "e2e-lacteo-03",
+    dominio: "produccion",
+    tipo: "produccion",
+    fecha: "2026-06-10",
+    detalle: "17 L",
+  },
+  {
+    id: "e2e-lacteo-02",
+    dominio: "produccion",
+    tipo: "produccion",
+    fecha: "2026-05-10",
+    detalle: "16 L",
+  },
+  {
+    id: "e2e-lacteo-01",
+    dominio: "produccion",
+    tipo: "produccion",
+    fecha: "2026-04-10",
+    detalle: "15 L",
+  },
+  {
+    id: "e2e-cond-02",
+    dominio: "produccion",
+    tipo: "condicion",
+    fecha: "2026-07-01",
+    detalle: "3.5",
+  },
+  {
+    id: "e2e-cond-01",
+    dominio: "produccion",
+    tipo: "condicion",
+    fecha: "2026-03-01",
+    detalle: "3.0",
+  },
+  // Reproducción — servicios (4), palpaciones (2), partos (1)
+  {
+    id: "e2e-servicio-04",
+    dominio: "reproduccion",
+    tipo: "servicio",
+    fecha: "2026-06-20",
+    detalle: "inseminacion",
+  },
+  {
+    id: "e2e-servicio-03",
+    dominio: "reproduccion",
+    tipo: "servicio",
+    fecha: "2026-02-20",
+    detalle: "monta",
+  },
+  {
+    id: "e2e-servicio-02",
+    dominio: "reproduccion",
+    tipo: "servicio",
+    fecha: "2025-10-20",
+    detalle: "inseminacion",
+  },
+  {
+    id: "e2e-servicio-01",
+    dominio: "reproduccion",
+    tipo: "servicio",
+    fecha: "2025-06-20",
+    detalle: "monta",
+  },
+  {
+    id: "e2e-palpacion-02",
+    dominio: "reproduccion",
+    tipo: "palpacion",
+    fecha: "2026-05-20",
+    detalle: "prenada",
+  },
+  {
+    id: "e2e-palpacion-01",
+    dominio: "reproduccion",
+    tipo: "palpacion",
+    fecha: "2026-01-20",
+    detalle: "vacia",
+  },
+  {
+    id: "e2e-parto-01",
+    dominio: "reproduccion",
+    tipo: "parto",
+    fecha: "2025-03-01",
+    detalle: "normal",
+  },
+  // Sanidad — vacunaciones (2) y revisión (1)
+  {
+    id: "e2e-vacuna-02",
+    dominio: "sanidad",
+    tipo: "vacunacion",
+    fecha: "2026-05-01",
+    detalle: "Aftosa",
+  },
+  {
+    id: "e2e-vacuna-01",
+    dominio: "sanidad",
+    tipo: "vacunacion",
+    fecha: "2025-11-01",
+    detalle: "Brucelosis",
+  },
+  {
+    id: "e2e-revision-01",
+    dominio: "sanidad",
+    tipo: "revision",
+    fecha: "2026-02-10",
+    detalle: "vitaminas",
+  },
+  // Manejo — reubicaciones (2) y venta (1)
+  {
+    id: "e2e-reub-02",
+    dominio: "manejo",
+    tipo: "reubicacion",
+    fecha: "2026-06-01",
+    detalle: "Potrero Norte",
+  },
+  {
+    id: "e2e-reub-01",
+    dominio: "manejo",
+    tipo: "reubicacion",
+    fecha: "2025-09-01",
+    detalle: "Potrero Sur",
+  },
+  { id: "e2e-venta-01", dominio: "manejo", tipo: "venta", fecha: "2025-05-01", detalle: "Feria" },
+]
+
+function codificarCursorTimelineE2e(item: { readonly fecha: string; readonly id: string }): string {
+  return Buffer.from(JSON.stringify({ f: item.fecha, id: item.id }), "utf8").toString("base64url")
+}
+
+function decodificarCursorTimelineE2e(
+  cursor: string | undefined,
+): { readonly f: string; readonly id: string } | null {
+  if (!cursor) return null
+  try {
+    const parseado: unknown = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"))
+    if (typeof parseado !== "object" || parseado === null) return null
+    const { f, id } = parseado as { readonly f?: unknown; readonly id?: unknown }
+    if (typeof f !== "string" || typeof id !== "string") return null
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return null
+    if (Number.isNaN(new Date(f).getTime())) return null
+    return { f, id }
+  } catch {
+    return null
+  }
+}
+
 export function createAnimalE2eDeps(): AnimalUseCaseDeps {
   const animalRepository: AnimalListRepository = {
     async buscarPorCodigoYFinca(codigo, fincaId) {
@@ -352,14 +579,25 @@ export function createAnimalE2eDeps(): AnimalUseCaseDeps {
       },
     },
     timeline: {
-      async listarPagina() {
+      async listarPagina(consulta) {
+        const cursor = decodificarCursorTimelineE2e(consulta.cursor)
+        const eventos = EVENTOS_TIMELINE_E2E.filter(
+          (evento) => !consulta.dominio || evento.dominio === consulta.dominio,
+        )
+          .filter(
+            (evento) =>
+              !cursor ||
+              evento.fecha < cursor.f ||
+              (evento.fecha === cursor.f && evento.id < cursor.id),
+          )
+          .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id))
+        const pagina = eventos.slice(0, consulta.limit)
+        const ultimo = pagina[pagina.length - 1]
         return {
-          items: Array.from({ length: 21 }, (_, index) => ({
-            id: `timeline-${index}`,
-            fecha: `202${index % 4}-01-01`,
-            titulo: `Evento ${index}`,
-          })),
-          nextCursor: "cursor-2",
+          items: pagina,
+          ...(eventos.length > consulta.limit && ultimo
+            ? { nextCursor: codificarCursorTimelineE2e(ultimo) }
+            : {}),
         }
       },
     },

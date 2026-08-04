@@ -25,7 +25,7 @@ import type {
   AnimalRepositoryPort,
   AnimalUpdateCambios,
 } from "../../puertos/animal-repository-port.js"
-import type { TimelineAnimalPort } from "../../puertos/animal-timeline-port.js"
+import type { DominioEventoAnimal, TimelineAnimalPort } from "../../puertos/animal-timeline-port.js"
 import type { OutboxPort } from "../../puertos/outbox-port.js"
 import type { RelojDelSistemaPort } from "../../puertos/reloj-del-sistema-port.js"
 import type { TransaccionPort } from "../../puertos/transaccion-port.js"
@@ -639,6 +639,11 @@ export function obtenerFichaAnimal(deps: AnimalUseCaseDeps) {
     readonly sesion: SesionAnimal
     readonly animalId: string
     readonly cursorTimeline?: string
+    /**
+     * redesign-ficha-animal (slice 3): filtro de dominio para las tabs del
+     * timeline (D2 — lado servidor). Ausente = Resumen (todos los dominios).
+     */
+    readonly dominioTimeline?: DominioEventoAnimal
   }) => {
     if (!tienePermiso(cmd.sesion, "ver")) return { tipo: "no_autorizado" } as const
     const animal = await deps.animales.obtenerPorIdYFinca?.(cmd.animalId, cmd.sesion.fincaActivaId)
@@ -649,6 +654,7 @@ export function obtenerFichaAnimal(deps: AnimalUseCaseDeps) {
         animalId: cmd.animalId,
         fincaId: cmd.sesion.fincaActivaId,
         ...(cmd.cursorTimeline ? { cursor: cmd.cursorTimeline } : {}),
+        ...(cmd.dominioTimeline ? { dominio: cmd.dominioTimeline } : {}),
         limit: 20,
       }),
       deps.fichaResumen?.obtener(cmd.animalId, cmd.sesion.fincaActivaId) ?? Promise.resolve(null),

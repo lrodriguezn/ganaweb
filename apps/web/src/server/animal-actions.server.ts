@@ -9,6 +9,7 @@ import type {
   CatalogoGlobalPort,
   CatalogoPadresPort,
   ColorOption,
+  DominioEventoAnimal,
   FichaAnimalResumen,
   GrupoOption,
   HierroOption,
@@ -20,6 +21,7 @@ import type {
   SectorOption,
   SesionAnimal,
   SesionAutorizada,
+  TimelineItemAnimalDto,
   TipoExplotacionOption,
 } from "@ganaweb/aplicacion"
 import {
@@ -823,17 +825,73 @@ function filterAnimalList(
     .sort((a, b) => a.codigo.localeCompare(b.codigo, "es-CO"))
 }
 
-function toTimelineItem(item: {
-  readonly id: string
-  readonly fecha?: string
-  readonly titulo?: string
-}): AnimalTimelineItem {
+/**
+ * redesign-ficha-animal (slice 3, task 3.5): títulos visibles del timeline,
+ * compuestos en la capa web desde el tipo canónico que aporta cada tabla de
+ * eventos (design D1: "Titles compose in TS from tipo"). Función pura — el
+ * repositorio nunca inventa títulos.
+ */
+const TITULO_POR_TIPO_EVENTO: Record<string, string> = {
+  pesaje: "Pesaje",
+  produccion: "Producción láctea",
+  condicion: "Condición corporal",
+  servicio: "Servicio",
+  palpacion: "Palpación",
+  parto: "Parto",
+  vacunacion: "Vacunación",
+  revision: "Revisión veterinaria",
+  venta: "Venta",
+  muerte: "Muerte",
+  reubicacion: "Reubicación",
+}
+
+export function tituloEventoTimeline(tipo: string): string {
+  return TITULO_POR_TIPO_EVENTO[tipo] ?? "Evento"
+}
+
+const DOMINIOS_TIMELINE_VALIDOS: readonly string[] = [
+  "reproduccion",
+  "sanidad",
+  "produccion",
+  "manejo",
+]
+
+/**
+ * `tabTimeline` es input no confiable del cliente: solo los cuatro dominios
+ * canónicos pasan al puerto; cualquier otro valor degrada a Resumen (sin
+ * dominio) y nunca lanza.
+ */
+export function normalizarTabTimeline(valor: unknown): DominioEventoAnimal | undefined {
+  return typeof valor === "string" && DOMINIOS_TIMELINE_VALIDOS.includes(valor)
+    ? (valor as DominioEventoAnimal)
+    : undefined
+}
+
+/**
+ * Entrada del timeline para la ficha: cursor opaco + tab normalizado. Función
+ * pura para mantener el handler de la ficha por debajo del umbral de
+ * complejidad cognitiva.
+ */
+function entradaTimelineFicha(input: {
+  readonly cursorTimeline?: string
+  readonly tabTimeline?: string
+}): { readonly cursorTimeline?: string; readonly dominioTimeline?: DominioEventoAnimal } {
+  const dominioTimeline = normalizarTabTimeline(input.tabTimeline)
+  return {
+    ...(input.cursorTimeline ? { cursorTimeline: input.cursorTimeline } : {}),
+    ...(dominioTimeline ? { dominioTimeline } : {}),
+  }
+}
+
+function toTimelineItem(item: TimelineItemAnimalDto): AnimalTimelineItem {
   return {
     id: item.id,
-    dominio: "manejo",
-    tipo: "reubicacion",
-    fecha: item.fecha ?? new Date(0).toISOString(),
-    titulo: item.titulo ?? "Evento del animal",
+    dominio: item.dominio,
+    // El repositorio del timeline solo emite los tipos canónicos de la unión.
+    tipo: item.tipo as AnimalTimelineItem["tipo"],
+    fecha: item.fecha,
+    titulo: tituloEventoTimeline(item.tipo),
+    ...(item.detalle ? { detalle: item.detalle } : {}),
   }
 }
 
@@ -887,16 +945,19 @@ export function createAnimalActionHarness({
       }
     },
 
-    async ficha(input: AnimalIdWebInput & { readonly cursorTimeline?: string }) {
+    async ficha(
+      input: AnimalIdWebInput & { readonly cursorTimeline?: string; readonly tabTimeline?: string },
+    ) {
       const session = await getSession(input.fincaId)
       if (!session) return { tipo: "no_autenticado" as const }
       const denied = denyAnimalRouteAccess(session, input.fincaId, "ver")
       if (denied) return denied
 
+      const entradaTimeline = entradaTimelineFicha(input)
       const result = await obtenerFichaAnimal(deps)({
         sesion: toAnimalSession(session),
         animalId: input.animalId,
-        ...(input.cursorTimeline ? { cursorTimeline: input.cursorTimeline } : {}),
+        ...entradaTimeline,
       })
       if (result.tipo !== "ficha") return result
       return {
@@ -1118,8 +1179,9 @@ export function createAnimalRuntimeHarness({
   return {
     list: (input: { readonly fincaId: string } & AnimalListFilters) =>
       runWithHarness((harness) => harness.list(input)),
-    ficha: (input: AnimalIdWebInput & { readonly cursorTimeline?: string }) =>
-      runWithHarness((harness) => harness.ficha(input)),
+    ficha: (
+      input: AnimalIdWebInput & { readonly cursorTimeline?: string; readonly tabTimeline?: string },
+    ) => runWithHarness((harness) => harness.ficha(input)),
     sexoCatalog: () => loadAnimalSexoCatalog(catalogoSexo),
     allCatalogs: (fincaId: string, excludedIds: readonly string[] = []) =>
       loadAnimalCatalogs(fincaId, catalogPorts, undefined, excludedIds),
@@ -1153,7 +1215,7 @@ export const getAnimalListadoVisualPermissionsAction = createServerFn({ method: 
   .handler(({ data }) => resolverPermisosVisualesListado(data.fincaId))
 
 export const getAnimalFichaAction = createServerFn({ method: "GET" })
-  .validator((data: AnimalIdWebInput & { cursorTimeline?: string }) => data)
+  .validator((data: AnimalIdWebInput & { cursorTimeline?: string; tabTimeline?: string }) => data)
   .handler(({ data }) => getRuntimeHarness().ficha(data))
 
 export const createAnimalAction = createServerFn({ method: "POST" })

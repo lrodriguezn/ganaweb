@@ -37,7 +37,10 @@ function deps() {
     summarize: vi.fn(async () => ({ eventCount: 0, offspringCount: 0, blocksCodeChange: false })),
   }
   const timeline: TimelineAnimalPort = {
-    listarPagina: vi.fn(async () => ({ items: [{ id: "ev-1" }], nextCursor: "cursor-2" })),
+    listarPagina: vi.fn(async () => ({
+      items: [{ id: "ev-1", dominio: "manejo", tipo: "reubicacion", fecha: "2026-07-10" }],
+      nextCursor: "cursor-2",
+    })),
   }
   const archivos: ArchivoAnimalPort = {
     listarImagenes: vi.fn(async () => [{ id: "img-1", esPrincipal: true, estadoSubida: "subida" }]),
@@ -170,7 +173,10 @@ describe("animal use cases", () => {
       imagenes: [{ id: "img-1", esPrincipal: true, estadoSubida: "subida" }],
       genealogia: { madre: null, padre: null, crias: [] },
       estadoBanner: null,
-      timeline: { items: [{ id: "ev-1" }], nextCursor: "cursor-2" },
+      timeline: {
+        items: [{ id: "ev-1", dominio: "manejo", tipo: "reubicacion", fecha: "2026-07-10" }],
+        nextCursor: "cursor-2",
+      },
       // Without a configured read model the resumen stays fully absent —
       // obtenerFichaAnimal never fabricates summary values.
       resumen: {
@@ -189,6 +195,25 @@ describe("animal use cases", () => {
       animalId: "animal-1",
       fincaId: "finca-1",
       cursor: "cursor-1",
+      limit: 20,
+    })
+  })
+
+  it("forwards the timeline domain filter to the port for ficha tabs", async () => {
+    const d = deps()
+
+    await obtenerFichaAnimal(d)({
+      sesion: { ...sesionCrear, permisos: [{ modulo: "animales", accion: "ver" }] },
+      animalId: "animal-1",
+      dominioTimeline: "reproduccion",
+      cursorTimeline: "cursor-9",
+    })
+
+    expect(d.timeline.listarPagina).toHaveBeenCalledWith({
+      animalId: "animal-1",
+      fincaId: "finca-1",
+      dominio: "reproduccion",
+      cursor: "cursor-9",
       limit: 20,
     })
   })

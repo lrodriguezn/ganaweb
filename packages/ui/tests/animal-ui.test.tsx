@@ -2090,6 +2090,52 @@ describe("redesign-ficha-animal — desktop ficha visual shell", () => {
     })
   })
 
+  describe("server-driven timeline tabs (redesign-ficha-animal slice 3)", () => {
+    it("delegates tab switches to onTabChange with the tab dominio", async () => {
+      const user = userEvent.setup()
+      const onTabChange = vi.fn()
+      render(
+        <AnimalFichaDesktopScreen
+          animal={animalDiseno}
+          timeline={eventosMultiDominio}
+          onTabChange={onTabChange}
+        />,
+      )
+
+      await user.click(screen.getByRole("tab", { name: "Reproducción" }))
+      expect(onTabChange).toHaveBeenLastCalledWith("reproduccion")
+      await user.click(screen.getByRole("tab", { name: "Producción" }))
+      expect(onTabChange).toHaveBeenLastCalledWith("produccion")
+      await user.click(screen.getByRole("tab", { name: "Eventos" }))
+      expect(onTabChange).toHaveBeenLastCalledWith("manejo")
+      await user.click(screen.getByRole("tab", { name: "Resumen" }))
+      expect(onTabChange).toHaveBeenLastCalledWith(undefined)
+    })
+
+    it("renders the server page as-is (no client re-filter) and marks the active domain tab", () => {
+      // El servidor ya filtró (D2): la UI recibe la página del dominio activo
+      // y NO vuelve a filtrarla — aquí se pasan eventos mezclados a propósito
+      // para demostrar que ninguno se oculta del lado cliente.
+      render(
+        <AnimalFichaDesktopScreen
+          animal={animalDiseno}
+          timeline={eventosMultiDominio}
+          dominioActivo="reproduccion"
+          nextCursor="cursor-r"
+          onTabChange={vi.fn()}
+          onLoadMore={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole("tab", { name: "Reproducción" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      )
+      expect(screen.getAllByRole("listitem")).toHaveLength(eventosMultiDominio.length)
+      expect(screen.getByRole("button", { name: "Ver más eventos" })).toBeInTheDocument()
+    })
+  })
+
   describe("timeline pagination control", () => {
     it("is hidden without nextCursor and appends via onLoadMore when present", async () => {
       const user = userEvent.setup()

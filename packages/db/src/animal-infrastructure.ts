@@ -17,10 +17,12 @@ import type {
   ArchivoAnimalPort,
   BenchmarkAnimalListadoReadRequest,
   ColaBinariosPort,
+  DominioEventoAnimal,
   EntradaOutbox,
   FichaResumenBruto,
   OutboxPort,
   TimelineAnimalPort,
+  TimelineItemAnimalDto,
   TransaccionPort,
 } from "@ganaweb/aplicacion"
 import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
@@ -1234,6 +1236,144 @@ export class DrizzleBinaryQueueRepository implements ColaBinariosPort {
   }
 }
 
+/**
+ * redesign-ficha-animal (slice 3, D1/D3): timeline real del animal como
+ * UNION ALL de las 11 tablas de eventos (una sola ida a la base, orden y
+ * paginación atómicos). `partos_crias` queda fuera: es tabla enlace sin
+ * `fecha`/`animal_id`. Cada rama aporta su dominio/tipo canónicos y una
+ * columna distintiva como `detalle`; el título se compone en la capa web.
+ */
+interface RamaTimeline {
+  readonly dominio: DominioEventoAnimal
+  readonly tipo: string
+  /** Identificador de tabla propia del esquema — seguro de interpolar. */
+  readonly tabla: string
+  /** Expresión SQL que produce la fecha del evento como date. */
+  readonly fechaExpr: string
+  /** Expresión SQL que produce el detalle (text|null) de la firma. */
+  readonly detalleExpr: string
+}
+
+const RAMAS_TIMELINE: readonly RamaTimeline[] = [
+  {
+    dominio: "produccion",
+    tipo: "pesaje",
+    tabla: "pesos",
+    fechaExpr: "fecha",
+    detalleExpr: "peso_kg::text || ' kg'",
+  },
+  {
+    dominio: "produccion",
+    tipo: "produccion",
+    tabla: "producciones_lacteas",
+    fechaExpr: "fecha",
+    detalleExpr: "(cantidad_am + cantidad_pm)::text || ' L'",
+  },
+  {
+    dominio: "produccion",
+    tipo: "condicion",
+    tabla: "animales_condicion_corporal",
+    fechaExpr: "fecha",
+    detalleExpr: "puntaje::text",
+  },
+  {
+    dominio: "reproduccion",
+    tipo: "servicio",
+    tabla: "servicios",
+    fechaExpr: "fecha",
+    detalleExpr: "tipo",
+  },
+  {
+    dominio: "reproduccion",
+    tipo: "palpacion",
+    tabla: "palpaciones",
+    fechaExpr: "fecha",
+    detalleExpr: "resultado",
+  },
+  {
+    dominio: "reproduccion",
+    tipo: "parto",
+    tabla: "partos",
+    fechaExpr: "fecha",
+    detalleExpr: "tipo_parto",
+  },
+  {
+    dominio: "sanidad",
+    tipo: "vacunacion",
+    tabla: "aplicaciones_sanitarias",
+    fechaExpr: "fecha",
+    detalleExpr: "dosis::text",
+  },
+  {
+    dominio: "sanidad",
+    tipo: "revision",
+    tabla: "revisiones_veterinarias",
+    fechaExpr: "fecha",
+    detalleExpr: "tipo_diagnostico",
+  },
+  {
+    dominio: "manejo",
+    tipo: "venta",
+    tabla: "ventas",
+    fechaExpr: "fecha",
+    detalleExpr: "comprador",
+  },
+  {
+    dominio: "manejo",
+    tipo: "muerte",
+    tabla: "muertes",
+    fechaExpr: "fecha",
+    detalleExpr: "NULL::text",
+  },
+  {
+    dominio: "manejo",
+    tipo: "reubicacion",
+    tabla: "animales_ubicacion_historico",
+    fechaExpr: "(fecha AT TIME ZONE 'UTC')::date",
+    detalleExpr: "motivo",
+  },
+]
+
+interface CursorTimeline {
+  readonly f: string
+  readonly id: string
+}
+
+const FORMATO_FECHA_CURSOR = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * D3: el cursor es input del cliente — decodificar, validar y bind, nada
+ * más. Cualquier cursor manipulado/basura degrada a la primera página:
+ * nunca lanza ni alcanza la consulta sin bind.
+ */
+function decodificarCursorTimeline(cursor: string): CursorTimeline | null {
+  try {
+    const parseado: unknown = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"))
+    if (typeof parseado !== "object" || parseado === null) return null
+    const { f, id } = parseado as { readonly f?: unknown; readonly id?: unknown }
+    if (typeof f !== "string" || typeof id !== "string") return null
+    if (!FORMATO_FECHA_CURSOR.test(f)) return null
+    if (Number.isNaN(new Date(f).getTime())) return null
+    return { f, id }
+  } catch {
+    return null
+  }
+}
+
+function codificarCursorTimeline(item: { readonly fecha: string; readonly id: string }): string {
+  return Buffer.from(JSON.stringify({ f: item.fecha, id: item.id }), "utf8").toString("base64url")
+}
+
+function sqlRama(rama: RamaTimeline, animalId: string, cursor: CursorTimeline | null): SQL {
+  const fecha = sql.raw(rama.fechaExpr)
+  const condicionCursor = cursor
+    ? sql` AND (${fecha} < ${cursor.f}::date OR (${fecha} = ${cursor.f}::date AND id < ${cursor.id}))`
+    : sql``
+  return sql`SELECT id, ${fecha}::text AS fecha, ${rama.dominio} AS dominio, ${rama.tipo} AS tipo, ${sql.raw(
+    rama.detalleExpr,
+  )} AS detalle FROM ${sql.raw(rama.tabla)} WHERE animal_id = ${animalId}${condicionCursor}`
+}
+
 export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
   constructor(private readonly db: DbClient) {}
 
@@ -1241,23 +1381,50 @@ export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
     readonly animalId: string
     readonly fincaId: string
     readonly cursor?: string
+    readonly dominio?: DominioEventoAnimal
     readonly limit: 20
-  }) {
-    const animal = await new DrizzleAnimalRepository(this.db).obtenerPorIdYFinca(
-      consulta.animalId,
-      consulta.fincaId,
-    )
-    return {
-      items: animal
-        ? [
-            {
-              id: `${animal.id}-created`,
-              fecha: animal.creadoEn.toISOString(),
-              titulo: "Animal registrado",
-            },
-          ]
-        : [],
+  }): Promise<{ readonly items: readonly TimelineItemAnimalDto[]; readonly nextCursor?: string }> {
+    const db = currentDb(this.db)
+    const [animal] = await db
+      .select({ id: animales.id })
+      .from(animales)
+      .where(and(eq(animales.id, consulta.animalId), eq(animales.fincaId, consulta.fincaId)))
+      .limit(1)
+    if (!animal) return { items: [] }
+
+    const ramas = consulta.dominio
+      ? RAMAS_TIMELINE.filter((rama) => rama.dominio === consulta.dominio)
+      : RAMAS_TIMELINE
+    if (ramas.length === 0) return { items: [] }
+
+    const cursor = consulta.cursor ? decodificarCursorTimeline(consulta.cursor) : null
+    const union = ramas
+      .map((rama) => sqlRama(rama, consulta.animalId, cursor))
+      .reduce((acumulada, rama) => sql`${acumulada} UNION ALL ${rama}`)
+    const filas = (await db.execute(
+      sql`SELECT id, fecha, dominio, tipo, detalle FROM (${union}) AS evento ORDER BY fecha DESC, id DESC LIMIT ${
+        consulta.limit + 1
+      }`,
+    )) as unknown as readonly {
+      readonly id: string
+      readonly fecha: string
+      readonly dominio: DominioEventoAnimal
+      readonly tipo: string
+      readonly detalle: string | null
+    }[]
+
+    const items = filas.slice(0, consulta.limit).map((fila) => ({
+      id: fila.id,
+      dominio: fila.dominio,
+      tipo: fila.tipo,
+      fecha: fila.fecha,
+      ...(fila.detalle != null ? { detalle: fila.detalle } : {}),
+    }))
+    const ultimo = items[items.length - 1]
+    if (filas.length > consulta.limit && ultimo) {
+      return { items, nextCursor: codificarCursorTimeline(ultimo) }
     }
+    return { items }
   }
 }
 

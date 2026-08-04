@@ -241,7 +241,7 @@ export const getAnimalCatalogsAction = createServerFn({ method: "GET" })
   )
 
 export const getAnimalFichaAction = createServerFn({ method: "GET" })
-  .validator((data: AnimalIdWebInput & { cursorTimeline?: string }) => data)
+  .validator((data: AnimalIdWebInput & { cursorTimeline?: string; tabTimeline?: string }) => data)
   .handler(async ({ data }) => (await getRuntimeHarness()).ficha(data))
 
 export const createAnimalAction = createServerFn({ method: "POST" })

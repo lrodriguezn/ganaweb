@@ -89,19 +89,63 @@ test.describe("animal CRUD web flow", () => {
     await expect(page.getByText("Pendiente de subir")).toBeVisible()
   })
 
-  test("referenced delete communicates inactivation and timeline pagination", async ({ page }) => {
+  test("referenced delete communicates inactivation; timeline tabs and pagination are server-driven", async ({
+    page,
+  }) => {
     await page.goto("/fincas/finca-1/animales/animal-1")
 
     const ficha = animalFichaFrame(page)
     await expect(ficha.getByText("MT-122", { exact: true })).toBeVisible()
     await expect(ficha.getByRole("heading", { name: "Timeline" })).toBeVisible()
-    await expect(ficha.getByText("Evento 20", { exact: true })).toBeVisible()
-    await expect(ficha.getByText("Evento 1", { exact: true })).toBeVisible()
-    await expect(page.getByText(/Cargar más: cursor-2/)).toBeVisible()
-    await expect(page.getByText("La ficha tiene más eventos disponibles")).toBeVisible()
+    // Los clics de tabs/paginación exigen la hidratación (SSR → handlers
+    // React); networkidle garantiza que el bundle de cliente cargó.
+    await page.waitForLoadState("networkidle")
 
+    if (isMobileViewport(page)) {
+      // La ficha mobile renderiza la primera página del loader (20 de 28
+      // eventos) sin tabs de dominio ni paginación visible.
+      await expect(ficha.getByRole("listitem")).toHaveCount(20)
+      await expect(page.getByText(/no puede eliminarse/)).toBeVisible()
+      return
+    }
+
+    const timeline = ficha.getByRole("region", { name: "Timeline" })
+
+    // Resumen (default): primera página del servidor (20 de 28) con control.
+    await expect(timeline.getByRole("listitem")).toHaveCount(20)
+    const verMas = timeline.getByRole("button", { name: /Ver más eventos/ })
+    await expect(verMas).toBeVisible()
+
+    // Append de la segunda página: sin duplicados y el control desaparece
+    // al llegar a la última página. Timeout extendido: primera llamada
+    // cliente→función de servidor (compilación fría en dev).
+    await verMas.click()
+    await expect(timeline.getByRole("listitem")).toHaveCount(28, { timeout: 15_000 })
+    await expect(timeline.getByRole("button", { name: /Ver más eventos/ })).toHaveCount(0)
+
+    // El cambio de tab resetea la paginación y filtra del lado servidor.
+    await timeline.getByRole("tab", { name: "Reproducción" }).click()
+    await expect(timeline.getByRole("listitem")).toHaveCount(7)
+    await timeline.getByRole("tab", { name: "Sanidad" }).click()
+    await expect(timeline.getByRole("listitem")).toHaveCount(3)
+    await timeline.getByRole("tab", { name: "Resumen" }).click()
+    await expect(timeline.getByRole("listitem")).toHaveCount(20)
+
+    // La referencia de eventos sigue comunicando la inactivación.
     await expect(page.getByText(/no puede eliminarse/)).toBeVisible()
     await expect(page.getByRole("button", { name: "Eliminar animal" })).toBeVisible()
+
+    // El drawer abre y cierra sin navegar.
+    await ficha.getByRole("button", { name: "+ Registrar evento" }).click()
+    await expect(page.getByText("¿Qué registrar?")).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(page.getByText("¿Qué registrar?")).toHaveCount(0)
+
+    // Editar navega al formulario; guardar y volver a la ficha queda
+    // cubierto por las pruebas de ruta (slice 1, task 1.5).
+    await ficha.getByRole("button", { name: "Editar" }).click()
+    await expect(page).toHaveURL(/\/fincas\/finca-1\/animales\/animal-1\/editar$/)
+    await expect(animalFormFrame(page).getByText("Nuevo animal")).toBeVisible()
   })
 
   test("read-only RBAC hides mutation controls and preserves responsive parity", async ({

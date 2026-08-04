@@ -69,7 +69,11 @@ export type {
   ColaBinariosPort,
   ImagenAnimalDto,
 } from "./puertos/animal-media-port.js"
-export type { TimelineAnimalPort, TimelineItemAnimalDto } from "./puertos/animal-timeline-port.js"
+export type {
+  DominioEventoAnimal,
+  TimelineAnimalPort,
+  TimelineItemAnimalDto,
+} from "./puertos/animal-timeline-port.js"
 export type { RelojDelSistemaPort } from "./puertos/reloj-del-sistema-port.js"
 export type { OutboxPort, EventoOutbox, EntradaOutbox } from "./puertos/outbox-port.js"
 export type { TransaccionPort } from "./puertos/transaccion-port.js"
