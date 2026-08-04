@@ -2193,6 +2193,48 @@ describe("redesign-ficha-animal — desktop ficha visual shell", () => {
       expect(onEdit).toHaveBeenCalledTimes(1)
     })
   })
+
+  describe("theme fidelity (spec: Renders across themes)", () => {
+    it("renders identical semantics across the ten appearances, with zero dark: variants", () => {
+      const estilos = [null, "theme-moderna", "theme-indigo", "theme-cielo", "theme-grafito"]
+      const modos = ["", "dark"]
+
+      for (const estilo of estilos) {
+        for (const modo of modos) {
+          const { container } = render(
+            <div className={[estilo, modo].filter(Boolean).join(" ")}>
+              <AnimalFichaDesktopScreen
+                animal={animalDiseno}
+                timeline={eventosMultiDominio}
+                resumen={resumenCompleto}
+              />
+            </div>,
+          )
+
+          // Header, badges, summary surfaces and timeline remain available
+          // in every theme.
+          expect(
+            screen.getByRole("heading", { level: 1, name: "MT-102 · Lucero" }),
+          ).toBeInTheDocument()
+          expect(screen.getByText("Preñada")).toBeInTheDocument()
+          expect(screen.getByText("Sana")).toBeInTheDocument()
+          expect(screen.getByRole("region", { name: "DATOS" })).toBeInTheDocument()
+          expect(screen.getByRole("region", { name: "REPRODUCCIÓN" })).toBeInTheDocument()
+          expect(screen.getByRole("region", { name: "PESO Y CONDICIÓN" })).toBeInTheDocument()
+          expect(screen.getAllByRole("tab")).toHaveLength(5)
+          expect(screen.getAllByRole("listitem")).toHaveLength(4)
+
+          // Theme Fidelity: no appearance-specific component variant — the
+          // markup carries zero `dark:` utilities; the token cascade
+          // re-skins it.
+          for (const elemento of container.querySelectorAll("*")) {
+            expect(String(elemento.className)).not.toContain("dark:")
+          }
+          cleanup()
+        }
+      }
+    })
+  })
 })
 
 describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
