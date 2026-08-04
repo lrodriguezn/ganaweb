@@ -13,8 +13,8 @@
 ## Phase 1 (PR 1): Visual Shell
 
 - [x] 1.1 `packages/ui/src/ganado/types.ts`: extend `AnimalFichaResumen`/`AnimalTimelineTipo` with enriched fields (raza/color, ageMonths, lastWeight+gdp, reproductive summary, bodyCondition).
-- [ ] 1.2 RED: rewrite desktop assertions in `packages/ui/tests/animal-ui.test.tsx` — breadcrumb, title+badges+meta, 3 cards, 5 tabs, empty states, pagination control hidden without cursor.
-- [ ] 1.3 GREEN: rewrite `AnimalFichaDesktopScreen`/`AnimalFichaHeader` in `packages/ui/src/ganado/animal-crud.tsx` — breadcrumb, badges+meta header, DATOS/REPRODUCCIÓN/PESO Y CONDICIÓN cards with structured empty states, tabbed timeline; tokens only, no `dark:`.
+- [x] 1.2 RED: rewrite desktop assertions in `packages/ui/tests/animal-ui.test.tsx` — breadcrumb, title+badges+meta, 3 cards, 5 tabs, empty states, pagination control hidden without cursor.
+- [x] 1.3 GREEN: rewrite `AnimalFichaDesktopScreen`/`AnimalFichaHeader` in `packages/ui/src/ganado/animal-crud.tsx` — breadcrumb, badges+meta header, DATOS/REPRODUCCIÓN/PESO Y CONDICIÓN cards with structured empty states, tabbed timeline; tokens only, no `dark:`.
 - [ ] 1.4 Wire EventDrawer open/close in `apps/web/src/routes/_app/fincas/$fincaId/animales/$animalId.tsx` (preselected animal, close without navigation); RED test first.
 - [ ] 1.5 `apps/web/.../$animalId/editar.tsx`: save returns to ficha.
 

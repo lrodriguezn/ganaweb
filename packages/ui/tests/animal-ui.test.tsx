@@ -18,6 +18,8 @@ import {
   AnimalListMobile,
   AnimalTimeline,
 } from "../src"
+import type { AnimalFichaResumen, AnimalTimelineItem } from "../src"
+import { formatearEdadMeses } from "../src/ganado/animal-crud"
 import {
   DETAIL_FIELD_NAMES,
   SECTION_LAYOUT,
@@ -144,9 +146,9 @@ describe("PR3 animal UI OpenPencil parity", () => {
     render(
       <AnimalFichaHeader
         animal={{ ...animal, estadoActual: "vendido" }}
-        metrics={[{ label: "Edad", value: "3 años" }]}
         canEdit={true}
         canCreateEvents={true}
+        onRegistrarEvento={vi.fn()}
       />,
     )
 
@@ -154,7 +156,6 @@ describe("PR3 animal UI OpenPencil parity", () => {
       "Animal vendido · la historia se conserva y las acciones de evento están ocultas",
     )
     expect(screen.queryByRole("button", { name: /Registrar evento/i })).not.toBeInTheDocument()
-    expect(screen.getByText("3 años")).toBeInTheDocument()
   })
 
   it("enforces the five-image gallery limit and marks pending upload without color-only state", () => {
@@ -567,7 +568,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.getByRole("button", { name: "Nuevo animal" })).toBeInTheDocument()
     expect(screen.getByText("1 seleccionado")).toBeInTheDocument()
     expect(screen.getByTestId("op-f-400107")).toHaveAccessibleName("19 Ficha Animal · Desktop")
-    for (const card of ["Datos", "Reproducción", "Peso", "Timeline"]) {
+    for (const card of ["DATOS", "REPRODUCCIÓN", "PESO Y CONDICIÓN", "Timeline"]) {
       expect(screen.getByRole("region", { name: card })).toBeInTheDocument()
     }
   })
@@ -1773,6 +1774,344 @@ function propsListado(
     ...overrides,
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* redesign-ficha-animal (slice 1) — desktop ficha visual shell        */
+/* Spec: animal-ficha-desktop-ui (header, cards, tabbed timeline,      */
+/* pagination control, drawer/edit wiring callbacks). Null-tolerant:   */
+/* every enriched field may be absent until the read model lands.      */
+/* ------------------------------------------------------------------ */
+
+const animalDiseno = {
+  id: "a-102",
+  codigoAnimal: "MT-102",
+  nombreAnimal: "Lucero",
+  sexo: "hembra" as const,
+  categoriaReproductiva: "prenada" as const,
+  salud: "sano" as const,
+  estadoActual: "activo" as const,
+  potrero: "POT-3",
+  lote: "Lote 4",
+  fechaNacimiento: Date.UTC(2022, 2, 12) / 1000,
+  codigoRfid: "982 000123456",
+  hierroId: "La Esperanza",
+  propietarioId: "H. Martínez",
+}
+
+const resumenCompleto: AnimalFichaResumen = {
+  raza: "Brahman",
+  color: "Canela",
+  edadMeses: 50,
+  grupo: "Grupo de ordeño",
+  ultimoPeso: { fecha: "2026-06-28", pesoKg: 412, gdpKgDia: 0.42 },
+  reproduccion: {
+    ultimoServicio: { fecha: "2026-04-02", detalle: "IA" },
+    ultimaPalpacion: { fecha: "2026-06-15", resultado: "Preñada" },
+    gestacionDias: 75,
+    partos: { total: 2, ultimaFecha: "2025-09-08" },
+    iepDias: 385,
+    diasAbiertos: 92,
+  },
+  condicionCorporal: { valor: 3.5, etiqueta: "Ideal", fecha: "2026-06-28" },
+}
+
+const eventosMultiDominio: AnimalTimelineItem[] = [
+  {
+    id: "ev-reubicacion",
+    dominio: "manejo",
+    tipo: "reubicacion",
+    fecha: "2026-03-20",
+    titulo: "Reubicación a POT-3",
+    detalle: "Desde POT-1 · rotación de pastura",
+  },
+  {
+    id: "ev-servicio",
+    dominio: "reproduccion",
+    tipo: "servicio",
+    fecha: "2026-04-02",
+    titulo: "Servicio IA",
+    detalle: "Pajuela BR-Elite · Insem. A. Gómez",
+  },
+  {
+    id: "ev-produccion",
+    dominio: "produccion",
+    tipo: "produccion",
+    fecha: "2026-06-01",
+    titulo: "Producción 12,4 L",
+    detalle: "AM 7,1 · PM 5,3",
+  },
+  {
+    id: "ev-vacunacion",
+    dominio: "sanidad",
+    tipo: "vacunacion",
+    fecha: "2026-06-28",
+    titulo: "Vacunación aftosa",
+    detalle: "2 ml · Lote V-2318 · refuerzo 28 dic",
+  },
+]
+
+describe("redesign-ficha-animal — desktop ficha visual shell", () => {
+  describe("formatearEdadMeses (pure helper)", () => {
+    it("formats ages under one year in months", () => {
+      expect(formatearEdadMeses(1)).toBe("1 mes")
+      expect(formatearEdadMeses(8)).toBe("8 meses")
+    })
+
+    it("formats whole and fractional years with es-CO decimal comma", () => {
+      expect(formatearEdadMeses(12)).toBe("1 año")
+      expect(formatearEdadMeses(24)).toBe("2 años")
+      expect(formatearEdadMeses(50)).toBe("4,2 años")
+    })
+  })
+
+  describe("ficha header composition", () => {
+    it("renders title, state badges and the full meta line with real values", () => {
+      render(
+        <AnimalFichaHeader
+          animal={animalDiseno}
+          resumen={resumenCompleto}
+          canEdit
+          canCreateEvents
+        />,
+      )
+
+      expect(screen.getByRole("heading", { level: 1, name: "MT-102 · Lucero" })).toBeInTheDocument()
+      expect(screen.getByText("Preñada")).toBeInTheDocument()
+      expect(screen.getByText("Sana")).toBeInTheDocument()
+      expect(
+        screen.getByText("Brahman · Hembra · 4,2 años · POT-3 · Lote 4 · Grupo de ordeño"),
+      ).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "+ Registrar evento" })).toBeInTheDocument()
+    })
+
+    it("renders the breadcrumb and returns to the list via onVolverAListado", async () => {
+      const user = userEvent.setup()
+      const onVolverAListado = vi.fn()
+      render(<AnimalFichaHeader animal={animalDiseno} onVolverAListado={onVolverAListado} />)
+
+      const breadcrumb = screen.getByRole("navigation", { name: "Miga de pan" })
+      expect(breadcrumb).toBeInTheDocument()
+      await user.click(within(breadcrumb).getByRole("button", { name: "Animales" }))
+      expect(onVolverAListado).toHaveBeenCalledTimes(1)
+    })
+
+    it("skips missing meta segments instead of fabricating values", () => {
+      render(
+        <AnimalFichaHeader
+          animal={{ ...animalDiseno, potrero: null, lote: null }}
+          resumen={{ raza: "Brahman" }}
+        />,
+      )
+
+      expect(screen.getByText("Brahman · Hembra")).toBeInTheDocument()
+    })
+
+    it("wires Editar and '+ Registrar evento' to their callbacks", async () => {
+      const user = userEvent.setup()
+      const onEdit = vi.fn()
+      const onRegistrarEvento = vi.fn()
+      render(
+        <AnimalFichaHeader
+          animal={animalDiseno}
+          canEdit
+          canCreateEvents
+          onEdit={onEdit}
+          onRegistrarEvento={onRegistrarEvento}
+        />,
+      )
+
+      await user.click(screen.getByRole("button", { name: "Editar" }))
+      await user.click(screen.getByRole("button", { name: "+ Registrar evento" }))
+      expect(onEdit).toHaveBeenCalledTimes(1)
+      expect(onRegistrarEvento).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("summary cards", () => {
+    it("renders DATOS, REPRODUCCIÓN and PESO Y CONDICIÓN with real values", () => {
+      render(
+        <AnimalFichaDesktopScreen animal={animalDiseno} timeline={[]} resumen={resumenCompleto} />,
+      )
+
+      const datos = screen.getByRole("region", { name: "DATOS" })
+      expect(within(datos).getByText("Nacimiento")).toBeInTheDocument()
+      expect(within(datos).getByText(/12 mar 2022/)).toBeInTheDocument()
+      expect(within(datos).getByText("Brahman")).toBeInTheDocument()
+      expect(within(datos).getByText("Canela")).toBeInTheDocument()
+      expect(within(datos).getByText("La Esperanza")).toBeInTheDocument()
+      expect(within(datos).getByText("H. Martínez")).toBeInTheDocument()
+      expect(within(datos).getByText("982 000123456")).toBeInTheDocument()
+
+      const reproduccion = screen.getByRole("region", { name: "REPRODUCCIÓN" })
+      expect(within(reproduccion).getByText("2 abr · IA")).toBeInTheDocument()
+      expect(within(reproduccion).getByText("15 jun · Preñada")).toBeInTheDocument()
+      expect(within(reproduccion).getByText("75 días")).toBeInTheDocument()
+      expect(within(reproduccion).getByText(/último 8 sep 2025/)).toBeInTheDocument()
+      expect(within(reproduccion).getByText("385 días")).toBeInTheDocument()
+      expect(within(reproduccion).getByText("92")).toBeInTheDocument()
+
+      const peso = screen.getByRole("region", { name: "PESO Y CONDICIÓN" })
+      expect(within(peso).getByText("412 kg")).toBeInTheDocument()
+      expect(within(peso).getByText(/GDP 0,42 kg\/día/)).toBeInTheDocument()
+      expect(within(peso).getByText("3,5 / 5 · Ideal")).toBeInTheDocument()
+    })
+
+    it("keeps labels and units with placeholder values when data is missing", () => {
+      render(<AnimalFichaDesktopScreen animal={animalDiseno} timeline={[]} />)
+
+      const datos = screen.getByRole("region", { name: "DATOS" })
+      for (const label of ["Nacimiento", "Raza", "Color", "Hierro", "Propietario", "RFID"]) {
+        expect(within(datos).getByText(label)).toBeInTheDocument()
+      }
+
+      const reproduccion = screen.getByRole("region", { name: "REPRODUCCIÓN" })
+      for (const label of [
+        "Últ. servicio",
+        "Palpación",
+        "Gestación",
+        "Partos",
+        "IEP",
+        "Días abiertos",
+      ]) {
+        expect(within(reproduccion).getByText(label)).toBeInTheDocument()
+      }
+
+      const peso = screen.getByRole("region", { name: "PESO Y CONDICIÓN" })
+      expect(within(peso).getByText("Último peso")).toBeInTheDocument()
+      expect(within(peso).getByText("— kg")).toBeInTheDocument()
+      expect(within(peso).getByText("Condición")).toBeInTheDocument()
+
+      // Structured placeholders, never missing layout cells:
+      // DATOS (Raza, Color) + REPRODUCCIÓN (6 rows) + PESO Y CONDICIÓN
+      // (GDP meta, Condición) all fall back to the "—" placeholder.
+      expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(10)
+    })
+  })
+
+  describe("tabbed timeline", () => {
+    it("shows Resumen active by default listing all events newest-first", () => {
+      render(<AnimalFichaDesktopScreen animal={animalDiseno} timeline={eventosMultiDominio} />)
+
+      const tabs = screen.getAllByRole("tab")
+      expect(tabs.map((tab) => tab.textContent)).toEqual([
+        "Resumen",
+        "Eventos",
+        "Reproducción",
+        "Producción",
+        "Sanidad",
+      ])
+      expect(screen.getByRole("tab", { name: "Resumen" })).toHaveAttribute("aria-selected", "true")
+
+      const rows = screen.getAllByRole("listitem")
+      expect(rows).toHaveLength(4)
+      expect(rows[0]).toHaveTextContent("Vacunación aftosa")
+      expect(rows[1]).toHaveTextContent("Producción 12,4 L")
+      expect(rows[3]).toHaveTextContent("Reubicación a POT-3")
+      expect(rows[0]).toHaveTextContent("28 jun 2026")
+    })
+
+    it("filters events by domain when a domain tab is selected", async () => {
+      const user = userEvent.setup()
+      render(<AnimalFichaDesktopScreen animal={animalDiseno} timeline={eventosMultiDominio} />)
+
+      await user.click(screen.getByRole("tab", { name: "Reproducción" }))
+      let rows = screen.getAllByRole("listitem")
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toHaveTextContent("Servicio IA")
+
+      await user.click(screen.getByRole("tab", { name: "Producción" }))
+      rows = screen.getAllByRole("listitem")
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toHaveTextContent("Producción 12,4 L")
+
+      await user.click(screen.getByRole("tab", { name: "Eventos" }))
+      rows = screen.getAllByRole("listitem")
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toHaveTextContent("Reubicación a POT-3")
+
+      await user.click(screen.getByRole("tab", { name: "Resumen" }))
+      expect(screen.getAllByRole("listitem")).toHaveLength(4)
+    })
+
+    it("shows a structured empty state when the selected tab has no events", async () => {
+      const user = userEvent.setup()
+      render(<AnimalFichaDesktopScreen animal={animalDiseno} timeline={[eventosMultiDominio[0]]} />)
+
+      await user.click(screen.getByRole("tab", { name: "Sanidad" }))
+      expect(screen.queryAllByRole("listitem")).toHaveLength(0)
+      expect(screen.getByText(/Sin eventos de sanidad/i)).toBeInTheDocument()
+
+      await user.click(screen.getByRole("tab", { name: "Resumen" }))
+      expect(screen.getAllByRole("listitem")).toHaveLength(1)
+    })
+
+    it("renders the timeline empty state when the animal has no events at all", () => {
+      render(<AnimalFichaDesktopScreen animal={animalDiseno} timeline={[]} />)
+
+      expect(screen.queryAllByRole("listitem")).toHaveLength(0)
+      expect(screen.getByText(/Sin eventos registrados/i)).toBeInTheDocument()
+    })
+  })
+
+  describe("timeline pagination control", () => {
+    it("is hidden without nextCursor and appends via onLoadMore when present", async () => {
+      const user = userEvent.setup()
+      const onLoadMore = vi.fn()
+      const { rerender } = render(
+        <AnimalFichaDesktopScreen animal={animalDiseno} timeline={eventosMultiDominio} />,
+      )
+      expect(screen.queryByRole("button", { name: /eventos más/ })).not.toBeInTheDocument()
+
+      rerender(
+        <AnimalFichaDesktopScreen
+          animal={animalDiseno}
+          timeline={eventosMultiDominio}
+          nextCursor="cursor-2"
+          eventosPendientes={34}
+          onLoadMore={onLoadMore}
+        />,
+      )
+      const control = screen.getByRole("button", { name: "Ver 34 eventos más" })
+      await user.click(control)
+      expect(onLoadMore).toHaveBeenCalledTimes(1)
+    })
+
+    it("falls back to a count-less label when the pending count is unknown", () => {
+      render(
+        <AnimalFichaDesktopScreen
+          animal={animalDiseno}
+          timeline={eventosMultiDominio}
+          nextCursor="cursor-2"
+          onLoadMore={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole("button", { name: "Ver más eventos" })).toBeInTheDocument()
+    })
+  })
+
+  describe("screen action wiring", () => {
+    it("delegates '+ Registrar evento' and Editar to the route callbacks", async () => {
+      const user = userEvent.setup()
+      const onRegistrarEvento = vi.fn()
+      const onEdit = vi.fn()
+      render(
+        <AnimalFichaDesktopScreen
+          animal={animalDiseno}
+          timeline={[]}
+          onRegistrarEvento={onRegistrarEvento}
+          onEdit={onEdit}
+        />,
+      )
+
+      await user.click(screen.getByRole("button", { name: "+ Registrar evento" }))
+      await user.click(screen.getByRole("button", { name: "Editar" }))
+      expect(onRegistrarEvento).toHaveBeenCalledTimes(1)
+      expect(onEdit).toHaveBeenCalledTimes(1)
+    })
+  })
+})
 
 describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
   describe("2.1 · canonical semantics (LA-090, RF-ANIM-LIST v2.1)", () => {
