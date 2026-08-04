@@ -18,9 +18,14 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `pnpm --filter @ganaweb/ui build && PLAYWRIGHT_TEST=1 GANAWEB_E2E_ANIMALS=1 pnpm --filter @ganaweb/web dev --host 127.0.0.1 --port ${PORT} --force & app_pid=$!; trap 'kill $app_pid' EXIT; until curl --fail --silent '${baseURL}/api/fincas/finca-1/animales?q=MT-122&sort=codigo%3Aasc' >/dev/null; do sleep 1; done; wait $app_pid`,
+    // Tras responder el API, el warmup recorre una vez cada ruta SSR de la
+    // suite: la primera navegación compila en frío el grafo de módulos de la
+    // ruta, y en runners de CI (2 cores) esa compilación puede superar los
+    // timeouts extendidos de los specs. Compilarlas antes de los tests
+    // elimina esa fuente de falsos rojos.
+    command: `pnpm --filter @ganaweb/ui build && PLAYWRIGHT_TEST=1 GANAWEB_E2E_ANIMALS=1 pnpm --filter @ganaweb/web dev --host 127.0.0.1 --port ${PORT} --force & app_pid=$!; trap 'kill $app_pid' EXIT; until curl --fail --silent '${baseURL}/api/fincas/finca-1/animales?q=MT-122&sort=codigo%3Aasc' >/dev/null; do sleep 1; done; for ruta in /fincas/finca-1/animales /fincas/finca-1/animales/nuevo /fincas/finca-1/animales/animal-1 /fincas/finca-1/animales/animal-1/imagenes /fincas/finca-1/animales/animal-1/editar /fincas/finca-1/configuracion /fincas/finca-1/configuracion/veterinarios /fincas/finca-1/configuracion/predio; do curl --silent --max-time 90 '${baseURL}'"$ruta" >/dev/null || true; done; wait $app_pid`,
     url: baseURL,
-    timeout: 120_000,
+    timeout: 240_000,
     reuseExistingServer: false,
   },
   projects: [

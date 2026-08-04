@@ -1,0 +1,91 @@
+name: e2e
+
+# Issue #189: la suite e2e de Playwright solo se ejecutaba en local, así que
+# los specs rotos pasaban desapercibidos. Este job la corre en CI.
+#
+# POLÍTICA DE DATOS:
+#   La suite es hermética: el 100% de los datos provienen del fixture E2E
+#   en memoria (apps/web/src/server/e2e-animals-fixture.server.ts), activado
+#   por PLAYWRIGHT_TEST=1 + GANAWEB_E2E_ANIMALS=1 (ya configurado en el
+#   webServer de playwright.config.ts). Se verificó corriendo la suite verde
+#   contra una base de datos vacía. El servicio Postgres solo recibe
+#   migraciones (SIN seed): es red de seguridad para rutas que toquen la DB
+#   por accidente y base para futuros specs que necesiten datos reales.
+#
+# INFORMATIVO → BLOQUEANTE:
+#   El job arranca con continue-on-error: true (recomendación del issue
+#   mientras la suite se estabiliza en CI). Para promoverlo a gate
+#   bloqueante: eliminar `continue-on-error: true` y el sufijo
+#   "(informativo)" del nombre del job.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Cancel in-progress runs for the same ref to save CI minutes.
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright e2e (informativo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Informativo: reporta fallos sin bloquear el PR (ver cabecera).
+    continue-on-error: true
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ganaweb_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ganaweb_e2e
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: "Migrate test database (sin seed: el fixture E2E provee los datos)"
+        run: pnpm --filter @ganaweb/db migrate
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright e2e suite
+        run: pnpm exec playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
