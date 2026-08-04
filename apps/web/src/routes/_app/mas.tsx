@@ -16,6 +16,11 @@
  * helper exportado por `@ganaweb/ui`. Los permisos se derivan en este
  * archivo desde la sesión autorizada que llega al AppHeader vía _app.tsx.
  *
+ * **Issue #149 (CM-002)**: el botón Configuración navega al hub de
+ * Maestros `/fincas/{fincaActivaId}/configuracion`. La vista está
+ * extraída en `MasView` (patrón de la casa: rutas cableadas + vista
+ * testeable con props, como `AnimalsListRouteView`).
+ *
  * **Cerrar sesión (PD-8)**: llama el server function real y vuelve a `/login`.
  *
  * **Sin dark:, sin theme-b: (T-004)**: ningún variant condicional.
@@ -25,7 +30,13 @@
  * "Mi cuenta", "Preferencias de notificación", "Próximamente".
  */
 
-import { AparienciaCard, type PermisosUsuario, crearPermisos, tienePermiso } from "@ganaweb/ui"
+import {
+  AparienciaCard,
+  type Permiso,
+  type PermisosUsuario,
+  crearPermisos,
+  tienePermiso,
+} from "@ganaweb/ui"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { LogOut, Settings, User } from "lucide-react"
 
@@ -36,19 +47,29 @@ export const Route = createFileRoute("/_app/mas")({
   component: Mas,
 })
 
-/**
- * Permisos del usuario activo derivados desde la sesión autorizada.
- */
-function Mas() {
-  const { sesion } = AppRoute.useRouteContext()
-  const navigate = useNavigate()
-  const permisosUsuario: PermisosUsuario = crearPermisos([...sesion.permisos])
-  const puedeConfigurar = tienePermiso(permisosUsuario, "configuracion", "ver")
+export interface MasViewProps {
+  readonly nombre: string
+  readonly email: string
+  readonly fincaActivaId: string
+  readonly permisos: readonly Permiso[]
+  readonly onNavegarAConfiguracion: (ruta: string) => void
+  readonly onCerrarSesion: () => void
+}
 
-  async function onCerrarSesion() {
-    await logoutAction()
-    void navigate({ to: "/login" })
-  }
+/**
+ * Vista presente de "Más" (issue #149): recibe la identidad y los permisos
+ * por props para ser testeable sin runtime de TanStack Router.
+ */
+export function MasView({
+  nombre,
+  email,
+  fincaActivaId,
+  permisos,
+  onNavegarAConfiguracion,
+  onCerrarSesion,
+}: MasViewProps) {
+  const permisosUsuario: PermisosUsuario = crearPermisos([...permisos])
+  const puedeConfigurar = tienePermiso(permisosUsuario, "configuracion", "ver")
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 md:space-y-6">
@@ -67,26 +88,21 @@ function Mas() {
             aria-hidden="true"
             className="size-10 rounded-full bg-muted text-primary font-semibold text-[14px] grid place-items-center shrink-0"
           >
-            {initials(sesion.nombre) || <User className="size-4" />}
+            {initials(nombre) || <User className="size-4" />}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium leading-tight truncate">{sesion.nombre}</p>
-            <p className="text-[12px] text-muted-foreground leading-tight truncate">
-              {sesion.email}
-            </p>
+            <p className="text-[14px] font-medium leading-tight truncate">{nombre}</p>
+            <p className="text-[12px] text-muted-foreground leading-tight truncate">{email}</p>
           </div>
         </div>
       </section>
 
-      {/* ---- Configuración (REQ-MM-004) — gated by tienePermiso ---- */}
+      {/* ---- Configuración (REQ-MM-004, CM-002) — gated by tienePermiso ---- */}
       {puedeConfigurar && (
         <nav aria-label="Configuración y cuenta" className="space-y-1">
           <button
             type="button"
-            onClick={() => {
-              // biome-ignore lint/suspicious/noConsole: pendiente de cablear a /configuracion
-              console.log("[mas] navegar a /configuracion")
-            }}
+            onClick={() => onNavegarAConfiguracion(`/fincas/${fincaActivaId}/configuracion`)}
             className="w-full min-h-[--h-touch] px-3 flex items-center gap-3 rounded-lg bg-card border text-support font-medium text-foreground hover:bg-muted/60 transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Settings aria-hidden="true" className="size-4 shrink-0" />
@@ -113,6 +129,27 @@ function Mas() {
         </button>
       </nav>
     </div>
+  )
+}
+
+function Mas() {
+  const { sesion } = AppRoute.useRouteContext()
+  const navigate = useNavigate()
+
+  async function onCerrarSesion() {
+    await logoutAction()
+    void navigate({ to: "/login" })
+  }
+
+  return (
+    <MasView
+      nombre={sesion.nombre}
+      email={sesion.email}
+      fincaActivaId={sesion.fincaActivaId}
+      permisos={sesion.permisos}
+      onNavegarAConfiguracion={(ruta) => void navigate({ to: ruta })}
+      onCerrarSesion={() => void onCerrarSesion()}
+    />
   )
 }
 

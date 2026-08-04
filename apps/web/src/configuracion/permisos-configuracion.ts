@@ -1,0 +1,15 @@
+/**
+ * Gate UI de Configuración · Maestros (issue #149, CM-002/CM-021).
+ *
+ * Módulo isomorfo: usa los helpers RBAC de `@ganaweb/ui` sobre los permisos
+ * de la sesión autorizada. Es una regla de presentación (LA-RBAC-05): la
+ * autorización de fondo sigue siendo la del harness de servidor
+ * (`configuracion-actions.server.ts`, PE-002).
+ */
+
+import { type Permiso, crearPermisos, tienePermiso } from "@ganaweb/ui"
+
+/** CM-021: sin `configuracion:ver` no se renderizan entradas ni rutas. */
+export function puedeVerConfiguracion(permisos: readonly Permiso[]): boolean {
+  return tienePermiso(crearPermisos([...permisos]), "configuracion", "ver")
+}

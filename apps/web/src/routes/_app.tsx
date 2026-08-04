@@ -53,6 +53,8 @@ import {
   type FincaResumen,
   type ItemNav,
   Sidebar,
+  crearPermisos,
+  tienePermiso,
 } from "@ganaweb/ui"
 import {
   Outlet,
@@ -180,6 +182,9 @@ function AppLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const activoId = deriveActivoId(pathname)
   const fincas: FincaResumen[] = sesion.fincas.map(aFincaResumen)
+  // CM-002/CM-021 (issue #149): la entrada Configuración del sidebar se
+  // gatea por `configuracion:ver` de la sesión de la finca activa.
+  const puedeConfigurar = tienePermiso(crearPermisos([...sesion.permisos]), "configuracion", "ver")
   const itemsSidebar = ITEMS_SIDEBAR.map((item) =>
     item.id === "animales" ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` } : item,
   )
@@ -216,8 +221,11 @@ function AppLayout() {
         items={itemsSidebar}
         activoId={activoId}
         onNavigate={navegar}
-        puedeConfigurar
-        onConfigurar={() => logPendingNavigation("/configuracion")}
+        puedeConfigurar={puedeConfigurar}
+        onConfigurar={() => {
+          // CM-002 (issue #149): hub de Maestros scoped a la finca activa.
+          void navigate({ to: `/fincas/${sesion.fincaActivaId}/configuracion` })
+        }}
       />
 
       <div className="flex flex-col flex-1 min-h-0 min-w-0">

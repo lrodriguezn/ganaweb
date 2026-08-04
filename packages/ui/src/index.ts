@@ -94,7 +94,13 @@ export { EstiloSwitcher } from "./ganado/estilo-switcher"
 export type { EstiloSwitcherProps } from "./ganado/estilo-switcher"
 export { Fab } from "./ganado/fab"
 export { FincaList, FincaSwitcher } from "./ganado/finca-switcher"
-export { MaestroCard, MaestroGrid, MaestrosProgreso } from "./ganado/maestro-card"
+export {
+  MaestroCard,
+  type MaestroCardVariante,
+  MaestroFilaConsolidada,
+  MaestroGrid,
+  MaestrosProgreso,
+} from "./ganado/maestro-card"
 export { MetricCard, MetricCardSkeleton } from "./ganado/metric-card"
 export { PageHeader } from "./ganado/page-header"
 export type { PageHeaderProps } from "./ganado/page-header"

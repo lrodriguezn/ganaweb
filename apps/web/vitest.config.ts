@@ -45,6 +45,9 @@ export default defineConfig({
       "src/server/animal-list-preferences-http.test.ts",
       // #110 PR2 — preference lifecycle + pagination/column mutation builders.
       "src/features/animal-listado/animal-listado-route.test.tsx",
+      // #149 — hub Configuración · Maestros: vistas desktop/mobile, sub-menú
+      // de grupos (S-1), estados CM-014 y redirects RBAC de las rutas.
+      "tests/configuracion-hub-route.test.tsx",
     ],
     environment: "node",
   },
