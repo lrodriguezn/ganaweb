@@ -21,6 +21,10 @@
       "types": "./src/animal-infrastructure.ts",
       "import": "./src/animal-infrastructure.ts"
     },
+    "./animal-mobile-list-infrastructure": {
+      "types": "./src/animal-mobile-list-infrastructure.ts",
+      "import": "./src/animal-mobile-list-infrastructure.ts"
+    },
     "./catalogo-global-infrastructure": {
       "types": "./src/catalogo-global-infrastructure.ts",
       "import": "./src/catalogo-global-infrastructure.ts"
@@ -59,6 +63,7 @@
     "push": "drizzle-kit push",
     "seed": "tsx src/seed/seed.ts",
     "benchmark:animal-listado": "tsx src/benchmark/run-animal-listado.ts",
+    "benchmark:animal-mobile-list": "tsx src/benchmark/run-animal-mobile-list.ts",
     "vacuum:analyze": "tsx scripts/vacuum-analyze.ts",
     "concurrent-index-deploy": "tsx scripts/concurrent-index-deploy.ts"
   },

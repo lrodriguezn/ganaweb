@@ -2,6 +2,8 @@ import type {
   AnimalListadoReadPort,
   AnimalListadoReadResult,
   AnimalListadoRow,
+  AnimalMobileListReadPort,
+  AnimalMobileRow,
   AnimalRegistro,
   AnimalResumen,
   AnimalUseCaseDeps,
@@ -22,6 +24,7 @@ import type {
   SesionAutorizada,
   TipoExplotacionOption,
 } from "@ganaweb/aplicacion"
+import { ETIQUETAS_CATEGORIA_REPRODUCTIVA } from "@ganaweb/db/animal-mobile-list-infrastructure"
 import { getRequestHeader } from "@tanstack/react-start/server"
 
 type AnimalListRepository = AnimalUseCaseDeps["animales"] & {
@@ -163,6 +166,56 @@ export function createAnimalE2eListadoReadPort(): AnimalListadoReadPort {
         cols: request.cols,
       }
       return result
+    },
+  }
+}
+
+function toAnimalMobileRow(animal: AnimalRegistro): AnimalMobileRow {
+  const sexoLabel = animal.sexoKey === 1 ? "Hembra" : animal.sexoKey === 2 ? "Pajuela" : "Macho"
+  const categoria = animal.categoriaReproductiva?.trim() || null
+  const etiquetaCategoria = categoria ? ETIQUETAS_CATEGORIA_REPRODUCTIVA[categoria] : undefined
+  const saludKey = animal.salud === "enfermo" ? 1 : 0
+  return {
+    id: animal.id,
+    codigo: animal.codigo,
+    nombre: animal.nombre,
+    sexo: { key: String(animal.sexoKey), label: sexoLabel },
+    raza: null,
+    categoriaReproductiva:
+      categoria && etiquetaCategoria ? { key: categoria, label: etiquetaCategoria } : null,
+    salud: { key: String(saludKey), label: saludKey === 1 ? "Enfermo" : "Sano" },
+    esDeMonta: animal.esDeMonta === true,
+    propietario: null,
+    madre: null,
+  }
+}
+
+/** Test-only #155 mobile read port so the dedicated endpoint replays the same explicit E2E fixture. */
+export function createAnimalE2eMobileListReadPort(): AnimalMobileListReadPort {
+  return {
+    async listar(request) {
+      const allRows = [...animals.values()]
+        .filter((animal) => animal.fincaId === request.fincaId && animal.activo)
+        .map(toAnimalMobileRow)
+      const query = request.q?.trim().toLocaleLowerCase() ?? ""
+      const matchingRows =
+        query === ""
+          ? allRows
+          : allRows.filter(
+              (animal) =>
+                animal.codigo.toLocaleLowerCase().includes(query) ||
+                animal.nombre.toLocaleLowerCase().includes(query),
+            )
+      const start = (request.page - 1) * request.pageSize
+      const total = matchingRows.length
+      return {
+        data: matchingRows.slice(start, start + request.pageSize),
+        page: request.page,
+        pageSize: request.pageSize,
+        total,
+        totalSinFiltro: allRows.length,
+        hayMas: request.page * request.pageSize < total,
+      }
     },
   }
 }
