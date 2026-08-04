@@ -121,6 +121,7 @@ export type {
   TipoCampoMaestro,
   ValorCampoMaestro,
 } from "@ganaweb/dominio"
+export type { DatosBasicosFinca, FincaLecturaPort } from "./puertos/finca-lectura-port.js"
 export type {
   ConteoCatalogoGlobalClave,
   ConteoFamiliaClave,

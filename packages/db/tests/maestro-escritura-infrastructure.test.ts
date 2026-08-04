@@ -415,4 +415,52 @@ describe("DrizzleMaestroEscrituraAdapter", () => {
       expect(resultado).toEqual({ tipo: "no_encontrado" })
     })
   })
+
+  describe("obtenerDatosBasicos (CM-050, issue #151)", () => {
+    it("lee los datos basicos de fincas por id y los mapea al puerto", async () => {
+      const { db, operaciones } = fakeDb({
+        filasSelect: [
+          {
+            codigo: "FIN001",
+            nombre: "Finca La Esperanza",
+            departamento: "Antioquia",
+            municipio: "Yarumal",
+            vereda: null,
+            areaHectareas: 42.5,
+            capacidadMaxima: null,
+            tipoExplotacionId: "tipo-1",
+          },
+        ],
+      })
+
+      const resultado = await new DrizzleMaestroEscrituraAdapter(db as never).obtenerDatosBasicos(
+        "finca-esperanza",
+      )
+
+      expect(resultado).toEqual({
+        codigo: "FIN001",
+        nombre: "Finca La Esperanza",
+        departamento: "Antioquia",
+        municipio: "Yarumal",
+        vereda: null,
+        areaHectareas: 42.5,
+        capacidadMaxima: null,
+        tipoExplotacionId: "tipo-1",
+      })
+      const select = operaciones[0]
+      if (select?.tipo !== "select") throw new Error("esperaba select")
+      expect(select.tabla).toBe("fincas")
+      expect(conditionContains(select.condicion, "id", "finca-esperanza")).toBe(true)
+    })
+
+    it("devuelve null si la finca no existe", async () => {
+      const { db } = fakeDb({ filasSelect: [] })
+
+      const resultado = await new DrizzleMaestroEscrituraAdapter(db as never).obtenerDatosBasicos(
+        "finca-inexistente",
+      )
+
+      expect(resultado).toBeNull()
+    })
+  })
 })
