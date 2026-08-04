@@ -341,7 +341,9 @@ function EditAnimalRoute() {
       })
       if (result && typeof result === "object" && "tipo" in result) {
         if (result.tipo === "actualizado") {
-          void navigate({ to: `/fincas/${fincaId}/animales` })
+          // redesign-ficha-animal: a successful edit returns to the animal's
+          // ficha, not the list (spec: Edit Save Returns to Ficha).
+          void navigate({ to: `/fincas/${fincaId}/animales/${animalId}` })
           return
         }
         if (result.tipo === "validacion") {

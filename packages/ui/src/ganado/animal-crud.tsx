@@ -6,14 +6,27 @@ import { es } from "date-fns/locale"
 import {
   AlertTriangle,
   Baby,
+  Banknote,
   Camera,
+  ChevronDown,
+  ChevronLeft,
   ChevronRight,
+  Gauge,
+  Hand,
+  Heart,
   ImagePlus,
+  MapPin,
+  Milk,
   PawPrint,
   Plus,
+  Scale,
   Search,
+  Skull,
+  Stethoscope,
+  Syringe,
   X,
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { useEffect, useId, useMemo, useState } from "react"
 import type * as React from "react"
 
@@ -38,20 +51,32 @@ import { EmptyState } from "./empty-state"
 import { CategoriaBadge, EstadoAnimalBadge, EstadoBadge, SaludBadge } from "./estado-badge"
 import { MetricCard } from "./metric-card"
 import { PageHeader } from "./page-header"
-import type { AnimalResumen, DominioEvento, ItemNav } from "./types"
+import type { AnimalFichaResumen, AnimalResumen, DominioEvento, ItemNav, Sexo } from "./types"
 
 export type AnimalListItem = AnimalResumen & {
   imagenPrincipalUrl?: string | null
 }
 
+/**
+ * Tipo de evento del timeline. Incluye los tipos de registro (peso, vacuna,
+ * …) y los tipos canónicos de la unión de tablas de eventos (pesaje,
+ * condicion, vacunacion, revision, venta, muerte) mapeados por dominio en
+ * el repositorio del timeline.
+ */
 export type AnimalTimelineTipo =
   | "peso"
+  | "pesaje"
   | "vacuna"
+  | "vacunacion"
   | "servicio"
   | "palpacion"
   | "parto"
   | "produccion"
+  | "condicion"
+  | "revision"
   | "reubicacion"
+  | "venta"
+  | "muerte"
   | "foto"
 
 export interface AnimalTimelineItem {
@@ -291,9 +316,92 @@ function formatDate(fecha: string): string {
 
 export interface AnimalFichaHeaderProps {
   animal: AnimalListItem
-  metrics: { label: string; value: string; context?: string }[]
+  /** Proyección enriquecida (slice 2). Todos los campos pueden faltar. */
+  resumen?: AnimalFichaResumen
   canEdit?: boolean
   canCreateEvents?: boolean
+  onVolverAListado?: () => void
+  onEdit?: () => void
+  onRegistrarEvento?: () => void
+}
+
+/** Etiquetas visibles del sexo para la línea de meta de la ficha. */
+const SEXO_ETIQUETA: Record<Sexo, string> = {
+  macho: "Macho",
+  hembra: "Hembra",
+  pajuela: "Pajuela",
+}
+
+/**
+ * Edad en texto a partir de meses: <12 meses en meses, después en años con
+ * un decimal es-CO (50 meses → "4,2 años"). Función pura — la edad la deriva
+ * el dominio (slice 2); la UI solo formatea.
+ */
+export function formatearEdadMeses(meses: number): string {
+  if (meses < 12) return `${meses} ${meses === 1 ? "mes" : "meses"}`
+  const anos = Math.round((meses / 12) * 10) / 10
+  if (Number.isInteger(anos)) return `${anos} ${anos === 1 ? "año" : "años"}`
+  return `${formatearNumeroEsCO(anos, 1)} años`
+}
+
+/** Edad corta para el paréntesis de Nacimiento: "4,2 a" / "8 m". */
+function formatearEdadCorta(meses: number): string {
+  if (meses < 12) return `${meses} m`
+  const anos = Math.round((meses / 12) * 10) / 10
+  return Number.isInteger(anos) ? `${anos} a` : `${formatearNumeroEsCO(anos, 1)} a`
+}
+
+function formatearNumeroEsCO(valor: number, decimalesMax: number): string {
+  return new Intl.NumberFormat("es-CO", { maximumFractionDigits: decimalesMax }).format(valor)
+}
+
+/**
+ * Meses cortos fijos: Intl es-CO produce "28 de jun de 2026" según la
+ * versión de ICU; el diseño (f-400107) usa "28 jun 2026". Formateo
+ * determinístico sobre UTC (las fechas ISO son UTC, sin desplazamiento).
+ */
+const MESES_CORTOS_ES = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sep",
+  "oct",
+  "nov",
+  "dic",
+] as const
+
+/** ISO date → "28 jun" (sin año) o "28 jun 2026" (con año). */
+function formatFechaCorta(fecha: string, conAnio: boolean): string {
+  const date = new Date(fecha)
+  const base = `${date.getUTCDate()} ${MESES_CORTOS_ES[date.getUTCMonth()]}`
+  return conAnio ? `${base} ${date.getUTCFullYear()}` : base
+}
+
+/** Epoch seconds (UTC) → "12 mar 2022". */
+function formatFechaEpoch(epochSegundos: number): string {
+  const date = new Date(epochSegundos * 1000)
+  return `${date.getUTCDate()} ${MESES_CORTOS_ES[date.getUTCMonth()]} ${date.getUTCFullYear()}`
+}
+
+/**
+ * Línea de meta de la ficha: raza · sexo · edad · potrero · lote · grupo.
+ * Los segmentos ausentes se omiten — nunca se fabrican valores.
+ */
+function construirLineaMeta(animal: AnimalListItem, resumen?: AnimalFichaResumen): string {
+  const segmentos = [
+    resumen?.raza ?? null,
+    SEXO_ETIQUETA[animal.sexo],
+    resumen?.edadMeses != null ? formatearEdadMeses(resumen.edadMeses) : null,
+    animal.potrero ?? null,
+    animal.lote ?? null,
+    resumen?.grupo ?? null,
+  ].filter((segmento): segmento is string => Boolean(segmento && segmento.trim().length > 0))
+  return segmentos.join(" · ")
 }
 
 export interface AnimalGenealogyNode {
@@ -315,12 +423,92 @@ export interface AnimalGenealogyProps {
   className?: string
 }
 
+/**
+ * Encabezado de la ficha de escritorio (redesign-ficha-animal, frame
+ * f-400107): miga de pan al listado, título {codigo} · {nombre}, badges de
+ * estado reproductivo y sanitario, línea de meta y acciones Editar /
+ * + Registrar evento. Tolerante a nulos: los segmentos ausentes se omiten.
+ */
 export function AnimalFichaHeader({
+  animal,
+  resumen,
+  canEdit = false,
+  canCreateEvents = false,
+  onVolverAListado,
+  onEdit,
+  onRegistrarEvento,
+}: AnimalFichaHeaderProps) {
+  const blocked = animal.estadoActual !== "activo"
+  const titulo = [animal.codigoAnimal, animal.nombreAnimal].filter(Boolean).join(" · ")
+  return (
+    <header className="space-y-2">
+      {blocked && (
+        <output className="rounded-card border bg-info-100 text-info-600 p-3 text-support">
+          Animal {animal.estadoActual === "muerto" ? "muerto" : animal.estadoActual} · la historia
+          se conserva y las acciones de evento están ocultas
+        </output>
+      )}
+      <nav
+        aria-label="Miga de pan"
+        className="flex items-center gap-1 text-support text-muted-foreground"
+      >
+        <button
+          type="button"
+          onClick={onVolverAListado}
+          className="inline-flex min-h-[--h-touch] items-center gap-0.5 rounded-control px-1 font-medium text-primary hover:underline"
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+          Animales
+        </button>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{animal.codigoAnimal}</span>
+      </nav>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1.5">
+          <h1 className="text-title font-semibold">{titulo}</h1>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {animal.categoriaReproductiva && animal.categoriaReproductiva !== "no_aplica" && (
+              <CategoriaBadge categoria={animal.categoriaReproductiva} />
+            )}
+            <SaludBadge salud={animal.salud} />
+          </div>
+          <p className="text-support text-muted-foreground">
+            {construirLineaMeta(animal, resumen)}
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {canEdit && (
+            <Button type="button" variant="secondary" onClick={onEdit}>
+              Editar
+            </Button>
+          )}
+          {canCreateEvents && !blocked && (
+            <Button type="button" onClick={onRegistrarEvento}>
+              + Registrar evento
+            </Button>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+/**
+ * Encabezado histórico de la ficha (foto + métricas). La ficha móvil queda
+ * fuera del rediseño (canvas solo escritorio), así que conserva este
+ * encabezado mientras llega su propio diseño.
+ */
+function AnimalFichaMobileHeader({
   animal,
   metrics,
   canEdit = false,
   canCreateEvents = false,
-}: AnimalFichaHeaderProps) {
+}: {
+  animal: AnimalListItem
+  metrics: { label: string; value: string; context?: string }[]
+  canEdit?: boolean
+  canCreateEvents?: boolean
+}) {
   const blocked = animal.estadoActual !== "activo"
   return (
     <header className="space-y-3">
@@ -2401,13 +2589,324 @@ function DatosAnimal({ animal }: { animal: AnimalListItem }) {
 export interface AnimalFichaDesktopScreenProps {
   animal: AnimalListItem
   timeline: AnimalTimelineItem[]
-  genealogy?: AnimalGenealogyProps
+  /** Proyección enriquecida (slice 2). Todos los campos pueden faltar. */
+  resumen?: AnimalFichaResumen
+  /** Cursor de la siguiente página del timeline; sin cursor no hay control. */
+  nextCursor?: string
+  /** Eventos de la siguiente página, cuando el modelo de lectura lo provee. */
+  eventosPendientes?: number
+  canEdit?: boolean
+  canCreateEvents?: boolean
+  onVolverAListado?: () => void
+  onEdit?: () => void
+  onRegistrarEvento?: () => void
+  onLoadMore?: () => void
 }
 
+/* ---------------- Ficha desktop: cards + timeline con tabs ---------------- */
+
+function FichaCard({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <section aria-label={titulo} className="rounded-card border bg-card p-4 space-y-2">
+      <h2 className="text-section font-semibold">{titulo}</h2>
+      <dl className="space-y-1.5">{children}</dl>
+    </section>
+  )
+}
+
+/** Fila etiqueta/valor con placeholder "—" cuando el dato falta. */
+function FilaDato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-caption text-muted-foreground shrink-0">{etiqueta}</dt>
+      <dd className="text-support font-medium text-end">{valor}</dd>
+    </div>
+  )
+}
+
+const PLACEHOLDER = "—"
+
+function valorNacimiento(animal: AnimalListItem, resumen?: AnimalFichaResumen): string {
+  if (animal.fechaNacimiento == null) return PLACEHOLDER
+  const fecha = formatFechaEpoch(animal.fechaNacimiento)
+  if (resumen?.edadMeses != null) return `${fecha} (${formatearEdadCorta(resumen.edadMeses)})`
+  return fecha
+}
+
+function valorUltimoServicio(resumen?: AnimalFichaResumen): string {
+  const servicio = resumen?.reproduccion?.ultimoServicio
+  if (!servicio) return PLACEHOLDER
+  const fecha = formatFechaCorta(servicio.fecha, false)
+  return servicio.detalle ? `${fecha} · ${servicio.detalle}` : fecha
+}
+
+function valorUltimaPalpacion(resumen?: AnimalFichaResumen): string {
+  const palpacion = resumen?.reproduccion?.ultimaPalpacion
+  if (!palpacion) return PLACEHOLDER
+  const fecha = formatFechaCorta(palpacion.fecha, false)
+  return palpacion.resultado ? `${fecha} · ${palpacion.resultado}` : fecha
+}
+
+function valorPartos(resumen?: AnimalFichaResumen): string {
+  const partos = resumen?.reproduccion?.partos
+  if (!partos) return PLACEHOLDER
+  if (!partos.ultimaFecha) return `${partos.total}`
+  return `${partos.total} · último ${formatFechaCorta(partos.ultimaFecha, true)}`
+}
+
+function valorCondicionCorporal(resumen?: AnimalFichaResumen): string {
+  const condicion = resumen?.condicionCorporal
+  if (!condicion || condicion.valor == null) return PLACEHOLDER
+  const base = `${formatearNumeroEsCO(condicion.valor, 1)} / 5`
+  return condicion.etiqueta ? `${base} · ${condicion.etiqueta}` : base
+}
+
+/** Ícono del timeline por tipo de evento (dominio ya colorea el fondo). */
+function iconoParaTipo(tipo: AnimalTimelineTipo): LucideIcon {
+  switch (tipo) {
+    case "peso":
+    case "pesaje":
+      return Scale
+    case "vacuna":
+    case "vacunacion":
+      return Syringe
+    case "servicio":
+      return Heart
+    case "palpacion":
+      return Hand
+    case "parto":
+      return Baby
+    case "produccion":
+      return Milk
+    case "condicion":
+      return Gauge
+    case "revision":
+      return Stethoscope
+    case "reubicacion":
+      return MapPin
+    case "venta":
+      return Banknote
+    case "muerte":
+      return Skull
+    case "foto":
+      return Camera
+    default:
+      return PawPrint
+  }
+}
+
+interface TabTimeline {
+  key: string
+  etiqueta: string
+  /** undefined = Resumen (todos los dominios). */
+  dominio?: DominioEvento
+  mensajeVacio: string
+}
+
+const TAB_RESUMEN: TabTimeline = {
+  key: "resumen",
+  etiqueta: "Resumen",
+  mensajeVacio: "Sin eventos registrados.",
+}
+
+const TABS_TIMELINE: readonly TabTimeline[] = [
+  TAB_RESUMEN,
+  {
+    key: "eventos",
+    etiqueta: "Eventos",
+    dominio: "manejo",
+    mensajeVacio: "Sin eventos de manejo.",
+  },
+  {
+    key: "reproduccion",
+    etiqueta: "Reproducción",
+    dominio: "reproduccion",
+    mensajeVacio: "Sin eventos de reproducción.",
+  },
+  {
+    key: "produccion",
+    etiqueta: "Producción",
+    dominio: "produccion",
+    mensajeVacio: "Sin eventos de producción.",
+  },
+  {
+    key: "sanidad",
+    etiqueta: "Sanidad",
+    dominio: "sanidad",
+    mensajeVacio: "Sin eventos de sanidad.",
+  },
+]
+
+function FilaTimeline({ evento }: { evento: AnimalTimelineItem }) {
+  const Icono = iconoParaTipo(evento.tipo)
+  return (
+    <li className="flex items-start gap-3 py-3">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-7 rounded-full grid place-items-center shrink-0",
+          domainStyle(evento.dominio),
+        )}
+      >
+        <Icono className="size-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-support font-medium">{evento.titulo}</p>
+        {evento.detalle && <p className="text-caption text-muted-foreground">{evento.detalle}</p>}
+        {evento.estadoLocal === "pendiente" && (
+          <EstadoBadge variant="info" withDot className="mt-1">
+            Guardado local · se sincronizará al recuperar señal
+          </EstadoBadge>
+        )}
+      </div>
+      <time dateTime={evento.fecha} className="text-caption text-muted-foreground shrink-0">
+        {formatFechaCorta(evento.fecha, true)}
+      </time>
+    </li>
+  )
+}
+
+function TimelineFicha({
+  eventos,
+  nextCursor,
+  eventosPendientes,
+  onLoadMore,
+}: {
+  eventos: AnimalTimelineItem[]
+  nextCursor?: string
+  eventosPendientes?: number
+  onLoadMore?: () => void
+}) {
+  const [tabActiva, setTabActiva] = useState(TAB_RESUMEN.key)
+  const tab = TABS_TIMELINE.find((candidate) => candidate.key === tabActiva) ?? TAB_RESUMEN
+  const ordenados = [...eventos].sort((a, b) => b.fecha.localeCompare(a.fecha))
+  const visibles = tab.dominio
+    ? ordenados.filter((evento) => evento.dominio === tab.dominio)
+    : ordenados
+
+  return (
+    <section aria-label="Timeline" className="rounded-card border bg-card p-4 space-y-3">
+      <div role="tablist" aria-label="Filtrar eventos por dominio" className="flex flex-wrap gap-2">
+        {TABS_TIMELINE.map((candidate) => (
+          <button
+            key={candidate.key}
+            type="button"
+            role="tab"
+            aria-selected={tabActiva === candidate.key}
+            onClick={() => setTabActiva(candidate.key)}
+            className={cn(
+              "min-h-[--h-touch] rounded-full border px-4 text-support font-medium",
+              tabActiva === candidate.key
+                ? "border-transparent bg-primary text-primary-foreground"
+                : "bg-card text-muted-foreground hover:bg-muted/50",
+            )}
+          >
+            {candidate.etiqueta}
+          </button>
+        ))}
+      </div>
+      {visibles.length > 0 ? (
+        <ol className="divide-y divide-border">
+          {visibles.map((evento) => (
+            <FilaTimeline key={evento.id} evento={evento} />
+          ))}
+        </ol>
+      ) : (
+        <p className="py-4 text-center text-support text-muted-foreground">{tab.mensajeVacio}</p>
+      )}
+      {nextCursor && (
+        <div className="flex justify-center pt-1">
+          <Button type="button" variant="secondary" onClick={onLoadMore}>
+            {eventosPendientes != null ? `Ver ${eventosPendientes} eventos más` : "Ver más eventos"}
+            <ChevronDown className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** Columna izquierda de la ficha: cards DATOS / REPRODUCCIÓN / PESO Y CONDICIÓN. */
+function CardsResumenFicha({
+  animal,
+  resumen,
+}: {
+  animal: AnimalListItem
+  resumen?: AnimalFichaResumen
+}) {
+  const reproduccion = resumen?.reproduccion
+  const ultimoPeso = resumen?.ultimoPeso
+  const metaPeso = ultimoPeso
+    ? `${formatFechaCorta(ultimoPeso.fecha, false)}${
+        ultimoPeso.gdpKgDia != null
+          ? ` · GDP ${formatearNumeroEsCO(ultimoPeso.gdpKgDia, 2)} kg/día`
+          : ""
+      }`
+    : PLACEHOLDER
+
+  return (
+    <div className="space-y-4">
+      <FichaCard titulo="DATOS">
+        <FilaDato etiqueta="Nacimiento" valor={valorNacimiento(animal, resumen)} />
+        <FilaDato etiqueta="Raza" valor={resumen?.raza ?? PLACEHOLDER} />
+        <FilaDato etiqueta="Color" valor={resumen?.color ?? PLACEHOLDER} />
+        <FilaDato etiqueta="Hierro" valor={animal.hierroId ?? PLACEHOLDER} />
+        <FilaDato etiqueta="Propietario" valor={animal.propietarioId ?? PLACEHOLDER} />
+        <FilaDato etiqueta="RFID" valor={animal.codigoRfid ?? PLACEHOLDER} />
+      </FichaCard>
+      <FichaCard titulo="REPRODUCCIÓN">
+        <FilaDato etiqueta="Últ. servicio" valor={valorUltimoServicio(resumen)} />
+        <FilaDato etiqueta="Palpación" valor={valorUltimaPalpacion(resumen)} />
+        <FilaDato
+          etiqueta="Gestación"
+          valor={
+            reproduccion?.gestacionDias != null ? `${reproduccion.gestacionDias} días` : PLACEHOLDER
+          }
+        />
+        <FilaDato etiqueta="Partos" valor={valorPartos(resumen)} />
+        <FilaDato
+          etiqueta="IEP"
+          valor={reproduccion?.iepDias != null ? `${reproduccion.iepDias} días` : PLACEHOLDER}
+        />
+        <FilaDato
+          etiqueta="Días abiertos"
+          valor={reproduccion?.diasAbiertos != null ? `${reproduccion.diasAbiertos}` : PLACEHOLDER}
+        />
+      </FichaCard>
+      <FichaCard titulo="PESO Y CONDICIÓN">
+        <div>
+          <FilaDato
+            etiqueta="Último peso"
+            valor={
+              ultimoPeso ? `${formatearNumeroEsCO(ultimoPeso.pesoKg, 1)} kg` : `${PLACEHOLDER} kg`
+            }
+          />
+          <dd className="text-caption text-muted-foreground text-end">{metaPeso}</dd>
+        </div>
+        <FilaDato etiqueta="Condición" valor={valorCondicionCorporal(resumen)} />
+      </FichaCard>
+    </div>
+  )
+}
+
+/**
+ * Ficha del animal en escritorio (redesign-ficha-animal, frame f-400107):
+ * encabezado con miga de pan, tres cards de resumen (DATOS, REPRODUCCIÓN,
+ * PESO Y CONDICIÓN) y card de timeline con tabs por dominio. Tolerante a
+ * nulos: cada campo ausente conserva etiqueta/unidad con placeholder.
+ */
 export function AnimalFichaDesktopScreen({
   animal,
   timeline,
-  genealogy,
+  resumen,
+  nextCursor,
+  eventosPendientes,
+  canEdit = true,
+  canCreateEvents = true,
+  onVolverAListado,
+  onEdit,
+  onRegistrarEvento,
+  onLoadMore,
 }: AnimalFichaDesktopScreenProps) {
   return (
     <section
@@ -2417,31 +2916,21 @@ export function AnimalFichaDesktopScreen({
     >
       <AnimalFichaHeader
         animal={animal}
-        metrics={[
-          { label: "Edad", value: "—" },
-          { label: "Último peso", value: "—" },
-        ]}
-        canEdit
-        canCreateEvents
+        {...(resumen ? { resumen } : {})}
+        canEdit={canEdit}
+        canCreateEvents={canCreateEvents}
+        {...(onVolverAListado ? { onVolverAListado } : {})}
+        {...(onEdit ? { onEdit } : {})}
+        {...(onRegistrarEvento ? { onRegistrarEvento } : {})}
       />
-      <div className="grid grid-cols-[1fr_1.2fr] gap-4">
-        <InfoCard title="Datos">
-          <DatosAnimal animal={animal} />
-        </InfoCard>
-        {genealogy ? (
-          <AnimalGenealogy {...genealogy} />
-        ) : (
-          <InfoCard title="Genealogía">Sin genealogía registrada.</InfoCard>
-        )}
-        <InfoCard title="Timeline">
-          {timeline.length > 0 ? (
-            <AnimalTimeline eventos={timeline} />
-          ) : (
-            <p className="text-support text-muted-foreground">Sin eventos registrados.</p>
-          )}
-        </InfoCard>
-        <InfoCard title="Reproducción">Sin datos reproductivos pendientes.</InfoCard>
-        <InfoCard title="Peso">Sin peso reciente.</InfoCard>
+      <div className="grid grid-cols-[minmax(300px,340px)_1fr] items-start gap-4">
+        <CardsResumenFicha animal={animal} {...(resumen ? { resumen } : {})} />
+        <TimelineFicha
+          eventos={timeline}
+          {...(nextCursor ? { nextCursor } : {})}
+          {...(eventosPendientes != null ? { eventosPendientes } : {})}
+          {...(onLoadMore ? { onLoadMore } : {})}
+        />
       </div>
     </section>
   )
@@ -2480,7 +2969,7 @@ export function AnimalFichaMobileScreen({
         </div>
       </header>
       <main className="p-4 space-y-4">
-        <AnimalFichaHeader animal={animal} metrics={metrics} canEdit />
+        <AnimalFichaMobileHeader animal={animal} metrics={metrics} canEdit />
         <div role="tablist" aria-label="Secciones de ficha" className="flex gap-2 overflow-x-auto">
           {[
             { label: "Timeline", selected: true },

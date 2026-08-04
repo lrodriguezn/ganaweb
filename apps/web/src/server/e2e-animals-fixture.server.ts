@@ -44,8 +44,22 @@ export function isSafeAnimalE2eRuntime(): boolean {
   return process.env.NODE_ENV === "test" || explicitlyTestRuntime
 }
 
+/**
+ * Reads the E2E role header when a Start request context exists. Outside a
+ * request (e.g. the tsx harness tests that exercise the fixture wiring) the
+ * header is unreadable — @tanstack/start-server-core throws instead of
+ * returning undefined — so fall back to the default (non-readonly) role.
+ */
+function readE2eRoleHeader(): string | undefined {
+  try {
+    return getRequestHeader("x-ganaweb-e2e-role")
+  } catch {
+    return undefined
+  }
+}
+
 export function getAnimalE2eSession(): SesionAutorizada {
-  const role = getRequestHeader("x-ganaweb-e2e-role")
+  const role = readE2eRoleHeader()
   const readonly = role === "readonly"
   const rol = readonly ? "Lectura" : "Mayordomo"
   const permisos = readonly

@@ -347,7 +347,12 @@ async function testRouteViewModelsAndFlows() {
 
   const created = await harness.create({
     fincaId: "finca-1",
-    datos: { codigo: "NV-10", nombre: "Novilla", sexoKey: 1 },
+    datos: {
+      codigo: "NV-10",
+      nombre: "Novilla",
+      sexoKey: 1,
+      tipoExplotacionId: "tipo-doble-proposito",
+    },
     imagenes: [{ id: "blob-1", mimeType: "image/webp", bytes: 1000 }],
   })
   assert.equal(created.tipo, "creado")
@@ -415,6 +420,7 @@ async function testCreatePreservesFechaCompra() {
       codigo: "MAP-1",
       nombre: "Mapeada",
       sexoKey: 1,
+      tipoExplotacionId: "tipo-doble-proposito",
       potreroId: "potrero-norte",
       sectorId: "sector-cria",
       loteId: "lote-a",
@@ -446,7 +452,12 @@ async function testCreatePreservesFechaCompra() {
   })
   const sinUbicacion = await sinUbicacionHarness.create({
     fincaId: "finca-1",
-    datos: { codigo: "MAP-2", nombre: "Sin Ubicacion", sexoKey: 1 },
+    datos: {
+      codigo: "MAP-2",
+      nombre: "Sin Ubicacion",
+      sexoKey: 1,
+      tipoExplotacionId: "tipo-doble-proposito",
+    },
   })
   assert.equal(
     sinUbicacion.tipo,
@@ -490,6 +501,7 @@ async function testCreatePreservesFechaCompra() {
       codigo: "MAP-4",
       nombre: "Con fecha de compra",
       sexoKey: 1,
+      tipoExplotacionId: "tipo-doble-proposito",
       origen: "comprado",
       fechaCompra: "2025-03-15",
     },
@@ -539,6 +551,7 @@ async function testCreateRejectsCrossFincaUbicaciones() {
       codigo,
       nombre: codigo,
       sexoKey: 1 as const,
+      tipoExplotacionId: "tipo-doble-proposito",
       potreroId: mismoFinca ? "potrero-norte" : "potrero-otro",
       sectorId: mismoFinca ? "sector-cria" : "sector-otro",
       loteId: mismoFinca ? "lote-a" : "lote-otro",
@@ -818,13 +831,14 @@ async function testEditRoutePassesInitialValuesToForm() {
     "../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js"
   )
 
-  // Source-level pin: the route must wire `initialValues` to BOTH the
-  // desktop and mobile <AnimalFormScreen> renders. Mirrors the
+  // Source-level pin: the route must wire `initialValues` to the
+  // <AnimalFormScreen> render (the route composes a single responsive form
+  // render; the historical desktop+mobile pair was unified). Mirrors the
   // `fieldErrors` wiring in testRouteBranchesOnResultTipo.
   const initialValuesMatches = editRoute.match(/initialValues=/g) ?? []
   assert.ok(
-    initialValuesMatches.length >= 2,
-    `edit route must pass initialValues to both <AnimalFormScreen> renders (found ${initialValuesMatches.length})`,
+    initialValuesMatches.length >= 1,
+    `edit route must pass initialValues to the <AnimalFormScreen> render (found ${initialValuesMatches.length})`,
   )
 
   // The route must call a fetcher (loader or a server function like
@@ -939,6 +953,7 @@ async function testCreatePersistsDatesRoundTripIntoEditLoader() {
       codigo: "RT-002",
       nombre: "Numerica",
       sexoKey: 1,
+      tipoExplotacionId: "tipo-doble-proposito",
       origen: "comprado",
       fechaNacimiento: "2026-07-10",
       fechaCompra: "2026-07-15",
@@ -1167,9 +1182,13 @@ async function testActionForwardsValidacionErrores() {
     !actionSource.includes("return { tipo: result.tipo }"),
     "createAnimalAction must not narrow the harness result — it drops the errores field",
   )
+  // The handler may be a block (`return result`) or the current expression
+  // form (`(await ...create(data)) as CreateAnimalServerResult`); both return
+  // the FULL harness result. A narrowed shape is rejected by the pin above.
   assert.ok(
-    /return\s+result\s*$/m.test(actionSource),
-    "createAnimalAction must return the full harness result on the non-e2e path",
+    /return\s+result\s*$/m.test(actionSource) ||
+      /\.create\(data\)\)?\s*as\s+CreateAnimalServerResult/.test(actionSource),
+    "createAnimalAction must return the full harness result (errores included)",
   )
   assert.ok(
     actionSource.includes("createAnimalAction"),
@@ -1177,22 +1196,29 @@ async function testActionForwardsValidacionErrores() {
   )
 }
 
-async function testActionE2eFastPathReturnsCreatedOnly() {
-  // Source-level pin: the e2e fast-path (when isAnimalE2eEnabled() is true) must return
-  // exactly { tipo: "creado" as const } with no errores key, so the e2e path is never
-  // confused with a validacion result.
+async function testActionE2eIsolationLivesInServerDepsSwap() {
+  // The historical e2e fast path (`return { tipo: "creado" as const }` in the
+  // facade) was replaced by a server-side dependency swap: when
+  // isAnimalE2eEnabled() is true the runtime harness swaps in fixture deps
+  // (session, catalogs, animal store) and every result keeps the full harness
+  // shape. These pins guard that isolation: the facade must not special-case
+  // e2e results, and the swap must stay gated behind isAnimalE2eEnabled().
   const actionSource = await readFile(join(WEB_ROOT, "src", "server", "animal-actions.ts"), "utf8")
   assert.ok(
-    actionSource.includes('return { tipo: "creado" as const }'),
-    'e2e fast-path must return exactly { tipo: "creado" as const } with no errores key',
+    !actionSource.includes('return { tipo: "creado" as const }'),
+    "facade must not special-case e2e results — e2e isolation is a server-side deps swap",
   )
-  // The fast-path early return must live above the harness return so the harness path
-  // cannot shadow it after the fix.
-  const fastReturnIndex = actionSource.indexOf('return { tipo: "creado" as const }')
-  const harnessReturnIndex = actionSource.indexOf("return result")
+  const serverSource = await readFile(
+    join(WEB_ROOT, "src", "server", "animal-actions.server.ts"),
+    "utf8",
+  )
   assert.ok(
-    fastReturnIndex > 0 && harnessReturnIndex > 0 && fastReturnIndex < harnessReturnIndex,
-    "e2e fast-path early return must be ordered before the harness-path return so the fix does not regress it",
+    /isAnimalE2eEnabled\(\)/.test(serverSource),
+    "server harness must gate the e2e dependency swap on isAnimalE2eEnabled()",
+  )
+  assert.ok(
+    serverSource.includes("createAnimalE2eDeps"),
+    "e2e mode must swap the animal deps for the fixture store",
   )
 }
 
@@ -1201,12 +1227,14 @@ async function testRouteBranchesOnResultTipo() {
 
   // 2.1: creado must navigate to the finca-scoped animales list.
   // The previous try/finally/assign was the bug — it navigated unconditionally.
+  // Navigation migrated from window.location.assign to TanStack's navigate;
+  // the pins accept the router call (and still reject a finally-block nav).
   assert.ok(
-    !/}\s*finally\s*\{[\s\S]*window\.location\.assign/m.test(createRoute),
-    "create route must not wrap the action in a try/finally/assign — it navigated on validacion and thrown errors too",
+    !/}\s*finally\s*\{[\s\S]*(window\.location\.assign|navigate\()/m.test(createRoute),
+    "create route must not wrap the action in a try/finally navigation — it navigated on validacion and thrown errors too",
   )
   assert.ok(
-    /window\.location\.assign\(`\/fincas\/\$\{fincaId\}\/animales`\)/.test(createRoute),
+    /navigate\(\{\s*to:\s*`\/fincas\/\$\{fincaId\}\/animales`\s*\}\)/.test(createRoute),
     "creado result must navigate to /fincas/{fincaId}/animales (not on validacion or thrown errors)",
   )
   assert.ok(
@@ -1216,7 +1244,7 @@ async function testRouteBranchesOnResultTipo() {
   // The navigate call must live after the creado check, so the JSX guard ordering is
   // preserved.
   const tipoCheck = createRoute.indexOf('result.tipo === "creado"')
-  const navigateCall = createRoute.indexOf("window.location.assign")
+  const navigateCall = createRoute.indexOf("navigate({")
   assert.ok(
     tipoCheck > 0 && navigateCall > 0 && tipoCheck < navigateCall,
     "navigate call must be ordered after the creado check so validacion and thrown errors do not redirect",
@@ -1237,19 +1265,15 @@ async function testRouteBranchesOnResultTipo() {
     /buildCreateAnimalFieldErrors\(/.test(createRoute),
     "create route must use the buildCreateAnimalFieldErrors mapper to translate errores to fieldErrors",
   )
-  // fieldErrors must be threaded into BOTH the desktop and mobile <AnimalFormScreen>
-  // renders — a single render leaves the other mode blind to validation feedback.
+  // fieldErrors must be threaded into the <AnimalFormScreen> render (the route
+  // composes a single responsive form render; the historical desktop+mobile
+  // pair was unified) so validation feedback reaches the form.
   const formScreenMatches = createRoute.match(/<AnimalFormScreen\b/g) ?? []
-  assert.ok(
-    formScreenMatches.length >= 2,
-    "create route must render AnimalFormScreen in both desktop and mobile layouts (found <2)",
-  )
-  // After the validacion branch sets fieldErrors, the two renders must each receive
-  // it as a prop. We assert that `fieldErrors=` appears at least twice.
+  assert.ok(formScreenMatches.length >= 1, "create route must render AnimalFormScreen (found 0)")
   const fieldErrorsPropMatches = createRoute.match(/fieldErrors=/g) ?? []
   assert.ok(
-    fieldErrorsPropMatches.length >= 2,
-    "create route must pass fieldErrors to both <AnimalFormScreen> renders (found <2)",
+    fieldErrorsPropMatches.length >= 1,
+    "create route must pass fieldErrors to the <AnimalFormScreen> render (found 0)",
   )
 
   // 2.3: thrown errors must NOT navigate and must NOT produce a field error.
@@ -1262,14 +1286,15 @@ async function testRouteBranchesOnResultTipo() {
       /catch\s*\(\s*\)/.test(createRoute),
     "create route must catch the action rejection so a thrown error keeps the form mounted and does not navigate",
   )
-  // After the catch, there must be no window.location.assign before the catch's closing
-  // brace. A simple proxy: count the number of window.location.assign calls in the
-  // route — exactly one, inside the creado branch.
-  const assignCalls = createRoute.match(/window\.location\.assign\(/g) ?? []
+  // After the catch, there must be no navigation before the catch's closing
+  // brace. A simple proxy: count the navigate-to-list calls in the route —
+  // exactly one, inside the creado branch.
+  const navigateCalls =
+    createRoute.match(/navigate\(\{\s*to:\s*`\/fincas\/\$\{fincaId\}\/animales`\s*\}\)/g) ?? []
   assert.equal(
-    assignCalls.length,
+    navigateCalls.length,
     1,
-    "create route must call window.location.assign exactly once — inside the creado branch only",
+    "create route must navigate to the list exactly once — inside the creado branch only",
   )
 }
 
@@ -1370,6 +1395,36 @@ async function testMapperBuildsFieldErrorsAndPreservesFechaCompra() {
   )
 }
 
+async function testEditSaveReturnsToFicha() {
+  // redesign-ficha-animal (slice 1, task 1.5): after a successful edit save,
+  // navigation must return to the animal's ficha, not the animal list
+  // (spec animal-ficha-desktop-ui: "Edit Save Returns to Ficha"). Source-level
+  // pin, mirroring the create-route navigation pins in
+  // testRouteBranchesOnResultTipo.
+  const editRoute = await readFile(join(ROUTES_DIR, "animales", "$animalId", "editar.tsx"), "utf8")
+
+  // The actualizado branch navigates to the ficha path.
+  assert.ok(
+    /navigate\(\{\s*to:\s*`\/fincas\/\$\{fincaId\}\/animales\/\$\{animalId\}`/.test(editRoute),
+    "edit route must navigate to the animal ficha (/fincas/{fincaId}/animales/{animalId}) after a successful save",
+  )
+
+  // The save handler must no longer target the bare animal list path.
+  assert.ok(
+    !/to:\s*`\/fincas\/\$\{fincaId\}\/animales`\s*\}/.test(editRoute),
+    "edit route must not navigate to the animal list after save — it returns to the ficha",
+  )
+
+  // Navigation stays ordered after the actualizado check (mirrors the create
+  // route pin: validacion and denials keep the form mounted).
+  const tipoCheck = editRoute.indexOf('result.tipo === "actualizado"')
+  const navigateCall = editRoute.indexOf("navigate({")
+  assert.ok(
+    tipoCheck > 0 && navigateCall > tipoCheck,
+    "ficha navigation must be ordered after the actualizado check so validacion and denials keep the form mounted",
+  )
+}
+
 async function run() {
   await testProductionRuntimeRequiresAdapters()
   await testServerGuards()
@@ -1386,8 +1441,9 @@ async function run() {
   await testCreateRouteWiresNewCatalogOptions()
   await testE2eFixtureRequiresSafeRuntimeGuard()
   await testActionForwardsValidacionErrores()
-  await testActionE2eFastPathReturnsCreatedOnly()
+  await testActionE2eIsolationLivesInServerDepsSwap()
   await testRouteBranchesOnResultTipo()
+  await testEditSaveReturnsToFicha()
   await testMapperBuildsFieldErrorsAndPreservesFechaCompra()
   // biome-ignore lint/suspicious/noConsole: focused harness progress output
   console.log("✅ animal-web-flow.test.ts passed")

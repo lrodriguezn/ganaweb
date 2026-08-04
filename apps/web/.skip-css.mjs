@@ -25,3 +25,19 @@ export async function resolve(specifier, context, nextResolve) {
   }
   return nextResolve(specifier, context)
 }
+
+/**
+ * Backstop: if a loader registered later (e.g. tsx's sync hooks) resolves a
+ * stylesheet to its file URL before this hook runs, the load phase still
+ * short-circuits it to an empty module instead of ERR_UNKNOWN_FILE_EXTENSION.
+ */
+export async function load(url, context, nextLoad) {
+  if (url.endsWith(".css") || /\.css\?/.test(url)) {
+    return {
+      format: "module",
+      source: "export {}",
+      shortCircuit: true,
+    }
+  }
+  return nextLoad(url, context)
+}

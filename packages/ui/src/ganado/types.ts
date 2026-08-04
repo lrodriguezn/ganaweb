@@ -67,6 +67,51 @@ export interface EventoTimeline {
 
 export type EstadoSync = "sincronizado" | "pendiente" | "offline"
 
+/* ---------------- Ficha enriquecida (v1.4 — redesign-ficha-animal) ---------------- */
+
+/**
+ * Proyección enriquecida de la ficha del animal (escritorio). Contrato
+ * separado de `AnimalResumen` (que sigue siendo el contrato del listado):
+ * la ficha agrega datos derivados de eventos que el listado no necesita.
+ *
+ * Todos los campos son opcionales/nulos: la UI tolera ausencias con
+ * estados vacíos estructurados (etiqueta + unidad + placeholder) hasta
+ * que el modelo de lectura los provea. Nunca fabricar valores.
+ */
+export interface AnimalFichaResumen {
+  /** Nombre resuelto de la raza (config_razas). */
+  raza?: string | null
+  /** Nombre resuelto del color (config_colores). */
+  color?: string | null
+  /** Edad en meses derivada de fechaNacimiento (dominio: calcularEdadMeses). */
+  edadMeses?: number | null
+  /** Nombre del grupo actual (el listado solo resuelve potrero/lote). */
+  grupo?: string | null
+  /** Último pesaje con ganancia diaria promedio desde el pesaje anterior. */
+  ultimoPeso?: {
+    fecha: string // ISO date
+    pesoKg: number
+    /** GDP en kg/día; null con un único pesaje (sin anterior comparable). */
+    gdpKgDia?: number | null
+  } | null
+  /** Resumen reproductivo derivado de eventos (TR-014: eventos son la verdad). */
+  reproduccion?: {
+    ultimoServicio?: { fecha: string; detalle?: string | null } | null
+    ultimaPalpacion?: { fecha: string; resultado?: string | null } | null
+    gestacionDias?: number | null
+    partos?: { total: number; ultimaFecha?: string | null } | null
+    /** Intervalo entre partos en días. */
+    iepDias?: number | null
+    diasAbiertos?: number | null
+  } | null
+  /** Última condición corporal registrada. */
+  condicionCorporal?: {
+    valor?: number | null
+    etiqueta?: string | null // "Ideal", "Delgada"…
+    fecha?: string | null
+  } | null
+}
+
 /* ---------------- Multi-finca (v1.1) ---------------- */
 
 /**

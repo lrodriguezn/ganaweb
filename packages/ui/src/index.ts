@@ -103,6 +103,7 @@ export { Timeline } from "./ganado/timeline"
 export type {
   ActividadReciente,
   AlertaAccion,
+  AnimalFichaResumen,
   AnimalResumen,
   CategoriaReproductiva,
   DatoProduccion,

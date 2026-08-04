@@ -33,6 +33,9 @@ export default defineConfig({
       "tests/animal-create-e2e.test.tsx",
       "tests/animal-listado-route.test.tsx",
       "tests/animal-listado-route-integration.test.tsx",
+      // redesign-ficha-animal slice 1 — ficha route view: EventDrawer wiring,
+      // breadcrumb navigation callback, drawer close without navigation.
+      "tests/animal-ficha-route-integration.test.tsx",
       // #111 PR2 — server exportadores (pure logic, node env). Scoped glob so
       // the tsx-based unit tests (run separately) are not re-executed here.
       "tests/animal-exportacion-*.test.ts",
