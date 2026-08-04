@@ -8,9 +8,11 @@ import {
   crearAuditoriaEliminacionAnimal,
   crearPersistenciaImagenAnimal,
   createAnimalReferenceChecker,
+  mapAnimalRegistro,
   marcarPrincipalAnimalImagen,
   resumirReferenciasAnimal,
 } from "../src/animal-infrastructure.js"
+import type { Animal } from "../src/schema/index.js"
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 
@@ -205,5 +207,92 @@ describe("PR2 animal DB infrastructure", () => {
       "0005_animal_listado_preferencias",
       "0006_veterinarios_es_inseminador",
     ])
+  })
+})
+
+describe("Issue #153 (BUG-DATA-001) — mapAnimalRegistro exposes categoriaReproductiva", () => {
+  function filaAnimal(overrides: Partial<Animal> = {}): Animal {
+    return {
+      id: "animal-1",
+      fincaId: "finca-1",
+      codigo: "MT-122",
+      nombre: "Matilda",
+      fechaNacimiento: null,
+      fechaCompra: null,
+      sexoKey: 1,
+      tipoIngresoId: 0,
+      madreId: null,
+      codigoMadre: "",
+      indTransferenciaEmbriones: 0,
+      codigoDonadora: "",
+      tipoPadreId: 0,
+      padreId: null,
+      codigoPadre: "",
+      codigoPajuela: "",
+      razaId: null,
+      colorId: null,
+      esDeMonta: 0,
+      potreroId: null,
+      sectorId: null,
+      loteId: null,
+      grupoId: null,
+      hierroId: null,
+      propietarioId: null,
+      calidadAnimalId: null,
+      precioCompra: 0,
+      pesoCompra: 0,
+      codigoRfid: "",
+      codigoArete: "",
+      codigoQr: "",
+      saludAnimalKey: 0,
+      estadoAnimalKey: 0,
+      indDescartado: 0,
+      tipoExplotacionId: null,
+      transferenciaEmbrion: false,
+      donadoraId: null,
+      tipoConcepcionPadre: null,
+      categoriaReproductiva: null,
+      tatuado: false,
+      herrado: false,
+      descornado: false,
+      numeroPezones: null,
+      comentarios: null,
+      activo: 1,
+      usuarioCreadoPor: "usuario-1",
+      createdAt: new Date("2026-07-12T10:00:00.000Z"),
+      updatedAt: new Date("2026-07-12T10:00:00.000Z"),
+      version: 1,
+      ...overrides,
+    }
+  }
+
+  it("passes a stored categoriaReproductiva through to the port", () => {
+    const registro = mapAnimalRegistro(filaAnimal({ categoriaReproductiva: "prenada" }))
+    expect(registro.categoriaReproductiva).toBe("prenada")
+  })
+
+  it("trims surrounding whitespace from the stored value", () => {
+    const registro = mapAnimalRegistro(filaAnimal({ categoriaReproductiva: "  servida  " }))
+    expect(registro.categoriaReproductiva).toBe("servida")
+  })
+
+  it("maps an empty string to null", () => {
+    const registro = mapAnimalRegistro(filaAnimal({ categoriaReproductiva: "" }))
+    expect(registro.categoriaReproductiva).toBeNull()
+  })
+
+  it("maps a null column to null", () => {
+    const registro = mapAnimalRegistro(filaAnimal({ categoriaReproductiva: null }))
+    expect(registro.categoriaReproductiva).toBeNull()
+  })
+
+  it("passes unknown raw values through — enum validation lives in the web mapper", () => {
+    const registro = mapAnimalRegistro(filaAnimal({ categoriaReproductiva: "gestante" }))
+    expect(registro.categoriaReproductiva).toBe("gestante")
+  })
+
+  it("keeps the real salud mapping intact (salud_animal_key 1 → enfermo)", () => {
+    const registro = mapAnimalRegistro(filaAnimal({ saludAnimalKey: 1 }))
+    expect(registro.salud).toBe("enfermo")
   })
 })

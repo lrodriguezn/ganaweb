@@ -56,6 +56,13 @@ export interface AnimalRegistro {
   readonly activo: boolean
   readonly estadoActual?: EstadoAnimal
   readonly salud?: string
+  /**
+   * Categoría reproductiva cruda persistida (`categoria_reproductiva`,
+   * TEXT nullable). La infraestructura la recorta y normaliza vacíos a
+   * `null`; la validación contra el enum de la UI vive en el mapper web
+   * (`toAnimalListItem`).
+   */
+  readonly categoriaReproductiva?: string | null
   readonly potreroId?: string
   readonly loteId?: string
   readonly usuarioCreadoPor: string

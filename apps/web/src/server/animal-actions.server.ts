@@ -744,6 +744,23 @@ function toAnimalSession(session: SesionAutorizada): SesionAnimal {
   }
 }
 
+// Issue #153 (BUG-DATA-001): la categoría persistida es TEXT libre; solo los
+// seis valores del enum de la UI pasan, cualquier otro (null/vacío/desconocido)
+// se normaliza a "no_aplica".
+function normalizarCategoriaReproductiva(valor: string | null | undefined) {
+  switch (valor) {
+    case "vacia":
+    case "servida":
+    case "prenada":
+    case "parida":
+    case "novilla":
+    case "no_aplica":
+      return valor
+    default:
+      return "no_aplica"
+  }
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional DB columns
 function toAnimalListItem(animal: AnimalRegistro): AnimalListItem {
   return {
@@ -751,9 +768,12 @@ function toAnimalListItem(animal: AnimalRegistro): AnimalListItem {
     codigoAnimal: animal.codigo,
     nombreAnimal: animal.nombre,
     estadoActual: animal.activo ? (animal.estadoActual ?? "activo") : "vendido",
-    salud: "sano",
+    // Issue #153 (BUG-DATA-001): la salud real ya llega traducida desde la DB
+    // (salud_animal_key → "sano"|"enfermo"); el ternario solo cubre fixtures
+    // que omiten el campo y coincide con el default de la DB (0 = sano).
+    salud: animal.salud === "enfermo" ? "enfermo" : "sano",
     sexo: animal.sexoKey === 1 ? "hembra" : animal.sexoKey === 0 ? "macho" : "pajuela",
-    categoriaReproductiva: animal.sexoKey === 1 ? "novilla" : "no_aplica",
+    categoriaReproductiva: normalizarCategoriaReproductiva(animal.categoriaReproductiva),
     fechaNacimiento: animal.fechaNacimiento ?? null,
     fechaCompra: animal.fechaCompra ?? null,
     codigoRfid: animal.codigoRfid ?? null,

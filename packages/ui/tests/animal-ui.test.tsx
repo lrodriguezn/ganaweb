@@ -8,6 +8,7 @@ import userEvent from "@testing-library/user-event"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 import {
+  AnimalCard,
   AnimalDesktopScreen,
   AnimalFichaDesktopScreen,
   AnimalFichaHeader,
@@ -15,6 +16,7 @@ import {
   AnimalFormScreen,
   AnimalGallery,
   AnimalGenealogy,
+  type AnimalListItem,
   AnimalListMobile,
   AnimalTimeline,
 } from "../src"
@@ -2406,5 +2408,176 @@ describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
       const propsBarril: PropsDesdeBarril = propsListado()
       expect(propsBarril.columns).toBe(COLUMNAS_CANONICAS)
     })
+  })
+})
+
+/* =====================================================================
+   Issue #153 (BUG-DATA-001) — las tarjetas mobile muestran la salud y
+   la categoría reproductiva REALES del animal.
+   LM-060: la etiqueta de salud concuerda en género con el sexo.
+   Regla de badge de categoría: no_aplica se oculta, salvo macho
+   esDeMonta → badge 'Reproductor'.
+   ===================================================================== */
+
+function renderItemMobile(animales: AnimalListItem[]) {
+  return render(
+    <AnimalListMobile
+      animales={animales}
+      onPressAnimal={vi.fn()}
+      onNuevoAnimal={vi.fn()}
+      bottomNavItems={nav}
+    />,
+  )
+}
+
+describe("Issue #153 (BUG-DATA-001) — badges de AnimalResultCard (listado mobile)", () => {
+  it("Given a macho with categoria no_aplica and esDeMonta=false When the list renders Then no category badge is shown", () => {
+    renderItemMobile([
+      {
+        id: "a-m1",
+        codigoAnimal: "MC-001",
+        sexo: "macho",
+        categoriaReproductiva: "no_aplica",
+        esDeMonta: false,
+        salud: "sano",
+        estadoActual: "activo",
+      },
+    ])
+    const card = screen.getByRole("button", { name: /MC-001/ })
+    expect(within(card).queryByText("Novilla")).not.toBeInTheDocument()
+    expect(within(card).queryByText("Reproductor")).not.toBeInTheDocument()
+    expect(within(card).queryByText("—")).not.toBeInTheDocument()
+    expect(within(card).getByText("Sano")).toBeInTheDocument()
+  })
+
+  it("Given a macho esDeMonta without categoria When the list renders Then the 'Reproductor' badge is shown", () => {
+    renderItemMobile([
+      {
+        id: "a-m2",
+        codigoAnimal: "MC-002",
+        sexo: "macho",
+        categoriaReproductiva: null,
+        esDeMonta: true,
+        salud: "sano",
+        estadoActual: "activo",
+      },
+    ])
+    const card = screen.getByRole("button", { name: /MC-002/ })
+    expect(within(card).getByText("Reproductor")).toBeInTheDocument()
+    expect(within(card).queryByText("Novilla")).not.toBeInTheDocument()
+  })
+
+  it("Given an enferma hembra When the list renders Then the salud badge reads 'Enferma'", () => {
+    renderItemMobile([
+      {
+        id: "a-h1",
+        codigoAnimal: "HC-001",
+        sexo: "hembra",
+        categoriaReproductiva: "no_aplica",
+        salud: "enfermo",
+        estadoActual: "activo",
+      },
+    ])
+    const card = screen.getByRole("button", { name: /HC-001/ })
+    expect(within(card).getByText("Enferma")).toBeInTheDocument()
+    expect(within(card).queryByText("Sana")).not.toBeInTheDocument()
+  })
+
+  it("Given a prenada hembra When the list renders Then the categoria badge reads 'Preñada'", () => {
+    renderItemMobile([
+      {
+        id: "a-h2",
+        codigoAnimal: "HC-002",
+        sexo: "hembra",
+        categoriaReproductiva: "prenada",
+        salud: "sano",
+        estadoActual: "activo",
+      },
+    ])
+    const card = screen.getByRole("button", { name: /HC-002/ })
+    expect(within(card).getByText("Preñada")).toBeInTheDocument()
+    expect(within(card).queryByText("Reproductor")).not.toBeInTheDocument()
+  })
+})
+
+describe("Issue #153 (BUG-DATA-001) — badges de AnimalCard", () => {
+  it("Given a macho with categoria no_aplica and esDeMonta=false When rendered Then no category badge is shown", () => {
+    render(
+      <AnimalCard
+        animal={{
+          id: "a-m1",
+          codigoAnimal: "MC-001",
+          sexo: "macho",
+          categoriaReproductiva: "no_aplica",
+          esDeMonta: false,
+          salud: "sano",
+          estadoActual: "activo",
+        }}
+        onPress={vi.fn()}
+      />,
+    )
+    const card = screen.getByRole("button", { name: /MC-001/ })
+    expect(within(card).queryByText("Novilla")).not.toBeInTheDocument()
+    expect(within(card).queryByText("Reproductor")).not.toBeInTheDocument()
+    expect(within(card).queryByText("—")).not.toBeInTheDocument()
+    expect(within(card).getByText("Sano")).toBeInTheDocument()
+  })
+
+  it("Given a macho esDeMonta without categoria When rendered Then the 'Reproductor' badge is shown", () => {
+    render(
+      <AnimalCard
+        animal={{
+          id: "a-m2",
+          codigoAnimal: "MC-002",
+          sexo: "macho",
+          categoriaReproductiva: null,
+          esDeMonta: true,
+          salud: "sano",
+          estadoActual: "activo",
+        }}
+        onPress={vi.fn()}
+      />,
+    )
+    const card = screen.getByRole("button", { name: /MC-002/ })
+    expect(within(card).getByText("Reproductor")).toBeInTheDocument()
+    expect(within(card).queryByText("Novilla")).not.toBeInTheDocument()
+  })
+
+  it("Given an enferma hembra When rendered Then the salud badge reads 'Enferma'", () => {
+    render(
+      <AnimalCard
+        animal={{
+          id: "a-h1",
+          codigoAnimal: "HC-001",
+          sexo: "hembra",
+          categoriaReproductiva: "no_aplica",
+          salud: "enfermo",
+          estadoActual: "activo",
+        }}
+        onPress={vi.fn()}
+      />,
+    )
+    const card = screen.getByRole("button", { name: /HC-001/ })
+    expect(within(card).getByText("Enferma")).toBeInTheDocument()
+    expect(within(card).queryByText("Sana")).not.toBeInTheDocument()
+  })
+
+  it("Given a prenada hembra When rendered Then the categoria badge reads 'Preñada'", () => {
+    render(
+      <AnimalCard
+        animal={{
+          id: "a-h2",
+          codigoAnimal: "HC-002",
+          sexo: "hembra",
+          categoriaReproductiva: "prenada",
+          salud: "sano",
+          estadoActual: "activo",
+        }}
+        onPress={vi.fn()}
+      />,
+    )
+    const card = screen.getByRole("button", { name: /HC-002/ })
+    expect(within(card).getByText("Preñada")).toBeInTheDocument()
+    expect(within(card).queryByText("Reproductor")).not.toBeInTheDocument()
   })
 })

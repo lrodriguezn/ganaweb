@@ -2,7 +2,7 @@ import { type VariantProps, cva } from "class-variance-authority"
 import type * as React from "react"
 
 import { cn } from "../lib/utils"
-import type { CategoriaReproductiva, EstadoAnimal, Salud } from "./types"
+import type { CategoriaReproductiva, EstadoAnimal, Salud, Sexo } from "./types"
 
 /**
  * EstadoBadge — badge semántico del dominio ganadero.
@@ -106,8 +106,12 @@ export function CategoriaBadge({ categoria }: { categoria: CategoriaReproductiva
   return <EstadoBadge variant={variant}>{label}</EstadoBadge>
 }
 
-export function SaludBadge({ salud }: { salud: Salud }) {
-  const { label, variant } = SALUD_MAP[salud]
+export function SaludBadge({ salud, sexo }: { salud: Salud; sexo?: Sexo }) {
+  const { variant } = SALUD_MAP[salud]
+  // LM-060 (issue #153): concordancia de género — macho → "Sano"/"Enfermo";
+  // hembra, pajuela o sin sexo → femenino (retrocompatible). El color no
+  // cambia: sano=exito, enfermo=peligro.
+  const label = sexo === "macho" ? (salud === "sano" ? "Sano" : "Enfermo") : SALUD_MAP[salud].label
   return <EstadoBadge variant={variant}>{label}</EstadoBadge>
 }
 

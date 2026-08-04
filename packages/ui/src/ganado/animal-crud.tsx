@@ -193,10 +193,13 @@ function AnimalResultCard({
           )}
         </span>
         <span className="mt-1 flex flex-wrap gap-1.5">
-          {animal.categoriaReproductiva && animal.categoriaReproductiva !== "no_aplica" && (
+          {animal.categoriaReproductiva && animal.categoriaReproductiva !== "no_aplica" ? (
             <CategoriaBadge categoria={animal.categoriaReproductiva} />
-          )}
-          <SaludBadge salud={animal.salud} />
+          ) : animal.esDeMonta ? (
+            // Issue #153: macho de monta sin categoría reproductiva aplicable.
+            <EstadoBadge variant="neutral">Reproductor</EstadoBadge>
+          ) : null}
+          <SaludBadge salud={animal.salud} sexo={animal.sexo} />
         </span>
         {ubicacion && (
           <span className="mt-1 text-caption text-muted-foreground block">{ubicacion}</span>

@@ -105,7 +105,8 @@ function mapAnimalResumen(row: typeof animales.$inferSelect): AnimalResumen {
   }
 }
 
-function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegistro {
+export function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegistro {
+  const categoriaReproductiva = row.categoriaReproductiva?.trim()
   return {
     id: row.id,
     fincaId: row.fincaId,
@@ -116,6 +117,7 @@ function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegistro {
     activo: row.activo === 1,
     estadoActual: estadoFromKey(row.estadoAnimalKey),
     salud: saludFromKey(row.saludAnimalKey),
+    categoriaReproductiva: categoriaReproductiva ? categoriaReproductiva : null,
     ...(row.potreroId ? { potreroId: row.potreroId } : {}),
     ...(row.loteId ? { loteId: row.loteId } : {}),
     usuarioCreadoPor: row.usuarioCreadoPor ?? "",

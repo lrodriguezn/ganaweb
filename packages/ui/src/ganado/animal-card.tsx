@@ -2,7 +2,7 @@ import { Check, ChevronRight } from "lucide-react"
 import { useEffect, useRef } from "react"
 
 import { cn } from "../lib/utils"
-import { CategoriaBadge, SaludBadge } from "./estado-badge"
+import { CategoriaBadge, EstadoBadge, SaludBadge } from "./estado-badge"
 import type { AnimalResumen } from "./types"
 
 /**
@@ -81,10 +81,13 @@ export function AnimalCard({
           )}
         </p>
         <div className="flex flex-wrap gap-1.5 mt-1">
-          {animal.categoriaReproductiva && animal.categoriaReproductiva !== "no_aplica" && (
+          {animal.categoriaReproductiva && animal.categoriaReproductiva !== "no_aplica" ? (
             <CategoriaBadge categoria={animal.categoriaReproductiva} />
-          )}
-          <SaludBadge salud={animal.salud} />
+          ) : animal.esDeMonta ? (
+            // Issue #153: macho de monta sin categoría reproductiva aplicable.
+            <EstadoBadge variant="neutral">Reproductor</EstadoBadge>
+          ) : null}
+          <SaludBadge salud={animal.salud} sexo={animal.sexo} />
         </div>
         {ubicacion && (
           <p className="text-caption text-muted-foreground mt-1 truncate">{ubicacion}</p>

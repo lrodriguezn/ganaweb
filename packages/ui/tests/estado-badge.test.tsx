@@ -129,3 +129,47 @@ describe("PR3.T-003.4 — EstadoBadge withDot contract (REQ-BVA-005, D11)", () =
     expect(badge).toHaveAttribute("data-with-dot", "false")
   })
 })
+
+describe("Issue #153 / LM-060 — SaludBadge concuerda en género con el animal", () => {
+  it("Given un macho sano When render Then the badge reads 'Sano'", () => {
+    render(<SaludBadge salud="sano" sexo="macho" />)
+    expect(screen.getByText("Sano")).toBeInTheDocument()
+  })
+
+  it("Given un macho enfermo When render Then the badge reads 'Enfermo'", () => {
+    render(<SaludBadge salud="enfermo" sexo="macho" />)
+    expect(screen.getByText("Enfermo")).toBeInTheDocument()
+  })
+
+  it("Given una hembra When render Then the badges read 'Sana'/'Enferma'", () => {
+    const { rerender } = render(<SaludBadge salud="sano" sexo="hembra" />)
+    expect(screen.getByText("Sana")).toBeInTheDocument()
+    rerender(<SaludBadge salud="enfermo" sexo="hembra" />)
+    expect(screen.getByText("Enferma")).toBeInTheDocument()
+  })
+
+  it("Given una pajuela When render Then the badges stay feminine by convention", () => {
+    const { rerender } = render(<SaludBadge salud="sano" sexo="pajuela" />)
+    expect(screen.getByText("Sana")).toBeInTheDocument()
+    rerender(<SaludBadge salud="enfermo" sexo="pajuela" />)
+    expect(screen.getByText("Enferma")).toBeInTheDocument()
+  })
+
+  it("Given no sexo prop When render Then the badges stay feminine (backward compatible)", () => {
+    const { rerender } = render(<SaludBadge salud="sano" />)
+    expect(screen.getByText("Sana")).toBeInTheDocument()
+    rerender(<SaludBadge salud="enfermo" />)
+    expect(screen.getByText("Enferma")).toBeInTheDocument()
+  })
+
+  it("LM-060 colors are invariant: sano=exito, enfermo=peligro for both genders", () => {
+    const { rerender } = render(<SaludBadge salud="sano" sexo="macho" />)
+    expect(screen.getByText("Sano")).toHaveClass("bg-exito-100")
+    rerender(<SaludBadge salud="enfermo" sexo="macho" />)
+    expect(screen.getByText("Enfermo")).toHaveClass("bg-peligro-100")
+    rerender(<SaludBadge salud="sano" sexo="hembra" />)
+    expect(screen.getByText("Sana")).toHaveClass("bg-exito-100")
+    rerender(<SaludBadge salud="enfermo" sexo="hembra" />)
+    expect(screen.getByText("Enferma")).toHaveClass("bg-peligro-100")
+  })
+})
