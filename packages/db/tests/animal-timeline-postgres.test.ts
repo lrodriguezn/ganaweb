@@ -31,6 +31,7 @@ const producto = `${fixture}-producto`
 const animalFull = `${fixture}-animal-full`
 const animalEmpty = `${fixture}-animal-empty`
 const animalPaginado = `${fixture}-animal-paginado`
+const animalLargo = `${fixture}-animal-largo`
 const animalOther = `${fixture}-animal-other`
 const animalAnulados = `${fixture}-animal-anulados`
 const animalReactivado = `${fixture}-animal-reactivado`
@@ -52,7 +53,8 @@ beforeAll(async () => {
     VALUES
       (${animalFull}, ${fincaA}, ${`${fixture}-T1`}, 'Lucera', 1, 1),
       (${animalEmpty}, ${fincaA}, ${`${fixture}-T2`}, 'Sin Eventos', 1, 1),
-      (${animalPaginado}, ${fincaA}, ${`${fixture}-T3`}, 'Paginada', 1, 1)
+      (${animalPaginado}, ${fincaA}, ${`${fixture}-T3`}, 'Paginada', 1, 1),
+      (${animalLargo}, ${fincaA}, ${`${fixture}-T7`}, 'Larga', 1, 1)
   `)
   await execute(sql`
     INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo)
@@ -204,6 +206,16 @@ beforeAll(async () => {
     INSERT INTO pesos (id, animal_id, registro_grupal_id, fecha, peso_kg)
     VALUES (${`${fixture}-react-peso`}, ${animalReactivado}, ${registroReactivado}, '2026-07-21', '350.00')
   `)
+
+  // Issue #183: animal con tres páginas de un solo dominio (45 servicios)
+  // para verificar que el conteo pendiente decrece al consumir páginas.
+  for (let dia = 1; dia <= 45; dia += 1) {
+    const fecha = new Date(Date.UTC(2025, 0, dia)).toISOString().slice(0, 10)
+    await execute(sql`
+      INSERT INTO servicios (id, animal_id, fecha, tipo)
+      VALUES (${`${fixture}-lng-${String(dia).padStart(2, "0")}`}, ${animalLargo}, ${fecha}, 'monta')
+    `)
+  }
 })
 
 afterAll(async () => {
@@ -299,6 +311,8 @@ describe.skipIf(process.env.CI === "true")("DrizzleAnimalTimelineRepository (Pos
     })
     // Sin más eventos que los de la página: el cursor queda ausente.
     expect(pagina.nextCursor).toBeUndefined()
+    // Issue #183: sin cursor no hay conteo pendiente.
+    expect(pagina.pendientes).toBeUndefined()
   })
 
   it("orders events newest-first across tables (RN-002)", async () => {
@@ -400,6 +414,71 @@ describe.skipIf(process.env.CI === "true")("DrizzleAnimalTimelineRepository (Pos
     expect(vacia.nextCursor).toBeUndefined()
   })
 
+  it("returns the pending count consistent with the active domain filter (#183)", async () => {
+    const repo = new DrizzleAnimalTimelineRepository(db)
+
+    // Resumen (sin filtro): 28 eventos, página de 20 → 8 pendientes.
+    const resumen = await repo.listarPagina({
+      animalId: animalPaginado,
+      fincaId: fincaA,
+      limit: 20,
+    })
+    expect(resumen.nextCursor).toBeDefined()
+    expect(resumen.pendientes).toBe(8)
+
+    // Tab Reproducción: solo cuenta sus 25 servicios → 5 pendientes (no 8).
+    const reproduccion = await repo.listarPagina({
+      animalId: animalPaginado,
+      fincaId: fincaA,
+      dominio: "reproduccion",
+      limit: 20,
+    })
+    expect(reproduccion.nextCursor).toBeDefined()
+    expect(reproduccion.pendientes).toBe(5)
+
+    // Tab Producción: 3 pesajes caben en una página → sin cursor ni conteo.
+    const produccion = await repo.listarPagina({
+      animalId: animalPaginado,
+      fincaId: fincaA,
+      dominio: "produccion",
+      limit: 20,
+    })
+    expect(produccion.nextCursor).toBeUndefined()
+    expect(produccion.pendientes).toBeUndefined()
+  })
+
+  it("pending count decreases as pages are consumed (#183)", async () => {
+    const repo = new DrizzleAnimalTimelineRepository(db)
+
+    const primera = await repo.listarPagina({
+      animalId: animalLargo,
+      fincaId: fincaA,
+      limit: 20,
+    })
+    expect(primera.items).toHaveLength(20)
+    expect(primera.pendientes).toBe(25)
+
+    const segunda = await repo.listarPagina({
+      animalId: animalLargo,
+      fincaId: fincaA,
+      ...(primera.nextCursor ? { cursor: primera.nextCursor } : {}),
+      limit: 20,
+    })
+    expect(segunda.items).toHaveLength(20)
+    expect(segunda.pendientes).toBe(5)
+
+    // Última página: sin cursor y sin conteo pendiente.
+    const tercera = await repo.listarPagina({
+      animalId: animalLargo,
+      fincaId: fincaA,
+      ...(segunda.nextCursor ? { cursor: segunda.nextCursor } : {}),
+      limit: 20,
+    })
+    expect(tercera.items).toHaveLength(5)
+    expect(tercera.nextCursor).toBeUndefined()
+    expect(tercera.pendientes).toBeUndefined()
+  })
+
   it("ignores tampered or garbage cursors and returns the first page (no throw, no injection)", async () => {
     const repo = new DrizzleAnimalTimelineRepository(db)
     const primera = await repo.listarPagina({
@@ -428,6 +507,7 @@ describe.skipIf(process.env.CI === "true")("DrizzleAnimalTimelineRepository (Pos
       })
       expect(pagina.items.map((item) => item.id)).toEqual(primera.items.map((item) => item.id))
       expect(pagina.nextCursor).toBe(primera.nextCursor)
+      expect(pagina.pendientes).toBe(primera.pendientes)
     }
   })
 

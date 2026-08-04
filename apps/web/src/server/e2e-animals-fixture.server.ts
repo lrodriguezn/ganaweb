@@ -595,8 +595,12 @@ export function createAnimalE2eDeps(): AnimalUseCaseDeps {
         const ultimo = pagina[pagina.length - 1]
         return {
           items: pagina,
+          // Issue #183: conteo pendiente bajo el mismo filtro que la página.
           ...(eventos.length > consulta.limit && ultimo
-            ? { nextCursor: codificarCursorTimelineE2e(ultimo) }
+            ? {
+                nextCursor: codificarCursorTimelineE2e(ultimo),
+                pendientes: eventos.length - pagina.length,
+              }
             : {}),
         }
       },

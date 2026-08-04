@@ -230,6 +230,8 @@ function deps(): AnimalUseCaseDeps & { consultasTimeline: readonly unknown[] } {
             }
           }),
           nextCursor: "cursor-2",
+          // Issue #183: el puerto reporta el conteo pendiente bajo el filtro.
+          pendientes: 7,
         }
       },
     },
@@ -424,6 +426,8 @@ async function testRouteViewModelsAndFlows() {
   if (ficha.tipo !== "ficha") throw new Error("ficha must be available")
   assert.equal(ficha.timeline.items.length, 21)
   assert.equal(ficha.timeline.nextCursor, "cursor-2")
+  // Issue #183: el conteo pendiente del puerto llega al DTO del loader.
+  assert.equal(ficha.timeline.eventosPendientes, 7)
   // redesign-ficha-animal (slice 3, task 3.5): el mapper deja pasar el
   // dominio/tipo reales del puerto (nada hardcodeado), compone el título
   // desde el tipo y conserva el detalle de la firma del evento.

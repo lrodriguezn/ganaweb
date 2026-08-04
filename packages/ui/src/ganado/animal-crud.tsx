@@ -3407,7 +3407,11 @@ function TimelineFicha({
       {nextCursor && (
         <div className="flex justify-center pt-1">
           <Button type="button" variant="secondary" onClick={onLoadMore}>
-            {eventosPendientes != null ? `Ver ${eventosPendientes} eventos más` : "Ver más eventos"}
+            {eventosPendientes == null
+              ? "Ver más eventos"
+              : eventosPendientes === 1
+                ? "Ver 1 evento más"
+                : `Ver ${eventosPendientes} eventos más`}
             <ChevronDown className="size-4" aria-hidden="true" />
           </Button>
         </div>

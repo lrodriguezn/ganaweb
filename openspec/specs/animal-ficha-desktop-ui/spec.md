@@ -62,13 +62,25 @@ The screen MUST render a timeline card with tabs Resumen, Eventos, Reproducción
 
 ### Requirement: Timeline Pagination Control
 
-The timeline MUST paginate via a footer control "Ver N eventos más" that appends the next page. The control MUST NOT render when no further events exist.
+The timeline MUST paginate via a footer control "Ver N eventos más" that appends the next page, where N is the pending count reported by the timeline contract under the ACTIVE tab filter (design decision D2: tabs are server-side filtered, so an unfiltered total would show wrong numbers inside filtered tabs). When the pending count is unavailable, the control MUST fall back to the count-less wording "Ver más eventos". The control MUST NOT render when no further events exist.
 
 #### Scenario: More events available
 
 - GIVEN more events than the current page holds
 - WHEN the operator selects "Ver N eventos más"
 - THEN the next page of events is appended
+
+#### Scenario: Control shows the pending count of the active filter
+
+- GIVEN a filtered tab with more events than the current page holds
+- WHEN the timeline renders the pagination control
+- THEN the control shows the pending count for that filter, and the count decreases as pages are appended
+
+#### Scenario: Count unavailable falls back
+
+- GIVEN a page with nextCursor but no pending count
+- WHEN the timeline renders the pagination control
+- THEN the control reads "Ver más eventos"
 
 #### Scenario: No further events
 

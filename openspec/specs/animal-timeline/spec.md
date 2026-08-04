@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the animal timeline repository: UNION ALL over the 11 event source tables, per-source `dominio`/`tipo` mapping, chronological ordering (newest first), keyset cursor-based pagination, and composition with domain filtering (ficha tabs).
+Define the animal timeline repository: UNION ALL over the 11 event source tables, per-source `dominio`/`tipo` mapping, chronological ordering (newest first), keyset cursor-based pagination with a filter-consistent pending count, and composition with domain filtering (ficha tabs).
 
 ## Requirements
 
@@ -84,3 +84,31 @@ The timeline query MUST return a page of items plus an optional `nextCursor`, co
 - GIVEN the Reproducción filter applied and more reproducción events than the page size
 - WHEN the next page is requested
 - THEN only reproducción items continue from the cursor
+
+### Requirement: Pending Count
+
+The timeline query MUST return the pending count alongside `nextCursor`: the exact number of events remaining under the SAME domain filter after the returned page. The count MUST be consistent with the active domain filter (ficha tabs are server-side filtered), so a filtered tab MUST NOT report the unfiltered total. The pending count MUST be absent when `nextCursor` is absent, and when the count is unavailable the contract MUST omit it rather than fabricate a value (the UI degrades to the count-less wording).
+
+#### Scenario: First page reports the pending count
+
+- GIVEN 28 events and a page size of 20
+- WHEN the first page is requested
+- THEN items, nextCursor and a pending count of 8 are returned
+
+#### Scenario: Pending count honors the domain filter
+
+- GIVEN 25 reproducción events and 3 producción events
+- WHEN the first page is requested with the Reproducción filter
+- THEN the pending count is 5, not the unfiltered remainder
+
+#### Scenario: Pending count decreases as pages are consumed
+
+- GIVEN 45 events under one filter
+- WHEN consecutive pages are consumed
+- THEN the first page reports 25 pending, the second reports 5 pending, and the last page returns neither nextCursor nor pending count
+
+#### Scenario: Tampered cursor degrades the count with the page
+
+- GIVEN a tampered or garbage cursor
+- WHEN the page is requested
+- THEN the first page is returned and the pending count matches the first page count

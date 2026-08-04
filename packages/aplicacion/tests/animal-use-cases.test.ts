@@ -218,6 +218,27 @@ describe("animal use cases", () => {
     })
   })
 
+  it("carries the pending count from the timeline port to the ficha result (#183)", async () => {
+    const d = deps()
+    d.timeline.listarPagina = vi.fn(async () => ({
+      items: [{ id: "ev-1", dominio: "manejo", tipo: "reubicacion", fecha: "2026-07-10" }],
+      nextCursor: "cursor-2",
+      pendientes: 7,
+    }))
+
+    const result = await obtenerFichaAnimal(d)({
+      sesion: { ...sesionCrear, permisos: [{ modulo: "animales", accion: "ver" }] },
+      animalId: "animal-1",
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        tipo: "ficha",
+        timeline: expect.objectContaining({ nextCursor: "cursor-2", pendientes: 7 }),
+      }),
+    )
+  })
+
   it("aggregates the enriched ficha resumen from the read model and dominio derivations", async () => {
     const d = deps()
     d.animales.obtenerPorIdYFinca = vi.fn(async () => ({

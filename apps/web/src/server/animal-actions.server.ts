@@ -975,6 +975,11 @@ export function createAnimalActionHarness({
         timeline: {
           items: result.timeline.items.map(toTimelineItem),
           ...(result.timeline.nextCursor ? { nextCursor: result.timeline.nextCursor } : {}),
+          // Issue #183: conteo pendiente bajo el filtro activo (D2) para el
+          // control "Ver N eventos más"; ausente → wording sin conteo.
+          ...(result.timeline.pendientes != null
+            ? { eventosPendientes: result.timeline.pendientes }
+            : {}),
         },
         permissions: resolveAnimalPermissions(session),
       }
