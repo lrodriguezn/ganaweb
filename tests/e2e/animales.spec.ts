@@ -22,6 +22,10 @@ function animalFormFrame(page: Page) {
 
 test.describe("animal CRUD web flow", () => {
   test("replays a shared list URL through browser Back and Forward", async ({ page }) => {
+    // Primera navegación de la suite: compila la ruta SSR en frío tras el
+    // build del paquete UI; se triplica el presupuesto del test para
+    // absorber el cold compile sin falsos rojos.
+    test.slow()
     const sharedQuery = "?q=MT-122&sort=codigo%3Aasc"
     // Desktop renders a <table> with cells; mobile renders a card button.
     // Extended timeout: first navigation triggers Vite SSR cold compilation.
@@ -29,7 +33,7 @@ test.describe("animal CRUD web flow", () => {
       ? page.getByRole("button", { name: "MT-122 Matilda" })
       : page.getByRole("cell", { name: "MT-122" })
     await page.goto(`/fincas/finca-1/animales${sharedQuery}`)
-    await expect(mt122).toBeVisible({ timeout: 15_000 })
+    await expect(mt122).toBeVisible({ timeout: 30_000 })
     await expect(page).toHaveURL(new RegExp(`animales${sharedQuery.replace("?", "\\?")}$`))
 
     await page.goto("/fincas/finca-1/animales?q=MT-122&sort=codigo%3Adesc")
@@ -144,7 +148,9 @@ test.describe("animal CRUD web flow", () => {
 
     // Resumen (default): primera página del servidor (20 de 28) con control.
     await expect(timeline.getByRole("listitem")).toHaveCount(20)
-    const verMas = timeline.getByRole("button", { name: /Ver más eventos/ })
+    // #185: el control incluye el conteo pendiente ("Ver N eventos más")
+    // cuando el loader lo provee; el regex cubre ambos wordings.
+    const verMas = timeline.getByRole("button", { name: /Ver (más eventos|\d+ eventos más)/ })
     await expect(verMas).toBeVisible()
 
     // Append de la segunda página: sin duplicados y el control desaparece
@@ -152,7 +158,9 @@ test.describe("animal CRUD web flow", () => {
     // cliente→función de servidor (compilación fría en dev).
     await verMas.click()
     await expect(timeline.getByRole("listitem")).toHaveCount(28, { timeout: 15_000 })
-    await expect(timeline.getByRole("button", { name: /Ver más eventos/ })).toHaveCount(0)
+    await expect(
+      timeline.getByRole("button", { name: /Ver (más eventos|\d+ eventos más)/ }),
+    ).toHaveCount(0)
 
     // El cambio de tab resetea la paginación y filtra del lado servidor.
     await timeline.getByRole("tab", { name: "Reproducción" }).click()
