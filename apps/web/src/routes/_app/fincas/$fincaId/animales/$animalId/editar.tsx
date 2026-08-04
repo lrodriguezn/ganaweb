@@ -197,7 +197,7 @@ export function buildUpdateAnimalInputFromFormData(
   const razaId = optionalText(formData, "raza")
   const colorId = optionalText(formData, "color")
   const calidadId = optionalText(formData, "calidad")
-  const tipoExplotacionId = optionalText(formData, "tipoExplotacion")
+  const tipoExplotacionId = optionalText(formData, "tipoExplotacionId")
   const lugarCompraId = optionalText(formData, "lugarCompra")
   const madreId = optionalText(formData, "madreId")
   const padreId = optionalText(formData, "padreId")

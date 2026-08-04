@@ -833,6 +833,41 @@ async function testRouteFormPayloadBuilders() {
   assert.deepEqual(minimalResult.cambios, { codigo: "MT-122", versionLeida: 1 })
 }
 
+async function testRouteFormPayloadBuildersCarryTipoExplotacionId() {
+  // Issue #187: AnimalFormScreen serializes the "Tipo de explotación" select
+  // under name="tipoExplotacionId" (packages/ui/src/ganado/animal-crud.tsx).
+  // Both route mappers must read that exact FormData key and emit the web
+  // contract key (datos.tipoExplotacionId / cambios.tipoExplotacionId) that
+  // pickCreateAnimalDatos / pickUpdateAnimalCambios forward to the dominio —
+  // reading the suffix-less "tipoExplotacion" silently drops the selection.
+  const createForm = new FormData()
+  createForm.set("codigo", "TE-01")
+  createForm.set("nombre", "Doble Proposito")
+  createForm.set("sexoKey", "1")
+  createForm.set("tipoExplotacionId", "tipo-doble-proposito")
+  const createResult = buildCreateAnimalInputFromFormData("finca-1", createForm)
+  assert.equal(
+    createResult.datos.tipoExplotacionId,
+    "tipo-doble-proposito",
+    "create mapper must read the form's tipoExplotacionId key into datos.tipoExplotacionId",
+  )
+  assert.ok(
+    !("tipoExplotacion" in createResult.datos),
+    "create mapper must not leak the suffix-less tipoExplotacion key into datos",
+  )
+
+  const updateForm = new FormData()
+  updateForm.set("codigo", "TE-01")
+  updateForm.set("versionLeida", "2")
+  updateForm.set("tipoExplotacionId", "tipo-doble-proposito")
+  const updateResult = buildUpdateAnimalInputFromFormData("finca-1", "animal-1", updateForm)
+  assert.equal(
+    updateResult.cambios.tipoExplotacionId,
+    "tipo-doble-proposito",
+    "update mapper must read the form's tipoExplotacionId key into cambios.tipoExplotacionId",
+  )
+}
+
 async function testCreateRouteNormalizesEsCOCompraNumerics() {
   // v1.3 spec §3.5: precio_compra and peso_compra accept es-CO formatting
   // (`.` thousand, `,` decimal). The form submits the raw string; the
@@ -1570,6 +1605,7 @@ async function run() {
   await testCreatePreservesFechaCompra()
   await testCreateRejectsCrossFincaUbicaciones()
   await testRouteFormPayloadBuilders()
+  await testRouteFormPayloadBuildersCarryTipoExplotacionId()
   await testCreateRouteNormalizesEsCOCompraNumerics()
   await testEditRouteMapperNormalizesEsCOCompraNumerics()
   await testEditRoutePassesInitialValuesToForm()
