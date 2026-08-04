@@ -30,13 +30,13 @@
 
 ## Phase 3 (PR 3): Timeline Union
 
-- [ ] 3.1 `packages/aplicacion/src/puertos/animal-timeline-port.ts`: DTO += `dominio`/`tipo`/`detalle?`; query += `dominio?`.
-- [ ] 3.2 RED: `packages/db/tests/animal-timeline-postgres.test.ts` — multi-table union, per-table mapping, desc order, cursor resume no dup/gap, domain-filter pagination, empty → no synthetic event.
-- [ ] 3.3 RED (threat hygiene): tampered/garbage `cursorTimeline` returns first page — no throw, no injection.
-- [ ] 3.4 GREEN: rewrite `DrizzleAnimalTimelineRepository` in `packages/db/src/animal-infrastructure.ts` — UNION ALL 11 tables, keyset `(fecha DESC, id DESC)`, cursor validate+bind, dominio filter; delete stub.
-- [ ] 3.5 Real dominio/tipo + `tabTimeline` input in `apps/web/src/server/animal-actions.server.ts`; passthrough assertions in `animal-web-flow.test.ts`.
-- [ ] 3.6 Update `apps/web/src/server/e2e-animals-fixture.server.ts` timeline to new DTO; update `tests/e2e/animales.spec.ts` (tabs, pagination, drawer, edit-return).
-- [ ] 3.7 Tab switch / "Ver N más" call server function with `dominio` + cursor (reset/append) in route + screen.
+- [x] 3.1 `packages/aplicacion/src/puertos/animal-timeline-port.ts`: DTO += `dominio`/`tipo`/`detalle?`; query += `dominio?`.
+- [x] 3.2 RED: `packages/db/tests/animal-timeline-postgres.test.ts` — multi-table union, per-table mapping, desc order, cursor resume no dup/gap, domain-filter pagination, empty → no synthetic event.
+- [x] 3.3 RED (threat hygiene): tampered/garbage `cursorTimeline` returns first page — no throw, no injection.
+- [x] 3.4 GREEN: rewrite `DrizzleAnimalTimelineRepository` in `packages/db/src/animal-infrastructure.ts` — UNION ALL 11 tables, keyset `(fecha DESC, id DESC)`, cursor validate+bind, dominio filter; delete stub.
+- [x] 3.5 Real dominio/tipo + `tabTimeline` input in `apps/web/src/server/animal-actions.server.ts`; passthrough assertions in `animal-web-flow.test.ts`.
+- [x] 3.6 Update `apps/web/src/server/e2e-animals-fixture.server.ts` timeline to new DTO; update `tests/e2e/animales.spec.ts` (tabs, pagination, drawer, edit-return).
+- [x] 3.7 Tab switch / "Ver N más" call server function with `dominio` + cursor (reset/append) in route + screen.
 
 ## Review Workload Forecast
 
@@ -46,4 +46,4 @@ Chained PRs recommended: Yes
 Estimated changed lines: 1700 (slice 1: 550, slice 2: 650, slice 3: 500)
 800-line budget risk: Medium
 Decision needed before apply: No
-Chain strategy: pending
+Chain strategy: stacked-to-main
