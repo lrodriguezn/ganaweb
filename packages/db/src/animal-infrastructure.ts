@@ -1242,6 +1242,10 @@ export class DrizzleBinaryQueueRepository implements ColaBinariosPort {
  * paginación atómicos). `partos_crias` queda fuera: es tabla enlace sin
  * `fecha`/`animal_id`. Cada rama aporta su dominio/tipo canónicos y una
  * columna distintiva como `detalle`; el título se compone en la capa web.
+ *
+ * #181: paridad con el read-model del resumen (slice 2) — las ramas cuyas
+ * tablas tienen `registro_grupal_id` excluyen eventos anidados en un
+ * registro grupal anulado.
  */
 interface RamaTimeline {
   readonly dominio: DominioEventoAnimal
@@ -1252,6 +1256,12 @@ interface RamaTimeline {
   readonly fechaExpr: string
   /** Expresión SQL que produce el detalle (text|null) de la firma. */
   readonly detalleExpr: string
+  /**
+   * La tabla tiene `registro_grupal_id`: la rama excluye eventos cuyo
+   * registro grupal de origen está anulado (#181, mismo criterio que el
+   * read-model de la ficha).
+   */
+  readonly tieneRegistroGrupal?: boolean
 }
 
 const RAMAS_TIMELINE: readonly RamaTimeline[] = [
@@ -1261,6 +1271,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "pesos",
     fechaExpr: "fecha",
     detalleExpr: "peso_kg::text || ' kg'",
+    tieneRegistroGrupal: true,
   },
   {
     dominio: "produccion",
@@ -1268,6 +1279,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "producciones_lacteas",
     fechaExpr: "fecha",
     detalleExpr: "(cantidad_am + cantidad_pm)::text || ' L'",
+    tieneRegistroGrupal: true,
   },
   {
     dominio: "produccion",
@@ -1282,6 +1294,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "servicios",
     fechaExpr: "fecha",
     detalleExpr: "tipo",
+    tieneRegistroGrupal: true,
   },
   {
     dominio: "reproduccion",
@@ -1289,6 +1302,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "palpaciones",
     fechaExpr: "fecha",
     detalleExpr: "resultado",
+    tieneRegistroGrupal: true,
   },
   {
     dominio: "reproduccion",
@@ -1296,6 +1310,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "partos",
     fechaExpr: "fecha",
     detalleExpr: "tipo_parto",
+    tieneRegistroGrupal: true,
   },
   {
     dominio: "sanidad",
@@ -1303,6 +1318,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "aplicaciones_sanitarias",
     fechaExpr: "fecha",
     detalleExpr: "dosis::text",
+    tieneRegistroGrupal: true,
   },
   {
     dominio: "sanidad",
@@ -1310,6 +1326,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "revisiones_veterinarias",
     fechaExpr: "fecha",
     detalleExpr: "tipo_diagnostico",
+    tieneRegistroGrupal: true,
   },
   {
     dominio: "manejo",
@@ -1317,6 +1334,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "ventas",
     fechaExpr: "fecha",
     detalleExpr: "comprador",
+    tieneRegistroGrupal: true,
   },
   {
     dominio: "manejo",
@@ -1331,6 +1349,7 @@ const RAMAS_TIMELINE: readonly RamaTimeline[] = [
     tabla: "animales_ubicacion_historico",
     fechaExpr: "(fecha AT TIME ZONE 'UTC')::date",
     detalleExpr: "motivo",
+    tieneRegistroGrupal: true,
   },
 ]
 
@@ -1369,9 +1388,17 @@ function sqlRama(rama: RamaTimeline, animalId: string, cursor: CursorTimeline | 
   const condicionCursor = cursor
     ? sql` AND (${fecha} < ${cursor.f}::date OR (${fecha} = ${cursor.f}::date AND id < ${cursor.id}))`
     : sql``
+  // #181: mismo criterio que el read-model del resumen — fuera eventos cuyo
+  // registro grupal de origen está anulado. NOT EXISTS evita ambigüedad de
+  // columnas (registros_grupales también tiene id/fecha) en el SELECT.
+  const condicionVigencia = rama.tieneRegistroGrupal
+    ? sql` AND NOT EXISTS (SELECT 1 FROM registros_grupales WHERE registros_grupales.id = ${sql.raw(
+        rama.tabla,
+      )}.registro_grupal_id AND registros_grupales.anulado_en IS NOT NULL)`
+    : sql``
   return sql`SELECT id, ${fecha}::text AS fecha, ${rama.dominio} AS dominio, ${rama.tipo} AS tipo, ${sql.raw(
     rama.detalleExpr,
-  )} AS detalle FROM ${sql.raw(rama.tabla)} WHERE animal_id = ${animalId}${condicionCursor}`
+  )} AS detalle FROM ${sql.raw(rama.tabla)} WHERE animal_id = ${animalId}${condicionVigencia}${condicionCursor}`
 }
 
 export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
