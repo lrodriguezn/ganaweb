@@ -48,7 +48,7 @@ function session(overrides: Partial<SesionAutorizada> = {}): SesionAutorizada {
   }
 }
 
-function deps(): AnimalUseCaseDeps {
+function deps(): AnimalUseCaseDeps & { consultasTimeline: readonly unknown[] } {
   const animals = new Map([
     [
       "animal-active-1",
@@ -151,6 +151,7 @@ function deps(): AnimalUseCaseDeps {
     string,
     { id: string; esPrincipal: boolean; estadoSubida: "pendiente" | "subida" | "error" }[]
   >([["animal-1", [{ id: "image-1", esPrincipal: true, estadoSubida: "pendiente" }]]])
+  const consultasTimeline: unknown[] = []
 
   return {
     animales: {
@@ -208,13 +209,26 @@ function deps(): AnimalUseCaseDeps {
       },
     },
     timeline: {
-      async listarPagina() {
+      async listarPagina(consulta) {
+        consultasTimeline.push(consulta)
+        const dominios = ["sanidad", "produccion", "reproduccion", "manejo"] as const
+        const tipos = {
+          sanidad: "vacunacion",
+          produccion: "pesaje",
+          reproduccion: "servicio",
+          manejo: "reubicacion",
+        } as const
         return {
-          items: Array.from({ length: 21 }, (_, index) => ({
-            id: `timeline-${index}`,
-            fecha: `202${index % 4}-01-01`,
-            titulo: `Evento ${index}`,
-          })),
+          items: Array.from({ length: 21 }, (_, index) => {
+            const dominio = dominios[index % 4] ?? "manejo"
+            return {
+              id: `timeline-${index}`,
+              dominio,
+              tipo: tipos[dominio],
+              fecha: `2026-0${(index % 6) + 1}-01`,
+              detalle: `Detalle ${index}`,
+            }
+          }),
           nextCursor: "cursor-2",
         }
       },
@@ -268,6 +282,7 @@ function deps(): AnimalUseCaseDeps {
         return work()
       },
     },
+    consultasTimeline,
   }
 }
 
@@ -350,7 +365,8 @@ async function testServerGuards() {
 }
 
 async function testRouteViewModelsAndFlows() {
-  const harness = createAnimalActionHarness({ deps: deps(), getSession: async () => session() })
+  const d = deps()
+  const harness = createAnimalActionHarness({ deps: d, getSession: async () => session() })
   const list = await harness.list({ fincaId: "finca-1" })
   assert.equal(list.tipo, "lista")
   assert.deepEqual(
@@ -405,9 +421,60 @@ async function testRouteViewModelsAndFlows() {
 
   const ficha = await harness.ficha({ fincaId: "finca-1", animalId: "animal-1" })
   assert.equal(ficha.tipo, "ficha")
+  if (ficha.tipo !== "ficha") throw new Error("ficha must be available")
   assert.equal(ficha.timeline.items.length, 21)
   assert.equal(ficha.timeline.nextCursor, "cursor-2")
-  if (ficha.tipo !== "ficha") throw new Error("ficha must be available")
+  // redesign-ficha-animal (slice 3, task 3.5): el mapper deja pasar el
+  // dominio/tipo reales del puerto (nada hardcodeado), compone el título
+  // desde el tipo y conserva el detalle de la firma del evento.
+  assert.deepEqual(ficha.timeline.items[0], {
+    id: "timeline-0",
+    dominio: "sanidad",
+    tipo: "vacunacion",
+    fecha: "2026-01-01",
+    titulo: "Vacunación",
+    detalle: "Detalle 0",
+  })
+  assert.deepEqual(ficha.timeline.items[3], {
+    id: "timeline-3",
+    dominio: "manejo",
+    tipo: "reubicacion",
+    fecha: "2026-04-01",
+    titulo: "Reubicación",
+    detalle: "Detalle 3",
+  })
+  // Sin tab no llega `dominio` al puerto (Resumen = todos los dominios).
+  assert.deepEqual(d.consultasTimeline.at(-1), {
+    animalId: "animal-1",
+    fincaId: "finca-1",
+    limit: 20,
+  })
+
+  // El dominio del tab y el cursor pasan al puerto (D2: filtro servidor).
+  const fichaFiltrada = await harness.ficha({
+    fincaId: "finca-1",
+    animalId: "animal-1",
+    tabTimeline: "reproduccion",
+    cursorTimeline: "cursor-1",
+  })
+  assert.equal(fichaFiltrada.tipo, "ficha")
+  assert.deepEqual(d.consultasTimeline.at(-1), {
+    animalId: "animal-1",
+    fincaId: "finca-1",
+    dominio: "reproduccion",
+    cursor: "cursor-1",
+    limit: 20,
+  })
+
+  // Un tab desconocido (input no confiable del cliente) degrada a Resumen
+  // sin lanzar: el puerto no recibe dominio.
+  const fichaTabDesconocido = await harness.ficha({
+    fincaId: "finca-1",
+    animalId: "animal-1",
+    tabTimeline: "inventario",
+  })
+  assert.equal(fichaTabDesconocido.tipo, "ficha")
+  assert.equal("dominio" in Object(d.consultasTimeline.at(-1)), false)
   // redesign-ficha-animal (slice 2, task 2.7): the loader DTO carries the
   // enriched resumen (dominio derivations over the read-model projection)
   // and resolves potrero/lote names onto the animal item.
