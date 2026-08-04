@@ -39,6 +39,17 @@ export type {
 } from "./puertos/animal-listado-port.js"
 export { createBenchmarkAnimalListadoRequest } from "./puertos/animal-listado-port.js"
 export type {
+  AnimalMobileFilterKey,
+  AnimalMobileIdLabel,
+  AnimalMobileKeyLabel,
+  AnimalMobileListReadFilter,
+  AnimalMobileListReadPort,
+  AnimalMobileListReadRequest,
+  AnimalMobileListReadResult,
+  AnimalMobileMadre,
+  AnimalMobileRow,
+} from "./puertos/animal-mobile-list-read-port.js"
+export type {
   AnimalExportacionReadPort,
   AnimalExportacionRequest,
 } from "./puertos/animal-exportacion-port.js"
