@@ -353,12 +353,24 @@ export function createAnimalE2eDeps(): AnimalUseCaseDeps {
     },
     timeline: {
       async listarPagina() {
+        const dominios = ["produccion", "reproduccion", "sanidad", "manejo"] as const
+        const tipos = {
+          produccion: "pesaje",
+          reproduccion: "servicio",
+          sanidad: "vacunacion",
+          manejo: "reubicacion",
+        } as const
         return {
-          items: Array.from({ length: 21 }, (_, index) => ({
-            id: `timeline-${index}`,
-            fecha: `202${index % 4}-01-01`,
-            titulo: `Evento ${index}`,
-          })),
+          items: Array.from({ length: 21 }, (_, index) => {
+            const dominio = dominios[index % 4] ?? "manejo"
+            return {
+              id: `timeline-${index}`,
+              dominio,
+              tipo: tipos[dominio],
+              fecha: `202${index % 4}-01-01`,
+              titulo: `Evento ${index}`,
+            }
+          }),
           nextCursor: "cursor-2",
         }
       },
