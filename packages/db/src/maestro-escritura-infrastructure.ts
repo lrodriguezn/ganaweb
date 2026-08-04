@@ -59,7 +59,7 @@ type ColumnaTextoNotNull = AnyPgColumn<{ data: string; notNull: true }>
 /** Columna entera NOT NULL (activo). */
 type ColumnaEnteraNotNull = AnyPgColumn<{ data: number; notNull: true }>
 
-interface ConfigFamiliaMaestro {
+export interface ConfigFamiliaMaestro {
   readonly tabla: PgTable
   readonly id: ColumnaTextoNotNull
   readonly fincaId: ColumnaTextoNotNull
@@ -72,8 +72,11 @@ interface ConfigFamiliaMaestro {
 /**
  * Registro data-driven de las 11 familias (CM-040: `es_inseminador` solo en
  * veterinarios). Las claves desconocidas para una familia se ignoran.
+ *
+ * Exportado para que el adaptador de listado (CM-061: extender, no
+ * duplicar) reutilice las mismas tablas y el mismo mapeo de columnas.
  */
-const FAMILIAS: Readonly<Record<FamiliaMaestro, ConfigFamiliaMaestro>> = {
+export const FAMILIAS: Readonly<Record<FamiliaMaestro, ConfigFamiliaMaestro>> = {
   veterinarios: {
     tabla: veterinarios,
     id: veterinarios.id,

@@ -36,10 +36,24 @@ export interface ConteosMaestrosResultado {
   readonly catalogosGlobales: Readonly<Record<"razas" | "tiposExplotacion" | "calidades", number>>
 }
 
+/** Claves individuales de la degradación por card del hub (CM-014). */
+export type ConteoFamiliaClave = FamiliaMaestro | "inseminadores" | "fincaCompleta"
+export type ConteoCatalogoGlobalClave = "razas" | "tiposExplotacion" | "calidades"
+
 /**
  * Puerto de lectura agregada de conteos de maestros. `contarTodo` debe
  * implementarse con un único statement SQL (CM-061).
+ *
+ * CM-014: cuando `contarTodo` falla, el hub degrada por card y pide los
+ * conteos individuales (`contarPorFamilia` / `contarCatalogoGlobal`); por
+ * eso estos métodos devuelven `null` en error en vez de lanzar.
  */
 export interface ConteosMaestrosPort {
   contarTodo(fincaId: string): Promise<ConteosMaestrosResultado>
+
+  /** CM-014: conteo individual para la degradación por card cuando contarTodo falla. Null si falla. */
+  contarPorFamilia(fincaId: string, familia: ConteoFamiliaClave): Promise<number | null>
+
+  /** CM-014: conteo individual de un catálogo global. Null si falla. */
+  contarCatalogoGlobal(catalogo: ConteoCatalogoGlobalClave): Promise<number | null>
 }

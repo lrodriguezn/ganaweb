@@ -16,14 +16,20 @@
  *   (config_razas, config_tipos_explotacion, config_calidad_animal) activo=1.
  *
  * Clave faltante en el resultado → 0 / false (nunca falla por fila ausente).
+ *
+ * CM-014: `contarPorFamilia` / `contarCatalogoGlobal` resuelven conteos
+ * individuales (queries pequeñas) para la degradación por card del hub
+ * cuando `contarTodo` falla; nunca lanzan — devuelven `null` en error.
  */
 
 import type {
+  ConteoCatalogoGlobalClave,
+  ConteoFamiliaClave,
   ConteosMaestrosPort,
   ConteosMaestrosResultado,
   FamiliaMaestro,
 } from "@ganaweb/aplicacion"
-import { sql } from "drizzle-orm"
+import { type SQL, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 
 /** Clave del resultado por familia → nombre SQL de su tabla. */
@@ -55,6 +61,23 @@ const FAMILIAS_EN_CERO: Readonly<Record<FamiliaMaestro, number>> = {
   lugares_compras: 0,
 }
 
+/** CM-014: catálogo global → nombre SQL de su tabla. */
+const TABLAS_CATALOGOS_GLOBALES: Readonly<Record<ConteoCatalogoGlobalClave, string>> = {
+  razas: "config_razas",
+  tiposExplotacion: "config_tipos_explotacion",
+  calidades: "config_calidad_animal",
+}
+
+const TABLA_POR_FAMILIA: ReadonlyMap<FamiliaMaestro, string> = new Map(CONTEOS_FAMILIAS)
+
+/**
+ * CM-007: misma condición de completitud que `contarTodo` — nombre no
+ * blank Y (departamento o municipio no blank; vereda sola no cuenta).
+ */
+const CONDICION_FINCA_COMPLETA = sql`nombre IS NOT NULL AND trim(nombre) <> ''
+  AND ((departamento IS NOT NULL AND trim(departamento) <> '')
+    OR (municipio IS NOT NULL AND trim(municipio) <> ''))`
+
 export class DrizzleConteosMaestrosAdapter implements ConteosMaestrosPort {
   constructor(private readonly db: DbClient) {}
 
@@ -70,10 +93,7 @@ export class DrizzleConteosMaestrosAdapter implements ConteosMaestrosPort {
       UNION ALL SELECT 'inseminadores' AS clave, count(*)::int AS cantidad
         FROM veterinarios WHERE finca_id = ${fincaId} AND activo = 1 AND es_inseminador = 1
       UNION ALL SELECT 'finca_completa' AS clave, count(*)::int AS cantidad
-        FROM fincas WHERE id = ${fincaId}
-          AND nombre IS NOT NULL AND trim(nombre) <> ''
-          AND ((departamento IS NOT NULL AND trim(departamento) <> '')
-            OR (municipio IS NOT NULL AND trim(municipio) <> ''))
+        FROM fincas WHERE id = ${fincaId} AND ${CONDICION_FINCA_COMPLETA}
       UNION ALL SELECT 'razas' AS clave, count(*)::int AS cantidad
         FROM config_razas WHERE activo = 1
       UNION ALL SELECT 'tipos_explotacion' AS clave, count(*)::int AS cantidad
@@ -114,5 +134,47 @@ export class DrizzleConteosMaestrosAdapter implements ConteosMaestrosPort {
     }
 
     return { porMaestro, inseminadores, fincaCompleta, catalogosGlobales }
+  }
+
+  /**
+   * CM-014: conteo individual para la degradación por card del hub cuando
+   * `contarTodo` falla. Query pequeña por familia; NUNCA lanza — devuelve
+   * `null` en cualquier error. `fincaCompleta` devuelve 1/0 con la misma
+   * condición de completitud que `contarTodo` (CM-007).
+   */
+  async contarPorFamilia(fincaId: string, familia: ConteoFamiliaClave): Promise<number | null> {
+    try {
+      let statement: SQL
+      if (familia === "fincaCompleta") {
+        statement = sql`SELECT count(*)::int AS cantidad
+          FROM fincas WHERE id = ${fincaId} AND ${CONDICION_FINCA_COMPLETA}`
+      } else if (familia === "inseminadores") {
+        statement = sql`SELECT count(*)::int AS cantidad
+          FROM veterinarios WHERE finca_id = ${fincaId} AND activo = 1 AND es_inseminador = 1`
+      } else {
+        const tabla = TABLA_POR_FAMILIA.get(familia)
+        if (tabla === undefined) return null
+        statement = sql`SELECT count(*)::int AS cantidad
+          FROM ${sql.raw(tabla)} WHERE finca_id = ${fincaId} AND activo = 1`
+      }
+      const filas = (await this.db.execute(statement)) as { cantidad: number }[]
+      const cantidad = Number(filas[0]?.cantidad ?? 0)
+      return familia === "fincaCompleta" ? (cantidad > 0 ? 1 : 0) : cantidad
+    } catch {
+      return null
+    }
+  }
+
+  /** CM-014: conteo individual de un catálogo global. Nunca lanza. */
+  async contarCatalogoGlobal(catalogo: ConteoCatalogoGlobalClave): Promise<number | null> {
+    try {
+      const tabla = TABLAS_CATALOGOS_GLOBALES[catalogo]
+      const statement = sql`SELECT count(*)::int AS cantidad
+        FROM ${sql.raw(tabla)} WHERE activo = 1`
+      const filas = (await this.db.execute(statement)) as { cantidad: number }[]
+      return Number(filas[0]?.cantidad ?? 0)
+    } catch {
+      return null
+    }
   }
 }

@@ -48,6 +48,10 @@
     "./conteos-maestros-infrastructure": {
       "types": "./src/conteos-maestros-infrastructure.ts",
       "import": "./src/conteos-maestros-infrastructure.ts"
+    },
+    "./maestro-listado-infrastructure": {
+      "types": "./src/maestro-listado-infrastructure.ts",
+      "import": "./src/maestro-listado-infrastructure.ts"
     }
   },
   "scripts": {
