@@ -62,53 +62,93 @@ function parseOrigen(value: FormDataEntryValue | null): "nacido_en_finca" | "com
   return undefined
 }
 
-function collectOptionalStringFields(
-  formData: FormData,
-  names: readonly string[],
-): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const name of names) {
-    const value = optionalText(formData, name)
-    if (value) out[name] = value
-  }
-  return out
+type CreateAnimalDatos = CreateAnimalWebInput["datos"]
+
+/**
+ * Issue #188: the contract fields the create mapper fills, derived from
+ * `CreateAnimalWebInput["datos"]` — a key that does not exist in the
+ * contract cannot compile here. The draft below is assigned field by field
+ * (no generic `Record<string, string>` spread), so TypeScript's
+ * excess-property check catches any phantom key. That spread was the bug's
+ * enabling cause: it let the unsuffixed FormData names `raza` / `color` /
+ * `calidad` / `tipoExplotacion` / `lugarCompra` leak into `datos`, where
+ * `pickCreateAnimalDatos` never reads them, silently dropping the values.
+ */
+type CreateAnimalMappedField =
+  | "codigo"
+  | "nombre"
+  | "sexoKey"
+  | "potreroId"
+  | "sectorId"
+  | "loteId"
+  | "grupoId"
+  | "origen"
+  | "fechaNacimiento"
+  | "fechaCompra"
+  | "razaId"
+  | "colorId"
+  | "calidadId"
+  | "tipoExplotacionId"
+  | "lugarCompraId"
+  | "madreId"
+  | "padreId"
+  | "precioCompra"
+  | "pesoCompra"
+
+type CreateAnimalDatosDraft = {
+  readonly [K in CreateAnimalMappedField]: CreateAnimalDatos[K] | undefined
 }
 
+/**
+ * Drop the draft's `undefined` entries ("field absent in the FormData") so
+ * the input keeps the minimal shape the harness expects. Safe by
+ * construction: every draft key is a contract key (see
+ * `CreateAnimalMappedField`), and the required fields `codigo` / `nombre` /
+ * `sexoKey` never arrive as `undefined` from the mapper.
+ */
+function compactCreateAnimalDatos(draft: CreateAnimalDatosDraft): CreateAnimalDatos {
+  const datos: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(draft)) {
+    if (value !== undefined) datos[key] = value
+  }
+  return datos as Partial<CreateAnimalDatos> as CreateAnimalDatos
+}
+
+/**
+ * Issue #188: explicit field-by-field mapping from the create form's
+ * FormData names to the contract keys. The form serializes the catalog
+ * selectors as `raza` / `color` / `calidad` / `lugarCompra` (unsuffixed)
+ * and `tipoExplotacionId` (suffixed) — see `FORM_FIELDS` in
+ * `packages/ui/src/ganado/animal-crud.tsx`; the contract
+ * (`CreateAnimalWebInput.datos`) and `pickCreateAnimalDatos` only read the
+ * suffixed keys, so the mapper translates each one explicitly.
+ */
 export function buildCreateAnimalInputFromFormData(
   fincaId: string,
   formData: FormData,
 ): CreateAnimalWebInput {
-  const stringFields = collectOptionalStringFields(formData, [
-    "potreroId",
-    "sectorId",
-    "loteId",
-    "grupoId",
-    "fechaNacimiento",
-    "fechaCompra",
-    "raza",
-    "color",
-    "calidad",
-    "tipoExplotacionId",
-    "lugarCompra",
-    "madreId",
-    "padreId",
-  ])
-  const origen = parseOrigen(formData.get("origen"))
-  const precioCompra = parseEsCONumber(formData.get("precioCompra")) ?? undefined
-  const pesoCompra = parseEsCONumber(formData.get("pesoCompra")) ?? undefined
-
-  return {
-    fincaId,
-    datos: {
-      codigo: requiredText(formData, "codigo"),
-      nombre: requiredText(formData, "nombre"),
-      sexoKey: parseSexoKey(formData.get("sexoKey")),
-      ...stringFields,
-      ...(origen ? { origen } : {}),
-      ...(precioCompra !== undefined ? { precioCompra } : {}),
-      ...(pesoCompra !== undefined ? { pesoCompra } : {}),
-    },
+  const draft: CreateAnimalDatosDraft = {
+    codigo: requiredText(formData, "codigo"),
+    nombre: requiredText(formData, "nombre"),
+    sexoKey: parseSexoKey(formData.get("sexoKey")),
+    potreroId: optionalText(formData, "potreroId"),
+    sectorId: optionalText(formData, "sectorId"),
+    loteId: optionalText(formData, "loteId"),
+    grupoId: optionalText(formData, "grupoId"),
+    origen: parseOrigen(formData.get("origen")),
+    fechaNacimiento: optionalText(formData, "fechaNacimiento"),
+    fechaCompra: optionalText(formData, "fechaCompra"),
+    razaId: optionalText(formData, "raza"),
+    colorId: optionalText(formData, "color"),
+    calidadId: optionalText(formData, "calidad"),
+    tipoExplotacionId: optionalText(formData, "tipoExplotacionId"),
+    lugarCompraId: optionalText(formData, "lugarCompra"),
+    madreId: optionalText(formData, "madreId"),
+    padreId: optionalText(formData, "padreId"),
+    precioCompra: parseEsCONumber(formData.get("precioCompra")),
+    pesoCompra: parseEsCONumber(formData.get("pesoCompra")),
   }
+  return { fincaId, datos: compactCreateAnimalDatos(draft) }
 }
 
 const CAMPO_TO_FIELD_KEY: Record<string, string> = {

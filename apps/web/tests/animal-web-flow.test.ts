@@ -918,6 +918,146 @@ async function testCreateRouteNormalizesEsCOCompraNumerics() {
   )
 }
 
+async function testCreateRouteMapperAlignsCatalogKeysWithContract() {
+  // Issue #188: the create form serializes its catalog selectors with these
+  // FormData names (packages/ui/src/ganado/animal-crud.tsx — FORM_FIELDS,
+  // LOCATION_FIELDS, CompradoFields, FincaFields):
+  //   raza / color / calidad  → FORM_FIELDS (unsuffixed)
+  //   tipoExplotacionId       → FORM_FIELDS (suffixed)
+  //   lugarCompra             → CompradoFields (unsuffixed)
+  // The mapper MUST translate them into the contract keys
+  // (CreateAnimalWebInput.datos) — razaId / colorId / calidadId /
+  // tipoExplotacionId / lugarCompraId — because that is what
+  // pickCreateAnimalDatos reads when persisting the created animal.
+  const form = new FormData()
+  form.set("codigo", " NV-42 ")
+  form.set("nombre", " Novilla 42 ")
+  form.set("sexoKey", "0")
+  form.set("raza", "raza-angus")
+  form.set("color", "color-negro")
+  form.set("calidad", "calidad-extra")
+  form.set("tipoExplotacionId", "tipo-doble-proposito")
+  form.set("origen", "comprado")
+  form.set("fechaNacimiento", "2023-01-10")
+  form.set("fechaCompra", "2024-03-15")
+  form.set("precioCompra", "1.500,75")
+  form.set("pesoCompra", "450,30")
+  form.set("lugarCompra", "lugar-feria-manizales")
+  form.set("potreroId", "potrero-norte")
+  form.set("sectorId", "sector-cria")
+  form.set("loteId", "lote-a")
+  form.set("grupoId", "grupo-hato")
+
+  const result = buildCreateAnimalInputFromFormData("finca-1", form)
+
+  assert.equal(
+    result.datos.razaId,
+    "raza-angus",
+    "create mapper must translate the 'raza' form key to datos.razaId",
+  )
+  assert.equal(
+    result.datos.colorId,
+    "color-negro",
+    "create mapper must translate the 'color' form key to datos.colorId",
+  )
+  assert.equal(
+    result.datos.calidadId,
+    "calidad-extra",
+    "create mapper must translate the 'calidad' form key to datos.calidadId",
+  )
+  assert.equal(
+    result.datos.tipoExplotacionId,
+    "tipo-doble-proposito",
+    "create mapper must read the form's 'tipoExplotacionId' into datos.tipoExplotacionId",
+  )
+  assert.equal(
+    result.datos.lugarCompraId,
+    "lugar-feria-manizales",
+    "create mapper must translate the 'lugarCompra' form key to datos.lugarCompraId",
+  )
+
+  // Issue #188: NO phantom unsuffixed key may leak into datos —
+  // pickCreateAnimalDatos only reads the suffixed contract keys, so any
+  // unsuffixed leak is a silent drop at persist time.
+  for (const phantom of ["raza", "color", "calidad", "tipoExplotacion", "lugarCompra"] as const) {
+    assert.ok(!(phantom in result.datos), `phantom key '${phantom}' must not leak into datos`)
+  }
+
+  // Exact key set: every submitted field lands on its contract key, and
+  // nothing else travels (deepStrictEqual compares own keys).
+  assert.deepEqual(result, {
+    fincaId: "finca-1",
+    datos: {
+      codigo: "NV-42",
+      nombre: "Novilla 42",
+      sexoKey: "0",
+      potreroId: "potrero-norte",
+      sectorId: "sector-cria",
+      loteId: "lote-a",
+      grupoId: "grupo-hato",
+      origen: "comprado",
+      fechaNacimiento: "2023-01-10",
+      fechaCompra: "2024-03-15",
+      razaId: "raza-angus",
+      colorId: "color-negro",
+      calidadId: "calidad-extra",
+      tipoExplotacionId: "tipo-doble-proposito",
+      lugarCompraId: "lugar-feria-manizales",
+      precioCompra: 1500.75,
+      pesoCompra: 450.3,
+    },
+  })
+}
+
+async function testCreateRouteMapperIsFieldByField() {
+  // Issue #188 (the spread hole): the old mapper spread a generic
+  // Record<string,string> into datos, copying verbatim whatever FormData
+  // keys it was handed — TypeScript's excess-property check never saw them.
+  // The rewrite is a field-by-field mapping: only the contract keys the
+  // mapper explicitly reads can appear in datos, no matter what the
+  // FormData carries. Unknown or unsuffixed-impostor keys are dropped.
+  const form = new FormData()
+  form.set("codigo", "NV-1")
+  form.set("nombre", "Novilla 1")
+  form.set("sexoKey", "1")
+  // The real form never submits the unsuffixed 'tipoExplotacion' (it
+  // submits 'tipoExplotacionId'); the old mapper read the impostor key.
+  form.set("tipoExplotacion", "tipo-fantasma")
+  form.set("campoAjeno", "no-debe-pasar")
+
+  const result = buildCreateAnimalInputFromFormData("finca-1", form)
+  assert.deepEqual(result, {
+    fincaId: "finca-1",
+    datos: { codigo: "NV-1", nombre: "Novilla 1", sexoKey: "1" },
+  })
+}
+
+async function testCreateRouteMapperCarriesParentIdsWithoutPhantomKeys() {
+  // nacido_en_finca path: madre/padre serialize suffixed (FincaFields);
+  // they travel unchanged and no catalog key appears when the selectors
+  // were left empty.
+  const form = new FormData()
+  form.set("codigo", "NV-2")
+  form.set("nombre", "Novilla 2")
+  form.set("sexoKey", "0")
+  form.set("origen", "nacido_en_finca")
+  form.set("madreId", "animal-madre-1")
+  form.set("padreId", "animal-padre-1")
+
+  const result = buildCreateAnimalInputFromFormData("finca-1", form)
+  assert.deepEqual(result, {
+    fincaId: "finca-1",
+    datos: {
+      codigo: "NV-2",
+      nombre: "Novilla 2",
+      sexoKey: "0",
+      origen: "nacido_en_finca",
+      madreId: "animal-madre-1",
+      padreId: "animal-padre-1",
+    },
+  })
+}
+
 async function testEditRouteMapperNormalizesEsCOCompraNumerics() {
   // v1.3 spec §3.5: precio_compra and peso_compra accept es-CO formatting
   // in BOTH the create and edit routes. The update mapper MUST apply the
@@ -1606,6 +1746,9 @@ async function run() {
   await testCreateRejectsCrossFincaUbicaciones()
   await testRouteFormPayloadBuilders()
   await testRouteFormPayloadBuildersCarryTipoExplotacionId()
+  await testCreateRouteMapperAlignsCatalogKeysWithContract()
+  await testCreateRouteMapperIsFieldByField()
+  await testCreateRouteMapperCarriesParentIdsWithoutPhantomKeys()
   await testCreateRouteNormalizesEsCOCompraNumerics()
   await testEditRouteMapperNormalizesEsCOCompraNumerics()
   await testEditRoutePassesInitialValuesToForm()
