@@ -24,8 +24,8 @@
 - [x] 2.2 GREEN: create `packages/dominio/src/animal-ficha.ts` (pure functions, injected `hoy`).
 - [x] 2.3 Create `packages/aplicacion/src/puertos/animal-ficha-resumen-port.ts` (raza/color, potrero/lote/grupo, last 2 weighings, reproductive sequence, latest condition).
 - [x] 2.4 RED: full vs empty history in `packages/aplicacion/tests/animal-use-cases.test.ts` (missing → null, never fabricated); GREEN: aggregate in `obtenerFichaAnimal` (`packages/aplicacion/src/casos-uso/animales/index.ts`).
-- [ ] 2.5 Implement `DrizzleAnimalFichaReadModel` in `packages/db/src/animal-infrastructure.ts`.
-- [ ] 2.6 RED+GREEN integration: `packages/db/tests/animal-ficha-postgres.test.ts`.
+- [x] 2.5 Implement `DrizzleAnimalFichaReadModel` in `packages/db/src/animal-infrastructure.ts`.
+- [x] 2.6 RED+GREEN integration: `packages/db/tests/animal-ficha-postgres.test.ts`.
 - [ ] 2.7 Map resumen in `apps/web/src/server/animal-actions.server.ts`; assert DTO in `animal-web-flow.test.ts`.
 
 ## Phase 3 (PR 3): Timeline Union

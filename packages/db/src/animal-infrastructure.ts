@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks"
 import type {
   AnimalExportacionReadPort,
   AnimalExportacionRequest,
+  AnimalFichaResumenPort,
   AnimalListadoPreferencias,
   AnimalListadoPreferenciasPort,
   AnimalListadoReadFilter,
@@ -17,6 +18,7 @@ import type {
   BenchmarkAnimalListadoReadRequest,
   ColaBinariosPort,
   EntradaOutbox,
+  FichaResumenBruto,
   OutboxPort,
   TimelineAnimalPort,
   TransaccionPort,
@@ -24,7 +26,7 @@ import type {
 import type { AnimalReferenceCheckerPort, AnimalResumen } from "@ganaweb/aplicacion"
 import type { ErrorValidacionAnimal } from "@ganaweb/aplicacion"
 import { AnimalExportacionOverflowError } from "@ganaweb/dominio"
-import { type SQL, and, asc, eq, or, sql } from "drizzle-orm"
+import { type SQL, and, asc, desc, eq, isNull, or, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 import {
   animales,
@@ -33,6 +35,9 @@ import {
   animalesUbicacionHistorico,
   aplicacionesSanitarias,
   auditoriaEliminaciones,
+  configColores,
+  configCondicionesCorporales,
+  configRazas,
   grupos,
   imagenes,
   lotes,
@@ -1256,6 +1261,138 @@ export class DrizzleAnimalTimelineRepository implements TimelineAnimalPort {
   }
 }
 
+/**
+ * redesign-ficha-animal (slice 2, D5): modelo de lectura de la ficha
+ * enriquecida. Resuelve nombres (raza/color/potrero/lote/grupo) y agrega la
+ * historia cruda del animal: últimos dos pesajes, secuencia reproductiva y
+ * última condición corporal. Las derivaciones (edad, GDP, IEP, días
+ * abiertos) viven en `@ganaweb/dominio` (D4), no aquí.
+ *
+ * Scope por finca: la proyección existe solo si el animal pertenece a la
+ * finca pedida. Eventos anidados en un registro grupal anulado se excluyen
+ * (los eventos son la verdad — TR-014). D7: sin índices nuevos; el volumen
+ * por animal es pequeño.
+ */
+export class DrizzleAnimalFichaReadModel implements AnimalFichaResumenPort {
+  constructor(private readonly db: DbClient) {}
+
+  async obtener(animalId: string, fincaId: string): Promise<FichaResumenBruto | null> {
+    const db = currentDb(this.db)
+    const [animalRow] = await db
+      .select({
+        raza: configRazas.nombre,
+        color: configColores.nombre,
+        potrero: potreros.nombre,
+        lote: lotes.nombre,
+        grupo: grupos.nombre,
+      })
+      .from(animales)
+      .leftJoin(configRazas, eq(animales.razaId, configRazas.id))
+      .leftJoin(configColores, eq(animales.colorId, configColores.id))
+      .leftJoin(potreros, eq(animales.potreroId, potreros.id))
+      .leftJoin(lotes, eq(animales.loteId, lotes.id))
+      .leftJoin(grupos, eq(animales.grupoId, grupos.id))
+      .where(and(eq(animales.id, animalId), eq(animales.fincaId, fincaId)))
+      .limit(1)
+    if (!animalRow) return null
+
+    const [pesajesRows, serviciosRows, palpacionesRows, partosRows, condicionRows] =
+      await Promise.all([
+        db
+          .select({ fecha: pesos.fecha, pesoKg: pesos.pesoKg })
+          .from(pesos)
+          .leftJoin(registrosGrupales, eq(pesos.registroGrupalId, registrosGrupales.id))
+          .where(
+            and(
+              eq(pesos.animalId, animalId),
+              or(isNull(pesos.registroGrupalId), isNull(registrosGrupales.anuladoEn)),
+            ),
+          )
+          .orderBy(desc(pesos.fecha), desc(pesos.id))
+          .limit(2),
+        db
+          .select({ fecha: servicios.fecha, tipo: servicios.tipo, efectivo: servicios.efectivo })
+          .from(servicios)
+          .leftJoin(registrosGrupales, eq(servicios.registroGrupalId, registrosGrupales.id))
+          .where(
+            and(
+              eq(servicios.animalId, animalId),
+              or(isNull(servicios.registroGrupalId), isNull(registrosGrupales.anuladoEn)),
+            ),
+          )
+          .orderBy(desc(servicios.fecha), desc(servicios.id)),
+        db
+          .select({
+            fecha: palpaciones.fecha,
+            resultado: palpaciones.resultado,
+            diasGestacion: palpaciones.diasGestion,
+          })
+          .from(palpaciones)
+          .leftJoin(registrosGrupales, eq(palpaciones.registroGrupalId, registrosGrupales.id))
+          .where(
+            and(
+              eq(palpaciones.animalId, animalId),
+              or(isNull(palpaciones.registroGrupalId), isNull(registrosGrupales.anuladoEn)),
+            ),
+          )
+          .orderBy(desc(palpaciones.fecha), desc(palpaciones.id)),
+        db
+          .select({ fecha: partos.fecha, tipoParto: partos.tipoParto })
+          .from(partos)
+          .leftJoin(registrosGrupales, eq(partos.registroGrupalId, registrosGrupales.id))
+          .where(
+            and(
+              eq(partos.animalId, animalId),
+              or(isNull(partos.registroGrupalId), isNull(registrosGrupales.anuladoEn)),
+            ),
+          )
+          .orderBy(desc(partos.fecha), desc(partos.id)),
+        db
+          .select({
+            puntaje: animalesCondicionCorporal.puntaje,
+            fecha: animalesCondicionCorporal.fecha,
+            etiqueta: configCondicionesCorporales.nombre,
+          })
+          .from(animalesCondicionCorporal)
+          .leftJoin(
+            configCondicionesCorporales,
+            eq(animalesCondicionCorporal.condicionId, configCondicionesCorporales.id),
+          )
+          .where(eq(animalesCondicionCorporal.animalId, animalId))
+          .orderBy(desc(animalesCondicionCorporal.fecha), desc(animalesCondicionCorporal.id))
+          .limit(1),
+      ])
+
+    const condicionRow = condicionRows[0]
+    return {
+      raza: animalRow.raza ?? null,
+      color: animalRow.color ?? null,
+      potrero: animalRow.potrero ?? null,
+      lote: animalRow.lote ?? null,
+      grupo: animalRow.grupo ?? null,
+      pesajes: pesajesRows.map((row) => ({ fecha: row.fecha, pesoKg: Number(row.pesoKg) })),
+      servicios: serviciosRows.map((row) => ({
+        fecha: row.fecha,
+        tipo: row.tipo,
+        efectivo: row.efectivo == null ? null : row.efectivo === 1,
+      })),
+      palpaciones: palpacionesRows.map((row) => ({
+        fecha: row.fecha,
+        resultado: row.resultado ?? null,
+        diasGestacion: row.diasGestacion ?? null,
+      })),
+      partos: partosRows.map((row) => ({ fecha: row.fecha, tipoParto: row.tipoParto })),
+      condicionCorporal: condicionRow
+        ? {
+            valor: Number(condicionRow.puntaje),
+            etiqueta: condicionRow.etiqueta ?? null,
+            fecha: condicionRow.fecha,
+          }
+        : null,
+    }
+  }
+}
+
 export class DrizzleTransactionRunner implements TransaccionPort {
   constructor(private readonly db: DbClient) {}
 
@@ -1328,6 +1465,7 @@ export function createAnimalUseCaseDeps(db: DbClient): AnimalUseCaseDeps {
     animales: new DrizzleAnimalRepository(db),
     referencias: createAnimalReferenceChecker(db),
     timeline: new DrizzleAnimalTimelineRepository(db),
+    fichaResumen: new DrizzleAnimalFichaReadModel(db),
     archivos: new DrizzleAnimalMediaRepository(db),
     outbox: new DrizzleOutboxRepository(db),
     colaBinarios: new DrizzleBinaryQueueRepository(db),
