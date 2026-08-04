@@ -4,6 +4,7 @@ import {
   AnimalDeleteDialogCopy,
   AnimalFichaDesktopScreen,
   AnimalFichaMobileScreen,
+  type AnimalFichaResumen,
   type AnimalListItem,
   type AnimalTimelineItem,
   EventDrawer,
@@ -40,6 +41,13 @@ const bottomNavItems = [
 export interface AnimalFichaRouteViewData {
   readonly tipo: "ficha"
   readonly animal: AnimalListItem
+  /**
+   * redesign-ficha-animal (slice 2): proyección enriquecida (raza/color,
+   * edad, último peso + GDP, resumen reproductivo, condición corporal).
+   * Ausente cuando el modelo de lectura no tiene datos — la UI tolera
+   * nulos con estados vacíos estructurados.
+   */
+  readonly resumen?: AnimalFichaResumen
   readonly timeline: {
     readonly items: readonly AnimalTimelineItem[]
     readonly nextCursor?: string
@@ -78,6 +86,7 @@ export function AnimalFichaRouteView({
         <AnimalFichaDesktopScreen
           animal={data.animal}
           timeline={[...data.timeline.items]}
+          {...(data.resumen ? { resumen: data.resumen } : {})}
           {...(data.timeline.nextCursor ? { nextCursor: data.timeline.nextCursor } : {})}
           {...(onVolverAListado ? { onVolverAListado } : {})}
           onRegistrarEvento={() => setDrawerEventoAbierto(true)}

@@ -9,6 +9,7 @@ import type {
   CatalogoGlobalPort,
   CatalogoPadresPort,
   ColorOption,
+  FichaAnimalResumen,
   GrupoOption,
   HierroOption,
   LoteOption,
@@ -47,7 +48,7 @@ import { DrizzleCatalogoFincaAdapter } from "@ganaweb/db/catalogo-finca-infrastr
 import { DrizzleCatalogoGlobalAdapter } from "@ganaweb/db/catalogo-global-infrastructure"
 import { DrizzleCatalogoPadresAdapter } from "@ganaweb/db/catalogo-padres-infrastructure"
 import { db } from "@ganaweb/db/client"
-import type { AnimalListItem, AnimalTimelineItem } from "@ganaweb/ui"
+import type { AnimalFichaResumen, AnimalListItem, AnimalTimelineItem } from "@ganaweb/ui"
 import { createServerFn } from "@tanstack/react-start"
 import { resolverPermisosVisualesListado } from "./animal-listado-permissions.server.js"
 import {
@@ -836,6 +837,24 @@ function toTimelineItem(item: {
   }
 }
 
+/**
+ * redesign-ficha-animal (slice 2, task 2.7): proyección enriquecida de la
+ * ficha al DTO de la UI. `potrero`/`lote` no viven aquí — la línea de meta
+ * los lee del item del animal; el mapper de la ficha los mergea aparte.
+ * Los nulls pasan tal cual: la UI tolera ausencias con placeholders.
+ */
+export function toAnimalFichaResumen(resumen: FichaAnimalResumen): AnimalFichaResumen {
+  return {
+    raza: resumen.raza,
+    color: resumen.color,
+    grupo: resumen.grupo,
+    edadMeses: resumen.edadMeses,
+    ultimoPeso: resumen.ultimoPeso,
+    reproduccion: resumen.reproduccion,
+    condicionCorporal: resumen.condicionCorporal,
+  }
+}
+
 export function buildAnimalRouteViewModel(input: {
   readonly sesion: SesionAutorizada
   readonly animales: readonly AnimalListItem[]
@@ -882,10 +901,16 @@ export function createAnimalActionHarness({
       if (result.tipo !== "ficha") return result
       return {
         tipo: "ficha" as const,
-        animal: toAnimalListItem(result.animal),
+        animal: {
+          ...toAnimalListItem(result.animal),
+          // Slice 2: la línea de meta lee potrero/lote del item del animal.
+          ...(result.resumen.potrero != null ? { potrero: result.resumen.potrero } : {}),
+          ...(result.resumen.lote != null ? { lote: result.resumen.lote } : {}),
+        },
         imagenes: result.imagenes,
         genealogia: result.genealogia,
         estadoBanner: result.estadoBanner,
+        resumen: toAnimalFichaResumen(result.resumen),
         timeline: {
           items: result.timeline.items.map(toTimelineItem),
           ...(result.timeline.nextCursor ? { nextCursor: result.timeline.nextCursor } : {}),

@@ -26,7 +26,7 @@
 - [x] 2.4 RED: full vs empty history in `packages/aplicacion/tests/animal-use-cases.test.ts` (missing → null, never fabricated); GREEN: aggregate in `obtenerFichaAnimal` (`packages/aplicacion/src/casos-uso/animales/index.ts`).
 - [x] 2.5 Implement `DrizzleAnimalFichaReadModel` in `packages/db/src/animal-infrastructure.ts`.
 - [x] 2.6 RED+GREEN integration: `packages/db/tests/animal-ficha-postgres.test.ts`.
-- [ ] 2.7 Map resumen in `apps/web/src/server/animal-actions.server.ts`; assert DTO in `animal-web-flow.test.ts`.
+- [x] 2.7 Map resumen in `apps/web/src/server/animal-actions.server.ts`; assert DTO in `animal-web-flow.test.ts`.
 
 ## Phase 3 (PR 3): Timeline Union
 
