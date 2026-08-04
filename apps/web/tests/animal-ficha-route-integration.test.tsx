@@ -130,3 +130,68 @@ describe("animal ficha route — event drawer wiring (redesign-ficha-animal)", (
     expect(onVolverAListado).toHaveBeenCalledTimes(1)
   })
 })
+
+describe("animal ficha route — enriched resumen rendering (redesign-ficha-animal slice 2)", () => {
+  function fichaConResumen(): AnimalFichaRouteViewProps {
+    const base = fichaProps()
+    return {
+      ...base,
+      data: {
+        ...base.data,
+        animal: {
+          ...base.data.animal,
+          potrero: "Potrero Norte",
+          lote: "Lote A",
+        },
+        resumen: {
+          raza: "Holstein",
+          color: "Blanco y negro",
+          grupo: "Grupo Vientres",
+          ultimoPeso: { fecha: "2026-07-01", pesoKg: 410, gdpKgDia: 1 },
+          reproduccion: {
+            ultimoServicio: { fecha: "2025-05-01", detalle: "inseminacion" },
+            ultimaPalpacion: null,
+            gestacionDias: null,
+            partos: { total: 2, ultimaFecha: "2025-03-01" },
+            iepDias: 365,
+            diasAbiertos: 61,
+          },
+          condicionCorporal: { valor: 3.5, etiqueta: "Ideal", fecha: "2026-07-20" },
+        },
+      },
+    }
+  }
+
+  it("renders the loader resumen values in the desktop cards", () => {
+    render(<AnimalFichaRouteView {...fichaConResumen()} />)
+
+    const datos = screen.getByRole("region", { name: "DATOS" })
+    expect(within(datos).getByText("Holstein")).toBeInTheDocument()
+    expect(within(datos).getByText("Blanco y negro")).toBeInTheDocument()
+
+    const reproduccion = screen.getByRole("region", { name: "REPRODUCCIÓN" })
+    expect(within(reproduccion).getByText("1 may · inseminacion")).toBeInTheDocument()
+    expect(within(reproduccion).getByText("2 · último 1 mar 2025")).toBeInTheDocument()
+    expect(within(reproduccion).getByText("365 días")).toBeInTheDocument()
+
+    const peso = screen.getByRole("region", { name: "PESO Y CONDICIÓN" })
+    expect(within(peso).getByText("410 kg")).toBeInTheDocument()
+    expect(within(peso).getByText("1 jul · GDP 1 kg/día")).toBeInTheDocument()
+    expect(within(peso).getByText("3,5 / 5 · Ideal")).toBeInTheDocument()
+  })
+
+  it("renders resolved location names and grupo in the header meta line", () => {
+    render(<AnimalFichaRouteView {...fichaConResumen()} />)
+
+    expect(
+      screen.getByText("Holstein · Hembra · Potrero Norte · Lote A · Grupo Vientres"),
+    ).toBeInTheDocument()
+  })
+
+  it("keeps structured placeholders when the resumen is absent", () => {
+    render(<AnimalFichaRouteView {...fichaProps()} />)
+
+    const datos = screen.getByRole("region", { name: "DATOS" })
+    expect(within(datos).getAllByText("—").length).toBeGreaterThanOrEqual(4)
+  })
+})

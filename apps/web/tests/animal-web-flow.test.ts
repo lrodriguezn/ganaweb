@@ -219,6 +219,32 @@ function deps(): AnimalUseCaseDeps {
         }
       },
     },
+    // redesign-ficha-animal (slice 2, task 2.7): only animal-1 has an
+    // enriched projection; every other animal degrades to absent summary.
+    fichaResumen: {
+      async obtener(animalId, fincaId) {
+        if (animalId !== "animal-1" || fincaId !== "finca-1") return null
+        return {
+          raza: "Holstein",
+          color: "Blanco y negro",
+          potrero: "Potrero Norte",
+          lote: "Lote A",
+          grupo: "Grupo Vientres",
+          pesajes: [
+            { fecha: "2026-07-01", pesoKg: 410 },
+            { fecha: "2026-06-01", pesoKg: 380 },
+          ],
+          servicios: [{ fecha: "2025-05-01", tipo: "inseminacion", efectivo: true }],
+          palpaciones: [],
+          partos: [
+            { fecha: "2025-03-01", tipoParto: "normal" },
+            { fecha: "2024-03-01", tipoParto: "normal" },
+          ],
+          condicionCorporal: { valor: 3.5, etiqueta: "Ideal", fecha: "2026-07-20" },
+        }
+      },
+    },
+    reloj: { ahora: () => new Date(Date.UTC(2026, 7, 4)) },
     archivos: {
       async listarImagenes(animalId) {
         return images.get(animalId) ?? []
@@ -381,6 +407,43 @@ async function testRouteViewModelsAndFlows() {
   assert.equal(ficha.tipo, "ficha")
   assert.equal(ficha.timeline.items.length, 21)
   assert.equal(ficha.timeline.nextCursor, "cursor-2")
+  if (ficha.tipo !== "ficha") throw new Error("ficha must be available")
+  // redesign-ficha-animal (slice 2, task 2.7): the loader DTO carries the
+  // enriched resumen (dominio derivations over the read-model projection)
+  // and resolves potrero/lote names onto the animal item.
+  assert.equal(ficha.animal.potrero, "Potrero Norte")
+  assert.equal(ficha.animal.lote, "Lote A")
+  assert.deepEqual(ficha.resumen, {
+    raza: "Holstein",
+    color: "Blanco y negro",
+    grupo: "Grupo Vientres",
+    edadMeses: null,
+    ultimoPeso: { fecha: "2026-07-01", pesoKg: 410, gdpKgDia: 1 },
+    reproduccion: {
+      ultimoServicio: { fecha: "2025-05-01", detalle: "inseminacion" },
+      ultimaPalpacion: null,
+      gestacionDias: null,
+      partos: { total: 2, ultimaFecha: "2025-03-01" },
+      iepDias: 365,
+      diasAbiertos: 61,
+    },
+    condicionCorporal: { valor: 3.5, etiqueta: "Ideal", fecha: "2026-07-20" },
+  })
+
+  // Without a read-model projection the resumen stays fully absent — the
+  // DTO never fabricates summary values.
+  const fichaSinHistoria = await harness.ficha({ fincaId: "finca-1", animalId: "animal-active-1" })
+  if (fichaSinHistoria.tipo !== "ficha") throw new Error("ficha must be available")
+  assert.deepEqual(fichaSinHistoria.resumen, {
+    raza: null,
+    color: null,
+    grupo: null,
+    edadMeses: null,
+    ultimoPeso: null,
+    reproduccion: null,
+    condicionCorporal: null,
+  })
+  assert.equal(fichaSinHistoria.animal.potrero, undefined)
 
   const deletion = await harness.delete({ fincaId: "finca-1", animalId: "animal-1", online: true })
   assert.deepEqual(deletion, { tipo: "inactivado", eventos: 3 })
@@ -997,6 +1060,10 @@ async function testRouteFilesWireUiAndActions() {
   )
   assert.ok(all.includes("AnimalFichaDesktopScreen"), "ficha route must compose PR3 ficha UI")
   assert.ok(all.includes("AnimalFichaMobileScreen"), "ficha route must compose PR3 mobile ficha UI")
+  assert.ok(
+    (sources[2] ?? "").includes("resumen"),
+    "ficha route must pass the enriched resumen into the desktop screen (slice 2)",
+  )
   assert.ok(all.includes("getAnimalMobileListAction"), "routes must use server actions/loaders")
   assert.ok(all.includes("createAnimalAction"), "create route must use server action")
   assert.ok(!all.includes('codigo: "TEMP"'), "create route must not submit a hard-coded code")

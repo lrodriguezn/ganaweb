@@ -1,7 +1,11 @@
 import {
   type ErrorValidacionAnimal,
+  type Sexo,
   calcularDecisionEliminarAnimal,
+  calcularEdadMeses,
+  calcularGdp,
   crearEstadoBannerFichaAnimal,
+  derivarResumenReproductivo,
   validarActualizacionAnimal,
   validarCreacionAnimal,
   validarReactivacionAnimal,
@@ -9,14 +13,21 @@ import {
 
 export type { ErrorValidacionAnimal }
 import type { EntradaOutbox } from "@ganaweb/sync"
+import type {
+  AnimalFichaResumenPort,
+  FichaAnimalResumen,
+  FichaResumenBruto,
+} from "../../puertos/animal-ficha-resumen-port.js"
 import type { ArchivoAnimalPort, ColaBinariosPort } from "../../puertos/animal-media-port.js"
 import type { AnimalReferenceCheckerPort } from "../../puertos/animal-reference-checker-port.js"
 import type {
+  AnimalRegistro,
   AnimalRepositoryPort,
   AnimalUpdateCambios,
 } from "../../puertos/animal-repository-port.js"
 import type { TimelineAnimalPort } from "../../puertos/animal-timeline-port.js"
 import type { OutboxPort } from "../../puertos/outbox-port.js"
+import type { RelojDelSistemaPort } from "../../puertos/reloj-del-sistema-port.js"
 import type { TransaccionPort } from "../../puertos/transaccion-port.js"
 
 export interface SesionAnimal {
@@ -33,6 +44,14 @@ export interface AnimalUseCaseDeps {
   readonly outbox: OutboxPort
   readonly colaBinarios: ColaBinariosPort
   readonly transacciones: TransaccionPort
+  /**
+   * redesign-ficha-animal (slice 2): modelo de lectura de la ficha
+   * enriquecida. Opcional para preservar la simetría offline/tests — sin
+   * puerto el resumen degrada a campos ausentes (nunca fabricados).
+   */
+  readonly fichaResumen?: AnimalFichaResumenPort
+  /** Reloj inyectable para las derivaciones deterministas de la ficha. */
+  readonly reloj?: RelojDelSistemaPort
   readonly auditoriaEliminaciones?: {
     registrar(entrada: {
       readonly id: string
@@ -568,6 +587,53 @@ export function crearAnimal(deps: AnimalUseCaseDeps) {
   }
 }
 
+function sexoDeKey(sexoKey: 0 | 1 | 2): Sexo {
+  if (sexoKey === 1) return "hembra"
+  if (sexoKey === 2) return "pajuela"
+  return "macho"
+}
+
+/**
+ * redesign-ficha-animal (slice 2): compone la proyección enriquecida de la
+ * ficha (D5) desde la proyección cruda del modelo de lectura y las
+ * derivaciones puras de `@ganaweb/dominio` (D4). Los valores no disponibles
+ * quedan ausentes (null) — nunca se fabrican.
+ */
+function construirResumenFichaAnimal(entrada: {
+  readonly animal: AnimalRegistro
+  readonly bruto: FichaResumenBruto | null
+  readonly hoy: Date
+}): FichaAnimalResumen {
+  const { animal, bruto, hoy } = entrada
+  const ultimoPesaje = bruto?.pesajes[0] ?? null
+  const pesajeAnterior = bruto?.pesajes[1] ?? null
+  return {
+    raza: bruto?.raza ?? null,
+    color: bruto?.color ?? null,
+    potrero: bruto?.potrero ?? null,
+    lote: bruto?.lote ?? null,
+    grupo: bruto?.grupo ?? null,
+    edadMeses: calcularEdadMeses(animal.fechaNacimiento ?? null, hoy),
+    ultimoPeso: ultimoPesaje
+      ? {
+          fecha: ultimoPesaje.fecha,
+          pesoKg: ultimoPesaje.pesoKg,
+          gdpKgDia: calcularGdp(ultimoPesaje, pesajeAnterior),
+        }
+      : null,
+    reproduccion: bruto
+      ? derivarResumenReproductivo({
+          sexo: sexoDeKey(animal.sexoKey),
+          servicios: bruto.servicios,
+          palpaciones: bruto.palpaciones,
+          partos: bruto.partos,
+          hoy,
+        })
+      : null,
+    condicionCorporal: bruto?.condicionCorporal ?? null,
+  }
+}
+
 export function obtenerFichaAnimal(deps: AnimalUseCaseDeps) {
   return async (cmd: {
     readonly sesion: SesionAnimal
@@ -577,7 +643,7 @@ export function obtenerFichaAnimal(deps: AnimalUseCaseDeps) {
     if (!tienePermiso(cmd.sesion, "ver")) return { tipo: "no_autorizado" } as const
     const animal = await deps.animales.obtenerPorIdYFinca?.(cmd.animalId, cmd.sesion.fincaActivaId)
     if (!animal) return { tipo: "no_encontrado" } as const
-    const [imagenes, timeline] = await Promise.all([
+    const [imagenes, timeline, fichaBruta] = await Promise.all([
       deps.archivos.listarImagenes(cmd.animalId, cmd.sesion.fincaActivaId),
       deps.timeline.listarPagina({
         animalId: cmd.animalId,
@@ -585,6 +651,7 @@ export function obtenerFichaAnimal(deps: AnimalUseCaseDeps) {
         ...(cmd.cursorTimeline ? { cursor: cmd.cursorTimeline } : {}),
         limit: 20,
       }),
+      deps.fichaResumen?.obtener(cmd.animalId, cmd.sesion.fincaActivaId) ?? Promise.resolve(null),
     ])
     return {
       tipo: "ficha",
@@ -597,6 +664,11 @@ export function obtenerFichaAnimal(deps: AnimalUseCaseDeps) {
           : { activo: animal.activo, estadoActual: animal.estadoActual },
       ),
       timeline,
+      resumen: construirResumenFichaAnimal({
+        animal,
+        bruto: fichaBruta,
+        hoy: deps.reloj?.ahora() ?? new Date(),
+      }),
     } as const
   }
 }

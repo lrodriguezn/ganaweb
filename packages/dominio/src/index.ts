@@ -56,6 +56,14 @@ export {
   validarDatosMaestro,
   validarNombreUnicoMaestro,
 } from "./maestros.js"
+export type {
+  PalpacionEventoFicha,
+  PartoEventoFicha,
+  PesajeFicha,
+  ResumenReproductivoFicha,
+  ServicioEventoFicha,
+} from "./animal-ficha.js"
+export { calcularEdadMeses, calcularGdp, derivarResumenReproductivo } from "./animal-ficha.js"
 export type { ReferenciaAnimal, ResultadoValidacion } from "./rn-001.js"
 export { validarCodigoUnicoPorFinca } from "./rn-001.js"
 export type {
