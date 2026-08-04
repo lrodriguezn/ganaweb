@@ -1395,6 +1395,36 @@ async function testMapperBuildsFieldErrorsAndPreservesFechaCompra() {
   )
 }
 
+async function testEditSaveReturnsToFicha() {
+  // redesign-ficha-animal (slice 1, task 1.5): after a successful edit save,
+  // navigation must return to the animal's ficha, not the animal list
+  // (spec animal-ficha-desktop-ui: "Edit Save Returns to Ficha"). Source-level
+  // pin, mirroring the create-route navigation pins in
+  // testRouteBranchesOnResultTipo.
+  const editRoute = await readFile(join(ROUTES_DIR, "animales", "$animalId", "editar.tsx"), "utf8")
+
+  // The actualizado branch navigates to the ficha path.
+  assert.ok(
+    /navigate\(\{\s*to:\s*`\/fincas\/\$\{fincaId\}\/animales\/\$\{animalId\}`/.test(editRoute),
+    "edit route must navigate to the animal ficha (/fincas/{fincaId}/animales/{animalId}) after a successful save",
+  )
+
+  // The save handler must no longer target the bare animal list path.
+  assert.ok(
+    !/to:\s*`\/fincas\/\$\{fincaId\}\/animales`\s*\}/.test(editRoute),
+    "edit route must not navigate to the animal list after save — it returns to the ficha",
+  )
+
+  // Navigation stays ordered after the actualizado check (mirrors the create
+  // route pin: validacion and denials keep the form mounted).
+  const tipoCheck = editRoute.indexOf('result.tipo === "actualizado"')
+  const navigateCall = editRoute.indexOf("navigate({")
+  assert.ok(
+    tipoCheck > 0 && navigateCall > tipoCheck,
+    "ficha navigation must be ordered after the actualizado check so validacion and denials keep the form mounted",
+  )
+}
+
 async function run() {
   await testProductionRuntimeRequiresAdapters()
   await testServerGuards()
@@ -1413,6 +1443,7 @@ async function run() {
   await testActionForwardsValidacionErrores()
   await testActionE2eIsolationLivesInServerDepsSwap()
   await testRouteBranchesOnResultTipo()
+  await testEditSaveReturnsToFicha()
   await testMapperBuildsFieldErrorsAndPreservesFechaCompra()
   // biome-ignore lint/suspicious/noConsole: focused harness progress output
   console.log("✅ animal-web-flow.test.ts passed")
