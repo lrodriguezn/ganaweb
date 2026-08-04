@@ -89,6 +89,10 @@ export type {
   MaestroEscrituraPort,
   RegistroMaestroScope,
 } from "./puertos/maestro-escritura-port.js"
+export type {
+  ConteosMaestrosPort,
+  ConteosMaestrosResultado,
+} from "./puertos/conteos-maestros-port.js"
 export * from "./casos-uso/animales/index.js"
 export * from "./casos-uso/auth/index.js"
 export * from "./casos-uso/listar-catalogo-sexo.js"
