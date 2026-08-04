@@ -13,3 +13,16 @@ import { type Permiso, crearPermisos, tienePermiso } from "@ganaweb/ui"
 export function puedeVerConfiguracion(permisos: readonly Permiso[]): boolean {
   return tienePermiso(crearPermisos([...permisos]), "configuracion", "ver")
 }
+
+/** CM-022: botones de escritura gateados (la re-validación real es del servidor). */
+export function puedeCrearConfiguracion(permisos: readonly Permiso[]): boolean {
+  return tienePermiso(crearPermisos([...permisos]), "configuracion", "crear")
+}
+
+export function puedeEditarConfiguracion(permisos: readonly Permiso[]): boolean {
+  return tienePermiso(crearPermisos([...permisos]), "configuracion", "editar")
+}
+
+export function puedeInactivarConfiguracion(permisos: readonly Permiso[]): boolean {
+  return tienePermiso(crearPermisos([...permisos]), "configuracion", "inactivar")
+}

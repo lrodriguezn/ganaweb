@@ -110,6 +110,17 @@ export type {
   MaestroEscrituraPort,
   RegistroMaestroScope,
 } from "./puertos/maestro-escritura-port.js"
+// Issue #150 (CM-026/CM-039): la especificación data-driven de las familias
+// (campos, requeridos, tipos) la necesita la web para renderizar el formulario
+// genérico. apps/web no puede importar dominio (dependency-cruiser), así que
+// se re-exporta aquí (aplicacion → dominio es una capa permitida).
+export { ESPECIFICACIONES_MAESTROS } from "@ganaweb/dominio"
+export type {
+  EspecificacionCampoMaestro,
+  EspecificacionFamiliaMaestro,
+  TipoCampoMaestro,
+  ValorCampoMaestro,
+} from "@ganaweb/dominio"
 export type {
   ConteoCatalogoGlobalClave,
   ConteoFamiliaClave,

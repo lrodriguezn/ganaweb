@@ -7,8 +7,13 @@ import {
   type AnimalFormCatalogOptions,
   type AnimalFormInitialValues,
   AnimalFormScreen,
+  type SelectOption,
 } from "@ganaweb/ui"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+  CrearMaestroInline,
+  type MaestroInlineCreable,
+} from "../../../../../../configuracion/crear-maestro-inline.js"
 import { parseEsCONumber } from "../../../../../../lib/parsers/es-co-number.js"
 import {
   type AnimalCatalogs,
@@ -323,15 +328,26 @@ function EditAnimalRoute() {
     ? catalogsToFormOptions(loaderData.catalogs)
     : {}
   const canCreateCatalog = readCanCreateCatalog()
+  // CM-043 (issue #150): creación inline de maestros por finca; globales sin
+  // creación (CM-025).
+  const [maestroInline, setMaestroInline] = useState<MaestroInlineCreable | null>(null)
+  const [lugaresCreados, setLugaresCreados] = useState<readonly SelectOption[]>([])
+  const [creacionInline, setCreacionInline] = useState<{
+    readonly campo: "lugarCompra"
+    readonly value: string
+  } | null>(null)
   const catalogOptionsConPermisos: AnimalFormCatalogOptions = {
     ...catalogOptions,
     sexo: loaderData.sexoCatalog?.tipo === "disponible" ? loaderData.sexoCatalog.options : [],
+    lugarCompra: [...(catalogOptions.lugarCompra ?? []), ...lugaresCreados],
     canCreateCatalog: {
-      raza: canCreateCatalog,
-      color: canCreateCatalog,
+      raza: false,
+      color: false,
       calidad: false,
       lugarCompra: canCreateCatalog,
     },
+    onCreateCatalog: { lugarCompra: () => setMaestroInline("lugares_compras") },
+    ...(creacionInline ? { creacionInline } : {}),
   }
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const save = async (formData: FormData) => {
@@ -371,6 +387,21 @@ function EditAnimalRoute() {
         onCancel={() => history.back()}
         currentAnimalId={animalId}
       />
+      {maestroInline ? (
+        <CrearMaestroInline
+          fincaId={fincaId}
+          maestro={maestroInline}
+          onCerrar={() => setMaestroInline(null)}
+          onCreado={(registro) => {
+            setLugaresCreados((previos) => [
+              ...previos,
+              { value: registro.id, label: registro.nombre },
+            ])
+            setCreacionInline({ campo: "lugarCompra", value: registro.id })
+            setMaestroInline(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

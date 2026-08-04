@@ -706,7 +706,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.queryByRole("combobox", { name: "Lugar de compra" })).not.toBeInTheDocument()
   })
 
-  it("gates '+ Crear nuevo' inside Raza, Color, Lugar de compra on canCreateCatalog; Calidad never shows it (CA-UI-002)", async () => {
+  it("CM-025 (issue #150): los catálogos globales Raza/Color/Calidad NUNCA muestran '+ Crear nuevo'; Lugar de compra (por finca) sí según canCreateCatalog", async () => {
     const user = userEvent.setup()
 
     render(
@@ -720,7 +720,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
           color: [{ value: "c1", label: "Negro" }],
           calidad: [{ value: "q1", label: "Excelente" }],
           lugarCompra: [{ value: "l1", label: "Feria local" }],
-          canCreateCatalog: { raza: true, color: false, lugarCompra: true },
+          canCreateCatalog: { raza: true, color: true, lugarCompra: true },
         }}
       />,
     )
@@ -728,10 +728,11 @@ describe("PR3 animal UI OpenPencil parity", () => {
     // Switch to comprado so lugarCompra renders
     await user.click(screen.getByRole("radio", { name: "Comprado" }))
 
-    // Raza (canCreate) — `+ Crear nuevo` last item
+    // Raza (catálogo GLOBAL, CM-025) — aunque canCreateCatalog.raza=true,
+    // '+ Crear nuevo' NO se renderiza.
     await user.click(screen.getByRole("combobox", { name: "Raza" }))
     const razaList = await screen.findByRole("listbox")
-    expect(within(razaList).getByText("+ Crear nuevo")).toBeInTheDocument()
+    expect(within(razaList).queryByText("+ Crear nuevo")).not.toBeInTheDocument()
     await user.keyboard("{Escape}")
     // close popover
     await user.click(document.body)
@@ -750,20 +751,20 @@ describe("PR3 animal UI OpenPencil parity", () => {
           color: [{ value: "c1", label: "Negro" }],
           calidad: [{ value: "q1", label: "Excelente" }],
           lugarCompra: [{ value: "l1", label: "Feria local" }],
-          canCreateCatalog: { raza: true, color: false, lugarCompra: true },
+          canCreateCatalog: { raza: true, color: true, lugarCompra: true },
         }}
       />,
     )
     await user.click(screen.getByRole("radio", { name: "Comprado" }))
 
-    // Color (canCreate=false) — `+ Crear nuevo` NOT present
+    // Color (catálogo GLOBAL, CM-025) — '+ Crear nuevo' NO presente.
     await user.click(screen.getByRole("combobox", { name: "Color" }))
     const colorList = await screen.findByRole("listbox")
     expect(within(colorList).queryByText("+ Crear nuevo")).not.toBeInTheDocument()
     await user.click(document.body)
     cleanup()
 
-    // Calidad (canCreate always false per spec) — `+ Crear nuevo` NOT present
+    // Calidad (catálogo GLOBAL, CM-025) — '+ Crear nuevo' NO presente.
     render(
       <AnimalFormScreen
         mode="desktop"
@@ -773,7 +774,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
         catalogOptions={{
           raza: [{ value: "r1", label: "Angus" }],
           calidad: [{ value: "q1", label: "Excelente" }],
-          canCreateCatalog: { raza: true, color: false, lugarCompra: true },
+          canCreateCatalog: { raza: true, color: true, lugarCompra: true },
         }}
       />,
     )
@@ -783,7 +784,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     await user.click(document.body)
     cleanup()
 
-    // Lugar de compra (canCreate=true) — `+ Crear nuevo` present
+    // Lugar de compra (maestro POR FINCA, canCreate=true) — '+ Crear nuevo' presente.
     render(
       <AnimalFormScreen
         mode="desktop"
@@ -793,7 +794,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
         catalogOptions={{
           raza: [{ value: "r1", label: "Angus" }],
           lugarCompra: [{ value: "l1", label: "Feria local" }],
-          canCreateCatalog: { raza: true, color: false, lugarCompra: true },
+          canCreateCatalog: { raza: true, color: true, lugarCompra: true },
         }}
       />,
     )

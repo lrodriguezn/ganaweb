@@ -1304,6 +1304,14 @@ export interface AnimalFormCatalogOptions {
   hierro?: readonly SelectOption[]
   propietario?: readonly SelectOption[]
   canCreateCatalog?: CanCreateCatalog
+  /**
+   * CM-043 (issue #150): affordance "+ Crear nuevo" de maestros POR FINCA.
+   * Abre la creación inline en la ruta; los catálogos globales (raza/color/
+   * calidad) NO tienen creación (CM-025).
+   */
+  onCreateCatalog?: { readonly lugarCompra?: () => void }
+  /** CM-043: registro creado inline que el selector debe seleccionar. */
+  creacionInline?: { readonly campo: "lugarCompra"; readonly value: string }
 }
 
 export interface AnimalFormInitialValues {
@@ -1535,7 +1543,14 @@ function CompradoFields({
         name="lugarCompra"
         options={catalogOptions?.lugarCompra ?? []}
         canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
-        defaultValue={initialValues?.lugarCompraId}
+        {...(catalogOptions?.onCreateCatalog?.lugarCompra
+          ? { onCreate: catalogOptions.onCreateCatalog.lugarCompra }
+          : {})}
+        defaultValue={
+          catalogOptions?.creacionInline?.campo === "lugarCompra"
+            ? catalogOptions.creacionInline.value
+            : initialValues?.lugarCompraId
+        }
         fieldErrors={fieldErrors}
       />
     </>
@@ -2198,11 +2213,9 @@ function renderCatalogWithCreateField(field: AnimalFormField, ctx: RenderFieldCo
       label={field.label}
       name={name}
       options={(catalogOptions?.[name] as readonly SelectOption[] | undefined) ?? []}
-      canCreate={
-        name === "calidad"
-          ? false
-          : (catalogOptions?.canCreateCatalog?.[name as "raza" | "color"] ?? false)
-      }
+      // CM-025 (issue #150): raza/color/calidad son catálogos GLOBALES sin
+      // creación desde la finca; el affordance queda desactivado.
+      canCreate={false}
       defaultValue={
         (initialValues as Record<string, string | undefined> | undefined)?.[`${name}Id`] ??
         undefined
@@ -2214,6 +2227,10 @@ function renderCatalogWithCreateField(field: AnimalFormField, ctx: RenderFieldCo
 
 function renderLugarCompraField(field: AnimalFormField, ctx: RenderFieldContext) {
   const { initialValues, catalogOptions, fieldErrors } = ctx
+  const creadoInline =
+    catalogOptions?.creacionInline?.campo === "lugarCompra"
+      ? catalogOptions.creacionInline.value
+      : undefined
   return (
     <SelectConCreacionField
       key={field.name}
@@ -2221,7 +2238,10 @@ function renderLugarCompraField(field: AnimalFormField, ctx: RenderFieldContext)
       name={field.name}
       options={catalogOptions?.lugarCompra ?? []}
       canCreate={catalogOptions?.canCreateCatalog?.lugarCompra ?? false}
-      defaultValue={initialValues?.lugarCompraId}
+      {...(catalogOptions?.onCreateCatalog?.lugarCompra
+        ? { onCreate: catalogOptions.onCreateCatalog.lugarCompra }
+        : {})}
+      defaultValue={creadoInline ?? initialValues?.lugarCompraId}
       fieldErrors={fieldErrors}
     />
   )
@@ -2773,6 +2793,7 @@ function SelectConCreacionField({
   name,
   options,
   canCreate,
+  onCreate,
   defaultValue,
   fieldErrors,
 }: {
@@ -2780,6 +2801,7 @@ function SelectConCreacionField({
   name: string
   options: readonly SelectOption[]
   canCreate: boolean
+  onCreate?: () => void
   defaultValue?: string | undefined
   fieldErrors?: Record<string, string> | undefined
 }) {
@@ -2787,6 +2809,11 @@ function SelectConCreacionField({
   const errorId = `${id}-error`
   const errorMessage = fieldErrors?.[name]
   const [selectedValue, setSelectedValue] = useState<string | null>(defaultValue ?? null)
+  // CM-043: cuando la ruta crea un registro inline actualiza `defaultValue`;
+  // la selección se sincroniza para que el registro creado quede elegido.
+  useEffect(() => {
+    if (defaultValue !== undefined) setSelectedValue(defaultValue)
+  }, [defaultValue])
   const placeholder = label
   return (
     <div className="space-y-1.5">
@@ -2798,6 +2825,7 @@ function SelectConCreacionField({
         value={selectedValue}
         onChange={(next) => setSelectedValue(next)}
         canCreate={canCreate}
+        {...(onCreate ? { onCreate } : {})}
         placeholder={placeholder}
         {...(errorMessage ? { "aria-invalid": "true" as const, "aria-describedby": errorId } : {})}
       />

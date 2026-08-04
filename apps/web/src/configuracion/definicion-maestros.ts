@@ -196,3 +196,73 @@ export function filaConsolidadaPorId(id: string): FilaConsolidadaMovil | undefin
 export function rutaConfiguracionGrupo(fincaId: string, grupoId: string): string {
   return `/fincas/${fincaId}/configuracion/grupo/${grupoId}`
 }
+
+/**
+ * Issue #150 (CM-025/CM-035): maestros con CRUD en este issue.
+ *
+ * `lotes-grupos` es UNA ruta con dos tabs (CM-035) que consultan las
+ * familias `lotes` y `grupos`. `inseminadores` es una vista de
+ * `veterinarios` con `es_inseminador = 1` (CM-040). Los catálogos globales
+ * (razas/tipos-explotacion/calidades) y `predio` quedan fuera: predio llega
+ * en el issue #151 y los globales son de solo lectura (CM-025).
+ */
+export type MaestroCrudSlug =
+  | "veterinarios"
+  | "propietarios"
+  | "inseminadores"
+  | "potreros"
+  | "sectores"
+  | "lotes-grupos"
+  | "hierros"
+  | "diagnosticos"
+  | "motivos-ventas"
+  | "causas-muerte"
+  | "lugares-compras"
+
+/** Id de la server function por slug: familia real o vista "inseminadores". */
+export type MaestroConsultaId =
+  | "veterinarios"
+  | "propietarios"
+  | "inseminadores"
+  | "potreros"
+  | "sectores"
+  | "lotes"
+  | "grupos"
+  | "hierros"
+  | "diagnosticos"
+  | "motivos_ventas"
+  | "causas_muerte"
+  | "lugares_compras"
+
+export interface DefinicionMaestroCrud {
+  readonly slug: MaestroCrudSlug
+  /** Consulta por defecto del loader (lotes-grupos carga `lotes`, CM-035). */
+  readonly consulta: MaestroConsultaId
+  /** Nombre singular para títulos ("Nuevo veterinario", toast, etc.). */
+  readonly singular: string
+}
+
+export const MAESTROS_CRUD: readonly DefinicionMaestroCrud[] = [
+  { slug: "veterinarios", consulta: "veterinarios", singular: "veterinario" },
+  { slug: "propietarios", consulta: "propietarios", singular: "propietario" },
+  { slug: "inseminadores", consulta: "inseminadores", singular: "inseminador" },
+  { slug: "potreros", consulta: "potreros", singular: "potrero" },
+  { slug: "sectores", consulta: "sectores", singular: "sector" },
+  { slug: "lotes-grupos", consulta: "lotes", singular: "lote" },
+  { slug: "hierros", consulta: "hierros", singular: "hierro" },
+  { slug: "diagnosticos", consulta: "diagnosticos", singular: "diagnóstico" },
+  { slug: "motivos-ventas", consulta: "motivos_ventas", singular: "motivo de venta" },
+  { slug: "causas-muerte", consulta: "causas_muerte", singular: "causa de muerte" },
+  { slug: "lugares-compras", consulta: "lugares_compras", singular: "lugar de compra" },
+]
+
+export function definicionMaestroCrudPorSlug(slug: string): DefinicionMaestroCrud | undefined {
+  return MAESTROS_CRUD.find((definicion) => definicion.slug === slug)
+}
+
+/** Nombre para mostrar del maestro (hub) a partir del slug del CRUD. */
+export function nombreMaestroPorSlug(slug: string): string | undefined {
+  const crud = definicionMaestroCrudPorSlug(slug)
+  if (!crud) return undefined
+  return MAESTROS_HUB.find((item) => item.slug === slug)?.nombre
+}
