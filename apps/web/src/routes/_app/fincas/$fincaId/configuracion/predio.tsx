@@ -37,6 +37,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Toaster,
   toast,
 } from "@ganaweb/ui"
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router"
@@ -172,6 +173,8 @@ export function ConfiguracionPredioView({
 }: ConfiguracionPredioViewProps) {
   return (
     <div className="mx-auto max-w-6xl space-y-4 md:space-y-6">
+      {/* CM-042: el toast de guardado necesita un Toaster montado (patrón MaestroCrudView). */}
+      <Toaster />
       <header className="flex items-center gap-1">
         <button
           type="button"
