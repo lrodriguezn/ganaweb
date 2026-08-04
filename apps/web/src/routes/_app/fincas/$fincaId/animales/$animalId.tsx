@@ -7,6 +7,7 @@ import {
   type AnimalFichaResumen,
   type AnimalListItem,
   type AnimalTimelineItem,
+  type DominioEvento,
   EventDrawer,
 } from "@ganaweb/ui"
 import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
@@ -57,9 +58,20 @@ export interface AnimalFichaRouteViewData {
 
 export interface AnimalFichaRouteViewProps {
   readonly data: AnimalFichaRouteViewData
+  /** Finca de la ruta — la usan las llamadas de tab/paginación del timeline. */
+  readonly fincaId: string
   readonly onVolverAListado?: () => void
+  readonly onEditar?: () => void
   readonly onEliminar?: (event: React.FormEvent<HTMLFormElement>) => void
   readonly onReactivar?: () => void
+}
+
+/** Estado interactivo del timeline (slice 3): el loader solo trae la página
+ * inicial; los tabs y "Ver más eventos" piden páginas nuevas al servidor. */
+interface EstadoTimelineFicha {
+  readonly items: readonly AnimalTimelineItem[]
+  readonly nextCursor?: string
+  readonly dominio?: DominioEvento
 }
 
 /**
@@ -72,30 +84,80 @@ export interface AnimalFichaRouteViewProps {
  * EventDrawer with the ficha animal preselected; closing it returns to the
  * ficha without navigation. Event form submission is out of scope for this
  * slice (proposal assumption: TODO drawer forms remain follow-up).
+ *
+ * Slice 3 (D2/Q2): tab switch resets pagination and fetches the domain page
+ * from the server; "Ver más eventos" appends the next cursor page. Both use
+ * the same `getAnimalFichaAction` server function with `tabTimeline` and
+ * `cursorTimeline`.
  */
 export function AnimalFichaRouteView({
   data,
+  fincaId,
   onVolverAListado,
+  onEditar,
   onEliminar,
   onReactivar,
 }: AnimalFichaRouteViewProps) {
   const [drawerEventoAbierto, setDrawerEventoAbierto] = useState(false)
+  const [estadoTimeline, setEstadoTimeline] = useState<EstadoTimelineFicha>({
+    items: data.timeline.items,
+    ...(data.timeline.nextCursor ? { nextCursor: data.timeline.nextCursor } : {}),
+  })
+
+  const cambiarTabTimeline = async (dominio?: DominioEvento) => {
+    const resultado = await getAnimalFichaAction({
+      data: {
+        fincaId,
+        animalId: data.animal.id,
+        ...(dominio ? { tabTimeline: dominio } : {}),
+      },
+    })
+    if (resultado?.tipo !== "ficha") return
+    setEstadoTimeline({
+      items: resultado.timeline.items,
+      ...(resultado.timeline.nextCursor ? { nextCursor: resultado.timeline.nextCursor } : {}),
+      ...(dominio ? { dominio } : {}),
+    })
+  }
+
+  const cargarMasTimeline = async () => {
+    if (!estadoTimeline.nextCursor) return
+    const resultado = await getAnimalFichaAction({
+      data: {
+        fincaId,
+        animalId: data.animal.id,
+        cursorTimeline: estadoTimeline.nextCursor,
+        ...(estadoTimeline.dominio ? { tabTimeline: estadoTimeline.dominio } : {}),
+      },
+    })
+    if (resultado?.tipo !== "ficha") return
+    setEstadoTimeline({
+      items: [...estadoTimeline.items, ...resultado.timeline.items],
+      ...(resultado.timeline.nextCursor ? { nextCursor: resultado.timeline.nextCursor } : {}),
+      ...(estadoTimeline.dominio ? { dominio: estadoTimeline.dominio } : {}),
+    })
+  }
+
   return (
     <div className="space-y-4">
       <div className="hidden md:block">
         <AnimalFichaDesktopScreen
           animal={data.animal}
-          timeline={[...data.timeline.items]}
+          timeline={[...estadoTimeline.items]}
           {...(data.resumen ? { resumen: data.resumen } : {})}
-          {...(data.timeline.nextCursor ? { nextCursor: data.timeline.nextCursor } : {})}
+          {...(estadoTimeline.nextCursor ? { nextCursor: estadoTimeline.nextCursor } : {})}
+          {...(estadoTimeline.dominio ? { dominioActivo: estadoTimeline.dominio } : {})}
           {...(onVolverAListado ? { onVolverAListado } : {})}
+          {...(onEditar ? { onEdit: onEditar } : {})}
           onRegistrarEvento={() => setDrawerEventoAbierto(true)}
+          onTabChange={cambiarTabTimeline}
+          onLoadMore={cargarMasTimeline}
         />
       </div>
       <div className="md:hidden">
         <AnimalFichaMobileScreen
           animal={data.animal}
-          timeline={[...data.timeline.items]}
+          timeline={[...estadoTimeline.items]}
           bottomNavItems={bottomNavItems}
           onRegistrarEvento={() => setDrawerEventoAbierto(true)}
         />
@@ -110,11 +172,6 @@ export function AnimalFichaRouteView({
         }}
       />
       <section className="mx-auto max-w-6xl pb-6" aria-label="Acciones de ficha">
-        {data.timeline.nextCursor && (
-          <p className="mb-3 text-support text-muted-foreground">
-            La ficha tiene más eventos disponibles. Cargar más: {data.timeline.nextCursor}
-          </p>
-        )}
         {data.permissions.canInactivate && onEliminar && (
           <form onSubmit={onEliminar} className="inline">
             <button type="submit" className="min-h-[--h-touch] underline">
@@ -127,7 +184,7 @@ export function AnimalFichaRouteView({
             Reactivar animal
           </button>
         )}
-        <AnimalDeleteDialogCopy events={data.timeline.items.length > 0 ? 1 : 0} />
+        <AnimalDeleteDialogCopy events={estadoTimeline.items.length > 0 ? 1 : 0} />
       </section>
     </div>
   )
@@ -163,7 +220,11 @@ function AnimalFichaRoute() {
   return (
     <AnimalFichaRouteView
       data={data}
+      fincaId={params.fincaId}
       onVolverAListado={() => navigate({ to: `/fincas/${params.fincaId}/animales` })}
+      onEditar={() =>
+        navigate({ to: `/fincas/${params.fincaId}/animales/${params.animalId}/editar` })
+      }
       onEliminar={deleteOrInactivate}
       onReactivar={reactivate}
     />

@@ -21,10 +21,11 @@ import {
   AnimalFichaRouteView,
   type AnimalFichaRouteViewProps,
 } from "../src/routes/_app/fincas/$fincaId/animales/$animalId.js"
+import { getAnimalFichaAction } from "../src/server/animal-actions.js"
 
 // The route module imports the server-function facade; stub it so no TanStack
-// Start runtime is required. The view consumes loader data through props, so
-// the stubs are inert.
+// Start runtime is required. Slice 3: `getAnimalFichaAction` is no longer
+// inert — the view calls it for timeline tabs/pagination.
 vi.mock("../src/server/animal-actions.js", () => ({
   deleteAnimalAction: vi.fn(),
   getAnimalFichaAction: vi.fn(),
@@ -48,10 +49,14 @@ beforeAll(() => {
   }
 })
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.mocked(getAnimalFichaAction).mockReset()
+})
 
 function fichaProps(overrides: Partial<AnimalFichaRouteViewProps> = {}): AnimalFichaRouteViewProps {
   return {
+    fincaId: "finca-1",
     data: {
       tipo: "ficha",
       animal: {
@@ -76,6 +81,7 @@ function fichaProps(overrides: Partial<AnimalFichaRouteViewProps> = {}): AnimalF
       permissions: { canInactivate: true },
     },
     onVolverAListado: vi.fn(),
+    onEditar: vi.fn(),
     onEliminar: vi.fn(),
     onReactivar: vi.fn(),
     ...overrides,
@@ -128,6 +134,17 @@ describe("animal ficha route — event drawer wiring (redesign-ficha-animal)", (
     const breadcrumb = screen.getByRole("navigation", { name: "Miga de pan" })
     await user.click(within(breadcrumb).getByRole("button", { name: "Animales" }))
     expect(onVolverAListado).toHaveBeenCalledTimes(1)
+  })
+
+  it("wires Editar to the edit navigation callback", async () => {
+    const user = userEvent.setup()
+    const onEditar = vi.fn()
+    render(<AnimalFichaRouteView {...fichaProps({ onEditar })} />)
+
+    // Acotado al frame desktop: el header mobile también expone "Editar".
+    const ficha = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    await user.click(await ficha.findByRole("button", { name: "Editar" }))
+    expect(onEditar).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -193,5 +210,105 @@ describe("animal ficha route — enriched resumen rendering (redesign-ficha-anim
 
     const datos = screen.getByRole("region", { name: "DATOS" })
     expect(within(datos).getAllByText("—").length).toBeGreaterThanOrEqual(4)
+  })
+})
+
+describe("animal ficha route — server-driven timeline (redesign-ficha-animal slice 3)", () => {
+  function paginaTimeline(
+    items: readonly { readonly id: string; readonly titulo: string; readonly dominio: string }[],
+    nextCursor?: string,
+  ) {
+    return {
+      tipo: "ficha" as const,
+      timeline: {
+        items: items.map((item, index) => ({
+          id: item.id,
+          dominio: item.dominio,
+          tipo: "servicio",
+          fecha: `2026-0${(index % 6) + 1}-01`,
+          titulo: item.titulo,
+        })),
+        ...(nextCursor ? { nextCursor } : {}),
+      },
+    }
+  }
+
+  it("switching a tab fetches the filtered page from the server and resets the timeline", async () => {
+    const user = userEvent.setup()
+    vi.mocked(getAnimalFichaAction).mockResolvedValueOnce(
+      paginaTimeline([{ id: "srv-1", titulo: "Servicio IA", dominio: "reproduccion" }]),
+    )
+    render(<AnimalFichaRouteView {...fichaProps()} />)
+
+    await user.click(await screen.findByRole("tab", { name: "Reproducción" }))
+
+    expect(getAnimalFichaAction).toHaveBeenCalledWith({
+      data: { fincaId: "finca-1", animalId: "animal-1", tabTimeline: "reproduccion" },
+    })
+    // La página filtrada reemplaza la del loader (reset, no append). Se
+    // acota al frame desktop: el timeline también se renderiza en el frame
+    // mobile (oculto por CSS, presente en el DOM de jsdom).
+    const ficha = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    expect(await ficha.findByText("Servicio IA")).toBeInTheDocument()
+    expect(ficha.queryByText("Animal registrado")).not.toBeInTheDocument()
+  })
+
+  it("'Ver más eventos' appends the next page using the current cursor", async () => {
+    const user = userEvent.setup()
+    vi.mocked(getAnimalFichaAction).mockResolvedValueOnce(
+      paginaTimeline([{ id: "ev-2", titulo: "Pesaje página 2", dominio: "produccion" }]),
+    )
+    const base = fichaProps()
+    render(
+      <AnimalFichaRouteView
+        {...base}
+        data={{
+          ...base.data,
+          timeline: {
+            items: [
+              {
+                id: "ev-1",
+                dominio: "produccion",
+                tipo: "pesaje",
+                fecha: "2026-07-01",
+                titulo: "Pesaje página 1",
+              },
+            ],
+            nextCursor: "cursor-x",
+          },
+        }}
+      />,
+    )
+
+    await user.click(await screen.findByRole("button", { name: "Ver más eventos" }))
+
+    expect(getAnimalFichaAction).toHaveBeenCalledWith({
+      data: { fincaId: "finca-1", animalId: "animal-1", cursorTimeline: "cursor-x" },
+    })
+    const ficha = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    expect(await ficha.findByText("Pesaje página 2")).toBeInTheDocument()
+    // Append: la página anterior sigue visible.
+    expect(ficha.getByText("Pesaje página 1")).toBeInTheDocument()
+  })
+
+  it("pagination within a domain tab carries tabTimeline and cursor together", async () => {
+    const user = userEvent.setup()
+    const fichaAction = vi.mocked(getAnimalFichaAction)
+    fichaAction.mockResolvedValueOnce(
+      paginaTimeline([{ id: "srv-1", titulo: "Servicio 1", dominio: "reproduccion" }], "cursor-r"),
+    )
+    render(<AnimalFichaRouteView {...fichaProps()} />)
+
+    await user.click(await screen.findByRole("tab", { name: "Reproducción" }))
+    await user.click(await screen.findByRole("button", { name: "Ver más eventos" }))
+
+    expect(fichaAction).toHaveBeenLastCalledWith({
+      data: {
+        fincaId: "finca-1",
+        animalId: "animal-1",
+        cursorTimeline: "cursor-r",
+        tabTimeline: "reproduccion",
+      },
+    })
   })
 })
