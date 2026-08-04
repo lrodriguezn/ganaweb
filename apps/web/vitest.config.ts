@@ -20,7 +20,8 @@
  * `animal-listado-route-integration.test.tsx` (#108, PR 3) mounts the exported
  * `AnimalsListRouteView` under jsdom and stubs the #107 transport at the
  * `fetch` seam: the desktop branch consumes #107 through the typed adapter,
- * the legacy action stays mobile-only, and ficha navigation is spied.
+ * the mobile branch consumes the loader-resolved #155 first page (issue #156),
+ * and ficha navigation is spied.
  */
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vitest/config"

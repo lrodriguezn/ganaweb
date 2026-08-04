@@ -18,6 +18,7 @@ import {
   AnimalGenealogy,
   type AnimalListItem,
   AnimalListMobile,
+  type AnimalMobileListItem,
   AnimalTimeline,
 } from "../src"
 import type { AnimalFichaResumen, AnimalTimelineItem } from "../src"
@@ -60,6 +61,27 @@ const nav = [
   { id: "mas", label: "Más", href: "/mas", icon: () => null },
 ]
 
+/**
+ * Issue #156: la card mobile consume el contrato #155 (AnimalMobileRow) —
+ * sexo/raza/categoría/salud viajan como key+label legibles (CA-UI-001),
+ * procedencia resuelta (propietario/madre) y sin potrero·lote (LM-001).
+ */
+function filaMobile(overrides: Partial<AnimalMobileListItem> = {}): AnimalMobileListItem {
+  return {
+    id: "a-1",
+    codigo: "MT-122",
+    nombre: "Luna",
+    sexo: { key: "1", label: "Hembra" },
+    raza: { id: "raza-1", label: "Holstein" },
+    categoriaReproductiva: null,
+    salud: { key: "0", label: "Sano" },
+    esDeMonta: false,
+    propietario: { id: "prop-1", label: "Don Juan" },
+    madre: { codigo: "MT-101", nombre: "Estrella" },
+    ...overrides,
+  }
+}
+
 beforeAll(() => {
   if (!HTMLElement.prototype.hasPointerCapture) {
     HTMLElement.prototype.hasPointerCapture = () => false
@@ -78,11 +100,16 @@ beforeAll(() => {
 afterEach(() => cleanup())
 
 describe("PR3 animal UI OpenPencil parity", () => {
-  it("renders mobile animal cards with image, badges, location, selection state, and empty action", () => {
+  it("renders mobile animal cards with image, badges, procedencia, selection state, and empty action", () => {
     const onPress = vi.fn()
     const { rerender } = render(
       <AnimalListMobile
-        animales={[animal]}
+        animales={[
+          filaMobile({
+            categoriaReproductiva: { key: "novilla", label: "Novilla" },
+            imagenPrincipalUrl: "/luna.webp",
+          }),
+        ]}
         selectedIds={["a-1"]}
         onPressAnimal={onPress}
         onNuevoAnimal={vi.fn()}
@@ -97,7 +124,12 @@ describe("PR3 animal UI OpenPencil parity", () => {
       "/luna.webp",
     )
     expect(within(card).getByText("Novilla")).toBeInTheDocument()
-    expect(within(card).getByText("Potrero 4 · Lote Norte")).toBeInTheDocument()
+    // Issue #156 (LM-001): naturaleza + procedencia reemplazan potrero·lote.
+    expect(within(card).getByText("Hembra · Holstein")).toBeInTheDocument()
+    expect(within(card).getByText("Propietario: Don Juan")).toBeInTheDocument()
+    expect(within(card).getByText("Madre: MT-101 · Estrella")).toBeInTheDocument()
+    expect(within(card).queryByText(/Potrero/)).not.toBeInTheDocument()
+    expect(within(card).queryByText(/Lote/)).not.toBeInTheDocument()
 
     rerender(
       <AnimalListMobile
@@ -2758,29 +2790,36 @@ describe("PR2 #108 — AnimalListadoDesktop presentational table", () => {
    esDeMonta → badge 'Reproductor'.
    ===================================================================== */
 
-function renderItemMobile(animales: AnimalListItem[]) {
-  return render(
+function renderItemMobile(
+  animales: AnimalMobileListItem[],
+  opciones: { canCreate?: boolean } = {},
+) {
+  const onPressAnimal = vi.fn()
+  const onNuevoAnimal = vi.fn()
+  const vista = render(
     <AnimalListMobile
       animales={animales}
-      onPressAnimal={vi.fn()}
-      onNuevoAnimal={vi.fn()}
+      {...(opciones.canCreate !== undefined ? { canCreate: opciones.canCreate } : {})}
+      onPressAnimal={onPressAnimal}
+      onNuevoAnimal={onNuevoAnimal}
       bottomNavItems={nav}
     />,
   )
+  return { vista, onPressAnimal, onNuevoAnimal }
 }
 
 describe("Issue #153 (BUG-DATA-001) — badges de AnimalResultCard (listado mobile)", () => {
-  it("Given a macho with categoria no_aplica and esDeMonta=false When the list renders Then no category badge is shown", () => {
+  it("Given a macho without categoria and esDeMonta=false When the list renders Then no category badge is shown", () => {
     renderItemMobile([
-      {
+      filaMobile({
         id: "a-m1",
-        codigoAnimal: "MC-001",
-        sexo: "macho",
-        categoriaReproductiva: "no_aplica",
+        codigo: "MC-001",
+        nombre: "",
+        sexo: { key: "0", label: "Macho" },
+        categoriaReproductiva: null,
         esDeMonta: false,
-        salud: "sano",
-        estadoActual: "activo",
-      },
+        salud: { key: "0", label: "Sano" },
+      }),
     ])
     const card = screen.getByRole("button", { name: /MC-001/ })
     expect(within(card).queryByText("Novilla")).not.toBeInTheDocument()
@@ -2791,15 +2830,15 @@ describe("Issue #153 (BUG-DATA-001) — badges de AnimalResultCard (listado mobi
 
   it("Given a macho esDeMonta without categoria When the list renders Then the 'Reproductor' badge is shown", () => {
     renderItemMobile([
-      {
+      filaMobile({
         id: "a-m2",
-        codigoAnimal: "MC-002",
-        sexo: "macho",
+        codigo: "MC-002",
+        nombre: "",
+        sexo: { key: "0", label: "Macho" },
         categoriaReproductiva: null,
         esDeMonta: true,
-        salud: "sano",
-        estadoActual: "activo",
-      },
+        salud: { key: "0", label: "Sano" },
+      }),
     ])
     const card = screen.getByRole("button", { name: /MC-002/ })
     expect(within(card).getByText("Reproductor")).toBeInTheDocument()
@@ -2808,14 +2847,14 @@ describe("Issue #153 (BUG-DATA-001) — badges de AnimalResultCard (listado mobi
 
   it("Given an enferma hembra When the list renders Then the salud badge reads 'Enferma'", () => {
     renderItemMobile([
-      {
+      filaMobile({
         id: "a-h1",
-        codigoAnimal: "HC-001",
-        sexo: "hembra",
-        categoriaReproductiva: "no_aplica",
-        salud: "enfermo",
-        estadoActual: "activo",
-      },
+        codigo: "HC-001",
+        nombre: "",
+        sexo: { key: "1", label: "Hembra" },
+        categoriaReproductiva: null,
+        salud: { key: "1", label: "Enfermo" },
+      }),
     ])
     const card = screen.getByRole("button", { name: /HC-001/ })
     expect(within(card).getByText("Enferma")).toBeInTheDocument()
@@ -2824,18 +2863,97 @@ describe("Issue #153 (BUG-DATA-001) — badges de AnimalResultCard (listado mobi
 
   it("Given a prenada hembra When the list renders Then the categoria badge reads 'Preñada'", () => {
     renderItemMobile([
-      {
+      filaMobile({
         id: "a-h2",
-        codigoAnimal: "HC-002",
-        sexo: "hembra",
-        categoriaReproductiva: "prenada",
-        salud: "sano",
-        estadoActual: "activo",
-      },
+        codigo: "HC-002",
+        nombre: "",
+        sexo: { key: "1", label: "Hembra" },
+        categoriaReproductiva: { key: "prenada", label: "Preñada" },
+        salud: { key: "0", label: "Sano" },
+      }),
     ])
     const card = screen.getByRole("button", { name: /HC-002/ })
     expect(within(card).getByText("Preñada")).toBeInTheDocument()
     expect(within(card).queryByText("Reproductor")).not.toBeInTheDocument()
+  })
+})
+
+describe("Issue #156 — card mobile enriquecida (RF-ANIM-LIST-M v1.1: LM-001..004, LM-040)", () => {
+  it("LM-002: nombre ausente → identidad solo con codigo, sin relleno de guion", () => {
+    renderItemMobile([filaMobile({ nombre: "" })])
+    const card = screen.getByRole("button", { name: "MT-122" })
+    expect(card).toHaveAttribute("aria-label", "MT-122")
+    expect(within(card).queryByText(/—/)).not.toBeInTheDocument()
+    expect(within(card).queryByText("-")).not.toBeInTheDocument()
+  })
+
+  it("LM-001: naturaleza expone sexo · raza con texto legible del servidor", () => {
+    renderItemMobile([filaMobile()])
+    const card = screen.getByRole("button", { name: /MT-122 Luna/ })
+    expect(within(card).getByText("Hembra · Holstein")).toBeInTheDocument()
+  })
+
+  it("LM-001: raza nula → la naturaleza muestra solo el sexo", () => {
+    renderItemMobile([filaMobile({ raza: null })])
+    const card = screen.getByRole("button", { name: /MT-122 Luna/ })
+    const naturaleza = within(card).getByText("Hembra")
+    expect(naturaleza.textContent).toBe("Hembra")
+  })
+
+  it("LM-002: madre ausente (null) → 'Madre: sin registrar'", () => {
+    renderItemMobile([filaMobile({ madre: null })])
+    const card = screen.getByRole("button", { name: /MT-122 Luna/ })
+    expect(within(card).getByText("Madre: sin registrar")).toBeInTheDocument()
+  })
+
+  it("LM-002: madre presente sin nombre (externa/IA) → solo codigo", () => {
+    renderItemMobile([filaMobile({ madre: { codigo: "EXT-999", nombre: null } })])
+    const card = screen.getByRole("button", { name: /MT-122 Luna/ })
+    expect(within(card).getByText("Madre: EXT-999")).toBeInTheDocument()
+    expect(within(card).queryByText(/EXT-999 ·/)).not.toBeInTheDocument()
+  })
+
+  it("LM-002: propietario nulo → la linea de propietario se omite por completo", () => {
+    renderItemMobile([filaMobile({ propietario: null })])
+    const card = screen.getByRole("button", { name: /MT-122 Luna/ })
+    expect(within(card).queryByText(/Propietario/)).not.toBeInTheDocument()
+    expect(within(card).getByText("Madre: MT-101 · Estrella")).toBeInTheDocument()
+  })
+
+  it("LM-003: la card es un boton navegable por teclado con nombre accesible y chevron decorativo", async () => {
+    const { onPressAnimal } = renderItemMobile([filaMobile()], { canCreate: false })
+    const card = screen.getByRole("button", { name: "MT-122 Luna" })
+    expect(card.tagName).toBe("BUTTON")
+
+    const user = userEvent.setup()
+    await user.tab() // search input
+    await user.tab() // card
+    expect(card).toHaveFocus()
+
+    for (const svg of card.querySelectorAll("svg")) {
+      expect(svg).toHaveAttribute("aria-hidden", "true")
+    }
+
+    await user.keyboard("{Enter}")
+    expect(onPressAnimal).toHaveBeenCalledTimes(1)
+  })
+
+  it("LM-RBAC-03/LM-040: el boton '+' exige canCreate y cumple el objetivo tactil de 44px", () => {
+    const { vista } = renderItemMobile([filaMobile()], { canCreate: true })
+    const nuevo = screen.getByRole("button", { name: "Nuevo animal" })
+    expect(String(nuevo.className)).toContain("min-h-[--h-touch]")
+    expect(String(nuevo.className)).toContain("min-w-[--h-touch]")
+
+    vista.rerender(
+      <AnimalListMobile
+        animales={[filaMobile()]}
+        canCreate={false}
+        onPressAnimal={vi.fn()}
+        onNuevoAnimal={vi.fn()}
+        bottomNavItems={nav}
+      />,
+    )
+    expect(screen.queryByRole("button", { name: "Nuevo animal" })).not.toBeInTheDocument()
   })
 })
 
