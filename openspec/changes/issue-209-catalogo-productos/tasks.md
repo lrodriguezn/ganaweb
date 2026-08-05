@@ -49,4 +49,4 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1,U3. Carril #210: solo exports aditivo
 
 ## Phase 5 — Verificación
 
-- [ ] 5.1 `pnpm turbo test` + `pnpm turbo typecheck`; criterios §13.5/6/10/13 cubiertos por tests U1–U3.
+- [x] 5.1 `pnpm turbo test` + `pnpm turbo typecheck`; criterios §13.5/6/10/13 cubiertos por tests U1–U3.
