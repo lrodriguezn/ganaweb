@@ -19,6 +19,10 @@
  *   transacción (T-002: append-only; el outbox se cablea en #209–#211).
  * - PE-002: las lecturas NO filtran por finca; el caso de uso revalida el
  *   scope comparando `fincaId` (patrón CM-024).
+ * - Issue #210 (SAN-030, T-002): `registrarEntradaAlmacen` inserta la entrada
+ *   de almacén y su fila `sync_outbox` en la MISMA transacción; append-only
+ *   (SAN-032/D-008). `listarEntradasAlmacen` acota por finca vía el join con
+ *   `productos_sanitarios` (SAN-063: la tabla no tiene `finca_id`).
  *
  * Driver único PostgreSQL (online-first, D3). El contrato queda listo para el
  * driver de la réplica local offline cuando llegue el MVP de sync.
@@ -28,20 +32,24 @@ import type {
   AnimalEventoSanidadReferencia,
   AplicacionPreviaSanidad,
   AplicacionSanitariaNueva,
+  EntradaAlmacenListada,
+  EntradaAlmacenNueva,
   ProductoSanitarioReferencia,
   RegistroGrupalTratamientoNuevo,
   SanidadEscrituraPort,
   SanidadLecturaPort,
 } from "@ganaweb/aplicacion"
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 import {
+  almacenEntradas,
   animales,
   aplicacionesSanitarias,
   inventarioSanitario,
   muertes,
   productosSanitarios,
   registrosGrupales,
+  syncOutbox,
   ventas,
 } from "./schema/index.js"
 
@@ -205,6 +213,40 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
     return fila ? Number(fila.dosisDisponibles ?? 0) : 0
   }
 
+  /**
+   * Issue #210 (SAN-014/SAN-063): entradas de almacén de la finca con los
+   * datos del producto. `almacen_entradas` no tiene `finca_id`: el scope sale
+   * del inner join con `productos_sanitarios`. Orden: fecha descendente
+   * (lo más reciente primero), `created_at` como desempate.
+   */
+  async listarEntradasAlmacen(fincaId: string): Promise<readonly EntradaAlmacenListada[]> {
+    const filas = await this.db
+      .select({
+        id: almacenEntradas.id,
+        productoId: almacenEntradas.productoId,
+        fecha: almacenEntradas.fecha,
+        dosis: almacenEntradas.dosis,
+        precioPorDosis: almacenEntradas.precioPorDosis,
+        comentario: almacenEntradas.comentario,
+        productoCodigo: productosSanitarios.codigo,
+        productoDescripcion: productosSanitarios.descripcion,
+      })
+      .from(almacenEntradas)
+      .innerJoin(productosSanitarios, eq(almacenEntradas.productoId, productosSanitarios.id))
+      .where(eq(productosSanitarios.fincaId, fincaId))
+      .orderBy(desc(almacenEntradas.fecha), desc(almacenEntradas.createdAt))
+    return filas.map((fila) => ({
+      id: fila.id,
+      productoId: fila.productoId,
+      fecha: fila.fecha,
+      dosis: fila.dosis,
+      precioPorDosis: aNumero(fila.precioPorDosis),
+      comentario: fila.comentario,
+      productoCodigo: fila.productoCodigo,
+      productoDescripcion: fila.productoDescripcion,
+    }))
+  }
+
   async registrarAplicaciones(entrada: {
     readonly registroGrupal: RegistroGrupalTratamientoNuevo | null
     readonly aplicaciones: readonly AplicacionSanitariaNueva[]
@@ -299,6 +341,69 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
       return { tipo: "anulado" }
     } catch {
       return { tipo: "error", detalle: "No se pudo anular el registro grupal." }
+    }
+  }
+
+  /**
+   * Issue #210 (SAN-030, T-002): entrada de almacén append-only. Inserta la
+   * fila en `almacen_entradas` Y su fila `sync_outbox` en la MISMA
+   * transacción: si alguna falla (p. ej. FK de producto inexistente) no queda
+   * escrita ninguna de las dos. El payload del outbox replica la fila en
+   * camelCase (convención de `outboxBase` en los casos de uso de animales).
+   */
+  async registrarEntradaAlmacen(
+    entrada: EntradaAlmacenNueva,
+  ): Promise<
+    | { readonly tipo: "registrada"; readonly id: string }
+    | { readonly tipo: "conflicto"; readonly detalle: string }
+    | { readonly tipo: "error"; readonly detalle: string }
+  > {
+    try {
+      const ahora = new Date()
+      const entradaId = await this.db.transaction(async (tx) => {
+        const filas = await tx
+          .insert(almacenEntradas)
+          .values({
+            id: crypto.randomUUID(),
+            productoId: entrada.productoId,
+            fecha: entrada.fecha,
+            dosis: entrada.dosis,
+            precioPorDosis: entrada.precioPorDosis === null ? null : String(entrada.precioPorDosis),
+            comentario: entrada.comentario,
+            usuarioCreadoPor: entrada.usuarioCreadoPor,
+          })
+          .returning({ id: almacenEntradas.id })
+        const id = filas[0]?.id
+        if (id === undefined) {
+          throw new Error("La inserción de la entrada de almacén no devolvió id.")
+        }
+        // T-002: la fila sync_outbox dentro de la misma transacción.
+        await tx.insert(syncOutbox).values({
+          id: crypto.randomUUID(),
+          fincaId: entrada.fincaId,
+          dispositivoId: "server",
+          tablaDestino: "almacen_entradas",
+          operacion: "INSERT",
+          payload: {
+            id,
+            productoId: entrada.productoId,
+            fecha: entrada.fecha,
+            dosis: entrada.dosis,
+            precioPorDosis: entrada.precioPorDosis,
+            comentario: entrada.comentario,
+            usuarioCreadoPor: entrada.usuarioCreadoPor,
+          },
+          createdAt: ahora,
+          updatedAt: ahora,
+        })
+        return id
+      })
+      return { tipo: "registrada", id: entradaId }
+    } catch (error) {
+      if (esViolacionForeignKey(error)) {
+        return { tipo: "conflicto", detalle: "La entrada referencia un producto inexistente." }
+      }
+      return { tipo: "error", detalle: "No se pudo registrar la entrada de almacén." }
     }
   }
 }

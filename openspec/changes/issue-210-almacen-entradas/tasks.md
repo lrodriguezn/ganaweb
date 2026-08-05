@@ -47,9 +47,9 @@ Chain strategy: pending
 
 `packages/db/src/sanidad-infrastructure.ts` + `tests/sanidad-postgres.test.ts`. Deps: U2. Outbox ya existe (`syncOutbox`, shape `EventoOutbox`): reutilizar; `packages/sync` = solo puertos, no inventar infraestructura.
 
-- [ ] 3.1 RED: entrada + fila `sync_outbox` en la MISMA transacción; FK inexistente → `conflicto` sin escribir.
-- [ ] 3.2 GREEN: `registrarEntradaAlmacen` con `db.transaction` (insert `almacenEntradas` + `syncOutbox`); `listarEntradasAlmacen` por finca ordenada por fecha.
-- [ ] 3.3 RED/GREEN: tras una entrada, stock de `inventario_sanitario` coincide (RN-041, SAN-031).
+- [x] 3.1 RED: entrada + fila `sync_outbox` en la MISMA transacción; FK inexistente → `conflicto` sin escribir.
+- [x] 3.2 GREEN: `registrarEntradaAlmacen` con `db.transaction` (insert `almacenEntradas` + `syncOutbox`); `listarEntradasAlmacen` por finca ordenada por fecha.
+- [x] 3.3 RED/GREEN: tras una entrada, stock de `inventario_sanitario` coincide (RN-041, SAN-031).
 
 ## Unit 4 — Web: server functions (PE-002, SAN-061)
 

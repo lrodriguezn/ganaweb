@@ -21,7 +21,7 @@
  *   DB_SMOKE=true pnpm --filter @ganaweb/db exec vitest run \
  *     tests/sanidad-postgres.test.ts
  */
-import { eq, inArray } from "drizzle-orm"
+import { and, desc, eq, inArray } from "drizzle-orm"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createClient } from "../src/client.js"
 import { DrizzleSanidadAdapter } from "../src/sanidad-infrastructure.js"
@@ -32,6 +32,7 @@ import {
   fincas,
   productosSanitarios,
   registrosGrupales,
+  syncOutbox,
   usuarios,
   ventas,
 } from "../src/schema/index.js"
@@ -324,5 +325,208 @@ describe.skipIf(!dbSmoke)("Issue #208: sanidad (smoke Postgres)", () => {
 
     expect(resultado.tipo).toBe("conflicto")
     expect(await adaptador.obtenerStockDisponible(productoAftosaId)).toBe(148)
+  })
+})
+
+/**
+ * Issue #210: almacén de entradas append-only (SAN-030..SAN-032) contra
+ * Postgres REAL. Mismo patrón `describe.skipIf(!dbSmoke)` que el bloque #208.
+ *
+ * Prueba lo que sólo vive en el SQL real:
+ * - T-002: la entrada y su fila `sync_outbox` se escriben en la MISMA
+ *   transacción (una FK inválida no deja escrita ninguna de las dos).
+ * - RN-041/SAN-031: tras la entrada, el stock de la vista
+ *   `inventario_sanitario` coincide.
+ * - SAN-063/SAN-014: `listarEntradasAlmacen` acota por finca vía el join con
+ *   `productos_sanitarios` (la tabla no tiene `finca_id`) y ordena por fecha.
+ */
+describe.skipIf(!dbSmoke)("Issue #210: almacén de entradas (smoke Postgres)", () => {
+  const sufijo = crypto.randomUUID().slice(0, 8)
+  const fincaId = `finca-alm-${sufijo}`
+  const fincaAjenaId = `finca-ajena-alm-${sufijo}`
+  const productoId = `prod-alm-${sufijo}`
+  const productoAjenoId = `prod-ajeno-${sufijo}`
+  const usuarioId = `user-alm-${sufijo}`
+
+  let db: ReturnType<typeof createClient>
+  let adaptador: DrizzleSanidadAdapter
+
+  async function contarOutboxDeFinca(fid: string): Promise<number> {
+    const filas = await db.select({ id: syncOutbox.id }).from(syncOutbox).where(eq(syncOutbox.fincaId, fid))
+    return filas.length
+  }
+
+  async function contarOutboxAlmacen(fid: string): Promise<number> {
+    const filas = await db
+      .select({ id: syncOutbox.id })
+      .from(syncOutbox)
+      .where(and(eq(syncOutbox.fincaId, fid), eq(syncOutbox.tablaDestino, "almacen_entradas")))
+    return filas.length
+  }
+
+  beforeAll(async () => {
+    db = createClient(process.env.DATABASE_URL)
+    adaptador = new DrizzleSanidadAdapter(db)
+
+    await db.insert(fincas).values([
+      { id: fincaId, codigo: `ALM-${sufijo.toUpperCase()}`, nombre: "Finca Almacén Test", activo: 1 },
+      { id: fincaAjenaId, codigo: `AJE-${sufijo.toUpperCase()}`, nombre: "Finca Ajena", activo: 1 },
+    ])
+
+    await db.insert(usuarios).values({
+      id: usuarioId,
+      nombre: "Usuario Almacén Test",
+      email: `almacen-${sufijo}@ganaweb.test`,
+    })
+
+    await db.insert(productosSanitarios).values([
+      {
+        id: productoId,
+        fincaId,
+        codigo: "VAC-BRUCELOSIS",
+        descripcion: "Vacuna brucelosis",
+        mlMgPorDosis: "2",
+        tipoTratamiento: "vacuna",
+        precioDosis: "4200",
+        activo: 1,
+      },
+      {
+        id: productoAjenoId,
+        fincaId: fincaAjenaId,
+        codigo: "VAC-AJENA",
+        descripcion: "Vacuna finca ajena",
+        mlMgPorDosis: "1",
+        tipoTratamiento: "vacuna",
+        precioDosis: "1000",
+        activo: 1,
+      },
+    ])
+  })
+
+  afterAll(async () => {
+    await db.delete(syncOutbox).where(inArray(syncOutbox.fincaId, [fincaId, fincaAjenaId]))
+    await db.delete(almacenEntradas).where(inArray(almacenEntradas.productoId, [productoId, productoAjenoId]))
+    await db.delete(productosSanitarios).where(inArray(productosSanitarios.id, [productoId, productoAjenoId]))
+    await db.delete(fincas).where(inArray(fincas.id, [fincaId, fincaAjenaId]))
+    await db.delete(usuarios).where(eq(usuarios.id, usuarioId))
+    await db.$client.end()
+  })
+
+  it("T-002/SAN-030: registrarEntradaAlmacen escribe la entrada + fila sync_outbox en la misma transacción", async () => {
+    const outboxAntes = await contarOutboxAlmacen(fincaId)
+
+    const resultado = await adaptador.registrarEntradaAlmacen({
+      fincaId,
+      productoId,
+      fecha: "2026-08-01",
+      dosis: 80,
+      precioPorDosis: 4200,
+      comentario: "Compra inicial",
+      usuarioCreadoPor: usuarioId,
+    })
+
+    expect(resultado.tipo).toBe("registrada")
+    if (resultado.tipo !== "registrada") return
+    const entradaId = resultado.id
+
+    const filasEntrada = await db
+      .select()
+      .from(almacenEntradas)
+      .where(eq(almacenEntradas.id, entradaId))
+    expect(filasEntrada).toHaveLength(1)
+    expect(filasEntrada[0]?.productoId).toBe(productoId)
+    expect(filasEntrada[0]?.fecha).toBe("2026-08-01")
+    expect(filasEntrada[0]?.dosis).toBe(80)
+    // numeric(14,2): Postgres normaliza el precio a escala 2.
+    expect(filasEntrada[0]?.precioPorDosis).toBe("4200.00")
+    expect(filasEntrada[0]?.comentario).toBe("Compra inicial")
+    expect(filasEntrada[0]?.usuarioCreadoPor).toBe(usuarioId)
+
+    // La fila sync_outbox de la entrada, en la misma finca y sin aplicar aún.
+    const filasOutbox = await db
+      .select()
+      .from(syncOutbox)
+      .where(and(eq(syncOutbox.fincaId, fincaId), eq(syncOutbox.tablaDestino, "almacen_entradas")))
+    expect(filasOutbox.length).toBe(outboxAntes + 1)
+    const filaOutbox = filasOutbox.find((fila) => {
+      const payload = fila.payload as { id?: string }
+      return payload.id === entradaId
+    })
+    expect(filaOutbox).toBeDefined()
+    expect(filaOutbox?.operacion).toBe("INSERT")
+    expect(filaOutbox?.aplicadoEn).toBeNull()
+  })
+
+  it("RN-041/SAN-031: tras la entrada, el stock de inventario_sanitario coincide", async () => {
+    expect(await adaptador.obtenerStockDisponible(productoId)).toBe(80)
+
+    await adaptador.registrarEntradaAlmacen({
+      fincaId,
+      productoId,
+      fecha: "2026-08-02",
+      dosis: 20,
+      precioPorDosis: null,
+      comentario: null,
+      usuarioCreadoPor: usuarioId,
+    })
+
+    expect(await adaptador.obtenerStockDisponible(productoId)).toBe(100)
+  })
+
+  it("T-002: FK inexistente → conflicto, sin escribir entrada ni outbox", async () => {
+    const outboxAntes = await contarOutboxDeFinca(fincaId)
+
+    const resultado = await adaptador.registrarEntradaAlmacen({
+      fincaId,
+      productoId: "prod-no-existe",
+      fecha: "2026-08-03",
+      dosis: 5,
+      precioPorDosis: null,
+      comentario: null,
+      usuarioCreadoPor: usuarioId,
+    })
+
+    expect(resultado.tipo).toBe("conflicto")
+
+    const filasEntrada = await db
+      .select()
+      .from(almacenEntradas)
+      .where(eq(almacenEntradas.productoId, "prod-no-existe"))
+    expect(filasEntrada).toHaveLength(0)
+    expect(await contarOutboxDeFinca(fincaId)).toBe(outboxAntes)
+  })
+
+  it("SAN-063/SAN-014: listarEntradasAlmacen acota por finca (join producto) y ordena por fecha descendente", async () => {
+    // Entrada de la finca ajena: no debe aparecer en el listado de fincaId.
+    await adaptador.registrarEntradaAlmacen({
+      fincaId: fincaAjenaId,
+      productoId: productoAjenoId,
+      fecha: "2026-08-05",
+      dosis: 999,
+      precioPorDosis: null,
+      comentario: "Entrada ajena",
+      usuarioCreadoPor: usuarioId,
+    })
+
+    const listado = await adaptador.listarEntradasAlmacen(fincaId)
+
+    // 2 entradas propias (80 + 20); la ajena queda fuera por el join.
+    expect(listado).toHaveLength(2)
+    for (const fila of listado) {
+      expect(fila.productoId).toBe(productoId)
+      expect(fila.productoCodigo).toBe("VAC-BRUCELOSIS")
+      expect(fila.productoDescripcion).toBe("Vacuna brucelosis")
+    }
+    // Orden fecha descendente: la del 2026-08-02 primero.
+    expect(listado[0]?.fecha).toBe("2026-08-02")
+    expect(listado[0]?.dosis).toBe(20)
+    expect(listado[1]?.fecha).toBe("2026-08-01")
+    expect(listado[1]?.dosis).toBe(80)
+    expect(listado[1]?.precioPorDosis).toBe(4200)
+    expect(listado[1]?.comentario).toBe("Compra inicial")
+
+    const listadoAjeno = await adaptador.listarEntradasAlmacen(fincaAjenaId)
+    expect(listadoAjeno).toHaveLength(1)
+    expect(listadoAjeno[0]?.productoId).toBe(productoAjenoId)
   })
 })
