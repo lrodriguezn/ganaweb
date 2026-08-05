@@ -44,8 +44,8 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1,U3. Carril #210: solo exports aditivo
 
 ## Phase 4 — Unit 4: UI reutilizable
 
-- [ ] 4.1 RED: tests de componente — fila con stock + semáforo KPI-10 (SAN-022); acciones gateadas por `tienePermiso`, no rol (PE-001); sin botón eliminar (RN-050); errores `{ campo, detalle }` (SAN-020).
-- [ ] 4.2 GREEN: `packages/ui/src/ganado/catalogo-productos-sanitarios.tsx` (desktop/mobile, confirmar con `alert-dialog`, SAN-021) y `formulario-producto-sanitario.tsx` (campos SAN-020); primitivas existentes (IA-003), tokens sin `dark:` (SAN-080/081, T-004); export aditivo.
+- [x] 4.1 RED: tests de componente — fila con stock + semáforo KPI-10 (SAN-022); acciones gateadas por `tienePermiso`, no rol (PE-001); sin botón eliminar (RN-050); errores `{ campo, detalle }` (SAN-020).
+- [x] 4.2 GREEN: `packages/ui/src/ganado/catalogo-productos-sanitarios.tsx` (desktop/mobile, confirmar con `alert-dialog`, SAN-021) y `formulario-producto-sanitario.tsx` (campos SAN-020); primitivas existentes (IA-003), tokens sin `dark:` (SAN-080/081, T-004); export aditivo.
 
 ## Phase 5 — Verificación
 
