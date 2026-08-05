@@ -65,7 +65,7 @@ jobs:
         run: pnpm --filter @ganaweb/db migrate && pnpm --filter @ganaweb/db test:smoke
 
       - name: Test (turbo, coverage solo para el gate)
-        run: pnpm turbo test --filter='@ganaweb/dominio' && pnpm turbo test --filter='!@ganaweb/dominio'
+        run: pnpm turbo test --filter='!@ganaweb/dominio'
 
       - name: Build (turbo)
         run: pnpm turbo build
@@ -81,5 +81,6 @@ jobs:
 
       - name: Health-check (owns migrate + seed + probe, postgres service)
         run: pnpm --filter @ganaweb/web health-check
-        timeout-minutes: 10
-        continue-on-error: true
+        timeout-minutes: 2
+        env:
+          HEALTH_TIMEOUT_MS: 60000

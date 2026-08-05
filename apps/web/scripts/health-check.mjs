@@ -55,6 +55,38 @@ function run(cmd, args, cwd) {
   })
 }
 
+function processGroupExists(pid) {
+  try {
+    process.kill(-pid, 0)
+    return true
+  } catch (error) {
+    if (error?.code === "ESRCH") return false
+    throw error
+  }
+}
+
+async function stopProcessTree(child) {
+  if (!child.pid) return
+
+  if (process.platform === "win32") {
+    child.kill("SIGTERM")
+    return
+  }
+
+  try {
+    process.kill(-child.pid, "SIGTERM")
+    for (let attempt = 0; attempt < 20 && processGroupExists(child.pid); attempt += 1) {
+      await wait(100)
+    }
+    if (processGroupExists(child.pid)) process.kill(-child.pid, "SIGKILL")
+  } catch (error) {
+    if (error?.code !== "ESRCH") throw error
+  } finally {
+    child.stdout?.destroy()
+    child.stderr?.destroy()
+  }
+}
+
 async function waitForHealth(url, timeoutMs) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -102,6 +134,7 @@ async function main() {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env },
+    detached: process.platform !== "win32",
   })
 
   // Drain stdout/stderr so the child doesn't block on pipe full
@@ -123,13 +156,7 @@ async function main() {
     console.error("[health-check] probe threw:", err)
     exitCode = 1
   } finally {
-    dev.kill("SIGTERM")
-    // Give the child ~2s to exit cleanly before SIGKILL
-    await wait(2000)
-    // dev.killed is set the moment we call .kill() above, so checking it
-    // would never trigger the SIGKILL fallback. exitCode stays null while
-    // the child is still running, which is the correct "is it dead?" probe.
-    if (dev.exitCode === null) dev.kill("SIGKILL")
+    await stopProcessTree(dev)
   }
 
   if (exitCode !== 0) process.exit(exitCode)
