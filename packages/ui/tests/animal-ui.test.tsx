@@ -653,7 +653,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.getByRole("button", { name: "Registrar evento" })).toBeInTheDocument()
   })
 
-  it("renders the v1.3 field set with the new primitives and gates '+ Crear nuevo' on configuracion:crear (CA-UI-001/002/004)", () => {
+  it("renders the v1.3 field set with the new primitives and gates 'Crear nuevo' on configuracion:crear (CA-UI-001/002/004)", () => {
     render(
       <AnimalFormScreen
         mode="desktop"
@@ -687,7 +687,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.getByRole("combobox", { name: "Color" })).toBeInTheDocument()
 
     // Calidad is also a SelectConCreacion (per spec the form MUST NOT display raw keys
-    // for calidad either), but `+ Crear nuevo` must NOT render — the spec is explicit
+    // for calidad either), but `Crear nuevo` must NOT render — the spec is explicit
     // that calidad is a read-only catalog.
     const calidadCombobox = screen.getByRole("combobox", { name: "Calidad" })
     expect(calidadCombobox).toBeInTheDocument()
@@ -706,7 +706,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.queryByRole("combobox", { name: "Lugar de compra" })).not.toBeInTheDocument()
   })
 
-  it("CM-025 (issue #150): los catálogos globales Raza/Color/Calidad NUNCA muestran '+ Crear nuevo'; Lugar de compra (por finca) sí según canCreateCatalog", async () => {
+  it("CM-025 (issue #150): los catálogos globales Raza/Color/Calidad NUNCA muestran 'Crear nuevo'; Lugar de compra (por finca) sí según canCreateCatalog", async () => {
     const user = userEvent.setup()
 
     render(
@@ -729,10 +729,10 @@ describe("PR3 animal UI OpenPencil parity", () => {
     await user.click(screen.getByRole("radio", { name: "Comprado" }))
 
     // Raza (catálogo GLOBAL, CM-025) — aunque canCreateCatalog.raza=true,
-    // '+ Crear nuevo' NO se renderiza.
+    // 'Crear nuevo' NO se renderiza.
     await user.click(screen.getByRole("combobox", { name: "Raza" }))
     const razaList = await screen.findByRole("listbox")
-    expect(within(razaList).queryByText("+ Crear nuevo")).not.toBeInTheDocument()
+    expect(within(razaList).queryByText("Crear nuevo")).not.toBeInTheDocument()
     await user.keyboard("{Escape}")
     // close popover
     await user.click(document.body)
@@ -757,14 +757,14 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
     await user.click(screen.getByRole("radio", { name: "Comprado" }))
 
-    // Color (catálogo GLOBAL, CM-025) — '+ Crear nuevo' NO presente.
+    // Color (catálogo GLOBAL, CM-025) — 'Crear nuevo' NO presente.
     await user.click(screen.getByRole("combobox", { name: "Color" }))
     const colorList = await screen.findByRole("listbox")
-    expect(within(colorList).queryByText("+ Crear nuevo")).not.toBeInTheDocument()
+    expect(within(colorList).queryByText("Crear nuevo")).not.toBeInTheDocument()
     await user.click(document.body)
     cleanup()
 
-    // Calidad (catálogo GLOBAL, CM-025) — '+ Crear nuevo' NO presente.
+    // Calidad (catálogo GLOBAL, CM-025) — 'Crear nuevo' NO presente.
     render(
       <AnimalFormScreen
         mode="desktop"
@@ -780,11 +780,11 @@ describe("PR3 animal UI OpenPencil parity", () => {
     )
     await user.click(screen.getByRole("combobox", { name: "Calidad" }))
     const calidadList = await screen.findByRole("listbox")
-    expect(within(calidadList).queryByText("+ Crear nuevo")).not.toBeInTheDocument()
+    expect(within(calidadList).queryByText("Crear nuevo")).not.toBeInTheDocument()
     await user.click(document.body)
     cleanup()
 
-    // Lugar de compra (maestro POR FINCA, canCreate=true) — '+ Crear nuevo' presente.
+    // Lugar de compra (maestro POR FINCA, canCreate=true) — 'Crear nuevo' presente.
     render(
       <AnimalFormScreen
         mode="desktop"
@@ -801,7 +801,7 @@ describe("PR3 animal UI OpenPencil parity", () => {
     await user.click(screen.getByRole("radio", { name: "Comprado" }))
     await user.click(screen.getByRole("combobox", { name: "Lugar de compra" }))
     const lugarList = await screen.findByRole("listbox")
-    expect(within(lugarList).getByText("+ Crear nuevo")).toBeInTheDocument()
+    expect(within(lugarList).getByText("Crear nuevo")).toBeInTheDocument()
   })
 
   it("shows purchase fields (fechaCompra/precioCompra/pesoCompra/lugarCompra) ONLY when origen='comprado' (CA-UI-007)", async () => {

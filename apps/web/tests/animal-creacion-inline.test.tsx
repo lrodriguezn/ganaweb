@@ -176,7 +176,7 @@ describe("CM-043 — creación inline con configuracion:crear", () => {
     expect(colores[0]).toBeDisabled()
     // Sin ningún affordance de creación en el documento.
     await user.click(razas[0]).catch(() => {})
-    expect(screen.queryByText("+ Crear nuevo")).not.toBeInTheDocument()
+    expect(screen.queryByText("Crear nuevo")).not.toBeInTheDocument()
     expect(screen.queryByText("+ Crear el primero")).not.toBeInTheDocument()
   })
 })
@@ -190,7 +190,7 @@ describe("CM-043 — sin configuracion:crear", () => {
     await abrirOrigenComprado(user)
     const triggers = await screen.findAllByRole("combobox", { name: "Lugar de compra" })
     expect(triggers[0]).toBeDisabled()
-    expect(screen.queryByText("+ Crear nuevo")).not.toBeInTheDocument()
+    expect(screen.queryByText("Crear nuevo")).not.toBeInTheDocument()
     expect(screen.queryByText("+ Crear el primero")).not.toBeInTheDocument()
   })
 })

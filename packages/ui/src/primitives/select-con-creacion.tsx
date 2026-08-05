@@ -181,7 +181,7 @@ export function SelectConCreacion({
                       className="mt-1 flex w-full cursor-default select-none items-center gap-2 rounded-sm border-t pt-2 text-support font-medium outline-none data-[selected=true]:bg-muted"
                     >
                       <Plus className="ml-2 size-4" aria-hidden="true" />
-                      <span>+ Crear nuevo</span>
+                      <span>Crear nuevo</span>
                     </Command.Item>
                   ) : null}
                 </Command.List>

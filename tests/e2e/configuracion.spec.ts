@@ -82,7 +82,7 @@ async function crearDesdePanel(
   page: Page,
   campos: ReadonlyArray<readonly [label: string, valor: string]>,
 ): Promise<void> {
-  await page.getByRole("button", { name: "+ Nuevo" }).first().click()
+  await page.getByRole("button", { name: "Nuevo" }).first().click()
   const panel = page.getByRole("dialog")
   await expect(panel).toBeVisible({ timeout: 10_000 })
   for (const [label, valor] of campos) {
@@ -313,7 +313,7 @@ test.describe("Inseminadores (subconjunto de Veterinarios, CM-040)", () => {
     await expect(page.getByRole("heading", { name: "Inseminadores" })).toBeVisible({
       timeout: 20_000,
     })
-    await page.getByRole("button", { name: "+ Nuevo" }).first().click()
+    await page.getByRole("button", { name: "Nuevo" }).first().click()
     const panelIns = page.getByRole("dialog")
     await expect(panelIns).toBeVisible({ timeout: 10_000 })
     // El switch "También es inseminador" NO aparece en la vista inseminadores.
@@ -329,7 +329,7 @@ test.describe("Inseminadores (subconjunto de Veterinarios, CM-040)", () => {
     await expect(filaPorNombre(page, "E2E Inseminador Bruno").first()).toBeVisible()
 
     // Crear un veterinario SIN el flag desde Veterinarios.
-    await page.getByRole("button", { name: "+ Nuevo" }).first().click()
+    await page.getByRole("button", { name: "Nuevo" }).first().click()
     const panelVet = page.getByRole("dialog")
     await expect(panelVet).toBeVisible({ timeout: 10_000 })
     const switchIns = panelVet.getByRole("switch", { name: "También es inseminador" })
@@ -438,7 +438,7 @@ test.describe("Mobile: filas consolidadas, sub-menú y sheet (CM-009/CM-010/CM-0
     await expect(page.getByRole("heading", { name: "Veterinarios" })).toBeVisible({
       timeout: 20_000,
     })
-    await page.getByRole("button", { name: "+ Nuevo" }).first().click()
+    await page.getByRole("button", { name: "Nuevo" }).first().click()
     const sheet = page.getByRole("dialog")
     await expect(sheet).toBeVisible({ timeout: 10_000 })
     await sheet.getByLabel("Nombre", { exact: false }).first().fill("E2E Vet Móvil")
@@ -471,7 +471,7 @@ test.describe("Accesibilidad (CM-072)", () => {
     await expect(page.getByRole("heading", { name: "Veterinarios" })).toBeVisible({
       timeout: 20_000,
     })
-    await page.getByRole("button", { name: "+ Nuevo" }).first().click()
+    await page.getByRole("button", { name: "Nuevo" }).first().click()
     const panel = page.getByRole("dialog")
     await expect(panel).toBeVisible({ timeout: 10_000 })
 

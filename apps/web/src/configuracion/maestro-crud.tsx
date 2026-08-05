@@ -705,7 +705,7 @@ function BarraMaestro({
       {puedeCrear ? (
         <Button onClick={onCrear} className="min-h-12">
           <Plus aria-hidden="true" className="size-4" />
-          <span>+ Nuevo</span>
+          <span>Nuevo</span>
         </Button>
       ) : null}
     </div>
@@ -984,7 +984,8 @@ export interface MaestroCrudViewProps {
 
 /**
  * Pantalla completa del maestro (CM-035: lotes-grupos con tabs; el resto,
- * listado único). El header sigue el patrón del hub: back sólo en mobile.
+ * listado único). El header muestra back en todos los breakpoints, igual que
+ * catálogo/predio/grupo, para poder volver a Configuración desde desktop.
  */
 export function MaestroCrudView({
   fincaId,
@@ -1007,7 +1008,7 @@ export function MaestroCrudView({
           type="button"
           onClick={onVolver}
           aria-label="Volver a Configuración"
-          className="md:hidden -ms-2 grid size-12 place-items-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="-ms-2 grid place-items-center size-10 min-h-[--h-touch] rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <ChevronLeft aria-hidden="true" className="size-5" />
         </button>
@@ -1023,7 +1024,7 @@ export function MaestroCrudView({
           onAction={onRefrescar}
         />
       ) : esLotesGrupos ? (
-        // CM-035: UNA ruta, DOS tabs accesibles, cada una con su tabla y "+ Nuevo".
+        // CM-035: UNA ruta, DOS tabs accesibles, cada una con su tabla y "Nuevo".
         <LotesGruposTabs
           fincaId={fincaId}
           permisos={permisos}
