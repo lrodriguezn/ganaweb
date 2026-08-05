@@ -55,7 +55,11 @@ export interface AnimalFichaRouteViewData {
     /** Issue #183: conteo pendiente bajo el filtro activo ("Ver N eventos más"). */
     readonly eventosPendientes?: number
   }
-  readonly permissions: { readonly canInactivate: boolean }
+  readonly permissions: {
+    /** Issue #202: gatea visualmente el botón Editar (`animales:editar`). */
+    readonly canEdit: boolean
+    readonly canInactivate: boolean
+  }
 }
 
 export interface AnimalFichaRouteViewProps {
@@ -157,6 +161,7 @@ export function AnimalFichaRouteView({
         <AnimalFichaDesktopScreen
           animal={data.animal}
           timeline={[...estadoTimeline.items]}
+          canEdit={data.permissions.canEdit}
           {...(data.resumen ? { resumen: data.resumen } : {})}
           {...(estadoTimeline.nextCursor ? { nextCursor: estadoTimeline.nextCursor } : {})}
           {...(estadoTimeline.eventosPendientes != null
@@ -176,6 +181,7 @@ export function AnimalFichaRouteView({
           timeline={[...estadoTimeline.items]}
           bottomNavItems={bottomNavItems}
           onRegistrarEvento={() => setDrawerEventoAbierto(true)}
+          canEdit={data.permissions.canEdit}
           {...(onEditar ? { onEdit: onEditar } : {})}
         />
       </div>

@@ -672,6 +672,22 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(onEdit).toHaveBeenCalledTimes(1)
   })
 
+  it("hides the mobile ficha Editar button when canEdit is false (issue #202)", () => {
+    render(
+      <AnimalFichaMobileScreen
+        animal={animal}
+        timeline={[]}
+        bottomNavItems={nav}
+        onRegistrarEvento={vi.fn()}
+        canEdit={false}
+        onEdit={vi.fn()}
+      />,
+    )
+
+    const frame = screen.getByTestId("op-frame-0232")
+    expect(within(frame).queryByRole("button", { name: "Editar" })).not.toBeInTheDocument()
+  })
+
   it("renders the v1.3 field set with the new primitives and gates 'Crear nuevo' on configuracion:crear (CA-UI-001/002/004)", () => {
     render(
       <AnimalFormScreen
@@ -2225,6 +2241,13 @@ describe("redesign-ficha-animal — desktop ficha visual shell", () => {
       await user.click(screen.getByRole("button", { name: "Editar" }))
       expect(onRegistrarEvento).toHaveBeenCalledTimes(1)
       expect(onEdit).toHaveBeenCalledTimes(1)
+    })
+
+    it("hides Editar when canEdit is false (issue #202 visual RBAC gate)", () => {
+      render(<AnimalFichaDesktopScreen animal={animalDiseno} timeline={[]} canEdit={false} />)
+
+      expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "+ Registrar evento" })).toBeInTheDocument()
     })
   })
 
