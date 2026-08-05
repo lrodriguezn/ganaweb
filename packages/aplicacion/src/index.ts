@@ -115,6 +115,9 @@ export type {
 // genérico. apps/web no puede importar dominio (dependency-cruiser), así que
 // se re-exporta aquí (aplicacion → dominio es una capa permitida).
 export { ESPECIFICACIONES_MAESTROS } from "@ganaweb/dominio"
+// Issue #209 (KPI-10/T-001): fallback documentado del umbral de stock bajo,
+// usado sólo cuando la finca no tiene el parámetro en config_parametros_finca.
+export { STOCK_MINIMO_DOSIS_DEFAULT } from "@ganaweb/dominio"
 export type {
   EspecificacionCampoMaestro,
   EspecificacionFamiliaMaestro,
@@ -122,6 +125,11 @@ export type {
   ValorCampoMaestro,
 } from "@ganaweb/dominio"
 export type { DatosBasicosFinca, FincaLecturaPort } from "./puertos/finca-lectura-port.js"
+export type {
+  CatalogoProductoSanitarioPort,
+  FilaProductoSanitarioListado,
+  ProductoSanitarioValidado,
+} from "./puertos/catalogo-producto-sanitario-port.js"
 export type {
   AnimalEventoSanidadReferencia,
   AplicacionPreviaSanidad,

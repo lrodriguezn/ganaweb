@@ -28,9 +28,9 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1,U3. Carril #210: solo exports aditivo
 
 - [x] 1.1 RED: `packages/dominio/src/producto-sanitario.test.ts` — validación CM-026 (trim, longitudes, sin HTML, `codigo`/`descripcion` requeridos); enum inválido vía `validarTipoTratamiento` (§13.13); duplicado activo+finca case-insensitive (SAN-023/CM-041).
 - [x] 1.2 GREEN: `packages/dominio/src/producto-sanitario.ts` (`validarDatosProductoSanitario`, `validarCodigoUnicoProductoSanitario`, `STOCK_MINIMO_DOSIS_DEFAULT=20`, KPI-10/T-001); export aditivo en `index.ts`.
-- [ ] 1.3 RED: tests de casos de uso — scope primero CM-024 (otra finca → `no_encontrado`); inactivar/reactivar sin borrado (RN-050/SAN-021); semáforo con umbral por puerto, nunca hardcodeado (SAN-022/T-001).
-- [ ] 1.4 GREEN: `packages/aplicacion/src/puertos/catalogo-producto-sanitario-port.ts` (crear/editar/cambiarEstado, listar con stock, códigos activos, `obtenerStockMinimoDosis`).
-- [ ] 1.5 GREEN: `casos-uso/sanidad/`: `resultados-producto-sanitario.ts` (CM-042), `crear-producto-sanitario.ts`, `editar-producto-sanitario.ts`, `cambiar-estado-producto-sanitario.ts`, `listar-catalogo-producto-sanitario.ts` (stock RN-041 + KPI-10, `soloActivos` SAN-021); exports aditivos.
+- [x] 1.3 RED: tests de casos de uso — scope primero CM-024 (otra finca → `no_encontrado`); inactivar/reactivar sin borrado (RN-050/SAN-021); semáforo con umbral por puerto, nunca hardcodeado (SAN-022/T-001).
+- [x] 1.4 GREEN: `packages/aplicacion/src/puertos/catalogo-producto-sanitario-port.ts` (crear/editar/cambiarEstado, listar con stock, códigos activos, `obtenerStockMinimoDosis`).
+- [x] 1.5 GREEN: `casos-uso/sanidad/`: `resultados-producto-sanitario.ts` (CM-042), `crear-producto-sanitario.ts`, `editar-producto-sanitario.ts`, `cambiar-estado-producto-sanitario.ts`, `listar-catalogo-producto-sanitario.ts` (stock RN-041 + KPI-10, `soloActivos` SAN-021); exports aditivos.
 
 ## Phase 2 — Unit 2: Adaptador Drizzle
 

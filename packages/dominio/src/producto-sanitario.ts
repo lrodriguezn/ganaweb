@@ -154,6 +154,24 @@ function validarNumeroOpcional(
 }
 
 /**
+ * Proyección pura de un registro genérico (formulario/server function) a la
+ * entrada tipada de validación. Los campos ausentes llegan como `undefined`
+ * y la validación decide su tratamiento (requerido vs opcional).
+ */
+export function datosProductoSanitarioDesdeRecord(
+  datos: Readonly<Record<string, unknown>>,
+): DatosProductoSanitarioEntrada {
+  return {
+    codigo: datos.codigo,
+    descripcion: datos.descripcion,
+    mlMgPorDosis: datos.mlMgPorDosis,
+    tipoTratamiento: datos.tipoTratamiento,
+    precioDosis: datos.precioDosis,
+    comentarios: datos.comentarios,
+  }
+}
+
+/**
  * SAN-020 (estilo CM-026): valida los campos del producto sanitario.
  *
  * Devuelve TODOS los errores encontrados (no corta en el primero) para que

@@ -97,6 +97,7 @@ export type {
 } from "./producto-sanitario.js"
 export {
   STOCK_MINIMO_DOSIS_DEFAULT,
+  datosProductoSanitarioDesdeRecord,
   validarCodigoUnicoProductoSanitario,
   validarDatosProductoSanitario,
 } from "./producto-sanitario.js"
