@@ -11,7 +11,7 @@
  * - Toggle inactivos (CM-036) con badge neutral; estado vacío (CM-038);
  *   nota de integridad (CM-046); paginación 25/página sólo si total ≥ 100
  *   (CM-037/S-2).
- * - Tabs Lotes · Grupos (CM-035): una ruta, dos tabs, cada una con "+ Nuevo".
+ * - Tabs Lotes · Grupos (CM-035): una ruta, dos tabs, cada una con "Nuevo".
  * - Formulario (CM-039/CM-040/CM-041/CM-032): crear feliz (toast + cierre +
  *   refresh), errores de campo desde `validacion`, conflicto codigo, editar
  *   titula "Editar {nombre}", cierre con cambios pide confirmación.
@@ -341,7 +341,7 @@ describe("Paginación (CM-037/S-2)", () => {
 })
 
 describe("Tabs Lotes · Grupos (CM-035)", () => {
-  it("una ruta con dos tabs; cada tab lista su maestro y tiene '+ Nuevo'", async () => {
+  it("una ruta con dos tabs; cada tab lista su maestro y tiene 'Nuevo'", async () => {
     const user = userEvent.setup()
     listarMock.mockResolvedValue({
       tipo: "lista",
@@ -367,7 +367,7 @@ describe("Tabs Lotes · Grupos (CM-035)", () => {
       within(panelLotesPorId as HTMLElement).getAllByText("Lote Norte").length,
     ).toBeGreaterThanOrEqual(1)
     expect(
-      within(panelLotesPorId as HTMLElement).getAllByRole("button", { name: "+ Nuevo" }).length,
+      within(panelLotesPorId as HTMLElement).getAllByRole("button", { name: "Nuevo" }).length,
     ).toBeGreaterThanOrEqual(1)
 
     // Cambiar a Grupos carga su maestro.
@@ -383,7 +383,7 @@ describe("Tabs Lotes · Grupos (CM-035)", () => {
     expect(panelGrupos).not.toBeNull()
     await within(panelGrupos as HTMLElement).findAllByText("Grupo Levante")
     expect(
-      within(panelGrupos as HTMLElement).getAllByRole("button", { name: "+ Nuevo" }).length,
+      within(panelGrupos as HTMLElement).getAllByRole("button", { name: "Nuevo" }).length,
     ).toBeGreaterThanOrEqual(1)
   })
 })
@@ -393,7 +393,7 @@ describe("Formulario crear/editar (CM-039/CM-041/CM-032)", () => {
     const user = userEvent.setup()
     crearMock.mockResolvedValue({ tipo: "creado", id: "n1" })
     const { props } = renderView()
-    await user.click(screen.getAllByRole("button", { name: "+ Nuevo" })[0])
+    await user.click(screen.getAllByRole("button", { name: "Nuevo" })[0])
     const nombre = await screen.findByLabelText(/Nombre/)
     await user.type(nombre, "Ana María")
     await user.click(screen.getByRole("button", { name: "Guardar" }))
@@ -422,7 +422,7 @@ describe("Formulario crear/editar (CM-039/CM-041/CM-032)", () => {
       errores: [{ campo: "nombre", detalle: "El nombre es obligatorio.", regla: "CM-026" }],
     })
     renderView()
-    await user.click(screen.getAllByRole("button", { name: "+ Nuevo" })[0])
+    await user.click(screen.getAllByRole("button", { name: "Nuevo" })[0])
     await user.click(await screen.findByRole("button", { name: "Guardar" }))
     const campo = await screen.findByLabelText(/Nombre/)
     expect(campo).toHaveAttribute("aria-invalid", "true")
@@ -440,7 +440,7 @@ describe("Formulario crear/editar (CM-039/CM-041/CM-032)", () => {
       ],
     })
     renderView()
-    await user.click(screen.getAllByRole("button", { name: "+ Nuevo" })[0])
+    await user.click(screen.getAllByRole("button", { name: "Nuevo" })[0])
     await user.type(await screen.findByLabelText(/Nombre/), "Repetido")
     await user.click(screen.getByRole("button", { name: "Guardar" }))
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -456,7 +456,7 @@ describe("Formulario crear/editar (CM-039/CM-041/CM-032)", () => {
       nombreMaestro: "Potreros",
       singular: "potrero",
     })
-    await user.click(screen.getAllByRole("button", { name: "+ Nuevo" })[0])
+    await user.click(screen.getAllByRole("button", { name: "Nuevo" })[0])
     await user.type(await screen.findByLabelText(/Código/), "P-01")
     await user.type(screen.getByLabelText(/Nombre/), "La Manga")
     await user.click(screen.getByRole("button", { name: "Guardar" }))
@@ -505,7 +505,7 @@ describe("Formulario crear/editar (CM-039/CM-041/CM-032)", () => {
   it("cierre con cambios sin guardar pide confirmación (CM-039)", async () => {
     const user = userEvent.setup()
     renderView()
-    await user.click(screen.getAllByRole("button", { name: "+ Nuevo" })[0])
+    await user.click(screen.getAllByRole("button", { name: "Nuevo" })[0])
     await user.type(await screen.findByLabelText(/Nombre/), "Cambio sin guardar")
     await user.click(screen.getByRole("button", { name: "Cancelar" }))
     expect(await screen.findByText("¿Cerrar sin guardar?")).toBeInTheDocument()
@@ -526,7 +526,7 @@ describe("Inseminadores y switch de veterinarios (CM-040)", () => {
       nombreMaestro: "Inseminadores",
       singular: "inseminador",
     })
-    await user.click(screen.getAllByRole("button", { name: "+ Nuevo" })[0])
+    await user.click(screen.getAllByRole("button", { name: "Nuevo" })[0])
     await screen.findByText("Nuevo inseminador")
     // El panel vive en un portal: se busca en el documento completo.
     const oculto = document.body.querySelector(
@@ -554,7 +554,7 @@ describe("Inseminadores y switch de veterinarios (CM-040)", () => {
     const user = userEvent.setup()
     crearMock.mockResolvedValue({ tipo: "creado", id: "v9" })
     renderView()
-    await user.click(screen.getAllByRole("button", { name: "+ Nuevo" })[0])
+    await user.click(screen.getAllByRole("button", { name: "Nuevo" })[0])
     const switchInseminador = await screen.findByLabelText("También es inseminador")
     expect(switchInseminador).toHaveAttribute("aria-checked", "false")
     await user.click(switchInseminador)
@@ -624,9 +624,9 @@ describe("Inactivar/Activar (CM-044/CM-045)", () => {
 })
 
 describe("RBAC de la vista (CM-022)", () => {
-  it("sin configuracion:crear no hay '+ Nuevo'", () => {
+  it("sin configuracion:crear no hay 'Nuevo'", () => {
     renderView({ permisos: { crear: false, editar: true, inactivar: true } })
-    expect(screen.queryByRole("button", { name: "+ Nuevo" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Nuevo" })).not.toBeInTheDocument()
   })
 
   it("sin configuracion:editar no hay acciones de edición", () => {
