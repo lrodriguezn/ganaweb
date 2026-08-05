@@ -10,7 +10,13 @@ import {
   type DominioEvento,
   EventDrawer,
 } from "@ganaweb/ui"
-import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
+import {
+  Outlet,
+  createFileRoute,
+  useNavigate,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router"
 import { CheckSquare, Home, Menu, PawPrint } from "lucide-react"
 import { useState } from "react"
 import type * as React from "react"
@@ -217,6 +223,7 @@ function AnimalFichaRoute() {
   const data = Route.useLoaderData()
   const params = Route.useParams()
   const navigate = useNavigate()
+  const router = useRouter()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   if (pathname !== `/fincas/${params.fincaId}/animales/${params.animalId}`) return <Outlet />
 
@@ -226,19 +233,31 @@ function AnimalFichaRoute() {
 
   const deleteOrInactivate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    await deleteAnimalAction({
+    const resultado = await deleteAnimalAction({
       data: { fincaId: params.fincaId, animalId: params.animalId, online: true },
     })
+    // Issue #221: invalidar la caché del router solo tras una mutación
+    // exitosa para que el listado relea del servidor (con staleTime 60s
+    // seguía mostrando el animal eliminado/inactivado).
+    if (resultado?.tipo === "eliminado" || resultado?.tipo === "inactivado") {
+      void router.invalidate()
+    }
     void navigate({ to: `/fincas/${params.fincaId}/animales` })
   }
-  const reactivate = () =>
-    reactivateAnimalAction({
+  const reactivate = async () => {
+    const resultado = await reactivateAnimalAction({
       data: {
         fincaId: params.fincaId,
         animalId: params.animalId,
         codigo: data.animal.codigoAnimal,
       },
     })
+    // Issue #221: invalidar solo en la ruta de éxito para que la ficha relea
+    // el estado reactivado del servidor.
+    if (resultado?.tipo === "reactivado") {
+      void router.invalidate()
+    }
+  }
 
   return (
     <AnimalFichaRouteView

@@ -4,7 +4,7 @@ import { useState } from "react"
 
 import { AnimalFormScreen } from "@ganaweb/ui"
 import type { AnimalFormCatalogOptions, SelectOption } from "@ganaweb/ui"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import {
   CrearMaestroInline,
   type MaestroInlineCreable,
@@ -308,6 +308,7 @@ export function NewAnimalRouteView({
   catalogs,
 }: { readonly fincaId: string; readonly catalogs?: AnimalCatalogs }) {
   const navigate = useNavigate()
+  const router = useRouter()
   // PR-5: real DB catalogs from the composite loader. If catalogs are not
   // available (loader failure), all options default to empty (no_disponible).
   const catalogOptions: AnimalFormCatalogOptions = catalogs ? catalogsToFormOptions(catalogs) : {}
@@ -340,6 +341,10 @@ export function NewAnimalRouteView({
         data: buildCreateAnimalInputFromFormData(fincaId, formData),
       })
       if (result.tipo === "creado") {
+        // Issue #221: invalidar la caché del router antes de navegar para que
+        // el listado relea del servidor (con staleTime 60s no mostraba el
+        // animal recién creado).
+        void router.invalidate()
         void navigate({ to: `/fincas/${fincaId}/animales` })
         return
       }
