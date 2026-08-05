@@ -149,6 +149,9 @@ export function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegi
     precioCompra: row.precioCompra,
     pesoCompra: row.pesoCompra,
     tipoIngresoId: row.tipoIngresoId,
+    // Issue #206: columnas reales que la edición precarga (null = ausente).
+    codigoArete: row.codigoArete,
+    comentarios: row.comentarios,
   }
 }
 

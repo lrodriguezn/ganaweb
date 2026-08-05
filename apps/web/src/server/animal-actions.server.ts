@@ -985,6 +985,10 @@ export function createAnimalActionHarness({
           ...(result.animal.tipoIngresoId != null
             ? { tipoIngresoId: result.animal.tipoIngresoId }
             : {}),
+          // Issue #206: codigoArete/comentarios también son columnas reales
+          // precargables; ausentes (null) → la clave no viaja.
+          ...(result.animal.codigoArete != null ? { codigoArete: result.animal.codigoArete } : {}),
+          ...(result.animal.comentarios != null ? { comentarios: result.animal.comentarios } : {}),
         },
         imagenes: result.imagenes,
         genealogia: result.genealogia,
