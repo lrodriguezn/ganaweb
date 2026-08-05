@@ -39,8 +39,8 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1,U3. Carril #210: solo exports aditivo
 
 ## Phase 3 — Unit 3: Server functions
 
-- [ ] 3.1 RED: `apps/web/src/server/sanidad-catalogo-actions.test.ts` — §13.10: sin `sanidad:crear`/`sanidad:editar` → `permiso_denegado`; finca del recurso ≠ finca activa → `finca_no_autorizada` (PE-001/PE-002, SAN-061/063); uniones serializables (CM-042).
-- [ ] 3.2 GREEN: `apps/web/src/server/sanidad-catalogo-actions.server.ts` (`denySanidadAccess` + deps + runtime harness, patrón `configuracion-actions.server.ts`).
+- [x] 3.1 RED: `apps/web/src/server/sanidad-catalogo-actions.test.ts` — §13.10: sin `sanidad:crear`/`sanidad:editar` → `permiso_denegado`; finca del recurso ≠ finca activa → `finca_no_autorizada` (PE-001/PE-002, SAN-061/063); uniones serializables (CM-042).
+- [x] 3.2 GREEN: `apps/web/src/server/sanidad-catalogo-actions.server.ts` (`denySanidadAccess` + deps + runtime harness, patrón `configuracion-actions.server.ts`).
 
 ## Phase 4 — Unit 4: UI reutilizable
 
