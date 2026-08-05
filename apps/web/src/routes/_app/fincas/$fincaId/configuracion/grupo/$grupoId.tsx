@@ -30,7 +30,10 @@ export const Route = createFileRoute("/_app/fincas/$fincaId/configuracion/grupo/
   beforeLoad: ({ context, params }) => {
     if (!puedeVerConfiguracion(context.sesion.permisos)) throw redirect({ to: "/" })
     if (!filaConsolidadaPorId(params.grupoId)) {
-      throw redirect({ to: `/fincas/${params.fincaId}/configuracion` })
+      throw redirect({
+        to: "/fincas/$fincaId/configuracion",
+        params: { fincaId: params.fincaId },
+      })
     }
   },
   loader: async ({ params }) => {

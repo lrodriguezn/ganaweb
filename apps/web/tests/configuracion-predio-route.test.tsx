@@ -107,11 +107,19 @@ function loaderOk(overrides: Record<string, unknown> = {}) {
 const SESION_CON_VER = { permisos: [{ modulo: "configuracion", accion: "ver" }] } as const
 const SESION_SIN_VER = { permisos: [{ modulo: "animales", accion: "ver" }] } as const
 
-type RedirectResponse = Response & { options: { to?: string } }
+type RedirectResponse = Response & {
+  options: { to?: string; params?: Record<string, string> }
+}
 
+/** Issue #198: resuelve `to` con huecos `$param` + `params` a la URL final. */
 function destinoRedirect(valor: unknown): string | null {
   if (!isRedirect(valor)) return null
-  return (valor as RedirectResponse).options.to ?? null
+  const { to, params } = (valor as RedirectResponse).options
+  if (!to) return null
+  return Object.entries(params ?? {}).reduce(
+    (ruta, [clave, valorParam]) => ruta.replace(`$${clave}`, valorParam),
+    to,
+  )
 }
 
 const beforeLoadPredio = PredioRoute.options.beforeLoad as unknown as (opts: {

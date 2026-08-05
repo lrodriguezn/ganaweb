@@ -64,7 +64,7 @@ export const Route = createFileRoute("/_app/fincas/$fincaId/configuracion/$maest
     const esMaestro = Boolean(definicionMaestroCrudPorSlug(params.maestro))
     const esCatalogo = Boolean(catalogoPorSlug(params.maestro))
     if (!esMaestro && !esCatalogo) {
-      throw redirect({ to: `/fincas/${params.fincaId}/configuracion` })
+      throw redirect({ to: "/fincas/$fincaId/configuracion", params: { fincaId: params.fincaId } })
     }
   },
   loader: async ({ params }) => {
@@ -82,7 +82,8 @@ export const Route = createFileRoute("/_app/fincas/$fincaId/configuracion/$maest
     }
 
     const definicion = definicionMaestroCrudPorSlug(params.maestro)
-    if (!definicion) throw redirect({ to: `/fincas/${params.fincaId}/configuracion` })
+    if (!definicion)
+      throw redirect({ to: "/fincas/$fincaId/configuracion", params: { fincaId: params.fincaId } })
     const resultado = await consultarMaestroNormalizado({
       fincaId: params.fincaId,
       maestro: definicion.consulta,
