@@ -55,8 +55,8 @@ Chain strategy: pending
 
 `apps/web/src/server/sanidad-almacen.server.ts` + `apps/web/tests/sanidad-almacen-contract.test.ts`. Deps: U3.
 
-- [ ] 4.1 RED: invocación directa sin permiso rechazada; finca revalidada; unión mapeada 1:1.
-- [ ] 4.2 GREEN: `registrarEntradaAlmacenFn`/`listarEntradasAlmacenFn` (`createServerFn`, sesión de `auth.ts`, `SesionSanidad`).
+- [x] 4.1 RED: invocación directa sin permiso rechazada; finca revalidada; unión mapeada 1:1.
+- [x] 4.2 GREEN: `registrarEntradaAlmacenFn`/`listarEntradasAlmacenFn` (`createServerFn`, sesión de `auth.ts`, `SesionSanidad`).
 
 ## Unit 5 — UI reutilizable (SAN-014, SAN-031, SAN-032)
 
