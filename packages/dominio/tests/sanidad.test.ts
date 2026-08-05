@@ -23,7 +23,7 @@
  * del esquema v3).
  */
 import { describe, expect, it } from "vitest"
-import type { ErrorValidacionSanidad } from "../src/index.js"
+import type { CapturaEntradaAlmacen, ErrorValidacionSanidad } from "../src/index.js"
 import {
   calcularStockDisponible,
   construirAplicacionesSanitarias,
@@ -36,6 +36,7 @@ import {
   validarAnulacionRegistroGrupal,
   validarCabeceraRegistroGrupal,
   validarCantidadAnimalesSanidad,
+  validarEntradaAlmacen,
   validarFechaEventoSanidad,
   validarTipoTratamiento,
 } from "../src/index.js"
@@ -493,6 +494,100 @@ describe("RN-052: captura 1..N animales y cabecera grupal", () => {
     })
 
     expect(filas[0]?.registroGrupalId).toBeNull()
+  })
+})
+
+describe("SAN-030: validarEntradaAlmacen — entradas de almacén (Issue #210)", () => {
+  function captura(overrides: Partial<CapturaEntradaAlmacen> = {}): CapturaEntradaAlmacen {
+    return {
+      productoId: "prod-aftosa",
+      fecha: "2026-08-01",
+      dosis: 100,
+      precioPorDosis: 3500,
+      comentario: "Compra distribuidor",
+      ...overrides,
+    }
+  }
+
+  it("SAN-030: acepta una captura válida con precio y comentario", () => {
+    const errores = validarEntradaAlmacen({ captura: captura(), hoy: HOY })
+    expect(errores).toEqual([])
+  })
+
+  it("RN-002: rechaza una fecha futura en la entrada", () => {
+    const errores = validarEntradaAlmacen({
+      captura: captura({ fecha: "2026-08-06" }),
+      hoy: HOY,
+    })
+
+    expect(errores).toHaveLength(1)
+    expect(errores[0]?.campo).toBe("fecha")
+    expect(errores[0]?.detalle).toContain("RN-002")
+  })
+
+  it("RN-002: acepta la fecha igual a hoy (límite: hoy no es futura)", () => {
+    const errores = validarEntradaAlmacen({ captura: captura({ fecha: HOY }), hoy: HOY })
+    expect(errores).toEqual([])
+  })
+
+  it("SAN-030: rechaza una fecha con formato inválido", () => {
+    const errores = validarEntradaAlmacen({
+      captura: captura({ fecha: "01/08/2026" }),
+      hoy: HOY,
+    })
+
+    expect(errores).toHaveLength(1)
+    expect(errores[0]?.campo).toBe("fecha")
+  })
+
+  it("SAN-030: rechaza dosis ≤ 0, no entera o no numérica", () => {
+    for (const dosis of [0, -5, 2.5, Number.NaN]) {
+      const errores = validarEntradaAlmacen({ captura: captura({ dosis }), hoy: HOY })
+
+      expect(errores.some((error) => error.campo === "dosis")).toBe(true)
+    }
+  })
+
+  it("SAN-030: rechaza el producto ausente (null o vacío)", () => {
+    for (const productoId of [null, "", "   "]) {
+      const errores = validarEntradaAlmacen({ captura: captura({ productoId }), hoy: HOY })
+
+      expect(errores.some((error) => error.campo === "producto")).toBe(true)
+    }
+  })
+
+  it("SAN-030: precio_por_dosis y comentario son opcionales", () => {
+    const errores = validarEntradaAlmacen({
+      captura: captura({ precioPorDosis: null, comentario: null }),
+      hoy: HOY,
+    })
+    expect(errores).toEqual([])
+
+    const sinOpcionales = validarEntradaAlmacen({
+      captura: { productoId: "prod-aftosa", fecha: "2026-08-01", dosis: 10 },
+      hoy: HOY,
+    })
+    expect(sinOpcionales).toEqual([])
+  })
+
+  it("SAN-030: rechaza un precio_por_dosis no numérico cuando está presente", () => {
+    const errores = validarEntradaAlmacen({
+      captura: captura({ precioPorDosis: Number.NaN }),
+      hoy: HOY,
+    })
+
+    expect(errores).toHaveLength(1)
+    expect(errores[0]?.campo).toBe("precio_por_dosis")
+  })
+
+  it("SAN-030: acumula todos los errores de una sola pasada", () => {
+    const errores = validarEntradaAlmacen({
+      captura: captura({ productoId: null, fecha: "2026-08-06", dosis: 0 }),
+      hoy: HOY,
+    })
+
+    const campos = errores.map((error) => error.campo).sort()
+    expect(campos).toEqual(["dosis", "fecha", "producto"])
   })
 })
 

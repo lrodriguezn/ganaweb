@@ -239,6 +239,64 @@ export function construirAplicacionesSanitarias(datos: {
 }
 
 /**
+ * SAN-030 (Issue #210): captura cruda de una entrada de almacén antes de
+ * validar. `productoId` null/vacío modela el producto ausente del formulario.
+ */
+export type CapturaEntradaAlmacen = {
+  readonly productoId: string | null
+  /** ISO YYYY-MM-DD; nunca futura (RN-002). */
+  readonly fecha: string
+  /** Entero > 0 (SAN-030; la columna `almacen_entradas.dosis` es INTEGER). */
+  readonly dosis: number
+  readonly precioPorDosis?: number | null
+  readonly comentario?: string | null
+}
+
+/**
+ * SAN-030 + RN-002 (Issue #210): valida la captura de una entrada de almacén.
+ *
+ * - `producto` obligatorio (SAN-030).
+ * - `fecha` nunca futura y en formato ISO (RN-002; reutiliza
+ *   `validarFechaEventoSanidad` — sin fechas de animal, que no aplican).
+ * - `dosis` entero > 0 (SAN-030).
+ * - `precio_por_dosis` y `comentario` opcionales; el precio, si está
+ *   presente, debe ser un número finito.
+ *
+ * Append-only (SAN-032/D-008): la validación cubre únicamente la creación;
+ * no existe edición ni anulación de entradas en v1. Devuelve TODOS los
+ * errores de una sola pasada, con forma `{ campo, detalle }`.
+ */
+export function validarEntradaAlmacen(datos: {
+  readonly captura: CapturaEntradaAlmacen
+  readonly hoy: string
+}): readonly ErrorValidacionSanidad[] {
+  const errores: ErrorValidacionSanidad[] = []
+  const captura = datos.captura
+
+  if (captura.productoId === null || captura.productoId.trim() === "") {
+    errores.push(error("producto", "La entrada requiere un producto sanitario (SAN-030)."))
+  }
+
+  for (const errorFecha of validarFechaEventoSanidad({ fecha: captura.fecha, hoy: datos.hoy })) {
+    errores.push(errorFecha)
+  }
+
+  if (!Number.isInteger(captura.dosis) || captura.dosis <= 0) {
+    errores.push(error("dosis", "La dosis debe ser un entero mayor que 0 (SAN-030)."))
+  }
+
+  if (
+    captura.precioPorDosis !== null &&
+    captura.precioPorDosis !== undefined &&
+    !Number.isFinite(captura.precioPorDosis)
+  ) {
+    errores.push(error("precio_por_dosis", "El precio por dosis debe ser un número."))
+  }
+
+  return errores
+}
+
+/**
  * RN-041 + RN-051: stock disponible SIEMPRE calculado:
  * Σ entradas.dosis − Σ aplicaciones.dosis. Las aplicaciones anuladas
  * (grupo anulado, RN-051) se excluyen de la resta. El resultado puede ser
