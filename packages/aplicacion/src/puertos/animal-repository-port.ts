@@ -92,6 +92,13 @@ export interface AnimalRegistro {
   readonly pesoCompra?: number | null
   /** `tipo_ingreso_id` (0 = nacido en finca, 1 = comprado); null = sin dato. */
   readonly tipoIngresoId?: number | null
+  /**
+   * Issue #206: columnas reales de la fila `animales` que la edición
+   * precarga en el formulario (misma semántica del bloque #201).
+   * Null/ausente = el animal no tiene el dato (nunca fabricar un default).
+   */
+  readonly codigoArete?: string | null
+  readonly comentarios?: string | null
 }
 
 export interface AnimalRepositoryPort {

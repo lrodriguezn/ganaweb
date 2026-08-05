@@ -60,6 +60,10 @@ interface AnimalFichaLike {
     readonly precioCompra?: number | null
     readonly pesoCompra?: number | null
     readonly tipoIngresoId?: number | null
+    // Issue #206: columnas reales precargables que faltaban en la cadena
+    // ficha → loader (ausente = el animal no tiene el dato).
+    readonly codigoArete?: string | null
+    readonly comentarios?: string | null
     readonly codigoRfid?: string | null
     readonly tatuado?: boolean | null
     readonly herrado?: boolean | null
@@ -135,6 +139,9 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
     ...(animal.madreId ? { madreId: animal.madreId } : {}),
     ...(animal.padreId ? { padreId: animal.padreId } : {}),
     ...(animal.codigoRfid ? { codigoRfid: animal.codigoRfid } : {}),
+    // Issue #206: codigoArete/comentarios also pre-load their real value.
+    ...(animal.codigoArete ? { codigoArete: animal.codigoArete } : {}),
+    ...(animal.comentarios ? { comentarios: animal.comentarios } : {}),
     ...(typeof animal.tatuado === "boolean" ? { tatuado: animal.tatuado } : {}),
     ...(typeof animal.herrado === "boolean" ? { herrado: animal.herrado } : {}),
     ...(typeof animal.descornado === "boolean" ? { descornado: animal.descornado } : {}),
@@ -180,6 +187,26 @@ function parseOrigen(value: FormDataEntryValue | null): "nacido_en_finca" | "com
   return undefined
 }
 
+/**
+ * Issue #206: the form renders each boolean as a hidden input that ALWAYS
+ * submits `"true"` or `"false"` (`renderBooleanField` in
+ * `packages/ui/src/ganado/animal-crud.tsx` — it is NOT a checkbox). Both
+ * values must travel: an explicit `false` is what lets the user uncheck a
+ * previously checked box on edit. Anything else → absent.
+ */
+function parseOptionalBoolean(value: FormDataEntryValue | null): boolean | undefined {
+  if (value === "true") return true
+  if (value === "false") return false
+  return undefined
+}
+
+/** Issue #206: `numeroPezones` is a plain text input; empty/NaN stays absent. */
+function parseNumeroPezones(value: FormDataEntryValue | null): number | undefined {
+  if (typeof value !== "string") return undefined
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 const CAMPO_TO_FIELD_KEY: Record<string, string> = {
   codigo: "codigo",
   nombre: "nombre",
@@ -222,6 +249,7 @@ const CAMPO_TO_FIELD_KEY: Record<string, string> = {
  * immutable-when-animal-has-events field; the form's `currentAnimalId`
  * enables the disable+hint in `AnimalFormScreen`).
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional form fields
 export function buildUpdateAnimalInputFromFormData(
   fincaId: string,
   animalId: string,
@@ -240,6 +268,18 @@ export function buildUpdateAnimalInputFromFormData(
   const padreId = optionalText(formData, "padreId")
   const precioCompra = parseEsCONumber(formData.get("precioCompra"))
   const pesoCompra = parseEsCONumber(formData.get("pesoCompra"))
+  // Issue #206: the form captures these 10 fields; without the explicit
+  // mapping they were silently dropped before reaching the harness.
+  const codigoArete = optionalText(formData, "codigoArete")
+  const codigoRfid = optionalText(formData, "codigoRfid")
+  const hierroId = optionalText(formData, "hierroId")
+  const propietarioId = optionalText(formData, "propietarioId")
+  const comentarios = optionalText(formData, "comentarios")
+  const numeroPezones = parseNumeroPezones(formData.get("numeroPezones"))
+  const tatuado = parseOptionalBoolean(formData.get("tatuado"))
+  const herrado = parseOptionalBoolean(formData.get("herrado"))
+  const descornado = parseOptionalBoolean(formData.get("descornado"))
+  const esDeMonta = parseOptionalBoolean(formData.get("esDeMonta"))
 
   return {
     fincaId,
@@ -259,6 +299,17 @@ export function buildUpdateAnimalInputFromFormData(
       ...(padreId ? { padreId } : {}),
       ...(precioCompra !== undefined ? { precioCompra } : {}),
       ...(pesoCompra !== undefined ? { pesoCompra } : {}),
+      ...(codigoArete ? { codigoArete } : {}),
+      ...(codigoRfid ? { codigoRfid } : {}),
+      ...(hierroId ? { hierroId } : {}),
+      ...(propietarioId ? { propietarioId } : {}),
+      ...(comentarios ? { comentarios } : {}),
+      ...(numeroPezones !== undefined ? { numeroPezones } : {}),
+      // Booleans use `!== undefined` so an explicit false also travels.
+      ...(tatuado !== undefined ? { tatuado } : {}),
+      ...(herrado !== undefined ? { herrado } : {}),
+      ...(descornado !== undefined ? { descornado } : {}),
+      ...(esDeMonta !== undefined ? { esDeMonta } : {}),
     },
   }
 }

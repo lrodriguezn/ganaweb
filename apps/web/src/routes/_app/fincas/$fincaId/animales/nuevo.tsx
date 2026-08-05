@@ -62,6 +62,26 @@ function parseOrigen(value: FormDataEntryValue | null): "nacido_en_finca" | "com
   return undefined
 }
 
+/**
+ * Issue #206: the form renders each boolean as a hidden input that ALWAYS
+ * submits `"true"` or `"false"` (`renderBooleanField` in
+ * `packages/ui/src/ganado/animal-crud.tsx` — it is NOT a checkbox). Both
+ * values must travel: an explicit `false` is what lets the user uncheck a
+ * previously checked box on edit. Anything else → absent.
+ */
+function parseOptionalBoolean(value: FormDataEntryValue | null): boolean | undefined {
+  if (value === "true") return true
+  if (value === "false") return false
+  return undefined
+}
+
+/** Issue #206: `numeroPezones` is a plain text input; empty/NaN stays absent. */
+function parseNumeroPezones(value: FormDataEntryValue | null): number | undefined {
+  if (typeof value !== "string") return undefined
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 type CreateAnimalDatos = CreateAnimalWebInput["datos"]
 
 /**
@@ -94,6 +114,16 @@ type CreateAnimalMappedField =
   | "padreId"
   | "precioCompra"
   | "pesoCompra"
+  | "codigoArete"
+  | "codigoRfid"
+  | "hierroId"
+  | "propietarioId"
+  | "comentarios"
+  | "numeroPezones"
+  | "tatuado"
+  | "herrado"
+  | "descornado"
+  | "esDeMonta"
 
 type CreateAnimalDatosDraft = {
   readonly [K in CreateAnimalMappedField]: CreateAnimalDatos[K] | undefined
@@ -147,6 +177,18 @@ export function buildCreateAnimalInputFromFormData(
     padreId: optionalText(formData, "padreId"),
     precioCompra: parseEsCONumber(formData.get("precioCompra")),
     pesoCompra: parseEsCONumber(formData.get("pesoCompra")),
+    // Issue #206: the form captures these 10 fields; without the explicit
+    // mapping they were silently dropped before reaching the harness.
+    codigoArete: optionalText(formData, "codigoArete"),
+    codigoRfid: optionalText(formData, "codigoRfid"),
+    hierroId: optionalText(formData, "hierroId"),
+    propietarioId: optionalText(formData, "propietarioId"),
+    comentarios: optionalText(formData, "comentarios"),
+    numeroPezones: parseNumeroPezones(formData.get("numeroPezones")),
+    tatuado: parseOptionalBoolean(formData.get("tatuado")),
+    herrado: parseOptionalBoolean(formData.get("herrado")),
+    descornado: parseOptionalBoolean(formData.get("descornado")),
+    esDeMonta: parseOptionalBoolean(formData.get("esDeMonta")),
   }
   return { fincaId, datos: compactCreateAnimalDatos(draft) }
 }

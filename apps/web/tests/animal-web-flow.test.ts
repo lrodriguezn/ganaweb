@@ -729,6 +729,19 @@ async function testRouteFormPayloadBuilders() {
   createForm.set("sectorId", "sector-cria")
   createForm.set("loteId", "lote-a")
   createForm.set("grupoId", "grupo-hato")
+  // Issue #206: the 10 extended fields the form captures. Booleans always
+  // submit "true"/"false" (hidden input, not a checkbox) — both values must
+  // land in datos so an explicit false can uncheck a previously checked box.
+  createForm.set("codigoArete", " AR-500 ")
+  createForm.set("codigoRfid", "982000100124")
+  createForm.set("hierroId", "hierro-1")
+  createForm.set("propietarioId", "propietario-1")
+  createForm.set("comentarios", " Novilla de reemplazo ")
+  createForm.set("numeroPezones", "4")
+  createForm.set("tatuado", "true")
+  createForm.set("herrado", "false")
+  createForm.set("descornado", "true")
+  createForm.set("esDeMonta", "false")
   assert.deepEqual(buildCreateAnimalInputFromFormData("finca-1", createForm), {
     fincaId: "finca-1",
     datos: {
@@ -744,6 +757,16 @@ async function testRouteFormPayloadBuilders() {
       sectorId: "sector-cria",
       loteId: "lote-a",
       grupoId: "grupo-hato",
+      codigoArete: "AR-500",
+      codigoRfid: "982000100124",
+      hierroId: "hierro-1",
+      propietarioId: "propietario-1",
+      comentarios: "Novilla de reemplazo",
+      numeroPezones: 4,
+      tatuado: true,
+      herrado: false,
+      descornado: true,
+      esDeMonta: false,
     },
   })
 
@@ -768,6 +791,17 @@ async function testRouteFormPayloadBuilders() {
   updateForm.set("padreId", "animal-toro-1")
   updateForm.set("precioCompra", "")
   updateForm.set("pesoCompra", "")
+  // Issue #206: the same 10 extended fields travel through the update mapper.
+  updateForm.set("codigoArete", "AR-500")
+  updateForm.set("codigoRfid", "982000100124")
+  updateForm.set("hierroId", "hierro-1")
+  updateForm.set("propietarioId", "propietario-1")
+  updateForm.set("comentarios", "Vientre confirmado")
+  updateForm.set("numeroPezones", "4")
+  updateForm.set("tatuado", "true")
+  updateForm.set("herrado", "false")
+  updateForm.set("descornado", "true")
+  updateForm.set("esDeMonta", "false")
   const updateResult = buildUpdateAnimalInputFromFormData("finca-1", "animal-1", updateForm)
   assert.equal(updateResult.fincaId, "finca-1", "update result carries fincaId unchanged")
   assert.equal(updateResult.animalId, "animal-1", "update result carries animalId unchanged")
@@ -809,6 +843,49 @@ async function testRouteFormPayloadBuilders() {
   )
   assert.equal(updateResult.cambios.madreId, "animal-mt-100", "update mapper must read madreId")
   assert.equal(updateResult.cambios.padreId, "animal-toro-1", "update mapper must read padreId")
+  // Issue #206: the 10 extended fields land in cambios with typed values.
+  assert.equal(
+    updateResult.cambios.codigoArete,
+    "AR-500",
+    "update mapper must read codigoArete into cambios",
+  )
+  assert.equal(
+    updateResult.cambios.codigoRfid,
+    "982000100124",
+    "update mapper must read codigoRfid into cambios",
+  )
+  assert.equal(
+    updateResult.cambios.hierroId,
+    "hierro-1",
+    "update mapper must read hierroId into cambios",
+  )
+  assert.equal(
+    updateResult.cambios.propietarioId,
+    "propietario-1",
+    "update mapper must read propietarioId into cambios",
+  )
+  assert.equal(
+    updateResult.cambios.comentarios,
+    "Vientre confirmado",
+    "update mapper must read comentarios into cambios",
+  )
+  assert.equal(
+    updateResult.cambios.numeroPezones,
+    4,
+    "update mapper must parse numeroPezones into a number",
+  )
+  assert.equal(updateResult.cambios.tatuado, true, "update mapper must read tatuado=true")
+  assert.equal(
+    updateResult.cambios.herrado,
+    false,
+    "update mapper must carry an explicit herrado=false (uncheck on edit)",
+  )
+  assert.equal(updateResult.cambios.descornado, true, "update mapper must read descornado=true")
+  assert.equal(
+    updateResult.cambios.esDeMonta,
+    false,
+    "update mapper must carry an explicit esDeMonta=false (uncheck on edit)",
+  )
   // Empty fechaCompra / precioCompra / pesoCompra are dropped from cambios
   // (the form's CA-UI-007 toggle may have mounted the comprado block but
   // left the inputs blank — those must not travel to the harness).
@@ -866,6 +943,61 @@ async function testRouteFormPayloadBuildersCarryTipoExplotacionId() {
     updateResult.cambios.tipoExplotacionId,
     "tipo-doble-proposito",
     "update mapper must read the form's tipoExplotacionId key into cambios.tipoExplotacionId",
+  )
+}
+
+async function testRouteFormPayloadBuildersParseIssue206Semantics() {
+  // Issue #206: parsing semantics of the 10 extended fields in BOTH route
+  // mappers. Booleans: "true"/"false" travel (false included — it unchecks
+  // a previously checked box on edit), anything else is absent. Text: only
+  // non-empty trimmed values travel. numeroPezones: only finite integers.
+  const createForm = new FormData()
+  createForm.set("codigo", "LG-500")
+  createForm.set("nombre", "LG 500")
+  createForm.set("sexoKey", "1")
+  createForm.set("codigoArete", "   ")
+  createForm.set("comentarios", "")
+  createForm.set("numeroPezones", "no-numero")
+  createForm.set("tatuado", "quizas")
+  createForm.set("herrado", "false")
+  const createResult = buildCreateAnimalInputFromFormData("finca-1", createForm)
+  const createDatos = createResult.datos as Record<string, unknown>
+  for (const key of ["codigoArete", "comentarios", "numeroPezones", "tatuado"]) {
+    assert.ok(!(key in createDatos), `create mapper must drop absent/invalid '${key}' from datos`)
+  }
+  assert.equal(
+    createResult.datos.herrado,
+    false,
+    "create mapper must carry an explicit false boolean into datos",
+  )
+
+  // numeroPezones: a finite integer travels (0 included); empty stays absent.
+  const numericForm = new FormData()
+  numericForm.set("codigo", "LG-501")
+  numericForm.set("nombre", "LG 501")
+  numericForm.set("sexoKey", "1")
+  numericForm.set("numeroPezones", "0")
+  const numericResult = buildCreateAnimalInputFromFormData("finca-1", numericForm)
+  assert.equal(numericResult.datos.numeroPezones, 0, "numeroPezones=0 is finite and must travel")
+
+  const updateForm = new FormData()
+  updateForm.set("codigo", "LG-500")
+  updateForm.set("versionLeida", "1")
+  updateForm.set("codigoRfid", "   ")
+  updateForm.set("hierroId", "")
+  updateForm.set("propietarioId", "")
+  updateForm.set("numeroPezones", "")
+  updateForm.set("descornado", "1")
+  updateForm.set("esDeMonta", "false")
+  const updateResult = buildUpdateAnimalInputFromFormData("finca-1", "animal-1", updateForm)
+  const cambios = updateResult.cambios as Record<string, unknown>
+  for (const key of ["codigoRfid", "hierroId", "propietarioId", "numeroPezones", "descornado"]) {
+    assert.ok(!(key in cambios), `update mapper must drop absent/invalid '${key}' from cambios`)
+  }
+  assert.equal(
+    updateResult.cambios.esDeMonta,
+    false,
+    "update mapper must carry an explicit false boolean into cambios",
   )
 }
 
@@ -1308,6 +1440,9 @@ async function testEditLoaderPreloadsRealAnimalValues() {
       descornado: false,
       esDeMonta: false,
       numeroPezones: 4,
+      // Issue #206: also pre-load the real codigoArete/comentarios columns.
+      codigoArete: "AR-500",
+      comentarios: "Vientre confirmado",
       potrero: "Potrero El Prado",
       sector: "Sector Cría",
       lote: "Lote 2",
@@ -1340,6 +1475,8 @@ async function testEditLoaderPreloadsRealAnimalValues() {
     descornado: false,
     esDeMonta: false,
     numeroPezones: 4,
+    codigoArete: "AR-500",
+    comentarios: "Vientre confirmado",
   })
   assert.deepEqual(loader.currentLocation, {
     potrero: "Potrero El Prado",
@@ -1381,6 +1518,8 @@ async function testEditLoaderKeepsAbsentValuesEmpty() {
     "hierroId",
     "propietarioId",
     "codigoRfid",
+    "codigoArete",
+    "comentarios",
   ]) {
     assert.equal(values[key], undefined, `absent '${key}' must stay empty, never fabricated`)
   }
@@ -1421,6 +1560,9 @@ async function testFichaExposesRealEditPreloadFields() {
         precioCompra: 2850000,
         pesoCompra: 395,
         tipoIngresoId: 1,
+        // Issue #206: el repositorio también expone codigoArete/comentarios.
+        codigoArete: "AR-500",
+        comentarios: "Vientre confirmado",
       }
     }
     return obtenerOriginal ? obtenerOriginal(animalId, fincaId) : null
@@ -1438,6 +1580,12 @@ async function testFichaExposesRealEditPreloadFields() {
   assert.equal(animal.precioCompra, 2850000)
   assert.equal(animal.pesoCompra, 395)
   assert.equal(animal.tipoIngresoId, 1)
+  assert.equal(animal.codigoArete, "AR-500", "ficha must expose the real codigoArete column")
+  assert.equal(
+    animal.comentarios,
+    "Vientre confirmado",
+    "ficha must expose the real comentarios column",
+  )
 
   const loader = editModule.mapAnimalFichaToLoaderData(ficha)
   assert.equal(loader.initialValues.codigo, "MT-124")
@@ -1450,6 +1598,16 @@ async function testFichaExposesRealEditPreloadFields() {
   assert.equal(loader.initialValues.precioCompra, "2.850.000")
   assert.equal(loader.initialValues.pesoCompra, "395")
   assert.equal(loader.initialValues.origen, "comprado")
+  assert.equal(
+    loader.initialValues.codigoArete,
+    "AR-500",
+    "edit loader must pre-load the real codigoArete (issue #206)",
+  )
+  assert.equal(
+    loader.initialValues.comentarios,
+    "Vientre confirmado",
+    "edit loader must pre-load the real comentarios (issue #206)",
+  )
 }
 
 async function testRouteFilesWireUiAndActions() {
@@ -1921,6 +2079,7 @@ async function run() {
   await testCreateRejectsCrossFincaUbicaciones()
   await testRouteFormPayloadBuilders()
   await testRouteFormPayloadBuildersCarryTipoExplotacionId()
+  await testRouteFormPayloadBuildersParseIssue206Semantics()
   await testCreateRouteMapperAlignsCatalogKeysWithContract()
   await testCreateRouteMapperIsFieldByField()
   await testCreateRouteMapperCarriesParentIdsWithoutPhantomKeys()
