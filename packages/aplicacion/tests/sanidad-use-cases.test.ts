@@ -110,7 +110,9 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
       usuarioCreadoPor: string
     }>,
     anularRegistroGrupal: [] as Array<{ id: string; fincaId: string }>,
-    registrarEntradaAlmacen: [] as Array<Parameters<SanidadEscrituraPort["registrarEntradaAlmacen"]>[0]>,
+    registrarEntradaAlmacen: [] as Array<
+      Parameters<SanidadEscrituraPort["registrarEntradaAlmacen"]>[0]
+    >,
   }
   const port: SanidadEscrituraPort = {
     registrarAplicaciones: async (entrada) => {
@@ -691,8 +693,7 @@ describe("registrarEntradaAlmacen — registro y stock (SAN-030, RN-041, SAN-031
     const conflicto = await registrarEntradaAlmacen(
       depsEntrada(
         fakeSanidadLectura().port,
-        fakeSanidadEscrituraConResultado({ tipo: "conflicto", detalle: "producto eliminado" })
-          .port,
+        fakeSanidadEscrituraConResultado({ tipo: "conflicto", detalle: "producto eliminado" }).port,
       ),
     )(comandoEntrada())
     expect(conflicto).toEqual({ tipo: "conflicto", detalle: "producto eliminado" })

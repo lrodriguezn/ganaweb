@@ -133,7 +133,9 @@ type SanidadAlmacenRuntimeDepsFactory = () => SanidadAlmacenDeps
 let sanidadAlmacenRuntimeDepsFactory: SanidadAlmacenRuntimeDepsFactory | null = () =>
   createSanidadAlmacenDeps(db)
 
-export function configureSanidadAlmacenRuntimeDeps(factory: SanidadAlmacenRuntimeDepsFactory | null) {
+export function configureSanidadAlmacenRuntimeDeps(
+  factory: SanidadAlmacenRuntimeDepsFactory | null,
+) {
   sanidadAlmacenRuntimeDepsFactory = factory
 }
 

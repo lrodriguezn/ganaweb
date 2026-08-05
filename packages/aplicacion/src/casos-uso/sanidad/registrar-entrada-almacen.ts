@@ -80,6 +80,39 @@ function tienePermisoSanidad(sesion: SesionSanidad, accion: string): boolean {
 }
 
 /**
+ * SAN-063 + PE-002: revalida el producto contra la finca activa. Devuelve el
+ * producto o el resultado final que corta el flujo.
+ */
+async function revalidarProductoAlmacen(
+  deps: RegistrarEntradaAlmacenDeps,
+  cmd: CommandRegistrarEntradaAlmacen,
+): Promise<
+  | { readonly ok: true }
+  | { readonly ok: false; readonly resultado: ResultadoRegistrarEntradaAlmacen }
+> {
+  const producto = await deps.lectura.obtenerProducto(cmd.productoId)
+  if (producto === null) {
+    return {
+      ok: false,
+      resultado: {
+        tipo: "validacion",
+        errores: [{ campo: "producto", detalle: "El producto sanitario no existe." }],
+      },
+    }
+  }
+  if (producto.fincaId !== cmd.sesion.fincaActivaId) {
+    return {
+      ok: false,
+      resultado: {
+        tipo: "permiso_denegado",
+        detalle: "El producto no pertenece a la finca activa (SAN-063).",
+      },
+    }
+  }
+  return { ok: true }
+}
+
+/**
  * Registra una entrada de almacén append-only (evento
  * RegistrarEntradaAlmacen). Ver el header del archivo para el flujo y las
  * reglas citadas.
@@ -103,20 +136,8 @@ export function registrarEntradaAlmacen(deps: RegistrarEntradaAlmacenDeps) {
     })
     if (errores.length > 0) return { tipo: "validacion", errores }
 
-    // SAN-063: revalida el producto contra la finca activa (PE-002).
-    const producto = await deps.lectura.obtenerProducto(cmd.productoId)
-    if (producto === null) {
-      return {
-        tipo: "validacion",
-        errores: [{ campo: "producto", detalle: "El producto sanitario no existe." }],
-      }
-    }
-    if (producto.fincaId !== cmd.sesion.fincaActivaId) {
-      return {
-        tipo: "permiso_denegado",
-        detalle: "El producto no pertenece a la finca activa (SAN-063).",
-      }
-    }
+    const pasoProducto = await revalidarProductoAlmacen(deps, cmd)
+    if (!pasoProducto.ok) return pasoProducto.resultado
 
     const escrito = await deps.escritura.registrarEntradaAlmacen({
       fincaId: cmd.sesion.fincaActivaId,

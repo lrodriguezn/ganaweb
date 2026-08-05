@@ -49,9 +49,7 @@ describe("FormularioEntradaAlmacen — nota append-only (D-008)", () => {
   it("muestra la nota de contexto: sin edición ni anulación en v1", () => {
     render(<FormularioEntradaAlmacen productos={PRODUCTOS} onGuardar={() => {}} />)
 
-    expect(
-      screen.getByText(/no se editan ni se anulan/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/no se editan ni se anulan/i)).toBeInTheDocument()
     expect(screen.getByText(/nueva entrada/i)).toBeInTheDocument()
   })
 })

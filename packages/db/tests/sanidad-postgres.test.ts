@@ -352,7 +352,10 @@ describe.skipIf(!dbSmoke)("Issue #210: almacén de entradas (smoke Postgres)", (
   let adaptador: DrizzleSanidadAdapter
 
   async function contarOutboxDeFinca(fid: string): Promise<number> {
-    const filas = await db.select({ id: syncOutbox.id }).from(syncOutbox).where(eq(syncOutbox.fincaId, fid))
+    const filas = await db
+      .select({ id: syncOutbox.id })
+      .from(syncOutbox)
+      .where(eq(syncOutbox.fincaId, fid))
     return filas.length
   }
 
@@ -369,7 +372,12 @@ describe.skipIf(!dbSmoke)("Issue #210: almacén de entradas (smoke Postgres)", (
     adaptador = new DrizzleSanidadAdapter(db)
 
     await db.insert(fincas).values([
-      { id: fincaId, codigo: `ALM-${sufijo.toUpperCase()}`, nombre: "Finca Almacén Test", activo: 1 },
+      {
+        id: fincaId,
+        codigo: `ALM-${sufijo.toUpperCase()}`,
+        nombre: "Finca Almacén Test",
+        activo: 1,
+      },
       { id: fincaAjenaId, codigo: `AJE-${sufijo.toUpperCase()}`, nombre: "Finca Ajena", activo: 1 },
     ])
 
@@ -405,8 +413,12 @@ describe.skipIf(!dbSmoke)("Issue #210: almacén de entradas (smoke Postgres)", (
 
   afterAll(async () => {
     await db.delete(syncOutbox).where(inArray(syncOutbox.fincaId, [fincaId, fincaAjenaId]))
-    await db.delete(almacenEntradas).where(inArray(almacenEntradas.productoId, [productoId, productoAjenoId]))
-    await db.delete(productosSanitarios).where(inArray(productosSanitarios.id, [productoId, productoAjenoId]))
+    await db
+      .delete(almacenEntradas)
+      .where(inArray(almacenEntradas.productoId, [productoId, productoAjenoId]))
+    await db
+      .delete(productosSanitarios)
+      .where(inArray(productosSanitarios.id, [productoId, productoAjenoId]))
     await db.delete(fincas).where(inArray(fincas.id, [fincaId, fincaAjenaId]))
     await db.delete(usuarios).where(eq(usuarios.id, usuarioId))
     await db.$client.end()

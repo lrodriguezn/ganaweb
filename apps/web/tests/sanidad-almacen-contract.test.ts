@@ -28,9 +28,7 @@ import {
 const FINCA_ID = "finca-esperanza"
 const HOY = new Date("2026-08-05T12:00:00")
 
-function sesionAutorizada(
-  overrides: Partial<SesionAutorizada> = {},
-): SesionAutorizada {
+function sesionAutorizada(overrides: Partial<SesionAutorizada> = {}): SesionAutorizada {
   return {
     usuarioId: "user-admin",
     nombre: "Admin",
@@ -49,12 +47,14 @@ function sesionAutorizada(
 
 type ResultadoEntrada = Awaited<ReturnType<SanidadEscrituraPort["registrarEntradaAlmacen"]>>
 
-function fakeDeps(config: {
-  readonly producto?: { readonly id: string; readonly fincaId: string } | null
-  readonly stock?: number
-  readonly entradas?: readonly EntradaAlmacenListada[]
-  readonly resultadoEntrada?: ResultadoEntrada
-} = {}) {
+function fakeDeps(
+  config: {
+    readonly producto?: { readonly id: string; readonly fincaId: string } | null
+    readonly stock?: number
+    readonly entradas?: readonly EntradaAlmacenListada[]
+    readonly resultadoEntrada?: ResultadoEntrada
+  } = {},
+) {
   const llamadas = {
     obtenerProducto: [] as string[],
     obtenerStockDisponible: [] as string[],
@@ -100,10 +100,7 @@ function fakeDeps(config: {
   return { deps, llamadas }
 }
 
-function harnessCon(
-  deps: SanidadAlmacenDeps,
-  sesion: SesionAutorizada | null,
-) {
+function harnessCon(deps: SanidadAlmacenDeps, sesion: SesionAutorizada | null) {
   return createSanidadAlmacenActionHarness({
     deps,
     getSession: async () => sesion,

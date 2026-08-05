@@ -3,13 +3,7 @@ import { type FormEvent, useState } from "react"
 import { Button } from "../primitives/button"
 import { Input } from "../primitives/input"
 import { Label } from "../primitives/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../primitives/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../primitives/select"
 
 /**
  * FormularioEntradaAlmacen — captura de una entrada de stock (Issue #210,
@@ -58,7 +52,10 @@ function hoyIso(): string {
   return `${ahora.getFullYear()}-${mes}-${dia}`
 }
 
-function ErrorCampo({ id, mensaje }: { readonly id: string; readonly mensaje: string | undefined }) {
+function ErrorCampo({
+  id,
+  mensaje,
+}: { readonly id: string; readonly mensaje: string | undefined }) {
   if (!mensaje) return null
   return (
     <p id={id} role="alert" className="text-caption text-danger-600">
