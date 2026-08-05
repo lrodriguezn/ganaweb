@@ -136,8 +136,7 @@ describe("validarDatosProductoSanitario — enum tipo_tratamiento (§3, §13.13)
       expect(resultado.errores).toEqual([
         {
           campo: "tipo_tratamiento",
-          detalle:
-            "El tipo de tratamiento debe ser uno de: reproductivo, no_reproductivo, vacuna.",
+          detalle: "El tipo de tratamiento debe ser uno de: reproductivo, no_reproductivo, vacuna.",
         },
       ])
     }

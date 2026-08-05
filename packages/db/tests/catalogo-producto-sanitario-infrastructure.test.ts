@@ -312,7 +312,9 @@ describe("listar — RN-041 / SAN-021", () => {
     }
 
     const fakeSinFiltro = fakeDb({ filasSelect: [] })
-    const adaptadorSinFiltro = new DrizzleCatalogoProductoSanitarioAdapter(fakeSinFiltro.db as never)
+    const adaptadorSinFiltro = new DrizzleCatalogoProductoSanitarioAdapter(
+      fakeSinFiltro.db as never,
+    )
     await adaptadorSinFiltro.listar(FINCA, { soloActivos: false })
     const sinFiltro = fakeSinFiltro.operaciones.find((operacion) => operacion.tipo === "select")
     if (sinFiltro?.tipo === "select") {

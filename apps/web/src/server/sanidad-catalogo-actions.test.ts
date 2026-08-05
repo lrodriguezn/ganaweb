@@ -1,3 +1,10 @@
+import type {
+  CatalogoProductoSanitarioPort,
+  FilaProductoSanitarioListado,
+  ProductoSanitarioReferencia,
+  ProductoSanitarioValidado,
+  SesionAutorizada,
+} from "@ganaweb/aplicacion"
 /**
  * Server functions del catálogo de productos sanitarios (Issue #209,
  * RF-SANIDAD v0.2 §2/§6, PE-002).
@@ -16,13 +23,6 @@
  * `configuracion-actions.test.ts`); sin Postgres.
  */
 import { describe, expect, it } from "vitest"
-import type {
-  CatalogoProductoSanitarioPort,
-  FilaProductoSanitarioListado,
-  ProductoSanitarioReferencia,
-  ProductoSanitarioValidado,
-  SesionAutorizada,
-} from "@ganaweb/aplicacion"
 import {
   type SanidadCatalogoDeps,
   createSanidadCatalogoActionHarness,
@@ -49,11 +49,13 @@ function session(overrides: Partial<SesionAutorizada> = {}): SesionAutorizada {
   }
 }
 
-function fakeCatalogoPort(options: {
-  readonly producto?: ProductoSanitarioReferencia | null
-  readonly filas?: readonly FilaProductoSanitarioListado[]
-  readonly stockMinimoDosis?: number | null
-} = {}): CatalogoProductoSanitarioPort {
+function fakeCatalogoPort(
+  options: {
+    readonly producto?: ProductoSanitarioReferencia | null
+    readonly filas?: readonly FilaProductoSanitarioListado[]
+    readonly stockMinimoDosis?: number | null
+  } = {},
+): CatalogoProductoSanitarioPort {
   return {
     obtenerPorId: async () => options.producto ?? null,
     crear: async () => ({ tipo: "creado", id: "prod-nuevo" }),
@@ -122,7 +124,10 @@ describe("denySanidadAccess — PE-002 / SAN-063", () => {
   })
 
   it("PE-001/SAN-061: decide por permiso, no por rol — rol 'Solo lectura' con sanidad:ver pasa", () => {
-    const soloLectura = session({ rol: "Solo lectura", permisos: [{ modulo: "sanidad", accion: "ver" }] })
+    const soloLectura = session({
+      rol: "Solo lectura",
+      permisos: [{ modulo: "sanidad", accion: "ver" }],
+    })
     expect(denySanidadAccess(soloLectura, "finca-1", "ver")).toBeNull()
     expect(hasSanidadPermission(soloLectura, "crear")).toBe(false)
   })
@@ -149,7 +154,10 @@ describe("harness crear — §13.10", () => {
       ],
     })
 
-    const resultado = await harness(port, sinCrear).crear({ fincaId: "finca-1", datos: datosValidos })
+    const resultado = await harness(port, sinCrear).crear({
+      fincaId: "finca-1",
+      datos: datosValidos,
+    })
 
     expect(resultado).toEqual({ tipo: "permiso_denegado", permiso: "sanidad:crear" })
     expect(tocoPuerto).toBe(false)
@@ -283,7 +291,10 @@ describe("harness listar — SAN-022 / KPI-10", () => {
       stockMinimoDosis: 15,
     })
 
-    const resultado = await harness(port, session()).listar({ fincaId: "finca-1", soloActivos: true })
+    const resultado = await harness(port, session()).listar({
+      fincaId: "finca-1",
+      soloActivos: true,
+    })
 
     expect(resultado.tipo).toBe("catalogo")
     if (resultado.tipo === "catalogo") {

@@ -22,13 +22,13 @@ import { cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { crearPermisos, tienePermiso } from "../src/ganado/types"
 import {
   CatalogoProductosSanitariosDesktop,
   CatalogoProductosSanitariosMobile,
   type FilaProductoSanitarioUI,
 } from "../src/ganado/catalogo-productos-sanitarios"
 import { FormularioProductoSanitario } from "../src/ganado/formulario-producto-sanitario"
+import { crearPermisos, tienePermiso } from "../src/ganado/types"
 
 beforeAll(() => {
   // Radix Select/AlertDialog en jsdom (patrón select-con-creacion.test.tsx).
@@ -81,7 +81,12 @@ describe("Catálogo desktop — SAN-022 / KPI-10", () => {
         filas={[
           fila({ id: "p-ok", codigo: "VAC-AFTOSA", stockDisponible: 148, estadoStock: "ok" }),
           fila({ id: "p-bajo", codigo: "IVERMECTINA", stockDisponible: 10, estadoStock: "bajo" }),
-          fila({ id: "p-agotado", codigo: "VITAMINA-A", stockDisponible: 0, estadoStock: "agotado" }),
+          fila({
+            id: "p-agotado",
+            codigo: "VITAMINA-A",
+            stockDisponible: 0,
+            estadoStock: "agotado",
+          }),
         ]}
         permisos={PERMISOS_ADMIN}
         onEditar={() => {}}
@@ -115,7 +120,16 @@ describe("Catálogo desktop — SAN-022 / KPI-10", () => {
   it("RN-050: ninguna vista expone botón de eliminar", () => {
     render(
       <CatalogoProductosSanitariosDesktop
-        filas={[fila(), fila({ id: "prod-2", codigo: "IVERMECTINA", activo: false, estadoStock: "agotado", stockDisponible: 0 })]}
+        filas={[
+          fila(),
+          fila({
+            id: "prod-2",
+            codigo: "IVERMECTINA",
+            activo: false,
+            estadoStock: "agotado",
+            stockDisponible: 0,
+          }),
+        ]}
         permisos={PERMISOS_ADMIN}
         onEditar={() => {}}
         onCambiarEstado={() => {}}
@@ -162,7 +176,9 @@ describe("Catálogo mobile — SAN-022 / SAN-021", () => {
     // SAN-021: el copy recuerda que se conserva en históricos.
     expect(screen.getByText(/históricos/i)).toBeInTheDocument()
 
-    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: /^inactivar$/i }))
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: /^inactivar$/i }),
+    )
     expect(onCambiarEstado).toHaveBeenCalledTimes(1)
     expect(onCambiarEstado).toHaveBeenCalledWith(expect.objectContaining({ id: "prod-1" }), false)
   })
@@ -199,7 +215,11 @@ describe("FormularioProductoSanitario — SAN-020", () => {
         onEnviar={() => {}}
         errores={[
           { campo: "codigo", detalle: "El campo código es obligatorio." },
-          { campo: "tipo_tratamiento", detalle: "El tipo de tratamiento debe ser uno de: reproductivo, no_reproductivo, vacuna." },
+          {
+            campo: "tipo_tratamiento",
+            detalle:
+              "El tipo de tratamiento debe ser uno de: reproductivo, no_reproductivo, vacuna.",
+          },
         ]}
       />,
     )

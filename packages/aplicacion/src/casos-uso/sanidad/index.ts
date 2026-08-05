@@ -6,9 +6,7 @@ export type {
   SesionSanidad,
 } from "./aplicar-producto-sanitario.js"
 export { aplicarProductoSanitario } from "./aplicar-producto-sanitario.js"
-export type {
-  CommandCambiarEstadoProductoSanitario,
-} from "./cambiar-estado-producto-sanitario.js"
+export type { CommandCambiarEstadoProductoSanitario } from "./cambiar-estado-producto-sanitario.js"
 export { cambiarEstadoProductoSanitario } from "./cambiar-estado-producto-sanitario.js"
 export type { CommandCrearProductoSanitario } from "./crear-producto-sanitario.js"
 export { crearProductoSanitario } from "./crear-producto-sanitario.js"

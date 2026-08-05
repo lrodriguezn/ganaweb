@@ -16,10 +16,7 @@
  * acción "inactivar" para el módulo.
  */
 
-import type {
-  CatalogoProductoSanitarioPort,
-  SesionAutorizada,
-} from "@ganaweb/aplicacion"
+import type { CatalogoProductoSanitarioPort, SesionAutorizada } from "@ganaweb/aplicacion"
 import {
   cambiarEstadoProductoSanitario,
   crearProductoSanitario,
@@ -217,9 +214,7 @@ export function createSanidadCatalogoRuntimeHarness({
   getSession = getAuthorizedSession,
 }: SanidadCatalogoRuntimeHarnessOptions = {}) {
   const runWithHarness = async <Result>(
-    work: (
-      harness: ReturnType<typeof createSanidadCatalogoActionHarness>,
-    ) => Promise<Result>,
+    work: (harness: ReturnType<typeof createSanidadCatalogoActionHarness>) => Promise<Result>,
   ) =>
     work(
       createSanidadCatalogoActionHarness({

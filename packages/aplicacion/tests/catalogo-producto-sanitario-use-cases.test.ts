@@ -133,7 +133,10 @@ function fila(overrides: Partial<FilaProductoSanitarioListado> = {}): FilaProduc
 describe("crearProductoSanitario", () => {
   it("SAN-020: entrada válida persiste vía puerto y devuelve creado (CM-042)", async () => {
     const fake = fakeCatalogo()
-    const resultado = await crearProductoSanitario(fake.port)({ fincaId: FINCA, datos: datosValidos() })
+    const resultado = await crearProductoSanitario(fake.port)({
+      fincaId: FINCA,
+      datos: datosValidos(),
+    })
 
     expect(resultado).toEqual({ tipo: "creado", id: "prod-nuevo" })
     expect(fake.llamadas).toContain(`listarCodigosActivos:${FINCA}`)
@@ -160,7 +163,10 @@ describe("crearProductoSanitario", () => {
     const fake = fakeCatalogo({
       codigosActivos: [{ id: "prod-existente", codigo: "vac-aftosa" }],
     })
-    const resultado = await crearProductoSanitario(fake.port)({ fincaId: FINCA, datos: datosValidos() })
+    const resultado = await crearProductoSanitario(fake.port)({
+      fincaId: FINCA,
+      datos: datosValidos(),
+    })
 
     expect(resultado.tipo).toBe("validacion")
     if (resultado.tipo === "validacion") {
@@ -172,7 +178,10 @@ describe("crearProductoSanitario", () => {
 
   it("conflicto del puerto (carrera con el UNIQUE) se mapea 1:1 (SAN-023)", async () => {
     const fake = fakeCatalogo({ resultadoCrear: { tipo: "conflicto", campo: "codigo" } })
-    const resultado = await crearProductoSanitario(fake.port)({ fincaId: FINCA, datos: datosValidos() })
+    const resultado = await crearProductoSanitario(fake.port)({
+      fincaId: FINCA,
+      datos: datosValidos(),
+    })
 
     expect(resultado).toEqual({ tipo: "conflicto", campo: "codigo" })
   })

@@ -145,9 +145,7 @@ function validarNumeroOpcional(
   const numero = coercion.numero
   if (numero === null) return null
   if (numero < 0 || numero > maximo) {
-    errores.push(
-      error(campo, `El campo ${nombreLegible} debe ser un número entre 0 y ${maximo}.`),
-    )
+    errores.push(error(campo, `El campo ${nombreLegible} debe ser un número entre 0 y ${maximo}.`))
     return null
   }
   return numero
@@ -185,7 +183,12 @@ export function validarDatosProductoSanitario(
   const errores: ErrorValidacionSanidad[] = []
 
   const codigo = validarTextoRequerido(datos.codigo, "codigo", "código", errores)
-  const descripcion = validarTextoRequerido(datos.descripcion, "descripcion", "descripción", errores)
+  const descripcion = validarTextoRequerido(
+    datos.descripcion,
+    "descripcion",
+    "descripción",
+    errores,
+  )
 
   const mlMgPorDosis = validarNumeroOpcional(
     datos.mlMgPorDosis,
@@ -253,8 +256,7 @@ export function validarCodigoUnicoProductoSanitario(
   }
 
   const duplicado = codigosActivos.some(
-    (registro) =>
-      registro.id !== idPropio && registro.codigo.trim().toLowerCase() === normalizado,
+    (registro) => registro.id !== idPropio && registro.codigo.trim().toLowerCase() === normalizado,
   )
   if (duplicado) {
     return {

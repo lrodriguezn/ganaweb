@@ -99,6 +99,7 @@ export type {
 } from "./ganado/catalogo-productos-sanitarios"
 export { FormularioProductoSanitario } from "./ganado/formulario-producto-sanitario"
 export type {
+  ErrorCampoProductoSanitario,
   FormularioProductoSanitarioInicial,
   FormularioProductoSanitarioProps,
 } from "./ganado/formulario-producto-sanitario"
