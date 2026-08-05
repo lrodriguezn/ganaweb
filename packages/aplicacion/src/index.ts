@@ -123,6 +123,15 @@ export type {
 } from "@ganaweb/dominio"
 export type { DatosBasicosFinca, FincaLecturaPort } from "./puertos/finca-lectura-port.js"
 export type {
+  AnimalEventoSanidadReferencia,
+  AplicacionPreviaSanidad,
+  AplicacionSanitariaNueva,
+  ProductoSanitarioReferencia,
+  RegistroGrupalTratamientoNuevo,
+  SanidadEscrituraPort,
+  SanidadLecturaPort,
+} from "./puertos/sanidad-port.js"
+export type {
   ConteoCatalogoGlobalClave,
   ConteoFamiliaClave,
   ConteosMaestrosPort,
@@ -154,6 +163,7 @@ export * from "./casos-uso/listar-lugares-compra-por-finca.js"
 export * from "./casos-uso/listar-hierros-por-finca.js"
 export * from "./casos-uso/listar-propietarios-por-finca.js"
 export * from "./casos-uso/maestros/index.js"
+export * from "./casos-uso/sanidad/index.js"
 export type * from "./puertos/auth-repository-port.js"
 export type {
   DecisionAutorizacion,
