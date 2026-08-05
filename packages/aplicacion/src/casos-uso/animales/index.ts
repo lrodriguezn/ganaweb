@@ -611,6 +611,7 @@ function construirResumenFichaAnimal(entrada: {
     raza: bruto?.raza ?? null,
     color: bruto?.color ?? null,
     potrero: bruto?.potrero ?? null,
+    sector: bruto?.sector ?? null,
     lote: bruto?.lote ?? null,
     grupo: bruto?.grupo ?? null,
     edadMeses: calcularEdadMeses(animal.fechaNacimiento ?? null, hoy),

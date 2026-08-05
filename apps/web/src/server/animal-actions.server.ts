@@ -945,6 +945,7 @@ export function createAnimalActionHarness({
       }
     },
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ficha mapper exposing many optional real-data fields
     async ficha(
       input: AnimalIdWebInput & { readonly cursorTimeline?: string; readonly tabTimeline?: string },
     ) {
@@ -967,6 +968,23 @@ export function createAnimalActionHarness({
           // Slice 2: la línea de meta lee potrero/lote del item del animal.
           ...(result.resumen.potrero != null ? { potrero: result.resumen.potrero } : {}),
           ...(result.resumen.lote != null ? { lote: result.resumen.lote } : {}),
+          // Issue #201: el sector también es solo-lectura (ubicación actual
+          // de la edición); viene del modelo de lectura, nunca se fabrica.
+          ...(result.resumen.sector != null ? { sector: result.resumen.sector } : {}),
+          // Issue #201: campos reales de la fila `animales` para precargar
+          // la edición. Ausentes (null) → la clave no viaja y el formulario
+          // renderiza el campo vacío.
+          ...(result.animal.razaId != null ? { razaId: result.animal.razaId } : {}),
+          ...(result.animal.colorId != null ? { colorId: result.animal.colorId } : {}),
+          ...(result.animal.madreId != null ? { madreId: result.animal.madreId } : {}),
+          ...(result.animal.padreId != null ? { padreId: result.animal.padreId } : {}),
+          ...(result.animal.precioCompra != null
+            ? { precioCompra: result.animal.precioCompra }
+            : {}),
+          ...(result.animal.pesoCompra != null ? { pesoCompra: result.animal.pesoCompra } : {}),
+          ...(result.animal.tipoIngresoId != null
+            ? { tipoIngresoId: result.animal.tipoIngresoId }
+            : {}),
         },
         imagenes: result.imagenes,
         genealogia: result.genealogia,

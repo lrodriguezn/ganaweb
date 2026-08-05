@@ -1321,6 +1321,12 @@ export interface AnimalFormCatalogOptions {
 }
 
 export interface AnimalFormInitialValues {
+  /**
+   * Issue #201: codigo/nombre also pre-populate on edit. The plain-text
+   * fallthrough of `renderAnimalFormField` reads them as `defaultValue`.
+   */
+  codigo?: string
+  nombre?: string
   sexoKey?: SexoKey
   origen?: string
   fechaNacimiento?: string
@@ -2399,7 +2405,20 @@ const FIELD_RENDERERS: Record<string, FieldRenderer> = {
 function renderAnimalFormField(field: AnimalFormField, ctx: RenderFieldContext) {
   const renderer = FIELD_RENDERERS[field.name]
   if (renderer) return renderer(field, ctx)
-  return <Field key={field.name} {...field} fieldErrors={ctx.fieldErrors} />
+  // Issue #201: plain-text fields without a dedicated renderer (codigo,
+  // nombre, codigoArete, codigoRfid) pre-populate their real value on edit
+  // instead of rendering the static (empty) FORM_FIELDS default.
+  const initial = ctx.initialValues?.[field.name as keyof AnimalFormInitialValues]
+  const defaultValue =
+    typeof initial === "string" && initial.length > 0 ? initial : field.defaultValue
+  return (
+    <Field
+      key={field.name}
+      {...field}
+      {...(defaultValue !== undefined ? { defaultValue } : {})}
+      fieldErrors={ctx.fieldErrors}
+    />
+  )
 }
 
 function renderCurrentLocation(currentLocation?: AnimalCurrentLocation) {

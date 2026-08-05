@@ -21,6 +21,7 @@ const raza = `${fixture}-raza`
 const color = `${fixture}-color`
 const condicion = `${fixture}-condicion`
 const potrero = `${fixture}-potrero`
+const sector = `${fixture}-sector`
 const lote = `${fixture}-lote`
 const grupo = `${fixture}-grupo`
 const animalFull = `${fixture}-animal-full`
@@ -50,16 +51,19 @@ beforeAll(async () => {
     INSERT INTO potreros (id, finca_id, codigo, nombre) VALUES (${potrero}, ${fincaA}, 'PN-1', 'Potrero Norte')
   `)
   await execute(sql`
+    INSERT INTO sectores (id, finca_id, codigo, nombre) VALUES (${sector}, ${fincaA}, 'SC-1', 'Sector Cría')
+  `)
+  await execute(sql`
     INSERT INTO lotes (id, finca_id, nombre) VALUES (${lote}, ${fincaA}, 'Lote A')
   `)
   await execute(sql`
     INSERT INTO grupos (id, finca_id, nombre) VALUES (${grupo}, ${fincaA}, 'Grupo Vientres')
   `)
   await execute(sql`
-    INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo, raza_id, color_id, potrero_id, lote_id, grupo_id)
+    INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo, raza_id, color_id, potrero_id, sector_id, lote_id, grupo_id)
     VALUES
-      (${animalFull}, ${fincaA}, ${`${fixture}-F1`}, 'Lucera', 1, 1, ${raza}, ${color}, ${potrero}, ${lote}, ${grupo}),
-      (${animalEmpty}, ${fincaA}, ${`${fixture}-F2`}, 'Sin Historia', 1, 1, NULL, NULL, NULL, NULL, NULL)
+      (${animalFull}, ${fincaA}, ${`${fixture}-F1`}, 'Lucera', 1, 1, ${raza}, ${color}, ${potrero}, ${sector}, ${lote}, ${grupo}),
+      (${animalEmpty}, ${fincaA}, ${`${fixture}-F2`}, 'Sin Historia', 1, 1, NULL, NULL, NULL, NULL, NULL, NULL)
   `)
   await execute(sql`
     INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo)
@@ -114,6 +118,7 @@ afterAll(async () => {
   await execute(sql`DELETE FROM animales WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM registros_grupales WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM potreros WHERE id LIKE ${`${fixture}%`}`)
+  await execute(sql`DELETE FROM sectores WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM lotes WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM grupos WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM config_condiciones_corporales WHERE id LIKE ${`${fixture}%`}`)
@@ -132,6 +137,7 @@ describe.skipIf(process.env.CI === "true")("DrizzleAnimalFichaReadModel (Postgre
       raza: "Holstein",
       color: "Blanco y negro",
       potrero: "Potrero Norte",
+      sector: "Sector Cría",
       lote: "Lote A",
       grupo: "Grupo Vientres",
       // Descending by fecha; the anulled group weighing (2026-07-10) is excluded.
@@ -162,6 +168,7 @@ describe.skipIf(process.env.CI === "true")("DrizzleAnimalFichaReadModel (Postgre
       raza: null,
       color: null,
       potrero: null,
+      sector: null,
       lote: null,
       grupo: null,
       pesajes: [],

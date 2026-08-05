@@ -244,6 +244,7 @@ function deps(): AnimalUseCaseDeps & { consultasTimeline: readonly unknown[] } {
           raza: "Holstein",
           color: "Blanco y negro",
           potrero: "Potrero Norte",
+          sector: "Sector Cría",
           lote: "Lote A",
           grupo: "Grupo Vientres",
           pesajes: [
@@ -1277,6 +1278,180 @@ async function testCreatePersistsDatesRoundTripIntoEditLoader() {
   assert.equal(loader.initialValues.fechaCompra, "2026-07-15")
 }
 
+async function testEditLoaderPreloadsRealAnimalValues() {
+  // Issue #201: la edición precarga los valores REALES del animal (el
+  // mapper ya no contiene defaults demo como "raza-angus"/"Potrero Norte").
+  const editModule = await import("../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js")
+  const ficha = {
+    tipo: "ficha",
+    animal: {
+      id: "animal-real-1",
+      codigoAnimal: "MT-124",
+      nombreAnimal: "Paloma",
+      sexo: "hembra",
+      fechaNacimiento: 1644796800,
+      fechaCompra: 1755648000,
+      razaId: "raza-normando",
+      colorId: "col-rojo",
+      calidadAnimalId: "cal-regular",
+      tipoExplotacionId: "exp-doble",
+      hierroId: "hie-esp-1",
+      propietarioId: "prop-esp-1",
+      madreId: "animal-madre-1",
+      padreId: "animal-padre-1",
+      precioCompra: 2850000,
+      pesoCompra: 395,
+      tipoIngresoId: 1,
+      codigoRfid: "982000100124",
+      tatuado: false,
+      herrado: true,
+      descornado: false,
+      esDeMonta: false,
+      numeroPezones: 4,
+      potrero: "Potrero El Prado",
+      sector: "Sector Cría",
+      lote: "Lote 2",
+    },
+    resumen: { grupo: "Grupo Vientres" },
+  }
+
+  const loader = editModule.mapAnimalFichaToLoaderData(ficha)
+
+  assert.deepEqual(loader.initialValues, {
+    sexoKey: 1,
+    origen: "comprado",
+    fechaNacimiento: "2022-02-14",
+    fechaCompra: "2025-08-20",
+    precioCompra: "2.850.000",
+    pesoCompra: "395",
+    codigo: "MT-124",
+    nombre: "Paloma",
+    razaId: "raza-normando",
+    colorId: "col-rojo",
+    calidadId: "cal-regular",
+    tipoExplotacionId: "exp-doble",
+    hierroId: "hie-esp-1",
+    propietarioId: "prop-esp-1",
+    madreId: "animal-madre-1",
+    padreId: "animal-padre-1",
+    codigoRfid: "982000100124",
+    tatuado: false,
+    herrado: true,
+    descornado: false,
+    esDeMonta: false,
+    numeroPezones: 4,
+  })
+  assert.deepEqual(loader.currentLocation, {
+    potrero: "Potrero El Prado",
+    sector: "Sector Cría",
+    lote: "Lote 2",
+    grupo: "Grupo Vientres",
+  })
+}
+
+async function testEditLoaderKeepsAbsentValuesEmpty() {
+  // Issue #201: sin datos reales el campo queda vacío — nunca fabricado.
+  const editModule = await import("../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js")
+  const ficha = {
+    tipo: "ficha",
+    animal: { id: "animal-min", codigoAnimal: "AA-001", sexo: "macho" },
+  }
+
+  const loader = editModule.mapAnimalFichaToLoaderData(ficha)
+
+  assert.equal(loader.initialValues.sexoKey, 0)
+  assert.equal(loader.initialValues.codigo, "AA-001")
+  // Sin evidencia de compra (tipo_ingreso_id/fecha_compra) el origen más
+  // seguro es el default del formulario; origen nunca viaja al update.
+  assert.equal(loader.initialValues.origen, "nacido_en_finca")
+  assert.equal(loader.initialValues.fechaNacimiento, "")
+  assert.equal(loader.initialValues.fechaCompra, "")
+  assert.equal(loader.initialValues.precioCompra, "")
+  assert.equal(loader.initialValues.pesoCompra, "")
+  const values = loader.initialValues as Record<string, unknown>
+  for (const key of [
+    "nombre",
+    "razaId",
+    "colorId",
+    "calidadId",
+    "lugarCompraId",
+    "madreId",
+    "padreId",
+    "tipoExplotacionId",
+    "hierroId",
+    "propietarioId",
+    "codigoRfid",
+  ]) {
+    assert.equal(values[key], undefined, `absent '${key}' must stay empty, never fabricated`)
+  }
+  assert.deepEqual(loader.currentLocation, {})
+
+  // Denials / non-ficha shapes also degrade to empty (no fabrication).
+  const denied = editModule.mapAnimalFichaToLoaderData({ tipo: "permiso_denegado" })
+  assert.deepEqual(denied.initialValues, {})
+  assert.deepEqual(denied.currentLocation, {})
+}
+
+async function testFichaExposesRealEditPreloadFields() {
+  // Issue #201: el handler de la ficha expone las columnas reales de la
+  // fila `animales` (raza/color/madre/padre/precios/tipo_ingreso) para que
+  // el loader de edición las precargue — integración harness → mapper.
+  const editModule = await import("../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js")
+  const d = deps()
+  const obtenerOriginal = d.animales.obtenerPorIdYFinca
+  d.animales.obtenerPorIdYFinca = async (animalId, fincaId) => {
+    if (animalId === "animal-real" && fincaId === "finca-1") {
+      return {
+        id: "animal-real",
+        fincaId: "finca-1",
+        codigo: "MT-124",
+        nombre: "Paloma",
+        sexoKey: 1 as const,
+        version: 1,
+        activo: true,
+        usuarioCreadoPor: "usuario-1",
+        creadoEn: new Date("2026-07-12T10:00:00.000Z"),
+        fechaNacimiento: 1644796800,
+        fechaCompra: 1755648000,
+        razaId: "raza-normando",
+        colorId: "col-rojo",
+        calidadAnimalId: "cal-regular",
+        madreId: "animal-madre-1",
+        padreId: "animal-padre-1",
+        precioCompra: 2850000,
+        pesoCompra: 395,
+        tipoIngresoId: 1,
+      }
+    }
+    return obtenerOriginal ? obtenerOriginal(animalId, fincaId) : null
+  }
+  const harness = createAnimalActionHarness({ deps: d, getSession: async () => session() })
+
+  const ficha = await harness.ficha({ fincaId: "finca-1", animalId: "animal-real" })
+  assert.equal(ficha.tipo, "ficha", "ficha must be available for the real animal")
+  if (ficha.tipo !== "ficha") return
+  const animal = ficha.animal as Record<string, unknown>
+  assert.equal(animal.razaId, "raza-normando")
+  assert.equal(animal.colorId, "col-rojo")
+  assert.equal(animal.madreId, "animal-madre-1")
+  assert.equal(animal.padreId, "animal-padre-1")
+  assert.equal(animal.precioCompra, 2850000)
+  assert.equal(animal.pesoCompra, 395)
+  assert.equal(animal.tipoIngresoId, 1)
+
+  const loader = editModule.mapAnimalFichaToLoaderData(ficha)
+  assert.equal(loader.initialValues.codigo, "MT-124")
+  assert.equal(loader.initialValues.nombre, "Paloma")
+  assert.equal(loader.initialValues.razaId, "raza-normando")
+  assert.equal(loader.initialValues.colorId, "col-rojo")
+  assert.equal(loader.initialValues.calidadId, "cal-regular")
+  assert.equal(loader.initialValues.madreId, "animal-madre-1")
+  assert.equal(loader.initialValues.padreId, "animal-padre-1")
+  assert.equal(loader.initialValues.precioCompra, "2.850.000")
+  assert.equal(loader.initialValues.pesoCompra, "395")
+  assert.equal(loader.initialValues.origen, "comprado")
+}
+
 async function testRouteFilesWireUiAndActions() {
   const files = [
     "animales.tsx",
@@ -1753,6 +1928,9 @@ async function run() {
   await testEditRouteMapperNormalizesEsCOCompraNumerics()
   await testEditRoutePassesInitialValuesToForm()
   await testCreatePersistsDatesRoundTripIntoEditLoader()
+  await testEditLoaderPreloadsRealAnimalValues()
+  await testEditLoaderKeepsAbsentValuesEmpty()
+  await testFichaExposesRealEditPreloadFields()
   await testRouteFilesWireUiAndActions()
   await testCreateRouteWiresCatalogOptions()
   await testCreateRouteWiresNewCatalogOptions()

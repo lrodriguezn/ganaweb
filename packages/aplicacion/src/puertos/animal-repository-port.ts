@@ -79,6 +79,19 @@ export interface AnimalRegistro {
   readonly calidadAnimalId?: string | null
   readonly hierroId?: string | null
   readonly propietarioId?: string | null
+  /**
+   * Issue #201: columnas reales de la fila `animales` que la edición
+   * precarga en el formulario. Null/ausente = el animal no tiene el dato
+   * (nunca fabricar un valor default).
+   */
+  readonly razaId?: string | null
+  readonly colorId?: string | null
+  readonly madreId?: string | null
+  readonly padreId?: string | null
+  readonly precioCompra?: number | null
+  readonly pesoCompra?: number | null
+  /** `tipo_ingreso_id` (0 = nacido en finca, 1 = comprado); null = sin dato. */
+  readonly tipoIngresoId?: number | null
 }
 
 export interface AnimalRepositoryPort {

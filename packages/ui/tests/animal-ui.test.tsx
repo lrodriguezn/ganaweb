@@ -285,6 +285,42 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(formData.get("sexoKey")).toBe("1")
   })
 
+  it("pre-populates codigo/nombre from initialValues on edit (issue #201)", async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    render(
+      <AnimalFormScreen
+        mode="desktop"
+        formVariant="edit"
+        onSave={onSave}
+        onCancel={vi.fn()}
+        initialValues={{ codigo: "MT-124", nombre: "Paloma", sexoKey: 1 }}
+        catalogOptions={{ sexo: [{ value: "1", label: "Hembra" }] }}
+      />,
+    )
+
+    expect(screen.getByLabelText("Código *")).toHaveValue("MT-124")
+    expect(screen.getByLabelText("Nombre")).toHaveValue("Paloma")
+
+    // Saving without touching them round-trips the real values — an
+    // idempotent edit never fabricates nor drops codigo/nombre.
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+    expect(onSave).toHaveBeenCalledTimes(1)
+    const [formData] = onSave.mock.calls[0] as [FormData]
+    expect(formData.get("codigo")).toBe("MT-124")
+    expect(formData.get("nombre")).toBe("Paloma")
+  })
+
+  it("keeps codigo/nombre empty when initialValues are absent (issue #201)", () => {
+    render(
+      <AnimalFormScreen mode="desktop" formVariant="edit" onSave={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    expect(screen.getByLabelText("Código *")).toHaveValue("")
+    expect(screen.getByLabelText("Nombre")).toHaveValue("")
+  })
+
   it("keeps server-rendered controls disabled until hydration enables the interactive form", () => {
     const props = { mode: "desktop" as const, onSave: vi.fn(), onCancel: vi.fn() }
     const serverMarkup = renderToString(<AnimalFormScreen {...props} />)

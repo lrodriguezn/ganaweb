@@ -141,6 +141,14 @@ export function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegi
     calidadAnimalId: row.calidadAnimalId,
     hierroId: row.hierroId,
     propietarioId: row.propietarioId,
+    // Issue #201: columnas reales que la edición precarga (null = ausente).
+    razaId: row.razaId,
+    colorId: row.colorId,
+    madreId: row.madreId,
+    padreId: row.padreId,
+    precioCompra: row.precioCompra,
+    pesoCompra: row.pesoCompra,
+    tipoIngresoId: row.tipoIngresoId,
   }
 }
 
@@ -1491,6 +1499,7 @@ export class DrizzleAnimalFichaReadModel implements AnimalFichaResumenPort {
         raza: configRazas.nombre,
         color: configColores.nombre,
         potrero: potreros.nombre,
+        sector: sectores.nombre,
         lote: lotes.nombre,
         grupo: grupos.nombre,
       })
@@ -1498,6 +1507,7 @@ export class DrizzleAnimalFichaReadModel implements AnimalFichaResumenPort {
       .leftJoin(configRazas, eq(animales.razaId, configRazas.id))
       .leftJoin(configColores, eq(animales.colorId, configColores.id))
       .leftJoin(potreros, eq(animales.potreroId, potreros.id))
+      .leftJoin(sectores, eq(animales.sectorId, sectores.id))
       .leftJoin(lotes, eq(animales.loteId, lotes.id))
       .leftJoin(grupos, eq(animales.grupoId, grupos.id))
       .where(and(eq(animales.id, animalId), eq(animales.fincaId, fincaId)))
@@ -1576,6 +1586,7 @@ export class DrizzleAnimalFichaReadModel implements AnimalFichaResumenPort {
       raza: animalRow.raza ?? null,
       color: animalRow.color ?? null,
       potrero: animalRow.potrero ?? null,
+      sector: animalRow.sector ?? null,
       lote: animalRow.lote ?? null,
       grupo: animalRow.grupo ?? null,
       pesajes: pesajesRows.map((row) => ({ fecha: row.fecha, pesoKg: Number(row.pesoKg) })),
