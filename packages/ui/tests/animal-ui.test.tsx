@@ -1750,6 +1750,56 @@ describe("PR3 animal UI OpenPencil parity", () => {
       expect(footerEl).toHaveTextContent("Estimar por edad")
     })
   })
+
+  describe("Issue #216: versionLeida threading + form-level errors", () => {
+    it("renders the hidden versionLeida input with default 1 without the prop", () => {
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+      const input = document.querySelector<HTMLInputElement>('input[name="versionLeida"]')
+      expect(input).not.toBeNull()
+      expect(input).toHaveValue("1")
+    })
+
+    it("renders the prop-driven versionLeida and submits it in the FormData", async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          versionLeida={3}
+          onSave={onSave}
+          onCancel={vi.fn()}
+        />,
+      )
+      const input = document.querySelector<HTMLInputElement>('input[name="versionLeida"]')
+      expect(input).not.toBeNull()
+      expect(input).toHaveValue("3")
+
+      await user.type(screen.getByLabelText("Código *"), "LG-500")
+      await user.click(screen.getByRole("button", { name: "Guardar" }))
+      const [formData] = onSave.mock.calls[0] as [FormData]
+      expect(formData.get("versionLeida")).toBe("3")
+    })
+
+    it("renders a form-level alert for fieldErrors._form and none without it", () => {
+      render(
+        <AnimalFormScreen
+          mode="desktop"
+          formVariant="edit"
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          fieldErrors={{ _form: "La versión leída no coincide con la actual." }}
+        />,
+      )
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "La versión leída no coincide con la actual.",
+      )
+      cleanup()
+
+      render(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    })
+  })
 })
 
 /* =====================================================================

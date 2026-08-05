@@ -965,6 +965,10 @@ export function createAnimalActionHarness({
         tipo: "ficha" as const,
         animal: {
           ...toAnimalListItem(result.animal),
+          // Issue #216: la versión real de la fila `animales` (optimistic
+          // locking) para que la edición envíe la `versionLeida` correcta
+          // (CA-UPD-002); siempre presente en AnimalRegistro.
+          version: result.animal.version,
           // Slice 2: la línea de meta lee potrero/lote del item del animal.
           ...(result.resumen.potrero != null ? { potrero: result.resumen.potrero } : {}),
           ...(result.resumen.lote != null ? { lote: result.resumen.lote } : {}),

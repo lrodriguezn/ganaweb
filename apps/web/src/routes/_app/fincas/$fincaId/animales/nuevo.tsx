@@ -216,6 +216,11 @@ const CAMPO_TO_FIELD_KEY: Record<string, string> = {
  * imported here (design R2: the UI package never imports the domain); we only read the
  * `campo` and `detalle` fields off each item, and we guard non-array inputs locally
  * because the use case types `errores: unknown`.
+ *
+ * Issue #216: an error whose `campo` has no entry in `CAMPO_TO_FIELD_KEY`
+ * lands under the reserved `_form` key instead of being dropped — the form
+ * renders it as a form-level alert rather than failing silently (first
+ * unmapped error wins, same discipline as mapped fields).
  */
 export function buildCreateAnimalFieldErrors(errores: unknown): Record<string, string> {
   if (!Array.isArray(errores)) return {}
@@ -228,6 +233,8 @@ export function buildCreateAnimalFieldErrors(errores: unknown): Record<string, s
     const key = CAMPO_TO_FIELD_KEY[campo]
     if (key && fieldErrors[key] === undefined) {
       fieldErrors[key] = detalle
+    } else if (!key && fieldErrors._form === undefined) {
+      fieldErrors._form = detalle
     }
   }
   return fieldErrors

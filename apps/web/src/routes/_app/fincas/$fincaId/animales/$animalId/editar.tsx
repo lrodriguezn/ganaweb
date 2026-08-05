@@ -44,6 +44,9 @@ interface AnimalFichaLike {
   readonly tipo?: unknown
   readonly animal?: {
     readonly id?: string
+    // Issue #216: versión real de la fila (optimistic locking) para enviar
+    // la `versionLeida` correcta en el update (CA-UPD-002).
+    readonly version?: number | null
     readonly codigoAnimal?: string
     readonly nombreAnimal?: string
     readonly sexo?: "macho" | "hembra" | "pajuela"
@@ -80,6 +83,12 @@ interface AnimalFichaLike {
 export interface EditAnimalLoaderData {
   readonly initialValues: AnimalFormInitialValues
   readonly currentLocation: AnimalCurrentLocation
+  /**
+   * Issue #216: la versión leída del animal (optimistic locking). El input
+   * oculto `versionLeida` del formulario la envía de vuelta al update; sin
+   * ella CA-UPD-002 rechaza en silencio cualquier animal con versión > 1.
+   */
+  readonly versionLeida: number
   readonly sexoCatalog?: AnimalSexoCatalog
   readonly catalogs?: AnimalCatalogs
 }
@@ -106,15 +115,15 @@ export interface EditAnimalLoaderData {
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional real-data fields
 export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData {
   if (!ficha || typeof ficha !== "object") {
-    return { initialValues: {}, currentLocation: {} }
+    return { initialValues: {}, currentLocation: {}, versionLeida: 1 }
   }
   const fichaTyped = ficha as AnimalFichaLike
   if (fichaTyped.tipo !== "ficha") {
-    return { initialValues: {}, currentLocation: {} }
+    return { initialValues: {}, currentLocation: {}, versionLeida: 1 }
   }
   const animal = fichaTyped.animal
   if (!animal) {
-    return { initialValues: {}, currentLocation: {} }
+    return { initialValues: {}, currentLocation: {}, versionLeida: 1 }
   }
   const sexoKey: 0 | 1 | 2 = animal.sexo === "hembra" ? 1 : animal.sexo === "macho" ? 0 : 2
   const epochToIso = (epoch: number | null | undefined) =>
@@ -154,7 +163,10 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
     ...(animal.lote ? { lote: animal.lote } : {}),
     ...(fichaTyped.resumen?.grupo ? { grupo: fichaTyped.resumen.grupo } : {}),
   }
-  return { initialValues, currentLocation }
+  // Issue #216: la versión real viaja al input oculto `versionLeida`; sin
+  // dato (shapes legacy) el default 1 coincide con la creación.
+  const versionLeida = typeof animal.version === "number" ? animal.version : 1
+  return { initialValues, currentLocation, versionLeida }
 }
 
 async function loadEditAnimalInitialValues({
@@ -170,7 +182,7 @@ async function loadEditAnimalInitialValues({
   } catch {
     // A thrown loader (network / harness misconfig) keeps the form
     // mounted with empty fields rather than 500-ing the page.
-    return { initialValues: {}, currentLocation: {} }
+    return { initialValues: {}, currentLocation: {}, versionLeida: 1 }
   }
 }
 
@@ -322,6 +334,11 @@ export function buildUpdateAnimalInputFromFormData(
  * shape, and the form's `fieldErrors` prop is keyed by the form's
  * `name` attribute. First error wins per field so the user sees the
  * first message the use case raised.
+ *
+ * Issue #216: an error whose `campo` has no entry in `CAMPO_TO_FIELD_KEY`
+ * (e.g. CA-UPD-002 emits `campo: "version"`) lands under the reserved
+ * `_form` key instead of being dropped — the form renders it as a
+ * form-level alert rather than failing silently (first unmapped error wins).
  */
 export function buildUpdateAnimalFieldErrors(errores: unknown): Record<string, string> {
   if (!Array.isArray(errores)) return {}
@@ -334,6 +351,8 @@ export function buildUpdateAnimalFieldErrors(errores: unknown): Record<string, s
     const key = CAMPO_TO_FIELD_KEY[campo]
     if (key && fieldErrors[key] === undefined) {
       fieldErrors[key] = detalle
+    } else if (!key && fieldErrors._form === undefined) {
+      fieldErrors._form = detalle
     }
   }
   return fieldErrors
@@ -474,6 +493,7 @@ function EditAnimalRoute() {
         onSave={save}
         onCancel={() => history.back()}
         currentAnimalId={animalId}
+        versionLeida={loaderData.versionLeida}
       />
       {maestroInline ? (
         <CrearMaestroInline
