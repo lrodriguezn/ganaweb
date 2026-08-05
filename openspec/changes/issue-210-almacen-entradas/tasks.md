@@ -68,4 +68,4 @@ Chain strategy: pending
 
 ## Verificación final
 
-- [ ] 6.1 `pnpm turbo test` + `typecheck` en verde; §13 criterio 14 cubierto por tests que nombran SAN-030/RN-002/T-002.
+- [x] 6.1 `pnpm turbo test` + `typecheck` en verde; §13 criterio 14 cubierto por tests que nombran SAN-030/RN-002/T-002.
