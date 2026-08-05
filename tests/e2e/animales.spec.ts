@@ -144,16 +144,17 @@ test.describe("animal CRUD web flow", () => {
 
       // Issue #199: Editar navega al formulario. El frame del formulario
       // detecta el viewport (useMatchMedia) y renderiza la variante mobile
-      // con el mismo encabezado "Nuevo animal". El DOM SSR ya satisface las
-      // aserciones previas, así que el primer clic puede adelantarse a la
-      // hidratación (handlers de React aún sin conectar); se reintenta.
+      // con el encabezado de edición (issue #219: "Editar animal"). El DOM
+      // SSR ya satisface las aserciones previas, así que el primer clic
+      // puede adelantarse a la hidratación (handlers de React aún sin
+      // conectar); se reintenta.
       await expect(async () => {
         await ficha.getByRole("button", { name: "Editar" }).click()
         await expect(page).toHaveURL(/\/fincas\/finca-1\/animales\/animal-1\/editar$/, {
           timeout: 2_500,
         })
       }).toPass({ timeout: 15_000 })
-      await expect(animalFormFrame(page).getByText("Nuevo animal")).toBeVisible()
+      await expect(animalFormFrame(page).getByText("Editar animal")).toBeVisible()
       return
     }
 
@@ -197,7 +198,8 @@ test.describe("animal CRUD web flow", () => {
     // cubierto por las pruebas de ruta (slice 1, task 1.5).
     await ficha.getByRole("button", { name: "Editar" }).click()
     await expect(page).toHaveURL(/\/fincas\/finca-1\/animales\/animal-1\/editar$/)
-    await expect(animalFormFrame(page).getByText("Nuevo animal")).toBeVisible()
+    // Issue #219: la variante de edición muestra "Editar animal".
+    await expect(animalFormFrame(page).getByText("Editar animal")).toBeVisible()
   })
 
   test("read-only RBAC hides mutation controls and preserves responsive parity", async ({

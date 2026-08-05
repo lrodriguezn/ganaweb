@@ -321,6 +321,22 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.getByLabelText("Nombre")).toHaveValue("")
   })
 
+  it("derives the h1 title from formVariant: 'Editar animal' on edit, 'Nuevo animal' otherwise (issue #219)", () => {
+    const { rerender } = render(
+      <AnimalFormScreen mode="desktop" formVariant="edit" onSave={vi.fn()} onCancel={vi.fn()} />,
+    )
+    expect(screen.getByRole("heading", { level: 1, name: "Editar animal" })).toBeInTheDocument()
+
+    rerender(
+      <AnimalFormScreen mode="desktop" formVariant="create" onSave={vi.fn()} onCancel={vi.fn()} />,
+    )
+    expect(screen.getByRole("heading", { level: 1, name: "Nuevo animal" })).toBeInTheDocument()
+
+    // La variante por omisión es create.
+    rerender(<AnimalFormScreen mode="desktop" onSave={vi.fn()} onCancel={vi.fn()} />)
+    expect(screen.getByRole("heading", { level: 1, name: "Nuevo animal" })).toBeInTheDocument()
+  })
+
   it("keeps server-rendered controls disabled until hydration enables the interactive form", () => {
     const props = { mode: "desktop" as const, onSave: vi.fn(), onCancel: vi.fn() }
     const serverMarkup = renderToString(<AnimalFormScreen {...props} />)

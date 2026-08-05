@@ -736,6 +736,9 @@ async function testRouteFormPayloadBuilders() {
   createForm.set("codigoRfid", "982000100124")
   createForm.set("hierroId", "hierro-1")
   createForm.set("propietarioId", "propietario-1")
+  // Issue #219: the form serializes the lugar de compra selector under the
+  // unsuffixed "lugarCompra" key; the mapper translates it to lugarCompraId.
+  createForm.set("lugarCompra", "lugar-feria-manizales")
   createForm.set("comentarios", " Novilla de reemplazo ")
   createForm.set("numeroPezones", "4")
   createForm.set("tatuado", "true")
@@ -761,6 +764,7 @@ async function testRouteFormPayloadBuilders() {
       codigoRfid: "982000100124",
       hierroId: "hierro-1",
       propietarioId: "propietario-1",
+      lugarCompraId: "lugar-feria-manizales",
       comentarios: "Novilla de reemplazo",
       numeroPezones: 4,
       tatuado: true,
@@ -1399,6 +1403,8 @@ async function testCreatePersistsDatesRoundTripIntoEditLoader() {
       origen: "comprado",
       fechaNacimiento: "2026-07-10",
       fechaCompra: "2026-07-15",
+      // Issue #219: el lugar de compra debe persistir en la creación.
+      lugarCompraId: "lugar-feria-manizales",
     },
   })
   assert.equal(creado.tipo, "creado", "numeric sexoKey: 1 must reach creado (happy path)")
@@ -1408,6 +1414,11 @@ async function testCreatePersistsDatesRoundTripIntoEditLoader() {
   const loader = editModule.mapAnimalFichaToLoaderData(ficha)
   assert.equal(loader.initialValues.fechaNacimiento, "2026-07-10")
   assert.equal(loader.initialValues.fechaCompra, "2026-07-15")
+  assert.equal(
+    loader.initialValues.lugarCompraId,
+    "lugar-feria-manizales",
+    "create must persist lugarCompraId end-to-end (datos → guardar → ficha → loader) (issue #219)",
+  )
 }
 
 async function testEditLoaderPreloadsRealAnimalValues() {
@@ -1429,6 +1440,8 @@ async function testEditLoaderPreloadsRealAnimalValues() {
       tipoExplotacionId: "exp-doble",
       hierroId: "hie-esp-1",
       propietarioId: "prop-esp-1",
+      // Issue #219: el lugar de compra ya es una columna real precargable.
+      lugarCompraId: "lugar-feria-manizales",
       madreId: "animal-madre-1",
       padreId: "animal-padre-1",
       precioCompra: 2850000,
@@ -1467,6 +1480,7 @@ async function testEditLoaderPreloadsRealAnimalValues() {
     tipoExplotacionId: "exp-doble",
     hierroId: "hie-esp-1",
     propietarioId: "prop-esp-1",
+    lugarCompraId: "lugar-feria-manizales",
     madreId: "animal-madre-1",
     padreId: "animal-padre-1",
     codigoRfid: "982000100124",
@@ -1560,6 +1574,8 @@ async function testFichaExposesRealEditPreloadFields() {
         precioCompra: 2850000,
         pesoCompra: 395,
         tipoIngresoId: 1,
+        // Issue #219: el repositorio también expone el lugar de compra.
+        lugarCompraId: "lugar-feria-manizales",
         // Issue #206: el repositorio también expone codigoArete/comentarios.
         codigoArete: "AR-500",
         comentarios: "Vientre confirmado",
@@ -1589,6 +1605,11 @@ async function testFichaExposesRealEditPreloadFields() {
     "Vientre confirmado",
     "ficha must expose the real comentarios column",
   )
+  assert.equal(
+    animal.lugarCompraId,
+    "lugar-feria-manizales",
+    "ficha must expose the real lugarCompraId column (issue #219)",
+  )
 
   const loader = editModule.mapAnimalFichaToLoaderData(ficha)
   assert.equal(loader.initialValues.codigo, "MT-124")
@@ -1610,6 +1631,11 @@ async function testFichaExposesRealEditPreloadFields() {
     loader.initialValues.comentarios,
     "Vientre confirmado",
     "edit loader must pre-load the real comentarios (issue #206)",
+  )
+  assert.equal(
+    loader.initialValues.lugarCompraId,
+    "lugar-feria-manizales",
+    "edit loader must pre-load the real lugarCompraId (issue #219)",
   )
   assert.equal(
     loader.versionLeida,

@@ -1956,6 +1956,14 @@ function DetallesAdicionalesSection({
   )
 }
 
+/**
+ * Issue #219: el título visible depende de la variante del formulario. La
+ * variante delete no monta esta pantalla hoy; el fallback es el de creación.
+ */
+function animalFormScreenTitle(formVariant: AnimalFormVariant): string {
+  return formVariant === "edit" ? "Editar animal" : "Nuevo animal"
+}
+
 export function AnimalFormScreen({
   mode,
   formVariant = "create",
@@ -2028,7 +2036,7 @@ export function AnimalFormScreen({
           mobile && "justify-between",
         )}
       >
-        <h1 className="text-title font-semibold">Nuevo animal</h1>
+        <h1 className="text-title font-semibold">{animalFormScreenTitle(formVariant)}</h1>
         {mobile && (
           <Button type="button" variant="ghost" size="icon" aria-label="Cerrar" onClick={onCancel}>
             <X className="size-5" />
