@@ -34,8 +34,8 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1,U3. Carril #210: solo exports aditivo
 
 ## Phase 2 — Unit 2: Adaptador Drizzle
 
-- [ ] 2.1 RED: `packages/db/src/catalogo-producto-sanitario-infrastructure.test.ts` — conflicto de código (SAN-023), stock desde `inventario_sanitario` (RN-041), umbral desde `config_parametros_finca` (T-001), filtro `soloActivos` (SAN-021).
-- [ ] 2.2 GREEN: `packages/db/src/catalogo-producto-sanitario-infrastructure.ts` (puerto 1.4; unique → `conflicto` campo `codigo`; sin borrado físico, RN-050).
+- [x] 2.1 RED: `packages/db/src/catalogo-producto-sanitario-infrastructure.test.ts` — conflicto de código (SAN-023), stock desde `inventario_sanitario` (RN-041), umbral desde `config_parametros_finca` (T-001), filtro `soloActivos` (SAN-021).
+- [x] 2.2 GREEN: `packages/db/src/catalogo-producto-sanitario-infrastructure.ts` (puerto 1.4; unique → `conflicto` campo `codigo`; sin borrado físico, RN-050).
 
 ## Phase 3 — Unit 3: Server functions
 
