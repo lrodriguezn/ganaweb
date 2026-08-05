@@ -653,6 +653,25 @@ describe("PR3 animal UI OpenPencil parity", () => {
     expect(screen.getByRole("button", { name: "Registrar evento" })).toBeInTheDocument()
   })
 
+  it("wires the mobile ficha Editar button to the onEdit callback (issue #199)", async () => {
+    const user = userEvent.setup()
+    const onEdit = vi.fn()
+    render(
+      <AnimalFichaMobileScreen
+        animal={animal}
+        timeline={[]}
+        bottomNavItems={nav}
+        onRegistrarEvento={vi.fn()}
+        onEdit={onEdit}
+      />,
+    )
+
+    const frame = screen.getByTestId("op-frame-0232")
+    expect(frame).toHaveAccessibleName("04 Ficha Animal · Mobile")
+    await user.click(within(frame).getByRole("button", { name: "Editar" }))
+    expect(onEdit).toHaveBeenCalledTimes(1)
+  })
+
   it("renders the v1.3 field set with the new primitives and gates 'Crear nuevo' on configuracion:crear (CA-UI-001/002/004)", () => {
     render(
       <AnimalFormScreen

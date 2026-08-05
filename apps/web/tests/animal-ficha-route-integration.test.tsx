@@ -141,8 +141,21 @@ describe("animal ficha route — event drawer wiring (redesign-ficha-animal)", (
     const onEditar = vi.fn()
     render(<AnimalFichaRouteView {...fichaProps({ onEditar })} />)
 
-    // Acotado al frame desktop: el header mobile también expone "Editar".
+    // Acotado al frame desktop: el header mobile también expone "Editar"
+    // (su cableado lo cubre el test siguiente).
     const ficha = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    await user.click(await ficha.findByRole("button", { name: "Editar" }))
+    expect(onEditar).toHaveBeenCalledTimes(1)
+  })
+
+  it("wires the mobile ficha Editar to the edit navigation callback (issue #199)", async () => {
+    const user = userEvent.setup()
+    const onEditar = vi.fn()
+    render(<AnimalFichaRouteView {...fichaProps({ onEditar })} />)
+
+    // Ambos frames conviven en el DOM de jsdom (desktop `hidden md:block`,
+    // mobile `md:hidden`): se acota la consulta al frame mobile.
+    const ficha = within(screen.getByLabelText("04 Ficha Animal · Mobile"))
     await user.click(await ficha.findByRole("button", { name: "Editar" }))
     expect(onEditar).toHaveBeenCalledTimes(1)
   })
