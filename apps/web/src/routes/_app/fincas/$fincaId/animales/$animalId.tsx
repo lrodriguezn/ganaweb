@@ -176,6 +176,7 @@ export function AnimalFichaRouteView({
           timeline={[...estadoTimeline.items]}
           bottomNavItems={bottomNavItems}
           onRegistrarEvento={() => setDrawerEventoAbierto(true)}
+          {...(onEditar ? { onEdit: onEditar } : {})}
         />
       </div>
       <EventDrawer

@@ -1036,11 +1036,13 @@ function AnimalFichaMobileHeader({
   metrics,
   canEdit = false,
   canCreateEvents = false,
+  onEdit,
 }: {
   animal: AnimalListItem
   metrics: { label: string; value: string; context?: string }[]
   canEdit?: boolean
   canCreateEvents?: boolean
+  onEdit?: () => void
 }) {
   const blocked = animal.estadoActual !== "activo"
   return (
@@ -1080,7 +1082,11 @@ function AnimalFichaMobileHeader({
           </div>
         </div>
         <div className="flex gap-2">
-          {canEdit && <Button variant="secondary">Editar</Button>}
+          {canEdit && (
+            <Button type="button" variant="secondary" onClick={onEdit}>
+              Editar
+            </Button>
+          )}
           {canCreateEvents && !blocked && <Button>Registrar evento</Button>}
         </div>
       </div>
@@ -3539,6 +3545,7 @@ export interface AnimalFichaMobileScreenProps {
   timeline: AnimalTimelineItem[]
   bottomNavItems: ItemNav[]
   onRegistrarEvento: () => void
+  onEdit?: () => void
   metrics?: { label: string; value: string; context?: string }[]
   genealogy?: AnimalGenealogyProps
 }
@@ -3548,6 +3555,7 @@ export function AnimalFichaMobileScreen({
   timeline,
   bottomNavItems,
   onRegistrarEvento,
+  onEdit,
   metrics = [
     { label: "Edad", value: "—" },
     { label: "Último peso", value: "—" },
@@ -3567,7 +3575,12 @@ export function AnimalFichaMobileScreen({
         </div>
       </header>
       <main className="p-4 space-y-4">
-        <AnimalFichaMobileHeader animal={animal} metrics={metrics} canEdit />
+        <AnimalFichaMobileHeader
+          animal={animal}
+          metrics={metrics}
+          canEdit
+          {...(onEdit ? { onEdit } : {})}
+        />
         <div role="tablist" aria-label="Secciones de ficha" className="flex gap-2 overflow-x-auto">
           {[
             { label: "Timeline", selected: true },

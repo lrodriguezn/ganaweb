@@ -141,6 +141,19 @@ test.describe("animal CRUD web flow", () => {
       // eventos) sin tabs de dominio ni paginación visible.
       await expect(ficha.getByRole("listitem")).toHaveCount(20)
       await expect(page.getByText(/no puede eliminarse/)).toBeVisible()
+
+      // Issue #199: Editar navega al formulario. El frame del formulario
+      // detecta el viewport (useMatchMedia) y renderiza la variante mobile
+      // con el mismo encabezado "Nuevo animal". El DOM SSR ya satisface las
+      // aserciones previas, así que el primer clic puede adelantarse a la
+      // hidratación (handlers de React aún sin conectar); se reintenta.
+      await expect(async () => {
+        await ficha.getByRole("button", { name: "Editar" }).click()
+        await expect(page).toHaveURL(/\/fincas\/finca-1\/animales\/animal-1\/editar$/, {
+          timeout: 2_500,
+        })
+      }).toPass({ timeout: 15_000 })
+      await expect(animalFormFrame(page).getByText("Nuevo animal")).toBeVisible()
       return
     }
 
