@@ -67,6 +67,30 @@ export { calcularEdadMeses, calcularGdp, derivarResumenReproductivo } from "./an
 export type { ReferenciaAnimal, ResultadoValidacion } from "./rn-001.js"
 export { validarCodigoUnicoPorFinca } from "./rn-001.js"
 export type {
+  AplicacionPreviaSanidad,
+  AplicacionSanitariaNueva,
+  ErrorValidacionSanidad,
+  EstadoAnimalEventoSanidad,
+  EstadoStockSanidad,
+  TipoTratamientoSanidad,
+} from "./sanidad.js"
+export {
+  TIPOS_TRATAMIENTO_SANIDAD,
+  calcularStockDisponible,
+  construirAplicacionesSanitarias,
+  esAlertaReconciliacionStock,
+  esFechaIso,
+  estadoStockSanidad,
+  evaluarAnimalEnFinca,
+  planificarRegistroGrupal,
+  refuerzosAutoCompletados,
+  validarAnulacionRegistroGrupal,
+  validarCabeceraRegistroGrupal,
+  validarCantidadAnimalesSanidad,
+  validarFechaEventoSanidad,
+  validarTipoTratamiento,
+} from "./sanidad.js"
+export type {
   DecisionAutorizacion,
   EstadoAutorizacion,
   FincaUsuarioResumen,

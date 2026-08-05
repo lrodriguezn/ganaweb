@@ -206,6 +206,7 @@ describe("PR2 animal DB infrastructure", () => {
       "0004_animal_list_page_index_covering",
       "0005_animal_listado_preferencias",
       "0006_veterinarios_es_inseminador",
+      "0007_inventario_sanitario",
     ])
   })
 })

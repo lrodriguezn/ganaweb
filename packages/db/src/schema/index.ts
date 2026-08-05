@@ -75,6 +75,7 @@ export { registrosGrupales } from "./registros-grupales.js"
 export {
   almacenEntradas,
   aplicacionesSanitarias,
+  inventarioSanitario,
   productosSanitarios,
   revisionesVeterinarias,
 } from "./sanitarios.js"

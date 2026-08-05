@@ -4,6 +4,7 @@ import {
   integer,
   numeric,
   pgTable,
+  pgView,
   text,
   timestamp,
   uniqueIndex,
@@ -94,3 +95,19 @@ export const revisionesVeterinarias = pgTable(
   },
   (t) => [index("idx_revisiones_animal").on(t.animalId, t.fecha)],
 )
+
+/**
+ * Vista `inventario_sanitario` (RN-041/KPI-10): stock SIEMPRE calculado.
+ *
+ * La crea la migración `0007_inventario_sanitario.sql` — `.existing()` le
+ * indica a drizzle-kit que la vista ya vive en la base (no la genera en
+ * `generate`). A diferencia de la definición literal de schema_v3, la
+ * migración excluye las aplicaciones de grupos anulados (RN-051).
+ */
+export const inventarioSanitario = pgView("inventario_sanitario", {
+  productoId: text("producto_id"),
+  fincaId: text("finca_id"),
+  codigo: text("codigo"),
+  descripcion: text("descripcion"),
+  dosisDisponibles: numeric("dosis_disponibles"),
+}).existing()
