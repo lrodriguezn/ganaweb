@@ -1265,6 +1265,12 @@ export interface AnimalFormScreenProps {
    * Comboboxes as `excludedIds` so the animal cannot be set as its own parent.
    */
   currentAnimalId?: string
+  /**
+   * Issue #216: the animal's real version read by the edit loader (optimistic
+   * locking). Travels through the hidden `versionLeida` input so the update
+   * passes CA-UPD-002; defaults to 1 for the create variant.
+   */
+  versionLeida?: number
 }
 
 export type AnimalFormVariant = "create" | "edit" | "delete"
@@ -1962,6 +1968,7 @@ export function AnimalFormScreen({
   isSubmitting = false,
   onOrigenChange,
   currentAnimalId,
+  versionLeida,
 }: AnimalFormScreenProps) {
   const {
     mobile,
@@ -2038,7 +2045,9 @@ export function AnimalFormScreen({
         )}
       >
         <fieldset disabled={!isHydrated || isSubmitting} className="contents">
-          <input type="hidden" name="versionLeida" value="1" />
+          {/* Issue #216: la versión real del animal (optimistic locking);
+              default 1 para la variante de creación. */}
+          <input type="hidden" name="versionLeida" value={versionLeida ?? 1} />
 
           {/* ─── IDENTIFICACIÓN ─── */}
           <section aria-labelledby="identificacion-heading">
@@ -2116,6 +2125,15 @@ export function AnimalFormScreen({
             comentarios={comentarios}
             setComentarios={setComentarios}
           />
+
+          {/* Issue #216: errores sin campo mapeable (p.ej. CA-UPD-002 →
+              `version`) viajan bajo la clave reservada `_form`; se muestran
+              a nivel de formulario en vez de descartarse en silencio. */}
+          {fieldErrors?._form ? (
+            <p role="alert" className="text-caption text-danger-600">
+              {fieldErrors._form}
+            </p>
+          ) : null}
 
           <FormFooter
             mobile={mobile}

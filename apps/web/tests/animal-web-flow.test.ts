@@ -1573,6 +1573,9 @@ async function testFichaExposesRealEditPreloadFields() {
   assert.equal(ficha.tipo, "ficha", "ficha must be available for the real animal")
   if (ficha.tipo !== "ficha") return
   const animal = ficha.animal as Record<string, unknown>
+  // Issue #216: la ficha expone la versión real de la fila para que la
+  // edición envíe la `versionLeida` correcta (CA-UPD-002).
+  assert.equal(animal.version, 1, "ficha must expose the real animal version (issue #216)")
   assert.equal(animal.razaId, "raza-normando")
   assert.equal(animal.colorId, "col-rojo")
   assert.equal(animal.madreId, "animal-madre-1")
@@ -1608,6 +1611,95 @@ async function testFichaExposesRealEditPreloadFields() {
     "Vientre confirmado",
     "edit loader must pre-load the real comentarios (issue #206)",
   )
+  assert.equal(
+    loader.versionLeida,
+    1,
+    "edit loader must thread the real animal version into versionLeida (issue #216)",
+  )
+}
+
+async function testEditLoaderThreadsVersionLeida() {
+  // Issue #216: el loader de edición expone la versión REAL del animal para
+  // que el formulario envíe la `versionLeida` correcta (CA-UPD-002); sin
+  // versión (o sin ficha) el default es 1, nunca un valor fabricado mayor.
+  const editModule = await import("../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js")
+
+  const conVersion = editModule.mapAnimalFichaToLoaderData({
+    tipo: "ficha",
+    animal: { id: "animal-v3", codigoAnimal: "LG-500", sexo: "hembra", version: 3 },
+  })
+  assert.equal(
+    conVersion.versionLeida,
+    3,
+    "ficha with animal.version 3 must produce versionLeida 3 (issue #216)",
+  )
+
+  const sinVersion = editModule.mapAnimalFichaToLoaderData({
+    tipo: "ficha",
+    animal: { id: "animal-v1", codigoAnimal: "LG-100", sexo: "macho" },
+  })
+  assert.equal(
+    sinVersion.versionLeida,
+    1,
+    "ficha without version must default versionLeida to 1 (issue #216)",
+  )
+
+  const denegado = editModule.mapAnimalFichaToLoaderData({ tipo: "permiso_denegado" })
+  assert.equal(
+    denegado.versionLeida,
+    1,
+    "non-ficha input must default versionLeida to 1 (issue #216)",
+  )
+  assert.equal(editModule.mapAnimalFichaToLoaderData(null).versionLeida, 1)
+}
+
+async function testFieldErrorsRouteUnmappedCampoToFormKey() {
+  // Issue #216: CA-UPD-002 emite `campo: "version"`, que no tiene input en el
+  // formulario. Los mappers deben conservarlo bajo la clave reservada `_form`
+  // en vez de descartarlo (el descarte dejaba el formulario montado sin
+  // feedback: "guardar no hace nada").
+  const { buildUpdateAnimalFieldErrors } = await import(
+    "../src/routes/_app/fincas/$fincaId/animales/$animalId/editar.js"
+  )
+  const { buildCreateAnimalFieldErrors } = await import(
+    "../src/routes/_app/fincas/$fincaId/animales/nuevo.js"
+  )
+
+  const versionError = buildUpdateAnimalFieldErrors([
+    {
+      campo: "version",
+      regla: "CA-UPD-002",
+      detalle: "La versión leída no coincide con la actual.",
+    },
+  ])
+  assert.deepEqual(versionError, { _form: "La versión leída no coincide con la actual." })
+
+  // Mapped errors still land in their field keys alongside `_form`.
+  const mixed = buildUpdateAnimalFieldErrors([
+    { campo: "codigo", regla: "CA-UPD-001", detalle: "Código inválido" },
+    { campo: "version", regla: "CA-UPD-002", detalle: "Versión desactualizada" },
+  ])
+  assert.deepEqual(mixed, { codigo: "Código inválido", _form: "Versión desactualizada" })
+
+  // First unmapped error wins per `_form` (same discipline as mapped keys).
+  const firstWins = buildUpdateAnimalFieldErrors([
+    { campo: "version", detalle: "Primero" },
+    { campo: "estado_animal_key", detalle: "Segundo" },
+  ])
+  assert.deepEqual(firstWins, { _form: "Primero" })
+
+  // The create mapper shares the `_form` fallback.
+  const createErrors = buildCreateAnimalFieldErrors([
+    { campo: "campo_desconocido", detalle: "Error sin campo" },
+    { campo: "nombre", detalle: "Requerido" },
+  ])
+  assert.deepEqual(createErrors, { _form: "Error sin campo", nombre: "Requerido" })
+
+  const createFirstWins = buildCreateAnimalFieldErrors([
+    { campo: "desconocido_a", detalle: "Primero" },
+    { campo: "desconocido_b", detalle: "Segundo" },
+  ])
+  assert.deepEqual(createFirstWins, { _form: "Primero" })
 }
 
 async function testRouteFilesWireUiAndActions() {
@@ -2089,7 +2181,9 @@ async function run() {
   await testCreatePersistsDatesRoundTripIntoEditLoader()
   await testEditLoaderPreloadsRealAnimalValues()
   await testEditLoaderKeepsAbsentValuesEmpty()
+  await testEditLoaderThreadsVersionLeida()
   await testFichaExposesRealEditPreloadFields()
+  await testFieldErrorsRouteUnmappedCampoToFormKey()
   await testRouteFilesWireUiAndActions()
   await testCreateRouteWiresCatalogOptions()
   await testCreateRouteWiresNewCatalogOptions()
