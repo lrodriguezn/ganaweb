@@ -38,10 +38,10 @@ Chain strategy: pending
 
 `packages/aplicacion/src/puertos/sanidad-port.ts`, `src/casos-uso/sanidad/registrar-entrada-almacen.ts` + `index.ts`, `tests/sanidad-use-cases.test.ts`. Deps: U1.
 
-- [ ] 2.1 RED: sin `sanidad:crear` → `permiso_denegado` sin tocar puertos (PE-002, SAN-061).
-- [ ] 2.2 RED: producto de otra finca → `permiso_denegado` (SAN-063); entrada lleva `usuario_creado_por` (PE-006).
-- [ ] 2.3 RED: fecha futura / dosis ≤ 0 → `validacion` (RN-002, SAN-030); caso feliz → `registrada` con stock de la vista (RN-041), alerta si negativo (SAN-031).
-- [ ] 2.4 GREEN: unión serializable estilo CM-042; extiende `SanidadLecturaPort.listarEntradasAlmacen` y `SanidadEscrituraPort.registrarEntradaAlmacen` (entrada + outbox atómicos).
+- [x] 2.1 RED: sin `sanidad:crear` → `permiso_denegado` sin tocar puertos (PE-002, SAN-061).
+- [x] 2.2 RED: producto de otra finca → `permiso_denegado` (SAN-063); entrada lleva `usuario_creado_por` (PE-006).
+- [x] 2.3 RED: fecha futura / dosis ≤ 0 → `validacion` (RN-002, SAN-030); caso feliz → `registrada` con stock de la vista (RN-041), alerta si negativo (SAN-031).
+- [x] 2.4 GREEN: unión serializable estilo CM-042; extiende `SanidadLecturaPort.listarEntradasAlmacen` y `SanidadEscrituraPort.registrarEntradaAlmacen` (entrada + outbox atómicos).
 
 ## Unit 3 — DB: outbox transaccional (T-002, SAN-030)
 
