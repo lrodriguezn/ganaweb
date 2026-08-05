@@ -36,6 +36,7 @@ export interface FichaResumenBruto {
   readonly raza: string | null
   readonly color: string | null
   readonly potrero: string | null
+  readonly sector: string | null
   readonly lote: string | null
   readonly grupo: string | null
   /** Últimos dos pesajes (fecha descendente); menos si hay menos historia. */
@@ -55,6 +56,8 @@ export interface FichaAnimalResumen {
   readonly raza: string | null
   readonly color: string | null
   readonly potrero: string | null
+  /** Issue #201: nombre del sector actual (lo precarga la edición). */
+  readonly sector: string | null
   readonly lote: string | null
   readonly grupo: string | null
   /** Edad en meses derivada de fechaNacimiento (dominio: calcularEdadMeses). */

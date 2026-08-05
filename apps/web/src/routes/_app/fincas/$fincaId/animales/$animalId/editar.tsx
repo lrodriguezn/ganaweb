@@ -14,7 +14,7 @@ import {
   CrearMaestroInline,
   type MaestroInlineCreable,
 } from "../../../../../../configuracion/crear-maestro-inline.js"
-import { parseEsCONumber } from "../../../../../../lib/parsers/es-co-number.js"
+import { formatEsCONumber, parseEsCONumber } from "../../../../../../lib/parsers/es-co-number.js"
 import {
   type AnimalCatalogs,
   type AnimalSexoCatalog,
@@ -49,7 +49,28 @@ interface AnimalFichaLike {
     readonly sexo?: "macho" | "hembra" | "pajuela"
     readonly fechaNacimiento?: number | null
     readonly fechaCompra?: number | null
+    readonly razaId?: string | null
+    readonly colorId?: string | null
+    readonly calidadAnimalId?: string | null
+    readonly tipoExplotacionId?: string | null
+    readonly hierroId?: string | null
+    readonly propietarioId?: string | null
+    readonly madreId?: string | null
+    readonly padreId?: string | null
+    readonly precioCompra?: number | null
+    readonly pesoCompra?: number | null
+    readonly tipoIngresoId?: number | null
+    readonly codigoRfid?: string | null
+    readonly tatuado?: boolean | null
+    readonly herrado?: boolean | null
+    readonly descornado?: boolean | null
+    readonly esDeMonta?: boolean | null
+    readonly numeroPezones?: number | null
+    readonly potrero?: string | null
+    readonly sector?: string | null
+    readonly lote?: string | null
   }
+  readonly resumen?: { readonly grupo?: string | null }
 }
 
 export interface EditAnimalLoaderData {
@@ -61,14 +82,24 @@ export interface EditAnimalLoaderData {
 
 /**
  * Translate the `getAnimalFichaAction` server function's return value into
- * the loader's typed shape. If the ficha is a denial (no_autenticado,
+ * the loader's typed shape (issue #201): the edit form preloads the REAL
+ * values of the animal. If the ficha is a denial (no_autenticado,
  * permiso_denegado, finca_no_autorizada, animal_no_encontrado, etc.) or
- * the server returned a non-ficha shape, return a minimal demo
- * `initialValues` so the form can render with empty fields rather than
- * crashing. The v1.3 catalog ids (razaId, colorId, etc.) are demo
- * defaults; a per-finca loader will source them from the actual animal
- * record.
+ * the server returned a non-ficha shape, return empty `initialValues` so
+ * the form renders with empty fields rather than crashing.
+ *
+ * Ausent values stay absent/empty — NEVER fabricated:
+ * - `lugarCompraId` is never preloaded: the `animales` table has no
+ *   `lugar_compra_id` column (the create flow never persisted it), so any
+ *   value here would be invented.
+ * - `origen` is not persisted by the web create/edit flows (dominio only
+ *   uses it for validation; `tipo_ingreso_id` is written by the seed). It
+ *   is derived from real data: `tipo_ingreso_id = 1` or a present
+ *   `fecha_compra` → "comprado". Without evidence the safest default is
+ *   "nacido_en_finca" (the form's own default; origen never travels to the
+ *   update mapper, so it cannot corrupt data).
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional real-data fields
 export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData {
   if (!ficha || typeof ficha !== "object") {
     return { initialValues: {}, currentLocation: {} }
@@ -84,33 +115,39 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
   const sexoKey: 0 | 1 | 2 = animal.sexo === "hembra" ? 1 : animal.sexo === "macho" ? 0 : 2
   const epochToIso = (epoch: number | null | undefined) =>
     epoch ? new Date(epoch * 1000).toISOString().slice(0, 10) : ""
-  return {
-    initialValues: {
-      // NOTE: PR 2a locked the form, so `AnimalFormInitialValues` does
-      // not declare `codigo` / `nombre` (the form's `renderAnimalFormField`
-      // falls through to `<Field defaultValue={...}>` for those two
-      // names and the type intentionally omits them). A future PR will
-      // extend the form type to pre-populate codigo/nombre on edit.
-      sexoKey,
-      origen: "nacido_en_finca",
-      fechaNacimiento: epochToIso(animal.fechaNacimiento),
-      fechaCompra: epochToIso(animal.fechaCompra),
-      razaId: "raza-angus",
-      colorId: "color-negro",
-      calidadId: "calidad-extra",
-      lugarCompraId: "lugar-feria-manizales",
-      madreId: "",
-      padreId: "",
-      precioCompra: "",
-      pesoCompra: "",
-    },
-    currentLocation: {
-      potrero: "Potrero Norte",
-      sector: "Sector Cría",
-      lote: "Lote A",
-      grupo: "Grupo Hato General",
-    },
+  const origen: "nacido_en_finca" | "comprado" =
+    animal.tipoIngresoId === 1 || animal.fechaCompra != null ? "comprado" : "nacido_en_finca"
+  const initialValues: AnimalFormInitialValues = {
+    sexoKey,
+    origen,
+    fechaNacimiento: epochToIso(animal.fechaNacimiento),
+    fechaCompra: epochToIso(animal.fechaCompra),
+    precioCompra: formatEsCONumber(animal.precioCompra ?? null),
+    pesoCompra: formatEsCONumber(animal.pesoCompra ?? null),
+    ...(animal.codigoAnimal ? { codigo: animal.codigoAnimal } : {}),
+    ...(animal.nombreAnimal ? { nombre: animal.nombreAnimal } : {}),
+    ...(animal.razaId ? { razaId: animal.razaId } : {}),
+    ...(animal.colorId ? { colorId: animal.colorId } : {}),
+    ...(animal.calidadAnimalId ? { calidadId: animal.calidadAnimalId } : {}),
+    ...(animal.tipoExplotacionId ? { tipoExplotacionId: animal.tipoExplotacionId } : {}),
+    ...(animal.hierroId ? { hierroId: animal.hierroId } : {}),
+    ...(animal.propietarioId ? { propietarioId: animal.propietarioId } : {}),
+    ...(animal.madreId ? { madreId: animal.madreId } : {}),
+    ...(animal.padreId ? { padreId: animal.padreId } : {}),
+    ...(animal.codigoRfid ? { codigoRfid: animal.codigoRfid } : {}),
+    ...(typeof animal.tatuado === "boolean" ? { tatuado: animal.tatuado } : {}),
+    ...(typeof animal.herrado === "boolean" ? { herrado: animal.herrado } : {}),
+    ...(typeof animal.descornado === "boolean" ? { descornado: animal.descornado } : {}),
+    ...(typeof animal.esDeMonta === "boolean" ? { esDeMonta: animal.esDeMonta } : {}),
+    ...(typeof animal.numeroPezones === "number" ? { numeroPezones: animal.numeroPezones } : {}),
   }
+  const currentLocation: AnimalCurrentLocation = {
+    ...(animal.potrero ? { potrero: animal.potrero } : {}),
+    ...(animal.sector ? { sector: animal.sector } : {}),
+    ...(animal.lote ? { lote: animal.lote } : {}),
+    ...(fichaTyped.resumen?.grupo ? { grupo: fichaTyped.resumen.grupo } : {}),
+  }
+  return { initialValues, currentLocation }
 }
 
 async function loadEditAnimalInitialValues({
