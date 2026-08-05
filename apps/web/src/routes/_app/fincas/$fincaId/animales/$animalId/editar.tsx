@@ -58,6 +58,7 @@ interface AnimalFichaLike {
     readonly tipoExplotacionId?: string | null
     readonly hierroId?: string | null
     readonly propietarioId?: string | null
+    readonly lugarCompraId?: string | null
     readonly madreId?: string | null
     readonly padreId?: string | null
     readonly precioCompra?: number | null
@@ -102,9 +103,6 @@ export interface EditAnimalLoaderData {
  * the form renders with empty fields rather than crashing.
  *
  * Ausent values stay absent/empty — NEVER fabricated:
- * - `lugarCompraId` is never preloaded: the `animales` table has no
- *   `lugar_compra_id` column (the create flow never persisted it), so any
- *   value here would be invented.
  * - `origen` is not persisted by the web create/edit flows (dominio only
  *   uses it for validation; `tipo_ingreso_id` is written by the seed). It
  *   is derived from real data: `tipo_ingreso_id = 1` or a present
@@ -145,6 +143,9 @@ export function mapAnimalFichaToLoaderData(ficha: unknown): EditAnimalLoaderData
     ...(animal.tipoExplotacionId ? { tipoExplotacionId: animal.tipoExplotacionId } : {}),
     ...(animal.hierroId ? { hierroId: animal.hierroId } : {}),
     ...(animal.propietarioId ? { propietarioId: animal.propietarioId } : {}),
+    // Issue #219: el lugar de compra ya persiste en la fila `animales`;
+    // ausente (null) → la clave no viaja y el campo renderiza vacío.
+    ...(animal.lugarCompraId ? { lugarCompraId: animal.lugarCompraId } : {}),
     ...(animal.madreId ? { madreId: animal.madreId } : {}),
     ...(animal.padreId ? { padreId: animal.padreId } : {}),
     ...(animal.codigoRfid ? { codigoRfid: animal.codigoRfid } : {}),

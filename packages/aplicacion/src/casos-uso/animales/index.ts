@@ -216,6 +216,7 @@ interface CrearAnimalCommand {
     readonly calidadId?: string | null
     readonly hierroId?: string | null
     readonly propietarioId?: string | null
+    readonly lugarCompraId?: string | null
     readonly precioCompra?: number | null
     readonly pesoCompra?: number | null
     readonly comentarios?: string | null
@@ -372,6 +373,7 @@ function crearAnimalPersistible(input: {
   readonly calidadId?: string | null
   readonly hierroId?: string | null
   readonly propietarioId?: string | null
+  readonly lugarCompraId?: string | null
   readonly precioCompra?: number | null
   readonly pesoCompra?: number | null
   readonly comentarios?: string | null
@@ -409,6 +411,7 @@ function crearAnimalPersistible(input: {
     calidadAnimalId: input.calidadId ?? null,
     hierroId: input.hierroId ?? null,
     propietarioId: input.propietarioId ?? null,
+    lugarCompraId: input.lugarCompraId ?? null,
     precioCompra: input.precioCompra ?? null,
     pesoCompra: input.pesoCompra ?? null,
     comentarios: input.comentarios ?? null,
@@ -527,6 +530,7 @@ function buildCrearAnimalInput(
     calidadId: datos.calidadId ?? null,
     hierroId: datos.hierroId ?? null,
     propietarioId: datos.propietarioId ?? null,
+    lugarCompraId: datos.lugarCompraId ?? null,
     precioCompra: datos.precioCompra ?? null,
     pesoCompra: datos.pesoCompra ?? null,
     comentarios: datos.comentarios ?? null,

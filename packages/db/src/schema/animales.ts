@@ -19,7 +19,15 @@ import {
   configTiposExplotacion,
 } from "./config.js"
 import { fincas } from "./fincas.js"
-import { grupos, hierros, lotes, potreros, propietarios, sectores } from "./maestros.js"
+import {
+  grupos,
+  hierros,
+  lotes,
+  lugaresCompras,
+  potreros,
+  propietarios,
+  sectores,
+} from "./maestros.js"
 
 export const animales = pgTable(
   "animales",
@@ -51,6 +59,7 @@ export const animales = pgTable(
     grupoId: text("grupo_id").references(() => grupos.id),
     hierroId: text("hierro_id").references(() => hierros.id),
     propietarioId: text("propietario_id").references(() => propietarios.id),
+    lugarCompraId: text("lugar_compra_id").references(() => lugaresCompras.id),
     calidadAnimalId: text("calidad_animal_id").references(() => configCalidadAnimal.id),
     precioCompra: real("precio_compra").default(0),
     pesoCompra: real("peso_compra").default(0),

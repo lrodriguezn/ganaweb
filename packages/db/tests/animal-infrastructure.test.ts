@@ -207,6 +207,7 @@ describe("PR2 animal DB infrastructure", () => {
       "0005_animal_listado_preferencias",
       "0006_veterinarios_es_inseminador",
       "0007_inventario_sanitario",
+      "0008_animales_lugar_compra_id",
     ])
   })
 })
@@ -239,6 +240,7 @@ describe("Issue #153 (BUG-DATA-001) — mapAnimalRegistro exposes categoriaRepro
       grupoId: null,
       hierroId: null,
       propietarioId: null,
+      lugarCompraId: null,
       calidadAnimalId: null,
       precioCompra: 0,
       pesoCompra: 0,
@@ -295,5 +297,73 @@ describe("Issue #153 (BUG-DATA-001) — mapAnimalRegistro exposes categoriaRepro
   it("keeps the real salud mapping intact (salud_animal_key 1 → enfermo)", () => {
     const registro = mapAnimalRegistro(filaAnimal({ saludAnimalKey: 1 }))
     expect(registro.salud).toBe("enfermo")
+  })
+})
+
+describe("Issue #219 — mapAnimalRegistro exposes lugarCompraId", () => {
+  function filaAnimal(overrides: Partial<Animal> = {}): Animal {
+    return {
+      id: "animal-1",
+      fincaId: "finca-1",
+      codigo: "MT-122",
+      nombre: "Matilda",
+      fechaNacimiento: null,
+      fechaCompra: null,
+      sexoKey: 1,
+      tipoIngresoId: 1,
+      madreId: null,
+      codigoMadre: "",
+      indTransferenciaEmbriones: 0,
+      codigoDonadora: "",
+      tipoPadreId: 0,
+      padreId: null,
+      codigoPadre: "",
+      codigoPajuela: "",
+      razaId: null,
+      colorId: null,
+      esDeMonta: 0,
+      potreroId: null,
+      sectorId: null,
+      loteId: null,
+      grupoId: null,
+      hierroId: null,
+      propietarioId: null,
+      lugarCompraId: null,
+      calidadAnimalId: null,
+      precioCompra: 0,
+      pesoCompra: 0,
+      codigoRfid: "",
+      codigoArete: "",
+      codigoQr: "",
+      saludAnimalKey: 0,
+      estadoAnimalKey: 0,
+      indDescartado: 0,
+      tipoExplotacionId: null,
+      transferenciaEmbrion: false,
+      donadoraId: null,
+      tipoConcepcionPadre: null,
+      categoriaReproductiva: null,
+      tatuado: false,
+      herrado: false,
+      descornado: false,
+      numeroPezones: null,
+      comentarios: null,
+      activo: 1,
+      usuarioCreadoPor: "usuario-1",
+      createdAt: new Date("2026-07-12T10:00:00.000Z"),
+      updatedAt: new Date("2026-07-12T10:00:00.000Z"),
+      version: 1,
+      ...overrides,
+    }
+  }
+
+  it("passes a stored lugar_compra_id through to the port", () => {
+    const registro = mapAnimalRegistro(filaAnimal({ lugarCompraId: "lugar-feria-manizales" }))
+    expect(registro.lugarCompraId).toBe("lugar-feria-manizales")
+  })
+
+  it("maps a null column to null — ausente nunca se fabrica", () => {
+    const registro = mapAnimalRegistro(filaAnimal({ lugarCompraId: null }))
+    expect(registro.lugarCompraId).toBeNull()
   })
 })

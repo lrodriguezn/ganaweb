@@ -141,6 +141,7 @@ export function mapAnimalRegistro(row: typeof animales.$inferSelect): AnimalRegi
     calidadAnimalId: row.calidadAnimalId,
     hierroId: row.hierroId,
     propietarioId: row.propietarioId,
+    lugarCompraId: row.lugarCompraId,
     // Issue #201: columnas reales que la edición precarga (null = ausente).
     razaId: row.razaId,
     colorId: row.colorId,
@@ -509,6 +510,7 @@ function toAnimalRowExtended(extra: {
   readonly calidadAnimalId?: string | null
   readonly hierroId?: string | null
   readonly propietarioId?: string | null
+  readonly lugarCompraId?: string | null
   readonly precioCompra?: number | null
   readonly pesoCompra?: number | null
   readonly comentarios?: string | null
@@ -530,6 +532,7 @@ function toAnimalRowExtended(extra: {
     calidadAnimalId: extra.calidadAnimalId ?? null,
     hierroId: extra.hierroId ?? null,
     propietarioId: extra.propietarioId ?? null,
+    lugarCompraId: extra.lugarCompraId ?? null,
     precioCompra: extra.precioCompra ?? null,
     pesoCompra: extra.pesoCompra ?? null,
     comentarios: extra.comentarios ?? null,
@@ -559,6 +562,7 @@ function toAnimalRow(
     readonly calidadAnimalId?: string | null
     readonly hierroId?: string | null
     readonly propietarioId?: string | null
+    readonly lugarCompraId?: string | null
     readonly precioCompra?: number | null
     readonly pesoCompra?: number | null
     readonly comentarios?: string | null
@@ -607,6 +611,7 @@ function buildUpdateSet(cambios: AnimalUpdateCambios) {
   if (cambios.calidadAnimalId !== undefined) set.calidadAnimalId = cambios.calidadAnimalId
   if (cambios.hierroId !== undefined) set.hierroId = cambios.hierroId
   if (cambios.propietarioId !== undefined) set.propietarioId = cambios.propietarioId
+  if (cambios.lugarCompraId !== undefined) set.lugarCompraId = cambios.lugarCompraId
   if (cambios.precioCompra !== undefined) set.precioCompra = cambios.precioCompra
   if (cambios.pesoCompra !== undefined) set.pesoCompra = cambios.pesoCompra
   if (cambios.madreId !== undefined) set.madreId = cambios.madreId
@@ -1100,6 +1105,7 @@ export class DrizzleAnimalRepository implements AnimalRepositoryPort {
       readonly calidadAnimalId?: string | null
       readonly hierroId?: string | null
       readonly propietarioId?: string | null
+      readonly lugarCompraId?: string | null
       readonly precioCompra?: number | null
       readonly pesoCompra?: number | null
       readonly comentarios?: string | null

@@ -57,6 +57,13 @@
       "when": 1785885205573,
       "tag": "0007_inventario_sanitario",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785963632540,
+      "tag": "0008_animales_lugar_compra_id",
+      "breakpoints": true
     }
   ]
 }

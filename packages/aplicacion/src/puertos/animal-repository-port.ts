@@ -30,6 +30,7 @@ export interface AnimalUpdateCambios {
   readonly calidadAnimalId?: string | null
   readonly hierroId?: string | null
   readonly propietarioId?: string | null
+  readonly lugarCompraId?: string | null
   readonly precioCompra?: number | null
   readonly pesoCompra?: number | null
   readonly madreId?: string | null
@@ -79,6 +80,7 @@ export interface AnimalRegistro {
   readonly calidadAnimalId?: string | null
   readonly hierroId?: string | null
   readonly propietarioId?: string | null
+  readonly lugarCompraId?: string | null
   /**
    * Issue #201: columnas reales de la fila `animales` que la edición
    * precarga en el formulario. Null/ausente = el animal no tiene el dato

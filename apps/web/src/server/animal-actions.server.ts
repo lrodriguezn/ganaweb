@@ -572,6 +572,7 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   calidadId?: string | null
   hierroId?: string | null
   propietarioId?: string | null
+  lugarCompraId?: string | null
   precioCompra?: number | null
   pesoCompra?: number | null
   comentarios?: string | null
@@ -597,6 +598,7 @@ function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
     ...(datos.calidadId ? { calidadId: datos.calidadId } : {}),
     ...(datos.hierroId ? { hierroId: datos.hierroId } : {}),
     ...(datos.propietarioId ? { propietarioId: datos.propietarioId } : {}),
+    ...(datos.lugarCompraId ? { lugarCompraId: datos.lugarCompraId } : {}),
     ...(datos.precioCompra !== undefined ? { precioCompra: datos.precioCompra } : {}),
     ...(datos.pesoCompra !== undefined ? { pesoCompra: datos.pesoCompra } : {}),
     ...(datos.comentarios ? { comentarios: datos.comentarios } : {}),
@@ -650,6 +652,7 @@ function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
   readonly calidadAnimalId?: string | null
   readonly hierroId?: string | null
   readonly propietarioId?: string | null
+  readonly lugarCompraId?: string | null
   readonly precioCompra?: number | null
   readonly pesoCompra?: number | null
   readonly madreId?: string | null
@@ -682,6 +685,7 @@ function pickUpdateAnimalCambios(cambios: UpdateAnimalWebInput["cambios"]): {
     ...(cambios.calidadId ? { calidadAnimalId: cambios.calidadId } : {}),
     ...(cambios.hierroId ? { hierroId: cambios.hierroId } : {}),
     ...(cambios.propietarioId ? { propietarioId: cambios.propietarioId } : {}),
+    ...(cambios.lugarCompraId ? { lugarCompraId: cambios.lugarCompraId } : {}),
     ...(cambios.precioCompra !== undefined ? { precioCompra: cambios.precioCompra } : {}),
     ...(cambios.pesoCompra !== undefined ? { pesoCompra: cambios.pesoCompra } : {}),
     ...(cambios.madreId ? { madreId: cambios.madreId } : {}),
@@ -980,6 +984,11 @@ export function createAnimalActionHarness({
           // renderiza el campo vacío.
           ...(result.animal.razaId != null ? { razaId: result.animal.razaId } : {}),
           ...(result.animal.colorId != null ? { colorId: result.animal.colorId } : {}),
+          // Issue #219: el lugar de compra ya es una columna real de la fila
+          // `animales`; ausente (null) → la clave no viaja.
+          ...(result.animal.lugarCompraId != null
+            ? { lugarCompraId: result.animal.lugarCompraId }
+            : {}),
           ...(result.animal.madreId != null ? { madreId: result.animal.madreId } : {}),
           ...(result.animal.padreId != null ? { padreId: result.animal.padreId } : {}),
           ...(result.animal.precioCompra != null
