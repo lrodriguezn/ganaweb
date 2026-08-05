@@ -220,6 +220,10 @@ test.describe("animal CRUD web flow", () => {
     await page.goto("/fincas/finca-1/animales/animal-1")
     await expect(page.getByLabel("04 Ficha Animal · Mobile")).toBeVisible()
     await expect(page.getByText("Ficha animal")).toBeVisible()
+    // Issue #202: el botón Editar también se gatea con `animales:editar`.
+    await expect(
+      page.getByLabel("04 Ficha Animal · Mobile").getByRole("button", { name: "Editar" }),
+    ).toHaveCount(0)
     await expect(page.getByRole("button", { name: "Eliminar animal" })).toHaveCount(0)
     await expect(page.getByRole("button", { name: "Reactivar animal" })).toHaveCount(0)
 

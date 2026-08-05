@@ -78,7 +78,7 @@ function fichaProps(overrides: Partial<AnimalFichaRouteViewProps> = {}): AnimalF
           },
         ],
       },
-      permissions: { canInactivate: true },
+      permissions: { canEdit: true, canInactivate: true },
     },
     onVolverAListado: vi.fn(),
     onEditar: vi.fn(),
@@ -158,6 +158,36 @@ describe("animal ficha route — event drawer wiring (redesign-ficha-animal)", (
     const ficha = within(screen.getByLabelText("04 Ficha Animal · Mobile"))
     await user.click(await ficha.findByRole("button", { name: "Editar" }))
     expect(onEditar).toHaveBeenCalledTimes(1)
+  })
+
+  it("hides Editar in both frames when the loader denies animales:editar (issue #202)", () => {
+    const base = fichaProps()
+    render(
+      <AnimalFichaRouteView
+        {...base}
+        data={{
+          ...base.data,
+          permissions: { canEdit: false, canInactivate: true },
+        }}
+      />,
+    )
+
+    const desktop = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    expect(desktop.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument()
+    const mobile = within(screen.getByLabelText("04 Ficha Animal · Mobile"))
+    expect(mobile.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument()
+  })
+
+  it("shows and wires Editar in both frames when the loader grants animales:editar (issue #202)", async () => {
+    const user = userEvent.setup()
+    const onEditar = vi.fn()
+    render(<AnimalFichaRouteView {...fichaProps({ onEditar })} />)
+
+    const desktop = within(screen.getByLabelText("19 Ficha Animal · Desktop"))
+    await user.click(await desktop.findByRole("button", { name: "Editar" }))
+    const mobile = within(screen.getByLabelText("04 Ficha Animal · Mobile"))
+    await user.click(await mobile.findByRole("button", { name: "Editar" }))
+    expect(onEditar).toHaveBeenCalledTimes(2)
   })
 })
 

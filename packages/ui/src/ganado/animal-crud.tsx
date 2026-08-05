@@ -3186,6 +3186,8 @@ export interface AnimalFichaDesktopScreenProps {
    * servidor. Ausente = Resumen (todos los dominios).
    */
   dominioActivo?: DominioEvento
+  /** Issue #202: la ruta provee el valor real (`animales:editar`); el
+   * default `true` conserva el comportamiento standalone. */
   canEdit?: boolean
   canCreateEvents?: boolean
   onVolverAListado?: () => void
@@ -3564,6 +3566,12 @@ export interface AnimalFichaMobileScreenProps {
   timeline: AnimalTimelineItem[]
   bottomNavItems: ItemNav[]
   onRegistrarEvento: () => void
+  /**
+   * Issue #202: gatea visualmente el botón Editar con `animales:editar`.
+   * La ruta provee el valor real del loader; el default `true` conserva el
+   * comportamiento standalone (la autorización sigue en el servidor).
+   */
+  canEdit?: boolean
   onEdit?: () => void
   metrics?: { label: string; value: string; context?: string }[]
   genealogy?: AnimalGenealogyProps
@@ -3574,6 +3582,7 @@ export function AnimalFichaMobileScreen({
   timeline,
   bottomNavItems,
   onRegistrarEvento,
+  canEdit = true,
   onEdit,
   metrics = [
     { label: "Edad", value: "—" },
@@ -3597,7 +3606,7 @@ export function AnimalFichaMobileScreen({
         <AnimalFichaMobileHeader
           animal={animal}
           metrics={metrics}
-          canEdit
+          canEdit={canEdit}
           {...(onEdit ? { onEdit } : {})}
         />
         <div role="tablist" aria-label="Secciones de ficha" className="flex gap-2 overflow-x-auto">
