@@ -117,6 +117,17 @@ export type { EstiloSwitcherProps } from "./ganado/estilo-switcher"
 export { Fab } from "./ganado/fab"
 export { FincaList, FincaSwitcher } from "./ganado/finca-switcher"
 export {
+  FormularioEntradaAlmacen,
+  type DatosEntradaAlmacen,
+  type FormularioEntradaAlmacenProps,
+  type ProductoEntradaAlmacen,
+} from "./ganado/formulario-entrada-almacen"
+export {
+  ListadoEntradasAlmacen,
+  type EntradaAlmacenFila,
+  type ListadoEntradasAlmacenProps,
+} from "./ganado/listado-entradas-almacen"
+export {
   MaestroCard,
   type MaestroCardVariante,
   MaestroFilaConsolidada,

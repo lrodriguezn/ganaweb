@@ -62,9 +62,9 @@ Chain strategy: pending
 
 `packages/ui/src/ganado/formulario-entrada-almacen.tsx`, `listado-entradas-almacen.tsx`, export aditivo en `src/index.ts`, `packages/ui/tests/`. Deps: U4.
 
-- [ ] 5.1 RED: `FormularioEntradaAlmacen` — errores fecha futura / dosis ≤ 0 (RN-002, SAN-030) + nota append-only (D-008).
-- [ ] 5.2 RED: `ListadoEntradasAlmacen` — fecha/producto/dosis/precio/comentario (SAN-014); stock negativo = alerta de reconciliación, no error (SAN-031).
-- [ ] 5.3 GREEN: implementar componentes y exports.
+- [x] 5.1 RED: `FormularioEntradaAlmacen` — errores fecha futura / dosis ≤ 0 (RN-002, SAN-030) + nota append-only (D-008).
+- [x] 5.2 RED: `ListadoEntradasAlmacen` — fecha/producto/dosis/precio/comentario (SAN-014); stock negativo = alerta de reconciliación, no error (SAN-031).
+- [x] 5.3 GREEN: implementar componentes y exports.
 
 ## Verificación final
 
