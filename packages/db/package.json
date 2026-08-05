@@ -52,6 +52,10 @@
     "./maestro-listado-infrastructure": {
       "types": "./src/maestro-listado-infrastructure.ts",
       "import": "./src/maestro-listado-infrastructure.ts"
+    },
+    "./sanidad-infrastructure": {
+      "types": "./src/sanidad-infrastructure.ts",
+      "import": "./src/sanidad-infrastructure.ts"
     }
   },
   "scripts": {

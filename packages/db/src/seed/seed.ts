@@ -457,7 +457,38 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
   await sql`
     INSERT INTO almacen_entradas (id, producto_id, fecha, dosis, precio_por_dosis, usuario_creado_por) VALUES
       ('ent-esp-aftosa-1', 'prod-esp-aftosa', '2026-06-01', 150, 3500, 'user-admin'),
+      ('ent-esp-brucela-1', 'prod-esp-brucela', '2026-06-10', 80, 4200, 'user-admin'),
       ('ent-esp-iverm-1',  'prod-esp-iverm',  '2026-06-15', 50,  1800, 'user-admin')
+    ON CONFLICT (id) DO NOTHING
+  `
+
+  // ---------------------------------------------------------------
+  // SANIDAD (Issue #208): aplicaciones sanitarias demo sobre los
+  // fixtures de seed_v3 (TS-003) — productos VAC-AFTOSA/VAC-BRUCELA/
+  // IVERMECTINA y animales MT-12x de La Esperanza.
+  //
+  // Stock calculado resultante (vista inventario_sanitario, RN-041):
+  //   VAC-AFTOSA  150 − 5 = 145 · VAC-BRUCELA 80 − 0 = 80 · IVERMECTINA 50 − 1 = 49
+  //
+  // ap-esp-aftosa-127 tiene proxima_dosis vencida (2026-07-15): refuerzo
+  // pendiente para el calendario/KPI-09 del panel Sanidad.
+  // El grupo rg-esp-trat-aftosa (RN-052: tipo_evento 'tratamiento',
+  // total_animales = filas hijas) agrupa la vacunación aftosa del Lote 4.
+  // ---------------------------------------------------------------
+  await sql`
+    INSERT INTO registros_grupales (id, finca_id, tipo_evento, descripcion, lote_id, total_animales, fecha, usuario_creado_por) VALUES
+      ('rg-esp-trat-aftosa', 'finca-esperanza', 'tratamiento', 'Vacunación aftosa Lote 4', 'lote-esp-4', 3, '2026-06-20 09:00:00-05', 'user-admin')
+    ON CONFLICT (id) DO NOTHING
+  `
+
+  await sql`
+    INSERT INTO aplicaciones_sanitarias (id, animal_id, registro_grupal_id, producto_id, fecha, dosis, precio_dosis, proxima_dosis, comentarios, usuario_creado_por) VALUES
+      ('ap-esp-aftosa-120', 'animal-mt-120', NULL, 'prod-esp-aftosa', '2026-06-05', 1, 3500, '2026-12-05', 'Primer ciclo.', 'user-admin'),
+      ('ap-esp-aftosa-121', 'animal-mt-121', 'rg-esp-trat-aftosa', 'prod-esp-aftosa', '2026-06-20', 1, 3500, '2026-12-20', 'Vacunación aftosa Lote 4', 'user-admin'),
+      ('ap-esp-aftosa-122', 'animal-mt-122', 'rg-esp-trat-aftosa', 'prod-esp-aftosa', '2026-06-20', 1, 3500, '2026-12-20', 'Vacunación aftosa Lote 4', 'user-admin'),
+      ('ap-esp-aftosa-123', 'animal-mt-123', 'rg-esp-trat-aftosa', 'prod-esp-aftosa', '2026-06-20', 1, 3500, '2026-12-20', 'Vacunación aftosa Lote 4', 'user-admin'),
+      ('ap-esp-aftosa-127', 'animal-mt-127', NULL, 'prod-esp-aftosa', '2026-01-15', 1, 3500, '2026-07-15', 'Refuerzo vencido: pendiente.', 'user-admin'),
+      ('ap-esp-iverm-124', 'animal-mt-124', NULL, 'prod-esp-iverm', '2026-06-25', 1, 1800, NULL, 'Tratamiento antiparasitario.', 'user-admin')
     ON CONFLICT (id) DO NOTHING
   `
 
