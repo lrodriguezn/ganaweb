@@ -1,7 +1,7 @@
 import { EventoCommandInvalidError, EventoForbiddenError } from "@ganaweb/aplicacion"
 import { sql } from "drizzle-orm"
 import { beforeAll, describe, expect, it } from "vitest"
-import { createClient, type DbClient } from "../src/client.js"
+import { type DbClient, createClient } from "../src/client.js"
 import { createAuthorizedEventoWriter } from "../src/evento-write-authorized.js"
 
 const run = process.env.DB_SMOKE === "true" ? describe : describe.skip
