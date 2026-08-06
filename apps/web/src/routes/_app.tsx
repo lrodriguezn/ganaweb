@@ -139,9 +139,11 @@ const logPendingNavigation = (target: string) => {
  * es responsabilidad del consumidor: el id del item ES el segmento
  * de la URL por convención.
  */
-function deriveActivoId(pathname: string): string {
+export function deriveActivoId(pathname: string): string {
   if (pathname === "/" || pathname === "") return "inicio"
   if (pathname.includes("/animales")) return "animales"
+  // Issue #212 (SAN-001/D-006): la ruta de sanidad vive bajo /fincas/$fincaId.
+  if (pathname.includes("/sanidad")) return "sanidad"
   const segment = pathname.split("/")[1] ?? ""
   return segment || "inicio"
 }
@@ -186,10 +188,18 @@ function AppLayout() {
   // gatea por `configuracion:ver` de la sesión de la finca activa.
   const puedeConfigurar = tienePermiso(crearPermisos([...sesion.permisos]), "configuracion", "ver")
   const itemsSidebar = ITEMS_SIDEBAR.map((item) =>
-    item.id === "animales" ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` } : item,
+    item.id === "animales"
+      ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` }
+      : item.id === "sanidad"
+        ? { ...item, href: `/fincas/${sesion.fincaActivaId}/sanidad` }
+        : item,
   )
   const itemsBottom = ITEMS_BOTTOM.map((item) =>
-    item.id === "animales" ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` } : item,
+    item.id === "animales"
+      ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` }
+      : item.id === "sanidad"
+        ? { ...item, href: `/fincas/${sesion.fincaActivaId}/sanidad` }
+        : item,
   )
 
   const navegar = (item: ItemNav) => {
