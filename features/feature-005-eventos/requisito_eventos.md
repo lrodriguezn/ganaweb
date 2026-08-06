@@ -1,220 +1,111 @@
-# GanaWeb — Requisito Funcional: Eventos (RF-EVENTOS v1.0)
+# GanaWeb — Requisito funcional: Eventos (RF-EVENTOS v1.1)
 
-> Funcionalidad de registro y consulta de eventos del hato. Cubre la
-> pantalla de Eventos general (tablero por categoría) en desktop, el
-> registro individual y grupal, y la integración con la ficha del animal.
-> Reglas propias: **EV-xxx** (citables en PRs y tests).
-> Fuente de verdad del modelo: `0000_initial.sql`.
-> Ubicación en repo: `features/feature-004-eventos/requisito_eventos.md`
-> Ante contradicción con el esquema: gana el esquema; reportar (IA-001).
+> Eventos es el flujo transversal para registrar y consultar actividad reproductiva,
+> productiva, sanitaria y de movimientos. No crea una tabla ni permisos `eventos:*`.
+> Fuente de verdad: esquema vigente y permisos por dominio.
+> Ubicación: `features/feature-005-eventos/requisito_eventos.md`.
 
----
+## 1. Decisiones de alcance
 
-## 1. Decisión de arquitectura (fundamento)
+- **EV-ARQ-001** — Cada evento se persiste en su tabla especializada. No existe una tabla `eventos` genérica.
+- **EV-ARQ-002** — El read model unificado reutiliza y extiende el UNION del timeline entregado en #167, su exclusión de registros grupales anulados (#181) y su conteo/paginación (#183); no los reconstruye.
+- **EV-ARQ-003** — No hay tronco físico común. El alcance de finca se obtiene mediante el animal de cada fila; solo `registros_grupales` contiene `finca_id` directamente.
+- **EV-ARQ-004** — Los eventos son append-only. Una corrección anula de forma auditable el evento anterior y registra uno nuevo o una compensación. No hay edición destructiva ni eliminación física.
+- **EV-ARQ-005** — Sanidad forma parte de Eventos. Las capacidades sanitarias de #211 se reutilizan como contrato de dominio/captura; Eventos aporta navegación, read model e integración, sin implementar un segundo contrato.
 
-**No existe ni se crea una tabla `eventos` genérica.** El esquema modela
-cada tipo de evento con su propia tabla, porque cada uno tiene campos
-irreductiblemente distintos. Un evento aplanado a JSON perdería validación,
-integridad referencial y capacidad de reporte.
+## 2. Catálogo y matriz de captura
 
-- **EV-ARQ-01** — La funcionalidad de Eventos es una **capa de presentación
-  y captura** sobre las tablas especializadas ya existentes. No introduce
-  una tabla contenedora.
-- **EV-ARQ-02** — La **vista unificada** (feed de últimos eventos, timeline
-  del animal) se construye por **UNION** sobre el tronco común de esas
-  tablas (`animal_id`, `registro_grupal_id`, `fecha`, `usuario_creado_por`,
-  + un discriminador de tipo), no materializando una tabla nueva. Reutiliza
-  el diseño del timeline de la ficha (`crud_animales.md` CA-TL-xxx).
-- **EV-ARQ-03** — Los eventos **grupales** se soportan con la tabla
-  `registros_grupales` (ya existe: `tipo_evento`, `total_animales`,
-  `lote_id`, `potrero_id`, `fecha`, `anulado_en`). Cada fila de evento
-  individual referencia su `registro_grupal_id` cuando pertenece a un lote.
+`diagnosticos_veterinarios` es un catálogo. El evento asociado es **Revisión veterinaria**.
 
-## 2. Catálogo de tipos de evento (del esquema real)
+| Dominio | Tipo / tabla | Individual | Grupal v1 | Campos compartidos | Campos por animal | Efecto lateral |
+|---|---|:---:|:---:|---|---|---|
+| Reproductivo | Servicio / `servicios` | Sí | Sí | fecha, tipo, padre/pajuela, inseminador, dosis | observaciones o resultado efectivo cuando aplique | Actualiza ciclo reproductivo según contrato de dominio |
+| Reproductivo | Palpación / `palpaciones` | Sí | Sí | fecha, diagnóstico, resultado | días de gestación cuando varíe | Actualiza estado reproductivo según contrato de dominio |
+| Reproductivo | Parto / `partos`, `partos_crias` | Sí | **No** | fecha, servicio, tipo | crías y resultado del parto | Puede crear/vincular crías; exclusivamente individual en v1 |
+| Sanidad | Aplicación sanitaria / `aplicaciones_sanitarias` | Sí | Sí | producto, fecha, dosis, precio_dosis, próxima_dosis, comentarios | dosis si varía | Consume inventario según contrato #211 |
+| Sanidad | Revisión veterinaria / `revisiones_veterinarias` | Sí | Sí | fecha, diagnóstico, tipo, veterinario | observaciones/resultado cuando varíe | Ninguno implícito |
+| Productivo | Pesaje / `pesos` | Sí | Sí | fecha, tipo de peso | peso_kg | Actualiza lectura productiva, no reescribe historial |
+| Productivo | Producción láctea / `producciones_lacteas` | Sí | Sí | fecha, turno/contexto | cantidades por animal | Agrega producción |
+| Productivo | Condición corporal / `animales_condicion_corporal` | Sí | Sí* | fecha, condición | puntaje | Ninguno implícito |
+| Movimientos | Venta / `ventas` | Sí | Sí | fecha, motivo, lugar, comprador | peso/precio cuando varíen | Cambia estado a vendido |
+| Movimientos | Muerte / `muertes` | Sí | Sí* | fecha, causa | observaciones cuando varíen | Cambia estado a muerto |
+| Movimientos | Traslado / `animales_ubicacion_historico` | Sí | Sí | fecha, destino, motivo | ninguno | Actualiza ubicación actual y escribe histórico |
 
-Cuatro categorías, agrupadas como las mentaliza el ganadero:
+`*` Requiere migración para añadir `registro_grupal_id` a `muertes` y
+`animales_condicion_corporal` antes de habilitar su captura grupal.
 
-### Reproductivo
-| Evento | Tabla | Campos propios clave |
-|---|---|---|
-| Servicio / monta | `servicios` | tipo (monta/IA), padre_id, pajuela_id, inseminador_id, tipo_inseminacion, dosis |
-| Palpación | `palpaciones` | servicio_id, diagnostico_id, resultado, dias_gestacion |
-| Parto | `partos` (+`partos_crias`) | servicio_id, machos, hembras, muertos, tipo_parto |
+Las columnas sanitarias reales son `producto_id`, `dosis`, `precio_dosis` y
+`proxima_dosis`. Vía, lote de producto o vencimiento no forman parte del contrato
+actual; agregarlos requeriría una migración o dependencia explícita.
 
-### Sanitario
-| Evento | Tabla | Campos propios clave |
-|---|---|---|
-| Aplicación sanitaria | `aplicaciones_sanitarias` | producto, dosis, vía, lote/vencimiento |
-| Revisión veterinaria | `revisiones_veterinarias` | diagnostico_id, tipo_diagnostico, celo_presentado, veterinario_id |
+## 3. Tablero e historial
 
-> Nota: `diagnosticos_veterinarios` es un **catálogo** (finca_id, nombre,
-> categoria), NO un evento. El evento es `revisiones_veterinarias`.
+- **EV-UI-001** — La ruta `/fincas/$fincaId/eventos` muestra cuatro categorías: Reproductivo, Sanidad, Productivo y Movimientos/salidas.
+- **EV-UI-002** — Cada tipo muestra el conteo del mes en curso, con etiqueta temporal visible y alcance de finca aplicado en servidor.
+- **EV-UI-003** — El feed presenta eventos recientes ordenados por fecha descendente, con tipo, animal o alcance grupal, detalle y fecha.
+- **EV-UI-004** — Los filtros permiten categoría, tipo y rango de fechas. Un resultado vacío por filtro se distingue del estado sin eventos.
+- **EV-UI-005** — “Ver todo” forma parte de v1 y abre un historial paginado y filtrable. La paginación y el conteo extienden los contratos existentes de #167/#183.
+- **EV-UI-006** — La pantalla define estados de carga, vacío inicial, vacío por filtro, error con reintento y permisos parciales.
+- **EV-UI-007** — Debe existir cobertura responsive/mobile para tablero, historial y registro antes de cerrar v1.
 
-### Productivo
-| Evento | Tabla | Campos propios clave |
-|---|---|---|
-| Pesaje | `pesos` | peso_kg, tipo_peso |
-| Producción láctea | `producciones_lacteas` | cantidad_am, cantidad_pm, potrero/sector/lote/grupo |
-| Condición corporal | `animales_condicion_corporal` | condicion_id, puntaje |
+## 4. Registro individual y grupal
 
-### Salidas / movimientos
-| Evento | Tabla | Campos propios clave |
-|---|---|---|
-| Venta | `ventas` | motivo_venta_id, lugar_venta_id, peso_venta_kg, precio, comprador |
-| Muerte | `muertes` | causa_muerte_id |
-| Traslado / ubicación | `animales_ubicacion_historico` | potrero/sector/lote/grupo, motivo |
+- **EV-CAP-001** — El wizard usa tres pasos: tipo, alcance y datos. Desde la ficha fija el animal y omite decisiones ya resueltas.
+- **EV-CAP-002** — El alcance individual selecciona un animal. El grupal parte de selección manual, lote, potrero o grupo y permite exclusiones antes de confirmar.
+- **EV-CAP-003** — `registros_grupales` se amplía con `origen_seleccion` (`manual`, `lote`, `potrero`, `grupo`) y `grupo_id`; conserva además el criterio aplicable (`lote_id`/`potrero_id`/`grupo_id`).
+- **EV-CAP-004** — La cabecera grupal conserva el origen/criterio solicitado. Las N filas hijas representan los participantes efectivos después de exclusiones y comparten `registro_grupal_id`.
+- **EV-CAP-005** — Cabecera y filas hijas se guardan en una transacción. `total_animales` coincide con las filas efectivas; un fallo revierte todo.
+- **EV-CAP-006** — Los campos compartidos se capturan una vez; los variables se capturan por animal. La matriz de §2 es el contrato inicial y cada dominio concreta validaciones.
+- **EV-CAP-007** — Parto no ofrece alcance grupal en v1.
+- **EV-CAP-008** — Los formularios de dominio se reutilizan entre Eventos y la ficha/EventDrawer; el shell no duplica reglas reproductivas, productivas, sanitarias ni de movimientos.
 
-- **EV-CAT-01** — La agrupación en 4 categorías es de presentación; cada
-  evento se persiste en su tabla real. Añadir un tipo nuevo = añadir su
-  tabla + su tarjeta de categoría, sin tocar las demás.
+## 5. Alcance de finca, RBAC e integración
 
-## 3. Pantalla de Eventos general (desktop) — tablero por categoría
+- **EV-SEC-001** — Toda lectura y escritura valida finca activa en servidor. Para filas individuales se deriva por `animal_id`; para cabeceras grupales se valida también `registros_grupales.finca_id`. Una finca ajena responde 403.
+- **EV-SEC-002** — RBAC se evalúa por tipo, sin crear `eventos:*`:
 
-- **EV-001** — Ruta `/fincas/$fincaId/eventos`. Permiso base:
-  `eventos:ver` (verificar el nombre real en el catálogo RBAC; si no
-  existe, es dependencia a crear).
-- **EV-002 · Tarjetas de categoría** — 4 tarjetas (Reproductivo, Sanitario,
-  Productivo, Salidas). Cada una lista sus tipos con un contador de
-  actividad reciente y un atajo "+ Registrar →" por categoría.
-- **EV-003 · Contador de actividad** — Muestra el conteo del **mes en
-  curso** por tipo (no histórico total). Etiqueta "este mes" visible.
-  Deriva de contar filas por tabla con `fecha` en el rango.
-- **EV-004 · Feed de últimos eventos** — Bajo las tarjetas, lista unificada
-  (UNION, EV-ARQ-02) de los eventos más recientes de toda la finca,
-  ordenada por `fecha` desc. Cada fila: ícono+color de categoría, título
-  ("Servicio · MT-120 Lucero"), detalle corto (IA · pajuela BR-45),
-  alcance (individual o "N animales" si grupal) y fecha.
-- **EV-005 · Filtro del feed** — Un selector "Todos ▾" filtra el feed por
-  categoría o tipo. "Ver todo →" lleva a la vista completa del historial
-  (paginada; reutiliza patrón del listado si aplica).
-- **EV-006 · Distinción individual/grupal en el feed** — Los eventos
-  grupales muestran el alcance ("40 animales · Lote Vientres"); los
-  individuales, el animal ("MT-120 Lucero"). El ícono es el del tipo.
-- **EV-007 · Botón "+ Registrar evento"** — Arriba a la derecha; abre el
-  selector de tipo (EV-010). Los "+ Registrar →" de cada tarjeta son
-  atajos que abren el selector ya filtrado a esa categoría.
+| Dominio | Permisos |
+|---|---|
+| Reproductivo | `eventos_reproductivos:{ver,crear,editar,anular}` |
+| Productivo | `eventos_productivos:{ver,crear,editar,anular}` |
+| Sanidad | `sanidad:{ver,crear,editar,anular}` |
+| Movimientos | `movimientos:{ver,crear,anular}` |
 
-## 4. Registro de eventos (individual y grupal)
+- **EV-SEC-003** — `editar` no autoriza mutación destructiva de eventos históricos; puede habilitar preparación/corrección mediante el flujo append-only del dominio.
+- **EV-SEC-004** — Con permisos parciales, tablero, filtros, contadores, atajos y tipos disponibles muestran solo dominios autorizados; no se infiere autorización desde el nombre del rol.
+- **EV-INT-001** — El timeline de ficha sigue siendo el read model base. Un hijo grupal aparece en cada animal e identifica su origen grupal.
+- **EV-INT-002** — La entrada desde ficha reutiliza EventDrawer/wizard con animal preseleccionado y aplica el permiso del dominio elegido.
 
-- **EV-010 · Selector de tipo** — Al registrar, primero se elige el tipo de
-  evento (dentro de su categoría). Luego se abre el formulario específico de
-  ese tipo (campos propios de su tabla, §2).
-- **EV-011 · Alcance del evento** — El formulario pregunta el alcance:
-  **individual** (un animal) o **grupal** (varios). Individual → selector de
-  un animal. Grupal → selección múltiple: por lista de animales, por lote,
-  por potrero o por grupo.
-- **EV-012 · Registro grupal** — Al confirmar un evento grupal:
-  1. Se crea una fila en `registros_grupales` (`tipo_evento`,
-     `total_animales`, `lote_id`/`potrero_id`, `fecha`).
-  2. Se crea una fila de evento en la tabla específica **por cada animal**
-     del grupo, todas con el mismo `registro_grupal_id`.
-  Así el evento grupal es consultable como unidad (una tarjeta en el feed) y
-  como eventos individuales (en la ficha de cada animal).
-- **EV-012b · Wizard de 3 pasos** — El registro se presenta como un
-  wizard modal: **Paso 1** elegir tipo (agrupado por categoría), **Paso 2**
-  alcance (individual/grupal + selección por lista/lote/potrero/grupo con
-  exclusión), **Paso 3** datos. Desde un atajo de categoría, el Paso 1 llega
-  filtrado. Desde la ficha, el alcance es individual con el animal fijado.
-- **EV-012c · Datos compartidos vs por-animal (grupal)** — En un evento
-  grupal, los campos se dividen en dos: **compartidos** (iguales para todos:
-  fecha, producto de una vacuna, tipo de servicio) se capturan una sola vez;
-  **por-animal** (varían: el peso de cada uno) se capturan en una **grilla
-  con una fila por animal**. Al guardar, cada fila individual toma su valor
-  por-animal de la grilla y los compartidos del encabezado. Los tipos sin
-  campos variables (una vacuna) omiten la grilla.
-- **EV-013 · Campos comunes** — Todo evento captura `fecha` (default hoy),
-  y hereda `finca_id`, `usuario_creado_por` del contexto. Los campos
-  propios según la tabla del tipo (§2).
-- **EV-014 · Validaciones de dominio** — Reglas propias del tipo. Ejemplos:
-  un parto requiere un servicio previo opcional pero coherente; una
-  palpación con resultado "preñada" habilita `dias_gestacion`; una venta
-  cambia el `estado_animal_key` del animal a Vendido (coordinar con la
-  máquina de estados de `arquitectura_funcional.md`); una muerte lo cambia a
-  Muerto. Estos efectos de estado se documentan por tipo en el detalle
-  técnico, no se improvisan.
-- **EV-015 · Efectos colaterales** — Algunos eventos actualizan al animal:
-  venta/muerte cambian estado; traslado actualiza ubicación actual
-  (`potrero_id`/`sector_id`/`lote_id`/`grupo_id` del animal) además de
-  escribir el histórico; parto puede crear las crías como nuevos animales
-  (vía `partos_crias`). Cada efecto se especifica en el requisito técnico
-  del tipo.
+## 6. Anulación, corrección y auditoría
 
-## 5. Integración con la ficha del animal
+- **EV-AUD-001** — Anular exige `*:anular`, motivo, actor y fecha. El evento permanece consultable como anulado para auditoría y se excluye de vistas activas.
+- **EV-AUD-002** — En grupales, la anulación se representa en `registros_grupales.anulado_en`; los hijos se consideran anulados por derivación. No se exige una columna inexistente en cada tabla hija.
+- **EV-AUD-003** — Corregir crea un evento nuevo o compensatorio enlazable al anulado. Las columnas de enlace/motivo/actor que no existan son migraciones del contrato de auditoría, no hechos actuales.
+- **EV-AUD-004** — Venta, muerte y traslado requieren compensación coherente con el estado vigente. No se restaura ciegamente un estado anterior si hubo eventos posteriores.
+- **EV-AUD-005** — La UI incluye confirmación, explicación del impacto, éxito/error y representación del estado anulado.
 
-- **EV-020** — La ficha del animal (pantalla 19) muestra su **timeline**:
-  los eventos de ese animal, unificados (EV-ARQ-02). Un evento grupal
-  aparece en la ficha de cada animal participante como un evento individual
-  con nota de que fue parte de un registro grupal.
-- **EV-021 · Doble punto de entrada** — Los eventos se registran tanto desde
-  la pantalla de Eventos general como desde la ficha del animal (con el
-  animal ya preseleccionado). **Ambos usan los mismos formularios de
-  captura** (un solo componente por tipo), para no divergir.
+## 7. Cobertura visual y brechas
 
-## 6. Anulación / corrección
+- **EV-VIS-001** — `ganaweb-diseno.op` contiene diez copias/variantes, pero `themes` está vacío; esto es cobertura visual nominal, no verificación de diez temas.
+- **EV-VIS-002** — El diseño actual no cubre de forma verificable loading, empty, error, vacío por filtro, anulación/confirmación, historial completo ni Eventos mobile.
+- **EV-VIS-003** — Esas pantallas requieren trabajo visual con herramienta adecuada. En esta revisión solo se corrige copy semántico seguro; no se inventan layouts dentro del JSON masivo.
 
-- **EV-030 · Anulación de grupales** — `registros_grupales` tiene
-  `anulado_en`: anular un registro grupal marca el grupo y sus eventos
-  individuales como anulados (soft-delete), sin borrado físico, preservando
-  auditoría. Permiso a definir (`eventos:eliminar` o equivalente).
-- **EV-031 · Corrección de individuales** — Editar un evento individual
-  respeta la misma política de auditoría del resto del sistema. Un evento
-  con efectos de estado (venta, muerte) requiere revertir el efecto al
-  anular (p. ej. anular una venta devuelve el animal a "En finca") — se
-  especifica por tipo.
+## 8. Criterios de aceptación
 
-## 7. Estados y comportamiento
+1. **EV-CA-001** — Una consulta de finca nunca retorna eventos cuyo animal pertenece a otra finca; una cabecera grupal ajena produce 403 (EV-ARQ-003, EV-SEC-001).
+2. **EV-CA-002** — Tablero y “Ver todo” mezclan los tipos autorizados, filtran y paginan resultados reutilizando #167/#181/#183 (EV-ARQ-002, EV-UI-001..006).
+3. **EV-CA-003** — Un usuario con permisos parciales solo ve y registra dominios autorizados; no existe comprobación `eventos:*` (EV-SEC-002..004).
+4. **EV-CA-004** — Una selección grupal conserva origen y criterio, mientras sus hijas coinciden exactamente con participantes no excluidos (EV-CAP-002..005).
+5. **EV-CA-005** — Pesaje grupal admite peso por animal; una aplicación sanitaria usa solo su contrato real y reutiliza #211 (EV-CAP-006, EV-ARQ-005).
+6. **EV-CA-006** — Parto solo puede registrarse individualmente (EV-CAP-007).
+7. **EV-CA-007** — Muerte y condición corporal grupales quedan bloqueadas hasta migrar `registro_grupal_id` (matriz §2).
+8. **EV-CA-008** — Anular no borra ni edita el evento; registra auditoría y el read model excluye anulados activos (EV-AUD-001..003).
+9. **EV-CA-009** — Una corrección con efectos laterales aplica compensación considerando eventos posteriores (EV-AUD-004).
+10. **EV-CA-010** — El mismo contrato/formulario de dominio funciona desde Eventos y ficha/EventDrawer (EV-CAP-008, EV-INT-002).
+11. **EV-CA-011** — Loading, vacíos, error, historial, confirmación de anulación y mobile cuentan con diseño y pruebas antes del cierre (EV-UI-006..007, EV-VIS-002..003).
 
-- **EV-040** — Estados de la pantalla: cargando (skeleton de tarjetas +
-  feed), sin eventos aún (EmptyState "Registra el primer evento"), error con
-  reintento. El feed vacío tras filtro muestra "Ningún evento de este tipo".
-- **EV-041 · Offline** — Consistente con la política del listado: el feed y
-  las tarjetas se leen de la réplica local si aplica; el registro offline se
-  encola en `sync_outbox` como el resto de escrituras. (Si offline aún no
-  está aprobado como iniciativa, este punto se limita a "no romper sin
-  conexión" y se difiere.)
-- **EV-042 · Tokens y temas** — Solo tokens del sistema; render correcto en
-  los 10 temas. Cada categoría tiene su color de dominio consistente con el
-  resto de la app.
+## 9. Dependencias y fuera de alcance
 
-## 8. RBAC
-
-- **EV-RBAC-01** — Ver eventos: `eventos:ver`. Registrar: `eventos:crear`.
-  Anular/editar: `eventos:eliminar`/`eventos:editar`. Verificar nombres
-  reales en el catálogo; los que falten son dependencia a crear.
-- **EV-RBAC-02** — Filtro de finca server-side: solo eventos de las fincas
-  del usuario y de la finca activa. Finca ajena → 403.
-- **EV-RBAC-03** — El botón "+ Registrar evento" y los atajos por categoría
-  se ocultan sin `eventos:crear`.
-
-## 9. Criterios de aceptación
-
-1. El tablero muestra 4 tarjetas de categoría con sus tipos y contador del
-   mes; render en los 10 temas (EV-002/003/042).
-2. El feed unifica eventos de todas las tablas por UNION, ordenados por
-   fecha, distinguiendo individual vs grupal (EV-004/006).
-3. Registrar un evento individual crea una fila en la tabla del tipo con sus
-   campos propios (EV-010/013).
-4. Registrar un evento grupal crea 1 fila en `registros_grupales` + N filas
-   individuales con el mismo `registro_grupal_id` (EV-012).
-5. El evento grupal aparece como unidad en el feed y como evento individual
-   en la ficha de cada animal (EV-012/020).
-6. Venta/muerte cambian el estado del animal; traslado actualiza su
-   ubicación; anular revierte el efecto (EV-014/015/031).
-7. Anular un grupal marca `anulado_en` sin borrado físico (EV-030).
-8. RBAC: registrar requiere `eventos:crear`; finca ajena → 403
-   (EV-RBAC-01..03).
-9. Los formularios de captura son los mismos desde Eventos y desde la ficha
-   (EV-021).
-
-## 10. Dependencias / fuera de alcance
-
-1. Confirmar permisos `eventos:*` en el catálogo RBAC (EV-RBAC-01).
-2. Efectos de estado por tipo (venta→Vendido, muerte→Muerto, parto→crea
-   crías): especificar en requisito técnico por tipo, alineado con la
-   máquina de estados de `arquitectura_funcional.md`.
-3. Vista "Ver todo" del historial completo (paginado): puede reutilizar el
-   contrato del listado de animales o definirse aparte; fuera del alcance de
-   v1.0 de Eventos si se prioriza el tablero.
-4. Offline de escritura vía `sync_outbox`: depende de la iniciativa de
-   sincronización.
-5. Reportes/exportación de eventos: v1.1.
+- Dependencias: migraciones de trazabilidad grupal y auditoría; contratos por dominio; integración sanitaria #211; read model existente #167/#181/#183.
+- Fuera de v1: exportación/reportes y nuevos campos sanitarios no presentes en esquema.
+- El soporte offline solo se incorpora mediante el contrato transversal de sincronización aprobado; este documento no inventa uno.
