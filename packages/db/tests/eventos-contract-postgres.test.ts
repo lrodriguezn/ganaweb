@@ -1,11 +1,11 @@
 import { EventoCommandInvalidError, EventoForbiddenError } from "@ganaweb/aplicacion"
 import { sql } from "drizzle-orm"
 import { beforeAll, describe, expect, it } from "vitest"
-import { createClient } from "../src/client.js"
+import { createClient, type DbClient } from "../src/client.js"
 import { createAuthorizedEventoWriter } from "../src/evento-write-authorized.js"
 
 const run = process.env.DB_SMOKE === "true" ? describe : describe.skip
-const db = createClient(process.env.DATABASE_URL)
+let db: DbClient
 
 async function expectPgCode(operation: Promise<unknown>, code: string): Promise<void> {
   try {
@@ -19,6 +19,7 @@ async function expectPgCode(operation: Promise<unknown>, code: string): Promise<
 
 run("eventos contract on PostgreSQL", () => {
   beforeAll(async () => {
+    db = createClient(process.env.DATABASE_URL)
     await db.execute(sql`
       INSERT INTO fincas (id, codigo, nombre) VALUES
         ('eventos-f1', 'EV1', 'Eventos 1'),
