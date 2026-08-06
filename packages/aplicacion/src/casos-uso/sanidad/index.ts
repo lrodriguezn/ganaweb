@@ -15,6 +15,12 @@ export { editarProductoSanitario } from "./editar-producto-sanitario.js"
 export type { CommandListarCatalogoProductoSanitario } from "./listar-catalogo-producto-sanitario.js"
 export { listarCatalogoProductoSanitario } from "./listar-catalogo-producto-sanitario.js"
 export type {
+  CommandRegistrarEntradaAlmacen,
+  RegistrarEntradaAlmacenDeps,
+  ResultadoRegistrarEntradaAlmacen,
+} from "./registrar-entrada-almacen.js"
+export { registrarEntradaAlmacen } from "./registrar-entrada-almacen.js"
+export type {
   FilaCatalogoProductoSanitario,
   ResultadoCambiarEstadoProductoSanitario,
   ResultadoCrearProductoSanitario,

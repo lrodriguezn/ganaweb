@@ -8,6 +8,8 @@
  * `packages/db` — el contrato queda listo para implementarlo cuando llegue el
  * MVP de sync (riesgo #2 del requisito).
  *
+ * Issue #210: entradas de almacén append-only (SAN-030..SAN-032).
+ *
  * Nombres en español (T-003).
  */
 
@@ -77,6 +79,13 @@ export interface SanidadLecturaPort {
    * 0 si el producto no tiene movimientos.
    */
   obtenerStockDisponible(productoId: string): Promise<number>
+
+  /**
+   * Issue #210 (SAN-014/SAN-063): entradas de almacén de la finca, ordenadas
+   * por fecha descendente. El scope de finca sale del join con
+   * `productos_sanitarios` (`almacen_entradas` no tiene `finca_id`).
+   */
+  listarEntradasAlmacen(fincaId: string): Promise<readonly EntradaAlmacenListada[]>
 }
 
 /** Cabecera `registros_grupales` para una captura de tratamiento (RN-052). */
@@ -88,6 +97,52 @@ export type RegistroGrupalTratamientoNuevo = {
   readonly fecha: Date
   readonly usuarioCreadoPor: string
   readonly descripcion: string | null
+}
+
+/**
+ * Fila de `almacen_entradas` ya registrada (Issue #210, SAN-014/SAN-030).
+ * Append-only: no hay estado de edición/anulación (SAN-032/D-008).
+ */
+export type EntradaAlmacenSanidad = {
+  readonly id: string
+  readonly productoId: string
+  /** ISO YYYY-MM-DD (columna DATE). */
+  readonly fecha: string
+  /** Entero > 0 (SAN-030). */
+  readonly dosis: number
+  readonly precioPorDosis: number | null
+  readonly comentario: string | null
+}
+
+/**
+ * Entrada de almacén para el listado (Issue #210, SAN-014): la fila más los
+ * datos de producto que muestra la UI (fecha, producto, dosis, precio,
+ * comentario). El join con `productos_sanitarios` da el scope por finca
+ * (SAN-063), porque `almacen_entradas` no tiene `finca_id`.
+ */
+export type EntradaAlmacenListada = EntradaAlmacenSanidad & {
+  readonly productoCodigo: string
+  readonly productoDescripcion: string
+}
+
+/**
+ * Entrada de almacén por registrar (Issue #210, SAN-030). El adaptador la
+ * inserta junto a su fila `sync_outbox` en la MISMA transacción (T-002).
+ *
+ * `almacen_entradas` no tiene `finca_id` en el esquema v3: el scope sale del
+ * join con `productos_sanitarios` (SAN-063). El `fincaId` viaja aquí sólo
+ * para la fila `sync_outbox` (que sí lo exige) y lo aporta el caso de uso
+ * tras revalidar el producto contra la finca activa — nunca de la URL.
+ */
+export type EntradaAlmacenNueva = {
+  readonly fincaId: string
+  readonly productoId: string
+  readonly fecha: string
+  readonly dosis: number
+  readonly precioPorDosis: number | null
+  readonly comentario: string | null
+  /** PE-006: todo insert de evento lleva usuario_creado_por. */
+  readonly usuarioCreadoPor: string
 }
 
 /**
@@ -117,6 +172,19 @@ export interface SanidadEscrituraPort {
   ): Promise<
     | { readonly tipo: "anulado" }
     | { readonly tipo: "no_encontrado" }
+    | { readonly tipo: "conflicto"; readonly detalle: string }
+    | { readonly tipo: "error"; readonly detalle: string }
+  >
+
+  /**
+   * Issue #210 (SAN-030, T-002): registra una entrada de almacén append-only.
+   * Inserta la fila en `almacen_entradas` Y su fila `sync_outbox` en la MISMA
+   * transacción. Devuelve el id de la entrada creada.
+   */
+  registrarEntradaAlmacen(
+    entrada: EntradaAlmacenNueva,
+  ): Promise<
+    | { readonly tipo: "registrada"; readonly id: string }
     | { readonly tipo: "conflicto"; readonly detalle: string }
     | { readonly tipo: "error"; readonly detalle: string }
   >

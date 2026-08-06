@@ -15,6 +15,7 @@ import type {
   AnimalEventoSanidadReferencia,
   AplicarProductoSanitarioDeps,
   CommandAplicarProductoSanitario,
+  CommandRegistrarEntradaAlmacen,
   ProductoSanitarioReferencia,
   RegistroGrupalTratamientoNuevo,
   ResultadoAplicarProductoSanitario,
@@ -22,7 +23,7 @@ import type {
   SanidadLecturaPort,
   SesionSanidad,
 } from "../src/index.js"
-import { aplicarProductoSanitario } from "../src/index.js"
+import { aplicarProductoSanitario, registrarEntradaAlmacen } from "../src/index.js"
 
 const FINCA_ID = "finca-esperanza"
 const HOY = new Date("2026-08-05T12:00:00")
@@ -94,6 +95,7 @@ function fakeSanidadLectura(config: ConfigLectura = {}) {
       llamadas.obtenerStockDisponible.push(productoId)
       return config.stock ?? 150
     },
+    listarEntradasAlmacen: async () => [],
   }
   return { port, llamadas }
 }
@@ -108,6 +110,9 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
       usuarioCreadoPor: string
     }>,
     anularRegistroGrupal: [] as Array<{ id: string; fincaId: string }>,
+    registrarEntradaAlmacen: [] as Array<
+      Parameters<SanidadEscrituraPort["registrarEntradaAlmacen"]>[0]
+    >,
   }
   const port: SanidadEscrituraPort = {
     registrarAplicaciones: async (entrada) => {
@@ -123,8 +128,27 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
       llamadas.anularRegistroGrupal.push({ id, fincaId })
       return { tipo: "anulado" }
     },
+    registrarEntradaAlmacen: async (entrada) => {
+      llamadas.registrarEntradaAlmacen.push(entrada)
+      return { tipo: "registrada", id: "ent-creada-1" }
+    },
   }
   return { port, llamadas }
+}
+
+type ResultadoEntradaPort = Awaited<ReturnType<SanidadEscrituraPort["registrarEntradaAlmacen"]>>
+
+/** Variante de `fakeSanidadEscritura` con resultado configurable de la entrada. */
+function fakeSanidadEscrituraConResultado(resultado: ResultadoEntradaPort) {
+  const base = fakeSanidadEscritura()
+  const port: SanidadEscrituraPort = {
+    ...base.port,
+    registrarEntradaAlmacen: async (entrada) => {
+      base.llamadas.registrarEntradaAlmacen.push(entrada)
+      return resultado
+    },
+  }
+  return { port, llamadas: base.llamadas }
 }
 
 function deps(
@@ -472,5 +496,215 @@ describe("aplicarProductoSanitario — RN-040/RN-041/RN-042/RN-052", () => {
     expect(fila?.comentarios).toBe("Vacunación lote 4")
     expect(fila?.fecha).toBe("2026-08-05")
     expect(fila?.dosis).toBe(2)
+  })
+})
+
+/**
+ * Caso de uso `registrarEntradaAlmacen` (Issue #210, RF-SANIDAD v0.2 §7/§11).
+ *
+ * SAN-030: entrada de almacén append-only + outbox en la misma transacción
+ * (T-002 — atomicidad garantizada por el puerto de escritura). PE-002:
+ * revalida permiso `sanidad:crear` y scope de finca del producto (SAN-063).
+ * RN-041/SAN-031: el stock del resultado sale de la vista
+ * `inventario_sanitario`; negativo = alerta de reconciliación, no error.
+ */
+describe("registrarEntradaAlmacen — PE-002: permiso y scope de finca", () => {
+  function comandoEntrada(
+    overrides: Partial<CommandRegistrarEntradaAlmacen> = {},
+  ): CommandRegistrarEntradaAlmacen {
+    return {
+      sesion: SESION,
+      productoId: "prod-esp-aftosa",
+      fecha: "2026-08-05",
+      dosis: 100,
+      precioPorDosis: 3500,
+      comentario: "Compra distribuidor",
+      ...overrides,
+    }
+  }
+
+  function depsEntrada(lectura: SanidadLecturaPort, escritura: SanidadEscrituraPort) {
+    return { lectura, escritura, reloj: { ahora: () => HOY } }
+  }
+
+  it("SAN-061/PE-002: rechaza sin permiso sanidad:crear con permiso_denegado y no toca los puertos", async () => {
+    const lectura = fakeSanidadLectura()
+    const escritura = fakeSanidadEscritura()
+
+    const resultado = await registrarEntradaAlmacen(depsEntrada(lectura.port, escritura.port))(
+      comandoEntrada({ sesion: { ...SESION, permisos: [{ modulo: "sanidad", accion: "ver" }] } }),
+    )
+
+    expect(resultado.tipo).toBe("permiso_denegado")
+    expect(lectura.llamadas.obtenerProducto).toHaveLength(0)
+    expect(escritura.llamadas.registrarEntradaAlmacen).toHaveLength(0)
+  })
+
+  it("SAN-063: rechaza un producto de otra finca con permiso_denegado y sin escribir", async () => {
+    const lectura = fakeSanidadLectura({ producto: productoFixture({ fincaId: "finca-ajena" }) })
+    const escritura = fakeSanidadEscritura()
+
+    const resultado = await registrarEntradaAlmacen(depsEntrada(lectura.port, escritura.port))(
+      comandoEntrada(),
+    )
+
+    expect(resultado.tipo).toBe("permiso_denegado")
+    expect(escritura.llamadas.registrarEntradaAlmacen).toHaveLength(0)
+  })
+
+  it("SAN-030: rechaza un producto inexistente con validacion", async () => {
+    const lectura = fakeSanidadLectura({ producto: null })
+
+    const resultado = await registrarEntradaAlmacen(
+      depsEntrada(lectura.port, fakeSanidadEscritura().port),
+    )(comandoEntrada())
+
+    expect(resultado.tipo).toBe("validacion")
+    if (resultado.tipo === "validacion") {
+      expect(resultado.errores.some((error) => error.campo === "producto")).toBe(true)
+    }
+  })
+})
+
+describe("registrarEntradaAlmacen — validación de dominio (RN-002, SAN-030)", () => {
+  function comandoEntrada(
+    overrides: Partial<CommandRegistrarEntradaAlmacen> = {},
+  ): CommandRegistrarEntradaAlmacen {
+    return {
+      sesion: SESION,
+      productoId: "prod-esp-aftosa",
+      fecha: "2026-08-05",
+      dosis: 100,
+      precioPorDosis: 3500,
+      comentario: "Compra distribuidor",
+      ...overrides,
+    }
+  }
+
+  function depsEntrada(lectura: SanidadLecturaPort, escritura: SanidadEscrituraPort) {
+    return { lectura, escritura, reloj: { ahora: () => HOY } }
+  }
+
+  it("RN-002: rechaza una fecha futura con validacion citando la regla", async () => {
+    const escritura = fakeSanidadEscritura()
+
+    const resultado = await registrarEntradaAlmacen(
+      depsEntrada(fakeSanidadLectura().port, escritura.port),
+    )(comandoEntrada({ fecha: "2026-08-06" }))
+
+    expect(resultado.tipo).toBe("validacion")
+    if (resultado.tipo === "validacion") {
+      expect(resultado.errores[0]?.campo).toBe("fecha")
+      expect(resultado.errores[0]?.detalle).toContain("RN-002")
+    }
+    expect(escritura.llamadas.registrarEntradaAlmacen).toHaveLength(0)
+  })
+
+  it("SAN-030: rechaza dosis ≤ 0 o no entera con validacion", async () => {
+    for (const dosis of [0, -10, 2.5]) {
+      const resultado = await registrarEntradaAlmacen(
+        depsEntrada(fakeSanidadLectura().port, fakeSanidadEscritura().port),
+      )(comandoEntrada({ dosis }))
+
+      expect(resultado.tipo).toBe("validacion")
+      if (resultado.tipo === "validacion") {
+        expect(resultado.errores.some((error) => error.campo === "dosis")).toBe(true)
+      }
+    }
+  })
+})
+
+describe("registrarEntradaAlmacen — registro y stock (SAN-030, RN-041, SAN-031)", () => {
+  function comandoEntrada(
+    overrides: Partial<CommandRegistrarEntradaAlmacen> = {},
+  ): CommandRegistrarEntradaAlmacen {
+    return {
+      sesion: SESION,
+      productoId: "prod-esp-aftosa",
+      fecha: "2026-08-05",
+      dosis: 100,
+      precioPorDosis: 3500,
+      comentario: "Compra distribuidor",
+      ...overrides,
+    }
+  }
+
+  function depsEntrada(lectura: SanidadLecturaPort, escritura: SanidadEscrituraPort) {
+    return { lectura, escritura, reloj: { ahora: () => HOY } }
+  }
+
+  it("caso feliz: registrada con la entrada escrita (PE-006) y el stock de la vista (RN-041)", async () => {
+    const lectura = fakeSanidadLectura({ stock: 250 })
+    const escritura = fakeSanidadEscritura()
+
+    const resultado = await registrarEntradaAlmacen(depsEntrada(lectura.port, escritura.port))(
+      comandoEntrada(),
+    )
+
+    expect(resultado.tipo).toBe("registrada")
+    if (resultado.tipo === "registrada") {
+      expect(resultado.entradaId).toBe("ent-creada-1")
+      expect(resultado.stockDisponible).toBe(250)
+      expect(resultado.alertaStockNegativo).toBe(false)
+    }
+
+    expect(escritura.llamadas.registrarEntradaAlmacen).toHaveLength(1)
+    const entrada = escritura.llamadas.registrarEntradaAlmacen[0]
+    expect(entrada).toEqual({
+      fincaId: FINCA_ID,
+      productoId: "prod-esp-aftosa",
+      fecha: "2026-08-05",
+      dosis: 100,
+      precioPorDosis: 3500,
+      comentario: "Compra distribuidor",
+      usuarioCreadoPor: "user-admin",
+    })
+    expect(lectura.llamadas.obtenerStockDisponible).toEqual(["prod-esp-aftosa"])
+  })
+
+  it("SAN-031: stock negativo tras la entrada genera alerta de reconciliación sin bloquear", async () => {
+    const lectura = fakeSanidadLectura({ stock: -5 })
+    const escritura = fakeSanidadEscritura()
+
+    const resultado = await registrarEntradaAlmacen(depsEntrada(lectura.port, escritura.port))(
+      comandoEntrada(),
+    )
+
+    expect(resultado.tipo).toBe("registrada")
+    if (resultado.tipo === "registrada") {
+      expect(resultado.stockDisponible).toBe(-5)
+      expect(resultado.alertaStockNegativo).toBe(true)
+    }
+  })
+
+  it("SAN-030: precio_por_dosis y comentario opcionales llegan null a la escritura", async () => {
+    const escritura = fakeSanidadEscritura()
+
+    await registrarEntradaAlmacen(depsEntrada(fakeSanidadLectura().port, escritura.port))(
+      comandoEntrada({ precioPorDosis: null, comentario: null }),
+    )
+
+    const entrada = escritura.llamadas.registrarEntradaAlmacen[0]
+    expect(entrada?.precioPorDosis).toBeNull()
+    expect(entrada?.comentario).toBeNull()
+  })
+
+  it("mapea conflicto y error del puerto de escritura 1:1", async () => {
+    const conflicto = await registrarEntradaAlmacen(
+      depsEntrada(
+        fakeSanidadLectura().port,
+        fakeSanidadEscrituraConResultado({ tipo: "conflicto", detalle: "producto eliminado" }).port,
+      ),
+    )(comandoEntrada())
+    expect(conflicto).toEqual({ tipo: "conflicto", detalle: "producto eliminado" })
+
+    const error = await registrarEntradaAlmacen(
+      depsEntrada(
+        fakeSanidadLectura().port,
+        fakeSanidadEscrituraConResultado({ tipo: "error", detalle: "timeout de base de datos" })
+          .port,
+      ),
+    )(comandoEntrada())
+    expect(error).toEqual({ tipo: "error", detalle: "timeout de base de datos" })
   })
 })

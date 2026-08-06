@@ -69,6 +69,7 @@ export { validarCodigoUnicoPorFinca } from "./rn-001.js"
 export type {
   AplicacionPreviaSanidad,
   AplicacionSanitariaNueva,
+  CapturaEntradaAlmacen,
   ErrorValidacionSanidad,
   EstadoAnimalEventoSanidad,
   EstadoStockSanidad,
@@ -87,6 +88,7 @@ export {
   validarAnulacionRegistroGrupal,
   validarCabeceraRegistroGrupal,
   validarCantidadAnimalesSanidad,
+  validarEntradaAlmacen,
   validarFechaEventoSanidad,
   validarTipoTratamiento,
 } from "./sanidad.js"
