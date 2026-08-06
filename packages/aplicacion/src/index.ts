@@ -118,9 +118,15 @@ export { ESPECIFICACIONES_MAESTROS } from "@ganaweb/dominio"
 // Issue #209 (KPI-10/T-001): fallback documentado del umbral de stock bajo,
 // usado sólo cuando la finca no tiene el parámetro en config_parametros_finca.
 export { STOCK_MINIMO_DOSIS_DEFAULT } from "@ganaweb/dominio"
+// Issue #212 (SAN-052/KPI-09): la agrupación por semana natural del panel es
+// una regla pura del dominio; apps/web no importa dominio (dependency-cruiser,
+// regla web-to-dominio-direct), así que se re-exporta aquí.
+export { agruparRefuerzosPorSemana } from "@ganaweb/dominio"
 export type {
   EspecificacionCampoMaestro,
   EspecificacionFamiliaMaestro,
+  PeriodosRefuerzosSanidad,
+  RefuerzoPendienteAgrupado,
   TipoCampoMaestro,
   ValorCampoMaestro,
 } from "@ganaweb/dominio"
@@ -142,6 +148,17 @@ export type {
   SanidadEscrituraPort,
   SanidadLecturaPort,
 } from "./puertos/sanidad-port.js"
+export type {
+  AlertaStockPanel,
+  FilaHistorialSanidad,
+  FiltrosHistorialSanidad,
+  HistorialSanidadPagina,
+  ObjetivoAplicacionSanidad,
+  PanelSanidadMetricas,
+  RefuerzoPendienteFila,
+  SanidadPanelLecturaPort,
+  UltimaAplicacionPanel,
+} from "./puertos/sanidad-panel-port.js"
 export type {
   ConteoCatalogoGlobalClave,
   ConteoFamiliaClave,
