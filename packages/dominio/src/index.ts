@@ -114,10 +114,20 @@ export type {
 export { AnimalExportacionOverflowError } from "./errores.js"
 export type {
   AccionEvento,
+  CriterioRegistroGrupal,
+  CrearEventoIndividualCommand,
+  CrearHijoEventoGrupalCommand,
+  CrearRegistroGrupalCommand,
   DominioEvento,
+  EventoWriteCommand,
   OrigenSeleccionEvento,
+  TipoEventoCanonico,
+  ValorEventoPersistible,
 } from "./eventos.js"
 export {
+  EVENTOS_CANONICOS,
+  EventoCommandInvalidError,
+  EventoForbiddenError,
   ORIGENES_SELECCION_EVENTO,
   PERMISOS_EVENTOS_POR_DOMINIO,
   permisoEvento,

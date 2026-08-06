@@ -34,13 +34,13 @@ import type {
   AplicacionSanitariaNueva,
   EntradaAlmacenListada,
   EntradaAlmacenNueva,
-  EventoWriteCommand,
   ProductoSanitarioReferencia,
   RegistroGrupalTratamientoNuevo,
   SanidadEscrituraPort,
   SanidadLecturaPort,
 } from "@ganaweb/aplicacion"
-import { EventoForbiddenError } from "@ganaweb/aplicacion"
+import { EventoForbiddenError } from "@ganaweb/dominio"
+import type { EventoWriteCommand } from "@ganaweb/dominio"
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
 import { persistirEventosInternos } from "./evento-write-internal.js"
