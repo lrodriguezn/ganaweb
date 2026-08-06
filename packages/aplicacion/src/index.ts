@@ -175,6 +175,7 @@ export * from "./casos-uso/listar-hierros-por-finca.js"
 export * from "./casos-uso/listar-propietarios-por-finca.js"
 export * from "./casos-uso/maestros/index.js"
 export * from "./casos-uso/sanidad/index.js"
+export * from "./casos-uso/eventos/autorizar-operacion-evento.js"
 export type * from "./puertos/auth-repository-port.js"
 export type {
   DecisionAutorizacion,

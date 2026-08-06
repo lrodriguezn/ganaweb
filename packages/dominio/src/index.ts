@@ -112,3 +112,16 @@ export type {
   Usuario,
 } from "./usuario.js"
 export { AnimalExportacionOverflowError } from "./errores.js"
+export type {
+  AccionEvento,
+  DominioEvento,
+  OrigenSeleccionEvento,
+} from "./eventos.js"
+export {
+  ORIGENES_SELECCION_EVENTO,
+  PERMISOS_EVENTOS_POR_DOMINIO,
+  permisoEvento,
+  validarAlcanceFincaEvento,
+  validarAuditoriaAnulacion,
+  validarCriterioSeleccionGrupal,
+} from "./eventos.js"
