@@ -30,7 +30,16 @@
 
 ### U2 — Adaptador Drizzle read model (tasks 2.1–2.4)
 
-- **Estado**: pendiente
+- **Estado**: completa
+- **Tests**: `packages/db/tests/sanidad-panel-postgres.test.ts` — 17 tests con db FALSA (patrón #209, sin Postgres): scope de queries (SAN-063), ventanas de fecha, RN-051, umbral T-001 + fallback, mapeo serializable CM-042, paginación D-005. El comportamiento real contra Postgres vive en smoke tests DB_SMOKE.
+- **Producción**: `packages/db/src/sanidad-panel-infrastructure.ts` (`DrizzlePanelSanidadAdapter` implementa `SanidadPanelLecturaPort`); export aditivo en `package.json`.
+- **Desviación**: `getTableName` de drizzle no resuelve vistas `.existing()`; el helper de test `nombreTabla` cae al símbolo `drizzle:ViewBaseConfig`. El adaptador delega la cuenta D-002 en el dominio (`contarAnimalesEnTratamiento`) — el SQL empuja el filtro y el dominio re-verifica (defensa en profundidad; la regla queda reutilizable para #214).
+- **Evidencia**:
+  - Focused test: `pnpm vitest run tests/sanidad-panel-postgres.test.ts` (packages/db) → 17/17 pass.
+  - Suite db: `pnpm vitest run` → 197 pass, 40 skipped (DB_SMOKE sin BD).
+  - Typecheck db (incluye tests): limpio.
+  - Runtime harness: N/A — adaptador de lectura; el harness real corre en la server function (U3).
+  - Rollback: borrar `sanidad-panel-infrastructure.ts` y su export en `package.json`.
 
 ### U3 — Server functions RBAC + degradación por card (tasks 3.1–3.2)
 

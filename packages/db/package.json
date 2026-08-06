@@ -57,6 +57,10 @@
       "types": "./src/sanidad-infrastructure.ts",
       "import": "./src/sanidad-infrastructure.ts"
     },
+    "./sanidad-panel-infrastructure": {
+      "types": "./src/sanidad-panel-infrastructure.ts",
+      "import": "./src/sanidad-panel-infrastructure.ts"
+    },
     "./catalogo-producto-sanitario-infrastructure": {
       "types": "./src/catalogo-producto-sanitario-infrastructure.ts",
       "import": "./src/catalogo-producto-sanitario-infrastructure.ts"

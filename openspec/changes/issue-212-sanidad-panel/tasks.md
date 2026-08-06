@@ -39,10 +39,10 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1; U5→U3+U4.
 
 ## Phase 2 — Unit 2: Adaptador Drizzle
 
-- [ ] 2.1 RED: `packages/db/tests/sanidad-panel-postgres.test.ts` — métricas (SAN-002): aplicaciones de la semana actual; animales distintos en tratamiento (D-002); stock crítico < umbral y agotados ≤ 0 desde `inventario_sanitario`, umbral leído de `config_parametros_finca` (KPI-10/T-001).
-- [ ] 2.2 RED: próximas (KPI-09/SAN-050) agrupadas por producto (N animales, vence más próximo), solo animales EN_FINCA, excluidas filas de grupos anulados (RN-051).
-- [ ] 2.3 RED: últimas 4 (SAN-004: producto, objetivo animal|lote + N animales, fecha, responsable); alertas de stock hasta 4 productos con estado agotado/bajo/ok (SAN-005); historial paginado con filtros producto/fecha/animal-lote (D-005).
-- [ ] 2.4 GREEN: `packages/db/src/sanidad-panel-infrastructure.ts` (`DrizzlePanelSanidadAdapter` implementa el puerto 1.3); reutiliza vista `inventarioSanitario` y la lectura de umbral del adaptador de catálogo (#209).
+- [x] 2.1 RED: `packages/db/tests/sanidad-panel-postgres.test.ts` — métricas (SAN-002): aplicaciones de la semana actual; animales distintos en tratamiento (D-002); stock crítico < umbral y agotados ≤ 0 desde `inventario_sanitario`, umbral leído de `config_parametros_finca` (KPI-10/T-001).
+- [x] 2.2 RED: próximas (KPI-09/SAN-050) agrupadas por producto (N animales, vence más próximo), solo animales EN_FINCA, excluidas filas de grupos anulados (RN-051).
+- [x] 2.3 RED: últimas 4 (SAN-004: producto, objetivo animal|lote + N animales, fecha, responsable); alertas de stock hasta 4 productos con estado agotado/bajo/ok (SAN-005); historial paginado con filtros producto/fecha/animal-lote (D-005).
+- [x] 2.4 GREEN: `packages/db/src/sanidad-panel-infrastructure.ts` (`DrizzlePanelSanidadAdapter` implementa el puerto 1.3); reutiliza vista `inventarioSanitario` y la lectura de umbral del adaptador de catálogo (#209).
 
 ## Phase 3 — Unit 3: Server functions
 
