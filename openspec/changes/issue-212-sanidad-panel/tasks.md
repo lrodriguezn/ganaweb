@@ -51,9 +51,9 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1; U5→U3+U4.
 
 ## Phase 4 — Unit 4: Componentes UI
 
-- [ ] 4.1 RED: `packages/ui/tests/` — 4 MetricCards con valores y navegación a listado filtrado cuando aplique (SAN-002); Próximas con los 3 períodos y fila clicable → `onRegistrarAplicacion(productoId)` (SAN-003/SAN-052); Registradas últimas 4 + enlace "Ver historial →" (SAN-004); Stock hasta 4 con badge (SAN-005); Accesos con copy "Entradas y stock" (SAN-006/D-007); gateo por `tienePermiso` (PE-001); tokens (SAN-080), sin `dark:` (SAN-081/T-004).
-- [ ] 4.2 RED: tabla de historial filtrable (D-005) — filtros producto/fecha/animal-lote + paginación, reutilizando el patrón de tablas existente.
-- [ ] 4.3 GREEN: `packages/ui/src/ganado/panel-sanidad.tsx` e `historial-aplicaciones-sanidad.tsx`; prop aditiva `productoIdInicial` en `event-drawer/formulario-vacuna.tsx` (precarga SAN-003); reutiliza `MetricCard`/`PageHeader`/primitivas (IA-003); export aditivo.
+- [x] 4.1 RED: `packages/ui/tests/` — 4 MetricCards con valores y navegación a listado filtrado cuando aplique (SAN-002); Próximas con los 3 períodos y fila clicable → `onRegistrarAplicacion(productoId)` (SAN-003/SAN-052); Registradas últimas 4 + enlace "Ver historial →" (SAN-004); Stock hasta 4 con badge (SAN-005); Accesos con copy "Entradas y stock" (SAN-006/D-007); gateo por `tienePermiso` (PE-001); tokens (SAN-080), sin `dark:` (SAN-081/T-004).
+- [x] 4.2 RED: tabla de historial filtrable (D-005) — filtros producto/fecha/animal-lote + paginación, reutilizando el patrón de tablas existente.
+- [x] 4.3 GREEN: `packages/ui/src/ganado/panel-sanidad.tsx` e `historial-aplicaciones-sanidad.tsx`; prop aditiva `productoIdInicial` en `event-drawer/formulario-vacuna.tsx` (precarga SAN-003); reutiliza `MetricCard`/`PageHeader`/primitivas (IA-003); export aditivo.
 
 ## Phase 5 — Unit 5: Ruta y shell
 

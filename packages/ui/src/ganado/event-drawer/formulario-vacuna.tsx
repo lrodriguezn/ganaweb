@@ -46,6 +46,13 @@ export interface FormularioVacunaProps {
   animales: AnimalResumen[]
   /** Catálogo desde la réplica del dispositivo — nunca de red */
   productos?: ProductoSanitario[]
+  /**
+   * Issue #212 (SAN-003): producto precargado al abrir el registro desde el
+   * panel (fila de Próximas). Prop ADITIVA: sin ella el select inicia vacío,
+   * igual que antes. El guardado sigue siendo el placeholder de SAN-047 —
+   * el caso de uso real llega con #211.
+   */
+  productoIdInicial?: string
   onGuardar: (datos: {
     productoId: string
     dosis: number
@@ -59,10 +66,11 @@ export interface FormularioVacunaProps {
 export function FormularioVacuna({
   animales,
   productos = [],
+  productoIdInicial,
   onGuardar,
   onVolver,
 }: FormularioVacunaProps) {
-  const [productoId, setProductoId] = useState<string>("")
+  const [productoId, setProductoId] = useState<string>(productoIdInicial ?? "")
   const [dosis, setDosis] = useState("1")
   const [proximaDias, setProximaDias] = useState<number | null>(182)
   const [comentarios, setComentarios] = useState("")

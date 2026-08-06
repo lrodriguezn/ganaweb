@@ -56,7 +56,16 @@
 
 ### U4 — Componentes UI panel + historial (tasks 4.1–4.3)
 
-- **Estado**: pendiente
+- **Estado**: completa
+- **Tests**: `packages/ui/tests/panel-sanidad.test.tsx` (13), `historial-aplicaciones-sanidad.test.tsx` (9), `formulario-vacuna.test.tsx` (3). Cubren SAN-001..SAN-006, D-005/D-007, PE-001, degradación por card y precarga SAN-003.
+- **Producción**: `packages/ui/src/ganado/panel-sanidad.tsx`, `historial-aplicaciones-sanidad.tsx`; prop aditiva `productoIdInicial` en `event-drawer/formulario-vacuna.tsx`; exports aditivos en `index.ts`. Reutiliza `MetricCard`, `PageHeader`, `Button`, `Select`, `Input` (IA-003).
+- **Desviación**: el badge de stock del panel se renderiza desde el `estado` ya calculado por el servidor (umbral real T-001); NO se reutiliza `StockBadge` de `estado-badge.tsx` porque hardcodea umbral 20 (violación T-001). El gateo de tokens detectó el literal `dark:` en un comentario — se reescribió el texto.
+- **Evidencia**:
+  - Focused test: `pnpm vitest run tests/panel-sanidad.test.tsx tests/historial-aplicaciones-sanidad.test.tsx tests/formulario-vacuna.test.tsx` (packages/ui) → 26/26 pass.
+  - Suite ui: `pnpm vitest run` → 642/642 pass (incluye `tokens.test.ts` SAN-081/T-004).
+  - Typecheck ui + build (tsup dist): limpios.
+  - Runtime harness: N/A — componentes presentacionales sin ruta aún (la integración vive en U5).
+  - Rollback: borrar `panel-sanidad.tsx`, `historial-aplicaciones-sanidad.tsx`, `formulario-vacuna.test.tsx` y los exports; revertir la prop `productoIdInicial`.
 
 ### U5 — Ruta y wiring shell (tasks 5.1–5.3)
 
