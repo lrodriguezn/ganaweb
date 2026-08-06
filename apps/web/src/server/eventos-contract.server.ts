@@ -1,8 +1,8 @@
-import { EventoForbiddenError } from "@ganaweb/aplicacion"
+import { EventoForbiddenError, registrarEvento } from "@ganaweb/aplicacion"
 import { db } from "@ganaweb/db/client"
-import { createAuthorizedEventoWriter } from "@ganaweb/db/evento-write-authorized"
+import { createEventoWriteGateway } from "@ganaweb/db/evento-write-infrastructure"
 
-export const createEventoContractBoundary = () => createAuthorizedEventoWriter(db)
+export const createEventoContractBoundary = () => registrarEvento(createEventoWriteGateway(db))
 
 export async function mapEventoBoundaryToHttp<T>(work: () => Promise<T>): Promise<Response> {
   try {

@@ -1,15 +1,15 @@
+import type { EventoWriteGateway } from "@ganaweb/aplicacion"
 import type {
   CrearEventoIndividualCommand,
   CrearHijoEventoGrupalCommand,
   EventoWriteCommand,
-  EventoWriteGateway,
   TipoEventoCanonico,
-} from "@ganaweb/aplicacion"
+} from "@ganaweb/dominio"
 import {
   EVENTOS_CANONICOS,
   EventoCommandInvalidError,
   EventoForbiddenError,
-} from "@ganaweb/aplicacion"
+} from "@ganaweb/dominio"
 import { sql } from "drizzle-orm"
 import type { PgTable } from "drizzle-orm/pg-core"
 import type { DbClient } from "./client.js"
@@ -244,6 +244,10 @@ class DrizzleEventoWriteGateway implements EventoWriteGateway {
       if (!firstBoolean(source)) throw new EventoForbiddenError("alcance_invalido")
     }
   }
+}
+
+export function createEventoWriteGateway(db: DbClient): EventoWriteGateway {
+  return new DrizzleEventoWriteGateway(db)
 }
 
 export type ContextoEscrituraEventoInterno = Readonly<{

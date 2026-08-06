@@ -1,8 +1,9 @@
-import { EventoCommandInvalidError, EventoForbiddenError } from "@ganaweb/aplicacion"
+import type { EventoWriteCommand } from "@ganaweb/dominio"
+import { EventoCommandInvalidError, EventoForbiddenError } from "@ganaweb/dominio"
 import { sql } from "drizzle-orm"
 import { beforeAll, describe, expect, it } from "vitest"
 import { type DbClient, createClient } from "../src/client.js"
-import { createAuthorizedEventoWriter } from "../src/evento-write-authorized.js"
+import { createEventoWriteGateway } from "../src/evento-write-internal.js"
 
 const run = process.env.DB_SMOKE === "true" ? describe : describe.skip
 let db: DbClient
@@ -125,22 +126,8 @@ run("eventos contract on PostgreSQL", () => {
   })
 
   it("rejects cross-farm command references and persists only validated IDs", async () => {
-    const writer = createAuthorizedEventoWriter(db)
-    const sesion = {
-      usuarioId: "eventos-u1",
-      nombre: "Operaria",
-      email: "eventos-u1@ganaweb.test",
-      fincaActivaId: "eventos-f1",
-      fincaActivaNombre: "Eventos 1",
-      rol: "Operario",
-      permisos: [
-        { modulo: "eventos_productivos", accion: "crear" },
-        { modulo: "eventos_reproductivos", accion: "crear" },
-      ],
-      fincas: [],
-    }
-    const persistir = (command: Parameters<typeof writer>[0]["command"]) =>
-      writer({ sesion, command })
+    const writer = createEventoWriteGateway(db)
+    const persistir = (command: EventoWriteCommand) => writer.persistir(command)
     const base = {
       fincaId: "eventos-f1",
       usuarioId: "eventos-u1",
@@ -189,18 +176,15 @@ run("eventos contract on PostgreSQL", () => {
       }),
     ).rejects.toBeInstanceOf(EventoForbiddenError)
     await expect(
-      writer({
-        sesion: { ...sesion, fincaActivaId: "eventos-f2" },
-        command: {
-          ...base,
-          fincaId: "eventos-f2",
-          tipo: "crear_evento_individual",
-          evento: "servicio",
-          id: "eventos-cross-correction",
-          animalId: "eventos-a2",
-          corrigeAId: "eventos-s1",
-          datos: { fecha: "2026-08-05", tipo: "monta" },
-        },
+      persistir({
+        ...base,
+        fincaId: "eventos-f2",
+        tipo: "crear_evento_individual",
+        evento: "servicio",
+        id: "eventos-cross-correction",
+        animalId: "eventos-a2",
+        corrigeAId: "eventos-s1",
+        datos: { fecha: "2026-08-05", tipo: "monta" },
       }),
     ).rejects.toBeInstanceOf(EventoForbiddenError)
 
