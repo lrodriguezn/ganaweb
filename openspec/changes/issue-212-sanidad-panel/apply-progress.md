@@ -14,6 +14,8 @@
 5. **Objetivo de aplicación (SAN-004)**: `animal` (registro individual) | `lote` (registro grupal RN-052). "toda la finca" no es derivable del esquema v3 y queda fuera (tasks 2.3 ya lo acota a animal|lote).
 6. **Degradación por card**: cada server function del panel atrapa el fallo de su consulta y devuelve `{ tipo: "error" }` serializable; el loader de la ruta además aplica `.catch` fail-closed por card. El fallo de una card nunca tumba las demás.
 7. **apps/web no importa dominio** (regla dependency-cruiser `web-to-dominio-direct`): `agruparRefuerzosPorSemana` y el tipo `PeriodosRefuerzosSanidad` se re-exportan desde `@ganaweb/aplicacion` (capa permitida), igual que `STOCK_MINIMO_DOSIS_DEFAULT` en #209.
+8. **Server function de catálogo aditiva** (`listarCatalogoSanidadFn` en `sanidad-catalogo-actions.server.ts`): #209 dejó el harness sin `createServerFn`; el panel es el primer consumidor ruteado y necesita el catálogo activo para los selects de los drawers (SAN-003/SAN-014).
+9. **Historial con carga reactiva a la URL en la vista** (patrón `animales.tsx`): el loader de TanStack de esta versión no expone `search` tipado en el contexto, así que `sanidad/historial.tsx` lee `Route.useSearch()` y re-ejecuta la server function en un effect por cambio de filtro/página. Los filtros y la página viven en la URL (D-005).
 
 ## Work units
 
@@ -69,7 +71,16 @@
 
 ### U5 — Ruta y wiring shell (tasks 5.1–5.3)
 
-- **Estado**: pendiente
+- **Estado**: completa
+- **Tests**: `apps/web/tests/sanidad-panel-route.test.tsx` (8: loader fail-closed por card, denial RBAC degradado, encabezado SAN-001, drawers SAN-003/SAN-014) + `apps/web/tests/sanidad-shell-wiring.test.tsx` (2: `deriveActivoId`). Ambas en el `include` de `apps/web/vitest.config.ts`.
+- **Producción**: `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` (loader fail-closed + guarda de `Outlet` + drawers), `sanidad/historial.tsx` (carga reactiva a la URL), wiring del sidebar en `_app.tsx` (`deriveActivoId` exportado + href remapeado), `listarCatalogoSanidadFn` aditiva en `sanidad-catalogo-actions.server.ts`, `routeTree.gen.ts` regenerado.
+- **Evidencia**:
+  - Focused test: `pnpm vitest run tests/sanidad-panel-route.test.tsx tests/sanidad-shell-wiring.test.tsx` (apps/web) → 10/10 pass.
+  - Suite apps/web: `pnpm test` → 425 pass (tsx contract tests + vitest).
+  - Typecheck apps/web (`tsr generate && tsc --noEmit`): limpio.
+  - dependency-cruiser: 0 errores (warnings idénticos a patrones existentes).
+  - Runtime harness: loader SSR con server functions reales (fail-closed por card); contract tests cubren el harness con fakes.
+  - Rollback: borrar `sanidad.tsx`, `sanidad/historial.tsx`, los dos tests y sus líneas en `vitest.config.ts`; revertir `_app.tsx` y `listarCatalogoSanidadFn`; regenerar `routeTree.gen.ts`.
 
 ### Verificación (tasks 6.1–6.2)
 

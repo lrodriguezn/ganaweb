@@ -23,6 +23,7 @@ import {
   editarProductoSanitario,
   listarCatalogoProductoSanitario,
 } from "@ganaweb/aplicacion"
+import { createServerFn } from "@tanstack/react-start"
 import { DrizzleCatalogoProductoSanitarioAdapter } from "@ganaweb/db/catalogo-producto-sanitario-infrastructure"
 import { type DbClient, db } from "@ganaweb/db/client"
 
@@ -234,3 +235,17 @@ export function createSanidadCatalogoRuntimeHarness({
       runWithHarness((harness) => harness.cambiarEstado(input)),
   }
 }
+
+function getRuntimeCatalogoHarness() {
+  return createSanidadCatalogoRuntimeHarness()
+}
+
+/**
+ * Issue #212 (SAN-003/SAN-014): listado del catálogo para los formularios de
+ * captura del panel (select de producto + chip de stock). El panel es el
+ * primer consumidor ruteado del catálogo (#209 no ruteó sus componentes).
+ * Gatea por `sanidad:ver` vía el harness (PE-002/SAN-063).
+ */
+export const listarCatalogoSanidadFn = createServerFn({ method: "GET" })
+  .validator((data: ListarCatalogoSanidadInput) => data)
+  .handler(({ data }) => getRuntimeCatalogoHarness().listar(data))

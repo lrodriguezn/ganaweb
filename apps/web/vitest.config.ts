@@ -66,6 +66,12 @@ export default defineConfig({
       // #209 — catálogo de productos sanitarios: harness RBAC de las server
       // functions (PE-002, SAN-061/063, §13.10) con deps falsas.
       "src/server/sanidad-catalogo-actions.test.ts",
+      // #212 — panel de sanidad: loader fail-closed por card, encabezado
+      // SAN-001 y wiring de los drawers de aplicación (SAN-003) y entrada
+      // de almacén (SAN-014/#210).
+      "tests/sanidad-panel-route.test.tsx",
+      // #212 — wiring del shell: deriveActivoId resalta "sanidad" (D-006).
+      "tests/sanidad-shell-wiring.test.tsx",
     ],
     environment: "node",
   },

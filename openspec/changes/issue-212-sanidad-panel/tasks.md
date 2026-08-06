@@ -57,9 +57,9 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1; U5→U3+U4.
 
 ## Phase 5 — Unit 5: Ruta y shell
 
-- [ ] 5.1 RED: `apps/web/tests/sanidad-panel-route.test.tsx` — loader fail-closed por card (el fallo de una fuente no tumba el panel); título "Sanidad" + subtítulo "Panel de control · {finca}" (SAN-001); "Registrar aplicación" abre `FormularioVacuna` con producto precargado desde fila de Próximas (SAN-003); "+ Entrada almacén" abre `FormularioEntradaAlmacen` cableado a `registrarEntradaAlmacenFn` (SAN-014/#210).
-- [ ] 5.2 GREEN: `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` (guarda de `Outlet` según patrón de `animales.tsx`) y `sanidad/historial.tsx`.
-- [ ] 5.3 GREEN: wiring en `apps/web/src/routes/_app.tsx` — caso `/sanidad` en `deriveActivoId` y href del ítem → `/fincas/${fincaActivaId}/sanidad` (SAN-001/D-006). Destinos de Accesos: Historial → ruta propia; Diagnósticos → `configuracion/diagnosticos` (feature-004); Catálogo/Almacén → punto de navegación documentado para #213.
+- [x] 5.1 RED: `apps/web/tests/sanidad-panel-route.test.tsx` — loader fail-closed por card (el fallo de una fuente no tumba el panel); título "Sanidad" + subtítulo "Panel de control · {finca}" (SAN-001); "Registrar aplicación" abre `FormularioVacuna` con producto precargado desde fila de Próximas (SAN-003); "+ Entrada almacén" abre `FormularioEntradaAlmacen` cableado a `registrarEntradaAlmacenFn` (SAN-014/#210).
+- [x] 5.2 GREEN: `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` (guarda de `Outlet` según patrón de `animales.tsx`) y `sanidad/historial.tsx`.
+- [x] 5.3 GREEN: wiring en `apps/web/src/routes/_app.tsx` — caso `/sanidad` en `deriveActivoId` y href del ítem → `/fincas/${fincaActivaId}/sanidad` (SAN-001/D-006). Destinos de Accesos: Historial → ruta propia; Diagnósticos → `configuracion/diagnosticos` (feature-004); Catálogo/Almacén → punto de navegación documentado para #213.
 
 ## Phase 6 — Verificación
 
