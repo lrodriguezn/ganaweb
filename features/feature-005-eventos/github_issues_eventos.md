@@ -1,230 +1,255 @@
 # Issues de GitHub — Eventos
 
-> Estrategia: **1 épica** + sub-issues por capa, con el **modelo de datos y
-> la vista unificada primero** (todo lo demás depende de ellos), luego el
-> flujo de registro (individual y grupal), y la integración con la ficha.
-> Fuente de verdad: `features/feature-004-eventos/requisito_eventos.md`
-> (RF-EVENTOS v1.0, reglas EV-xxx). Los issues referencian por regla; no
-> copian la spec.
+> Publicados en GitHub el 2026-08-06. Estado: abiertos, `status:needs-review`.
+> Épica: https://github.com/lrodriguezn/ganaweb/issues/225
+> Fuente: `features/feature-005-eventos/requisito_eventos.md` (RF-EVENTOS v1.1).
+> Template: `.github/ISSUE_TEMPLATE/feature_request.yml`.
+> Issues publicados: #225–#235.
+
+## Convenciones de publicación
+
+- Pre-flight completado: no se encontraron duplicados exactos; la implementación sigue pendiente de aprobación.
+- Labels permitidos: `enhancement`, `type:feature`, `priority:high`, `area:web`, `area:ui`, `status:needs-review` según cada unidad.
+- Cada cuerpo cubre área, problema, solución, alternativas y contexto/criterios.
+
+## Mapa y trazabilidad
+
+| Issue | Unidad | Requisitos | Depende de |
+|---|---|---|---|
+| [#225](https://github.com/lrodriguezn/ganaweb/issues/225) | Épica Eventos | Todos | — |
+| [#226](https://github.com/lrodriguezn/ganaweb/issues/226) | Contrato transversal, esquema y RBAC | EV-ARQ-001/003/004, EV-CAP-003/004, EV-SEC-001..004, EV-AUD-003 | — |
+| [#227](https://github.com/lrodriguezn/ganaweb/issues/227) | Read model e historial | EV-ARQ-002, EV-UI-002..005, EV-INT-001 | #226 |
+| [#228](https://github.com/lrodriguezn/ganaweb/issues/228) | Ruta, tablero y estados | EV-UI-001..007, EV-VIS-001..003 | #227 |
+| [#229](https://github.com/lrodriguezn/ganaweb/issues/229) | Shell, alcance y trazabilidad grupal | EV-CAP-001..005/007 | #226 |
+| [#230](https://github.com/lrodriguezn/ganaweb/issues/230) | Captura reproductiva | matriz §2, EV-CAP-006..008 | #229 |
+| [#232](https://github.com/lrodriguezn/ganaweb/issues/232) | Captura productiva | matriz §2, EV-CAP-006/008 | #229 |
+| [#231](https://github.com/lrodriguezn/ganaweb/issues/231) | Eventos sanitarios + #211 | EV-ARQ-005, matriz §2, EV-CAP-006/008 | #229, #211 |
+| [#233](https://github.com/lrodriguezn/ganaweb/issues/233) | Venta, muerte y traslado | matriz §2, EV-CAP-006/008, EV-AUD-004 | #229 |
+| [#234](https://github.com/lrodriguezn/ganaweb/issues/234) | Ficha/EventDrawer y permisos parciales | EV-SEC-004, EV-INT-001/002 | #230–#233, #227 |
+| [#235](https://github.com/lrodriguezn/ganaweb/issues/235) | Anulación, corrección y auditoría | EV-AUD-001..005 | #230–#233, #226 |
+
+## Plantilla común
+
+Todos los issues confirman: “Busqué issues existentes y no es duplicado” y
+“Entiendo que requiere `status:approved` antes de un PR”. Alternativa común
+descartada: crear tabla/permisos
+`eventos:*`; rompería los contratos especializados y RBAC por dominio.
 
 ---
 
-## ÉPICA
+## `#225` — Eventos: flujo transversal de actividad del hato
 
-**Título**: `[Épica] Eventos — tablero por categoría + registro individual y grupal`
-**Labels**: `epic`, `feature`, `módulo:eventos`
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `area:ui`, `status:needs-review`
 
-```markdown
-## Objetivo
-Registrar y consultar la actividad del hato (reproductiva, sanitaria,
-productiva, salidas) sobre las tablas especializadas del esquema, con
-tablero por categoría, feed unificado y registro individual/grupal.
+**Área**: Web App / UI/UX
 
-## Fuente de verdad
-📄 features/feature-004-eventos/requisito_eventos.md
-Decisión de arquitectura (EV-ARQ-01/02/03): NO se crea tabla `eventos`
-genérica; la vista unificada es UNION sobre las tablas por tipo; los
-grupales usan `registros_grupales` (ya existe).
+**Problema**: La actividad está fragmentada por dominio y no existe un flujo coherente para consultar, registrar y corregir eventos con alcance individual o grupal.
 
-## Orden de ejecución (dependencias reales)
-- [ ] #_ 1. Vista unificada de eventos (UNION + feed) — base
-- [ ] #_ 2. Tablero por categoría (desktop) ← dep 1
-- [ ] #_ 3. Registro individual (wizard + formularios por tipo) ← dep 1
-- [ ] #_ 4. Registro grupal (registros_grupales + N filas) ← dep 3
-- [ ] #_ 5. Efectos de estado por tipo (venta/muerte/traslado/parto) ← dep 3
-- [ ] #_ 6. Integración con ficha del animal (timeline + registro) ← dep 1,3
+**Solución**: Coordinar las unidades del mapa anterior, manteniendo tablas y permisos por dominio, historial v1, Sanidad integrada y semántica append-only.
 
-## Dependencias previas
-- Confirmar permisos `eventos:ver|crear|editar|eliminar` en RBAC (EV-RBAC).
-- Alinear efectos de estado con la máquina de estados de
-  `arquitectura_funcional.md`.
-
-## Cierre
-Los 9 criterios de aceptación del §9 verificados en los 10 temas.
-```
+**Contexto y criterios**:
+- [ ] Cada sub-issue referencia EV-xxx y declara dependencias.
+- [ ] Se cubren EV-CA-001..011 sin reconstruir #167/#181/#183 ni duplicar #211.
+- [ ] Ninguna unidad implementa tabla o permiso `eventos:*`.
 
 ---
 
-## SUB-ISSUE 1 — Vista unificada de eventos (UNION + feed)
+## `#226` — Eventos: contrato transversal, migraciones y RBAC por dominio
 
-**Título**: `Eventos: vista unificada por UNION sobre las tablas de evento`
-**Labels**: `feature`, `backend`, `módulo:eventos`
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `status:needs-review`
 
-```markdown
-Parte de #_. Prerrequisito de los demás.
-Spec: §1 (arquitectura), §2 (catálogo de tipos), EV-004..006.
+**Área**: Base de Datos / Autenticación
 
-## Tareas
-- [ ] Consulta que UNIFICA por UNION las tablas de evento sobre su tronco
-      común (animal_id, registro_grupal_id, fecha, usuario, discriminador de
-      tipo) — servicios, palpaciones, partos, aplicaciones_sanitarias,
-      revisiones_veterinarias, pesos, producciones_lacteas,
-      condicion_corporal, ventas, muertes, ubicacion_historico (EV-ARQ-02).
-- [ ] Cada fila trae: tipo, categoría, título legible (evento · animal),
-      detalle corto, alcance (individual o "N animales" si grupal), fecha.
-- [ ] Filtro por categoría/tipo; orden por fecha desc; paginación.
-- [ ] Distinción individual vs grupal por `registro_grupal_id` (EV-006).
-- [ ] RBAC server-side: solo eventos de las fincas del usuario (EV-RBAC-02).
+**Problema**: El esquema no conserva origen `grupo`, muerte/condición corporal carecen de `registro_grupal_id` y la auditoría de correcciones necesita contrato explícito.
 
-## Criterios de aceptación
-- [ ] El feed mezcla eventos de todas las tablas ordenados por fecha.
-- [ ] Un evento grupal aparece como una fila con "N animales".
-- [ ] Filtrar por "Sanitario" solo trae aplicaciones y revisiones.
-```
+**Solución**: Diseñar y migrar `origen_seleccion`, `grupo_id`, las dos FK grupales y los metadatos mínimos de anulación/corrección; aplicar RBAC real por dominio y alcance de finca derivado por animal.
+
+**Alternativas**: Inferir origen desde hijas pierde la intención original; agregar `finca_id` a todas las tablas duplica una relación derivable.
+
+**Criterios**:
+- [ ] `registros_grupales` acepta origen `manual|lote|potrero|grupo` y criterio correspondiente.
+- [ ] `muertes` y `animales_condicion_corporal` admiten `registro_grupal_id` con FK.
+- [ ] Se documenta qué columnas nuevas soportan motivo, actor y enlace de corrección.
+- [ ] Matriz RBAC usa exactamente los permisos de EV-SEC-002; finca ajena responde 403.
 
 ---
 
-## SUB-ISSUE 2 — Tablero por categoría (desktop)
+## `#227` — Eventos: extender read model para finca, contadores e historial
 
-**Título**: `Eventos: tablero por categoría con contadores y feed`
-**Labels**: `feature`, `frontend`, `módulo:eventos`
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `status:needs-review`
 
-```markdown
-Parte de #_. Depende de #_ (vista unificada).
-Spec: §3 (EV-001..007), diseño `.op` "02 Eventos · Desktop".
+**Área**: Web App
 
-## Tareas
-- [ ] 4 tarjetas de categoría (Reproductivo, Sanitario, Productivo, Salidas)
-      con sus tipos y contador del mes en curso (EV-002/003).
-- [ ] Feed de últimos eventos bajo las tarjetas, con filtro "Todos ▾" y
-      "Ver todo →" (EV-004/005).
-- [ ] Botón "+ Registrar evento" (abre wizard) y atajos "+ Registrar →" por
-      categoría (abren wizard filtrado) (EV-007).
-- [ ] Estados: cargando, sin eventos, error (EV-040). Solo tokens, 10 temas.
+**Problema**: El timeline existente es por animal; tablero e historial requieren alcance de finca, agregados, filtros y paginación sin duplicar su UNION.
 
-## Criterios de aceptación
-- [ ] Las 4 tarjetas muestran contador del mes; render en 10 temas.
-- [ ] El atajo de una categoría abre el wizard ya en esa categoría.
-```
+**Solución**: Extender el contrato de #167/#181/#183 para feed, conteos mensuales e historial paginado, derivando finca por animal y agrupando hijos por cabecera cuando corresponda.
+
+**Alternativas**: Un segundo UNION divergiría del timeline; una tabla materializada añade sincronización prematura.
+
+**Criterios**:
+- [ ] Reutiliza exclusión de `registros_grupales.anulado_en` y conteo/paginación existentes.
+- [ ] Filtra por categoría, tipo y fechas; orden estable y página sin duplicados.
+- [ ] Un grupal aparece una vez en feed de finca y cada hijo en su ficha.
+- [ ] Solo retorna dominios autorizados y animales de la finca activa.
 
 ---
 
-## SUB-ISSUE 3 — Registro individual (wizard + formularios por tipo)
+## `#228` — Eventos: tablero, historial y estados responsive
 
-**Título**: `Eventos: wizard de registro individual (3 pasos)`
-**Labels**: `feature`, `frontend`, `backend`, `módulo:eventos`
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `area:ui`, `status:needs-review`
 
-```markdown
-Parte de #_. Depende de #_ (vista unificada).
-Spec: §4 (EV-010..015), diseño `.op` "02a/02b/02c Evento · Paso 1/2/3".
+**Área**: UI/UX
 
-## Tareas
-- [ ] Wizard modal de 3 pasos: Tipo → Alcance → Datos (EV-010/011).
-- [ ] Paso 1: selector de tipo agrupado por categoría.
-- [ ] Paso 3: formulario específico por tipo con SUS campos propios (§2):
-      servicio (tipo/padre/pajuela/inseminador/dosis), palpación
-      (resultado/dias_gestacion), parto (machos/hembras/muertos/tipo),
-      pesaje (peso_kg/tipo), venta (motivo/lugar/precio/comprador), etc.
-- [ ] Guardar individual: 1 fila en la tabla del tipo con finca_id y
-      usuario del contexto, fecha default hoy (EV-013).
-- [ ] Validaciones de dominio por tipo (EV-014).
-- [ ] Los formularios son COMPONENTES REUTILIZABLES (se usan también desde
-      la ficha — EV-021). Un solo formulario por tipo.
-- [ ] RBAC: requiere `eventos:crear`; botón oculto sin permiso (EV-RBAC-03).
+**Problema**: El diseño nominal no cubre estados operativos, historial completo ni mobile, y `themes` vacío impide afirmar verificación multitema.
 
-## Criterios de aceptación
-- [ ] Registrar un servicio individual crea 1 fila en `servicios` con sus
-      campos.
-- [ ] El formulario de cada tipo valida sus reglas propias.
-- [ ] El mismo formulario se invoca desde Eventos y desde la ficha.
-```
+**Solución**: Implementar ruta, cuatro categorías, filtros, “Ver todo” y estados loading/empty/error/vacío por filtro con diseño responsive validado previamente.
+
+**Alternativas**: Copiar las diez variantes actuales no demuestra temas ni comportamiento.
+
+**Criterios**:
+- [ ] Tablero e historial cumplen EV-UI-001..007 con permisos parciales.
+- [ ] “Ver todo” es paginado y filtrable en v1.
+- [ ] Hay evidencia visual desktop/mobile y verificación real de temas soportados.
+- [ ] Los vacíos inicial y por filtro tienen mensajes/acciones distintos.
 
 ---
 
-## SUB-ISSUE 4 — Registro grupal (registros_grupales + N filas)
+## `#229` — Eventos: shell de captura y selección grupal trazable
 
-**Título**: `Eventos: registro grupal por lote/potrero con valor por animal`
-**Labels**: `feature`, `frontend`, `backend`, `módulo:eventos`
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `area:ui`, `status:needs-review`
 
-```markdown
-Parte de #_. Depende de #_ (registro individual).
-Spec: §4 (EV-011/012), diseño `.op` "02b" (selección) y "02d" (grilla).
+**Área**: Web App / UI/UX
 
-## Tareas
-- [ ] Paso 2 del wizard: alcance grupal con selección por lista/lote/
-      potrero/grupo; cargar animales y permitir excluir (EV-011).
-- [ ] Datos COMPARTIDOS vs POR ANIMAL: campos como fecha/producto se
-      capturan una vez; campos variables (p. ej. peso) se capturan en una
-      GRILLA con una fila por animal (decisión de producto). Ver `.op` 02d.
-- [ ] Transacción de guardado (EV-012):
-      1. INSERT en `registros_grupales` (tipo_evento, total_animales,
-         lote_id/potrero_id, fecha).
-      2. INSERT de N filas en la tabla del tipo, todas con el mismo
-         `registro_grupal_id`; los campos por-animal toman su valor de la
-         grilla, los compartidos el valor común.
-      Todo en una transacción: o entran todas o ninguna.
-- [ ] El grupal aparece como 1 tarjeta en el feed y como evento individual
-      en la ficha de cada animal.
+**Problema**: Falta un shell común que seleccione tipo y participantes sin acoplar ni duplicar formularios de dominio.
 
-## Criterios de aceptación
-- [ ] Registrar pesaje grupal de 40 animales crea 1 fila en
-      `registros_grupales` + 40 en `pesos`, cada una con SU peso de la grilla
-      y el mismo `registro_grupal_id`.
-- [ ] Excluir un animal en el paso 2 lo deja fuera del conteo y del guardado.
-- [ ] Si falla una fila, la transacción revierte todo (no quedan grupales
-      huérfanos).
-```
+**Solución**: Wizard Tipo → Alcance → Datos; selección individual o manual/lote/potrero/grupo, exclusiones y contrato transaccional de cabecera + hijas efectivas.
+
+**Alternativas**: Un formulario monolítico mezclaría reglas; guardar la selección original como participantes incluiría animales excluidos.
+
+**Criterios**:
+- [ ] Cabecera conserva origen/criterio y `total_animales` efectivo.
+- [ ] Hijas coinciden exactamente con participantes confirmados.
+- [ ] Fallo de una hija revierte toda la operación.
+- [ ] Parto no ofrece alcance grupal; el shell delega datos/validación al dominio.
 
 ---
 
-## SUB-ISSUE 5 — Efectos de estado por tipo
+## `#230` — Eventos: captura reproductiva append-only
 
-**Título**: `Eventos: efectos de estado (venta/muerte/traslado/parto)`
-**Labels**: `feature`, `backend`, `módulo:eventos`
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `status:needs-review`
 
-```markdown
-Parte de #_. Depende de #_ (registro individual).
-Spec: §4 (EV-014/015), §6 (EV-031). Alinear con máquina de estados.
+**Área**: Web App
 
-## Tareas
-- [ ] Venta → `estado_animal_key` = Vendido.
-- [ ] Muerte → `estado_animal_key` = Muerto.
-- [ ] Traslado → actualiza ubicación actual del animal
-      (potrero/sector/lote/grupo) ADEMÁS de escribir `ubicacion_historico`.
-- [ ] Parto → puede crear las crías como nuevos animales (vía `partos_crias`).
-- [ ] Anular un evento con efecto de estado REVIERTE el efecto (anular venta
-      → animal vuelve a "En finca") — EV-031.
+**Problema**: Servicio, palpación y parto necesitan formularios especializados reutilizables y consistentes con alcance y RBAC.
 
-## Criterios de aceptación
-- [ ] Registrar una venta cambia el estado del animal a Vendido.
-- [ ] Anular esa venta lo devuelve a En finca.
-- [ ] Un traslado deja el animal en el nuevo potrero y escribe el histórico.
-```
+**Solución**: Conectar formularios de dominio al shell; servicio/palpación individual y grupal, parto exclusivamente individual; usar `eventos_reproductivos:*`.
+
+**Alternativas**: Editar filas históricas se descarta por append-only.
+
+**Criterios**:
+- [ ] Campos y efectos coinciden con matriz §2 y validaciones del dominio.
+- [ ] Parto nunca genera `registro_grupal_id` en v1.
+- [ ] Corrección se realiza por anulación + nuevo evento/compensación.
 
 ---
 
-## SUB-ISSUE 6 — Integración con ficha del animal
+## `#232` — Eventos: captura productiva individual y grupal
 
-**Título**: `Eventos: timeline y registro desde la ficha del animal`
-**Labels**: `feature`, `frontend`, `módulo:eventos`
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `status:needs-review`
 
-```markdown
-Parte de #_. Depende de #_ (vista unificada) y #_ (registro individual).
-Spec: §5 (EV-020/021).
+**Área**: Web App
 
-## Tareas
-- [ ] La ficha (pantalla 19) muestra el timeline del animal desde la vista
-      unificada (EV-020); reutiliza CA-TL-xxx de crud_animales.
-- [ ] Un evento grupal aparece en la ficha como evento individual con nota
-      de que fue parte de un registro grupal.
-- [ ] "Registrar evento" desde la ficha abre el MISMO wizard con el animal
-      preseleccionado (alcance individual) — EV-021.
+**Problema**: Pesaje, producción láctea y condición corporal necesitan distinguir datos compartidos de valores por animal.
 
-## Criterios de aceptación
-- [ ] El timeline del animal lista sus eventos ordenados por fecha.
-- [ ] Registrar desde la ficha usa el mismo formulario que desde Eventos.
-```
+**Solución**: Formularios reutilizables con grilla por animal cuando corresponda y permisos `eventos_productivos:*`.
+
+**Alternativas**: Aplicar un valor único a todo el grupo falsea mediciones individuales.
+
+**Criterios**:
+- [ ] Pesaje grupal exige un peso válido por participante.
+- [ ] Producción y condición corporal siguen la matriz §2.
+- [ ] Condición corporal grupal se bloquea hasta completar #226.
 
 ---
 
-## Notas de estrategia
+## `#231` — Eventos: integrar captura sanitaria con #211
 
-- **La vista unificada (#1) es el cimiento**: el feed, el tablero y la ficha
-  la consumen. Sin ella, los demás no tienen qué mostrar.
-- **#4 depende de #3**: el registro grupal reutiliza los formularios por tipo
-  del registro individual; construir grupal primero duplicaría trabajo.
-- **#5 (efectos de estado) separado**: toca la máquina de estados y tiene
-  reglas de reversión propias; mezclarlo con el registro haría el issue
-  inmanejable.
-- Reutilización clave: **un solo formulario por tipo** sirve a individual,
-  grupal y ficha. Si se bifurcan, divergirán.
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `status:needs-review`
+
+**Área**: Web App
+
+**Problema**: Sanidad debe aparecer en Eventos sin crear un contrato paralelo al módulo sanitario.
+
+**Solución**: Reutilizar #211 y permisos `sanidad:*` para Aplicación sanitaria y Revisión veterinaria; Eventos aporta shell, navegación y read model.
+
+**Alternativas**: Excluir Sanidad rompe la visión transversal; duplicarla crea reglas divergentes.
+
+**Criterios**:
+- [ ] `diagnosticos_veterinarios` solo se usa como catálogo; no aparece como tipo de evento.
+- [ ] Aplicación usa `producto_id`, `dosis`, `precio_dosis`, `proxima_dosis`; campos adicionales quedan como migración separada.
+- [ ] Inventario/offline y validaciones provienen de #211, no se reimplementan.
+
+---
+
+## `#233` — Eventos: venta, muerte y traslado con efectos laterales
+
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `status:needs-review`
+
+**Área**: Web App
+
+**Problema**: Los movimientos cambian estado o ubicación y una anulación ingenua puede sobrescribir eventos posteriores.
+
+**Solución**: Formularios con `movimientos:{ver,crear,anular}` y efectos atómicos; delegar correcciones al contrato compensatorio.
+
+**Alternativas**: Restaurar siempre “en finca” se descarta porque puede invalidar historia posterior.
+
+**Criterios**:
+- [ ] Venta/muerte cambian estado y traslado actualiza ubicación + histórico en una transacción.
+- [ ] Muerte grupal espera la migración de #226.
+- [ ] Las compensaciones consideran el estado y eventos posteriores.
+
+---
+
+## `#234` — Eventos: integrar ficha/EventDrawer con permisos parciales
+
+**Labels**: `enhancement`, `type:feature`, `area:web`, `area:ui`, `status:needs-review`
+
+**Área**: Web App / UI/UX
+
+**Problema**: La ficha ya tiene timeline/EventDrawer, pero debe compartir contratos y respetar autorización por tipo sin bifurcar formularios.
+
+**Solución**: Reutilizar read model y formularios; abrir con animal preseleccionado y filtrar tipos/acciones por permisos efectivos.
+
+**Alternativas**: Formularios exclusivos de ficha se descartan por divergencia.
+
+**Criterios**:
+- [ ] Un hijo grupal identifica su origen sin duplicarse.
+- [ ] Los mismos formularios funcionan desde ficha y Eventos.
+- [ ] Un usuario puede ver un dominio autorizado aunque carezca de otros.
+
+---
+
+## `#235` — Eventos: anulación, corrección y compensación auditable
+
+**Labels**: `enhancement`, `type:feature`, `priority:high`, `area:web`, `area:ui`, `status:needs-review`
+
+**Área**: Web App / UI/UX
+
+**Problema**: Editar o borrar eventos destruye trazabilidad; además, hijos grupales no tienen una columna de anulación propia.
+
+**Solución**: Flujo append-only con confirmación, motivo, actor/fecha, anulación derivada desde cabecera y nuevo evento o compensación.
+
+**Alternativas**: Soft-delete por hija duplica estado y puede divergir de `registros_grupales.anulado_en`.
+
+**Criterios**:
+- [ ] No existe acción “eliminar” ni edición destructiva.
+- [ ] Anular grupal marca cabecera y el read model deriva exclusión de hijas.
+- [ ] UI muestra impacto, confirmación, éxito/error y estado anulado.
+- [ ] Venta, muerte y traslado prueban compensación segura ante eventos posteriores.
+
+## Revisión previa a publicación
+
+- [x] Sustituir placeholders por números reales, sin inventarlos.
+- [x] Buscar duplicados abiertos/cerrados y actualizar referencias a #167/#181/#183/#211.
+- [x] Confirmar labels existentes y replicar el formulario `feature_request.yml` por API según `CONTRIBUTING.md`.
+- [x] Verificar que la épica cubre EV-CA-001..011 exactamente una vez o por dependencia explícita.
