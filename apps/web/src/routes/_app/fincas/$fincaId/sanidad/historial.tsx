@@ -16,8 +16,8 @@ import type { FiltrosHistorialSanidad, HistorialSanidadPagina } from "@ganaweb/a
 import { type FiltrosHistorialSanidadVista, HistorialAplicacionesSanidad } from "@ganaweb/ui"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
-import { listarCatalogoSanidadFn } from "../../../../../server/sanidad-catalogo-actions.server.js"
-import { listarHistorialPanelSanidadFn } from "../../../../../server/sanidad-panel.server.js"
+import { listarCatalogoSanidadFn } from "../../../../../server/sanidad-catalogo-actions.js"
+import { listarHistorialPanelSanidadFn } from "../../../../../server/sanidad-panel.js"
 
 const TAMANO_PAGINA = 20
 

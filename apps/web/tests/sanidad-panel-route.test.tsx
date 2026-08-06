@@ -28,28 +28,28 @@ import {
   Route as SanidadRoute,
   SanidadRouteView,
 } from "../src/routes/_app/fincas/$fincaId/sanidad.js"
-import { registrarEntradaAlmacenFn } from "../src/server/sanidad-almacen.server.js"
-import { listarCatalogoSanidadFn } from "../src/server/sanidad-catalogo-actions.server.js"
+import { registrarEntradaAlmacenFn } from "../src/server/sanidad-almacen.js"
+import { listarCatalogoSanidadFn } from "../src/server/sanidad-catalogo-actions.js"
 import {
   listarHistorialPanelSanidadFn,
   listarProximasPanelSanidadFn,
   listarStockPanelSanidadFn,
   listarUltimasPanelSanidadFn,
   obtenerMetricasPanelSanidadFn,
-} from "../src/server/sanidad-panel.server.js"
+} from "../src/server/sanidad-panel.js"
 
-vi.mock("../src/server/sanidad-panel.server.js", () => ({
+vi.mock("../src/server/sanidad-panel.js", () => ({
   obtenerMetricasPanelSanidadFn: vi.fn(),
   listarProximasPanelSanidadFn: vi.fn(),
   listarUltimasPanelSanidadFn: vi.fn(),
   listarStockPanelSanidadFn: vi.fn(),
   listarHistorialPanelSanidadFn: vi.fn(),
 }))
-vi.mock("../src/server/sanidad-almacen.server.js", () => ({
+vi.mock("../src/server/sanidad-almacen.js", () => ({
   registrarEntradaAlmacenFn: vi.fn(),
   listarEntradasAlmacenFn: vi.fn(),
 }))
-vi.mock("../src/server/sanidad-catalogo-actions.server.js", () => ({
+vi.mock("../src/server/sanidad-catalogo-actions.js", () => ({
   listarCatalogoSanidadFn: vi.fn(),
 }))
 

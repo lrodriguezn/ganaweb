@@ -40,14 +40,14 @@ import {
 } from "@ganaweb/ui"
 import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
 import { useState } from "react"
-import { registrarEntradaAlmacenFn } from "../../../../server/sanidad-almacen.server.js"
-import { listarCatalogoSanidadFn } from "../../../../server/sanidad-catalogo-actions.server.js"
+import { registrarEntradaAlmacenFn } from "../../../../server/sanidad-almacen.js"
+import { listarCatalogoSanidadFn } from "../../../../server/sanidad-catalogo-actions.js"
 import {
   listarProximasPanelSanidadFn,
   listarStockPanelSanidadFn,
   listarUltimasPanelSanidadFn,
   obtenerMetricasPanelSanidadFn,
-} from "../../../../server/sanidad-panel.server.js"
+} from "../../../../server/sanidad-panel.js"
 
 /** Data del loader: una fuente por card, `null` = card degradada (CM-042). */
 export interface SanidadPanelLoaderData {

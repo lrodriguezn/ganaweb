@@ -109,3 +109,20 @@
   - **Item 2** (Próximas agrupa KPI-09 en Esta semana/Próxima semana/Este mes): tests 1.1 (`agruparRefuerzosPorSemana`), 2.2 (refuerzos EN_FINCA/RN-051), 3.2 (server function agrupa vía dominio), 4.1 (UI períodos). ✔
   - **Item 12** (alertas "Requiere acción" del Inicio navegan al módulo — SAN-070): dependencia de #214; este change deja la consulta KPI-09/SAN-050 y la agrupación SAN-052 como insumo reutilizable. No verificable aquí. ⏳
   - Items 3/4/8/9 (guardado/grupal/offline/auto-completado) son de #211/#208 — frontera respetada: `onGuardar` queda placeholder (SAN-047).
+
+## Fix post-verify (CI)
+
+- **Problema**: el PR #238 falló en CI con `tanstack-start-core:import-protection` — las rutas `sanidad.tsx`/`sanidad/historial.tsx` importaban las server functions directamente de módulos `.server.ts` (`sanidad-almacen.server`, `sanidad-catalogo-actions.server`, `sanidad-panel.server`), y el patrón `**/*.server.*` está prohibido en el bundle de cliente. Las fases apply/verify no corrieron `pnpm turbo build`, por eso pasó.
+- **Causa raíz**: los módulos de sanidad (#209/#210/#212) sólo tenían el lado `.server.ts` (harness) porque sus UI nunca se habían ruteado; faltaba el módulo PÚBLICO bundleable.
+- **Fix**: se crean tres módulos públicos siguiendo EXACTAMENTE el patrón de `configuracion-actions.ts` (tipos serializables declarados localmente, `createServerFn` cuyo handler hace lazy import del harness, sin imports de valor de `.server.*` en el top-level):
+  - `apps/web/src/server/sanidad-panel.ts` → envuelve `obtenerMetricasPanelSanidadFn`, `listarProximasPanelSanidadFn`, `listarUltimasPanelSanidadFn`, `listarStockPanelSanidadFn`, `listarHistorialPanelSanidadFn`.
+  - `apps/web/src/server/sanidad-almacen.ts` → envuelve `registrarEntradaAlmacenFn`, `listarEntradasAlmacenFn`.
+  - `apps/web/src/server/sanidad-catalogo-actions.ts` → envuelve `listarCatalogoSanidadFn`.
+  - Los harness `.server.ts` y sus contract tests quedan intactos (el runtime harness se resuelve vía `await import("./<modulo>.server.js")` dentro del handler).
+- **Rutas**: `sanidad.tsx` y `sanidad/historial.tsx` ahora importan desde los módulos públicos (mismo nombre de export `Fn`, sólo cambió el specifier sin `.server`). El test de ruta `sanidad-panel-route.test.tsx` re-apunta sus `vi.mock` a los módulos públicos.
+- **Evidencia**:
+  - `pnpm turbo build --force` → 7/7 tasks pass (el gate que falló en CI ahora es verde).
+  - `CI=true pnpm turbo test --force` → 13/13 tasks pass (apps/web 425 tests).
+  - `pnpm turbo typecheck --force` → 13/13 tasks pass.
+  - `pnpm exec biome ci .` → 423 archivos, 0 errores.
+  - `pnpm exec dependency-cruiser .` → 0 errores (warnings idénticos al patrón público→server ya existente en `configuracion-actions`/`animal-actions`).
