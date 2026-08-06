@@ -412,6 +412,216 @@ export function validarCabeceraRegistroGrupal(datos: {
   return { valido: true }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Issue #212 — Panel Sanidad: reglas puras del read model                    */
+/* -------------------------------------------------------------------------- */
+
+const MS_POR_DIA = 86_400_000
+
+/**
+ * Aritmética de fechas ISO YYYY-MM-DD (pura, UTC). Insumo de los límites de
+ * SAN-052 (semana natural), KPI-09 (ventana hoy+30) y D-002 (últimos 30 días).
+ * `dias` puede ser negativo.
+ */
+export function sumarDiasAFechaIso(fecha: string, dias: number): string {
+  const base = Date.UTC(Number(fecha.slice(0, 4)), Number(fecha.slice(5, 7)) - 1, Number(fecha.slice(8, 10)))
+  const resultado = new Date(base + dias * MS_POR_DIA)
+  return resultado.toISOString().slice(0, 10)
+}
+
+/**
+ * SAN-052: inicio de la semana NATURAL (lunes) que contiene `fecha`.
+ * getUTCDay(): 0=domingo..6=sábado; el desplazamiento al lunes es
+ * (dia + 6) % 7 (lunes→0, domingo→6).
+ */
+export function inicioSemanaIso(fecha: string): string {
+  const dia = new Date(`${fecha}T00:00:00Z`).getUTCDay()
+  return sumarDiasAFechaIso(fecha, -((dia + 6) % 7))
+}
+
+/** SAN-052: fin de la semana natural (domingo) que contiene `fecha`. */
+export function finSemanaIso(fecha: string): string {
+  return sumarDiasAFechaIso(inicioSemanaIso(fecha), 6)
+}
+
+/** Días de la ventana de refuerzos pendientes (KPI-09: hoy + 30). */
+export const VENTANA_REFUERZOS_DIAS = 30
+
+/** Días de la ventana de animales en tratamiento (D-002: últimos 30 días). */
+export const VENTANA_TRATAMIENTO_DIAS = 30
+
+/**
+ * KPI-09/SAN-050: predicado de refuerzo pendiente.
+ *
+ * Un refuerzo está pendiente cuando la aplicación tiene `proxima_dosis`
+ * dentro de la ventana hoy+30, NO tiene aplicación posterior del mismo
+ * producto para el mismo animal, y el animal está EN_FINCA. Los refuerzos
+ * vencidos (proxima_dosis en el pasado) siguen pendientes hasta registrarse
+ * la aplicación que los completa (RN-042).
+ */
+export function esRefuerzoPendienteSanidad(datos: {
+  readonly proximaDosis: string | null
+  readonly tieneAplicacionPosterior: boolean
+  readonly animalEnFinca: boolean
+  readonly hoy: string
+}): boolean {
+  if (datos.proximaDosis === null) return false
+  if (!datos.animalEnFinca) return false
+  if (datos.tieneAplicacionPosterior) return false
+  return datos.proximaDosis <= sumarDiasAFechaIso(datos.hoy, VENTANA_REFUERZOS_DIAS)
+}
+
+/**
+ * SAN-003: propósito legible del producto según su tipo de tratamiento
+ * ("producto + propósito" en las filas de Próximas aplicaciones).
+ */
+export function propositoProductoSanitario(tipo: TipoTratamientoSanidad): string {
+  switch (tipo) {
+    case "vacuna":
+      return "Vacuna"
+    case "reproductivo":
+      return "Tratamiento reproductivo"
+    case "no_reproductivo":
+      return "Tratamiento"
+  }
+}
+
+/**
+ * Fila de refuerzo pendiente por animal/producto — la forma mínima que la
+ * agrupación SAN-052 necesita (el adaptador del read model la produce).
+ */
+export type RefuerzoPendienteFila = {
+  readonly productoId: string
+  readonly codigo: string
+  readonly descripcion: string
+  readonly tipoTratamiento: TipoTratamientoSanidad
+  readonly animalId: string
+  /** ISO YYYY-MM-DD; dentro de la ventana KPI-09 (≤ hoy+30). */
+  readonly proximaDosis: string
+}
+
+/** Fila agrupada por producto dentro de un período (SAN-003). */
+export type RefuerzoPendienteAgrupado = {
+  readonly productoId: string
+  readonly codigo: string
+  readonly descripcion: string
+  readonly proposito: string
+  /** Animales distintos del producto en el período. */
+  readonly cantidadAnimales: number
+  /** La proxima_dosis más próxima del grupo. */
+  readonly venceFecha: string
+}
+
+/** Períodos de la semana natural (SAN-052), consistentes desktop/mobile. */
+export type PeriodosRefuerzosSanidad = {
+  readonly estaSemana: readonly RefuerzoPendienteAgrupado[]
+  readonly proximaSemana: readonly RefuerzoPendienteAgrupado[]
+  readonly esteMes: readonly RefuerzoPendienteAgrupado[]
+}
+
+/**
+ * SAN-052: agrupación por semana natural — Esta semana / Próxima semana /
+ * Este mes — consistente entre desktop y mobile.
+ *
+ * - **Esta semana**: `proxima_dosis` dentro de la semana natural de `hoy`
+ *   (lunes..domingo); incluye refuerzos vencidos dentro de la semana.
+ * - **Próxima semana**: dentro de la semana natural siguiente.
+ * - **Este mes**: el resto de la ventana pendiente (después de la próxima
+ *   semana, hasta hoy+30).
+ *
+ * Dentro de cada período las filas se agrupan por producto (SAN-003):
+ * N animales distintos y el vence más próximo. Defensa KPI-09: las filas
+ * fuera de la ventana hoy+30 se descartan.
+ */
+export function agruparRefuerzosPorSemana(
+  filas: readonly RefuerzoPendienteFila[],
+  hoy: string,
+): PeriodosRefuerzosSanidad {
+  const inicioEstaSemana = inicioSemanaIso(hoy)
+  const finEstaSemana = finSemanaIso(hoy)
+  const finProximaSemana = sumarDiasAFechaIso(finEstaSemana, 7)
+  const finVentana = sumarDiasAFechaIso(hoy, VENTANA_REFUERZOS_DIAS)
+
+  const porPeriodo: Record<"estaSemana" | "proximaSemana" | "esteMes", RefuerzoPendienteFila[]> = {
+    estaSemana: [],
+    proximaSemana: [],
+    esteMes: [],
+  }
+
+  for (const fila of filas) {
+    if (fila.proximaDosis > finVentana) continue // defensa KPI-09
+    if (fila.proximaDosis >= inicioEstaSemana && fila.proximaDosis <= finEstaSemana) {
+      porPeriodo.estaSemana.push(fila)
+    } else if (fila.proximaDosis <= finProximaSemana) {
+      porPeriodo.proximaSemana.push(fila)
+    } else {
+      porPeriodo.esteMes.push(fila)
+    }
+  }
+
+  return {
+    estaSemana: agruparPorProducto(porPeriodo.estaSemana),
+    proximaSemana: agruparPorProducto(porPeriodo.proximaSemana),
+    esteMes: agruparPorProducto(porPeriodo.esteMes),
+  }
+}
+
+function agruparPorProducto(filas: readonly RefuerzoPendienteFila[]): RefuerzoPendienteAgrupado[] {
+  const porProducto = new Map<string, RefuerzoPendienteFila[]>()
+  for (const fila of filas) {
+    const existentes = porProducto.get(fila.productoId)
+    if (existentes === undefined) porProducto.set(fila.productoId, [fila])
+    else existentes.push(fila)
+  }
+
+  const agrupadas: RefuerzoPendienteAgrupado[] = []
+  for (const filasProducto of porProducto.values()) {
+    // El Map garantiza grupos no vacíos; reduce sin semilla es total aquí.
+    const primera = filasProducto.reduce((menor, fila) =>
+      fila.proximaDosis < menor.proximaDosis ? fila : menor,
+    )
+    const animalesDistintos = new Set(filasProducto.map((fila) => fila.animalId))
+    agrupadas.push({
+      productoId: primera.productoId,
+      codigo: primera.codigo,
+      descripcion: primera.descripcion,
+      proposito: propositoProductoSanitario(primera.tipoTratamiento),
+      cantidadAnimales: animalesDistintos.size,
+      venceFecha: primera.proximaDosis,
+    })
+  }
+  // Orden estable: el vence más próximo primero.
+  agrupadas.sort((a, b) => (a.venceFecha < b.venceFecha ? -1 : a.venceFecha > b.venceFecha ? 1 : 0))
+  return agrupadas
+}
+
+/** Aplicación usada por la métrica "Animales en tratamiento" (D-002). */
+export type AplicacionTratamientoSanidad = {
+  readonly animalId: string
+  readonly tipoTratamiento: TipoTratamientoSanidad
+  /** ISO YYYY-MM-DD. */
+  readonly fecha: string
+}
+
+/**
+ * D-002: animales DISTINTOS con aplicaciones de `tipo_tratamiento` ≠
+ * 'vacuna' en los últimos 30 días (incluye el límite hoy-30, excluye fechas
+ * futuras a hoy). Las vacunas son prevención, no tratamiento.
+ */
+export function contarAnimalesEnTratamiento(
+  aplicaciones: readonly AplicacionTratamientoSanidad[],
+  hoy: string,
+): number {
+  const inicioVentana = sumarDiasAFechaIso(hoy, -VENTANA_TRATAMIENTO_DIAS)
+  const animales = new Set<string>()
+  for (const aplicacion of aplicaciones) {
+    if (aplicacion.tipoTratamiento === "vacuna") continue
+    if (aplicacion.fecha < inicioVentana || aplicacion.fecha > hoy) continue
+    animales.add(aplicacion.animalId)
+  }
+  return animales.size
+}
+
 /**
  * RN-051: guarda de anulación de un registro grupal. No existe el borrado ni
  * la edición parcial de un grupo anulado; anular dos veces se rechaza.

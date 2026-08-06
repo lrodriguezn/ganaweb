@@ -143,6 +143,17 @@ export type {
   SanidadLecturaPort,
 } from "./puertos/sanidad-port.js"
 export type {
+  AlertaStockPanel,
+  FilaHistorialSanidad,
+  FiltrosHistorialSanidad,
+  HistorialSanidadPagina,
+  ObjetivoAplicacionSanidad,
+  PanelSanidadMetricas,
+  RefuerzoPendienteFila,
+  SanidadPanelLecturaPort,
+  UltimaAplicacionPanel,
+} from "./puertos/sanidad-panel-port.js"
+export type {
   ConteoCatalogoGlobalClave,
   ConteoFamiliaClave,
   ConteosMaestrosPort,
