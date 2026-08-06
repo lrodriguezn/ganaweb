@@ -157,6 +157,7 @@ describe.skipIf(!dbSmoke)("Issue #208: sanidad (smoke Postgres)", () => {
 
   it("RN-040/RN-052: registro individual guarda snapshot de precio y sin cabecera", async () => {
     const resultado = await adaptador.registrarAplicaciones({
+      fincaId,
       registroGrupal: null,
       aplicaciones: [
         {
@@ -193,6 +194,7 @@ describe.skipIf(!dbSmoke)("Issue #208: sanidad (smoke Postgres)", () => {
   it("RN-052: registro grupal crea cabecera tratamiento + N hijas en una transacción", async () => {
     const grupoId = `rg-san-${sufijo}`
     const resultado = await adaptador.registrarAplicaciones({
+      fincaId,
       registroGrupal: {
         id: grupoId,
         fincaId,
@@ -247,7 +249,13 @@ describe.skipIf(!dbSmoke)("Issue #208: sanidad (smoke Postgres)", () => {
   it("RN-051: anular el grupo excluye sus filas del stock y de las previas, en una transacción", async () => {
     const grupoId = `rg-san-${sufijo}`
 
-    const resultado = await adaptador.anularRegistroGrupal(grupoId, fincaId, new Date())
+    const resultado = await adaptador.anularRegistroGrupal(
+      grupoId,
+      fincaId,
+      new Date(),
+      usuarioId,
+      "Captura errada",
+    )
     expect(resultado.tipo).toBe("anulado")
 
     const [cabecera] = await db
@@ -270,13 +278,31 @@ describe.skipIf(!dbSmoke)("Issue #208: sanidad (smoke Postgres)", () => {
   it("RN-051: anular dos veces el mismo grupo devuelve conflicto; otra finca → no_encontrado", async () => {
     const grupoId = `rg-san-${sufijo}`
 
-    const repetido = await adaptador.anularRegistroGrupal(grupoId, fincaId, new Date())
+    const repetido = await adaptador.anularRegistroGrupal(
+      grupoId,
+      fincaId,
+      new Date(),
+      usuarioId,
+      "Captura errada",
+    )
     expect(repetido.tipo).toBe("conflicto")
 
-    const ajeno = await adaptador.anularRegistroGrupal(grupoId, "finca-ajena", new Date())
+    const ajeno = await adaptador.anularRegistroGrupal(
+      grupoId,
+      "finca-ajena",
+      new Date(),
+      usuarioId,
+      "Captura errada",
+    )
     expect(ajeno.tipo).toBe("no_encontrado")
 
-    const inexistente = await adaptador.anularRegistroGrupal("rg-no-existe", fincaId, new Date())
+    const inexistente = await adaptador.anularRegistroGrupal(
+      "rg-no-existe",
+      fincaId,
+      new Date(),
+      usuarioId,
+      "Captura errada",
+    )
     expect(inexistente.tipo).toBe("no_encontrado")
   })
 
@@ -307,6 +333,7 @@ describe.skipIf(!dbSmoke)("Issue #208: sanidad (smoke Postgres)", () => {
 
   it("conflicto: registrar una aplicación con FK inexistente no escribe nada", async () => {
     const resultado = await adaptador.registrarAplicaciones({
+      fincaId,
       registroGrupal: null,
       aplicaciones: [
         {

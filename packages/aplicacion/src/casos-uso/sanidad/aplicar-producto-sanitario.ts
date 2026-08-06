@@ -387,6 +387,7 @@ export function aplicarProductoSanitario(deps: AplicarProductoSanitarioDeps) {
     if (!cabecera.valido) return { tipo: "error", detalle: cabecera.error.detalle }
 
     const escrito = await deps.escritura.registrarAplicaciones({
+      fincaId: cmd.sesion.fincaActivaId,
       registroGrupal: escritura.registroGrupal,
       aplicaciones: escritura.aplicaciones,
       usuarioCreadoPor: cmd.sesion.usuarioId,

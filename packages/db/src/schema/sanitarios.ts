@@ -1,4 +1,6 @@
 import {
+  type AnyPgColumn,
+  check,
   date,
   index,
   integer,
@@ -11,6 +13,11 @@ import {
 } from "drizzle-orm/pg-core"
 import { animales } from "./animales.js"
 import { usuarios } from "./auth.js"
+import {
+  auditoriaEventoCoherente,
+  columnasAuditoriaEvento,
+  hijoGrupalSinAuditoriaIndividual,
+} from "./evento-auditoria.js"
 import { fincas } from "./fincas.js"
 import { diagnosticosVeterinarios, veterinarios } from "./maestros.js"
 import { registrosGrupales } from "./registros-grupales.js"
@@ -68,10 +75,15 @@ export const aplicacionesSanitarias = pgTable(
     usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    ...columnasAuditoriaEvento(),
+    corrigeAId: text("corrige_a_id").references((): AnyPgColumn => aplicacionesSanitarias.id),
   },
   (t) => [
     index("idx_aplicaciones_animal").on(t.animalId, t.fecha),
     index("idx_aplicaciones_producto").on(t.productoId, t.fecha),
+    index("idx_aplicaciones_corrige_a").on(t.corrigeAId),
+    check("ck_aplicaciones_auditoria", auditoriaEventoCoherente(t)),
+    check("ck_aplicaciones_hijo_grupal", hijoGrupalSinAuditoriaIndividual(t)),
   ],
 )
 
@@ -92,8 +104,15 @@ export const revisionesVeterinarias = pgTable(
     usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    ...columnasAuditoriaEvento(),
+    corrigeAId: text("corrige_a_id").references((): AnyPgColumn => revisionesVeterinarias.id),
   },
-  (t) => [index("idx_revisiones_animal").on(t.animalId, t.fecha)],
+  (t) => [
+    index("idx_revisiones_animal").on(t.animalId, t.fecha),
+    index("idx_revisiones_corrige_a").on(t.corrigeAId),
+    check("ck_revisiones_auditoria", auditoriaEventoCoherente(t)),
+    check("ck_revisiones_hijo_grupal", hijoGrupalSinAuditoriaIndividual(t)),
+  ],
 )
 
 /**

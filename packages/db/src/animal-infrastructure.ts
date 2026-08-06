@@ -30,6 +30,7 @@ import type { ErrorValidacionAnimal } from "@ganaweb/aplicacion"
 import { AnimalExportacionOverflowError } from "@ganaweb/dominio"
 import { type SQL, and, asc, desc, eq, isNull, or, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
+import { persistirEventoInterno } from "./evento-write-internal.js"
 import {
   animales,
   animalesCondicionCorporal,
@@ -1717,15 +1718,29 @@ export function createAnimalUseCaseDeps(db: DbClient): AnimalUseCaseDeps {
     },
     ubicaciones: {
       async registrarInicial(entrada) {
-        await currentDb(db).insert(animalesUbicacionHistorico).values({
-          id: entrada.id,
-          animalId: entrada.animalId,
-          potreroId: entrada.potreroId,
-          sectorId: entrada.sectorId,
-          loteId: entrada.loteId,
-          fecha: entrada.createdAt,
-          motivo: entrada.motivo,
-        })
+        await persistirEventoInterno(
+          currentDb(db),
+          {
+            tipo: "crear_evento_individual",
+            evento: "traslado",
+            id: entrada.id,
+            fincaId: entrada.fincaId,
+            usuarioId: entrada.usuarioId,
+            animalId: entrada.animalId,
+            datos: {
+              potreroId: entrada.potreroId ?? null,
+              sectorId: entrada.sectorId ?? null,
+              loteId: entrada.loteId ?? null,
+              fecha: entrada.createdAt,
+              motivo: entrada.motivo,
+            },
+          },
+          {
+            fuente: "creacion_animal_autorizada",
+            fincaId: entrada.fincaId,
+            usuarioId: entrada.usuarioId,
+          },
+        )
       },
       async verificarPropiedadEnFinca(entrada) {
         return new DrizzleAnimalUbicacionesRepository(db).verificarPropiedadEnFinca(entrada)
@@ -1733,15 +1748,27 @@ export function createAnimalUseCaseDeps(db: DbClient): AnimalUseCaseDeps {
     },
     pesajes: {
       async registrarInicial(entrada) {
-        await currentDb(db)
-          .insert(pesos)
-          .values({
+        await persistirEventoInterno(
+          currentDb(db),
+          {
+            tipo: "crear_evento_individual",
+            evento: "pesaje",
             id: entrada.id,
+            fincaId: entrada.fincaId,
+            usuarioId: entrada.usuarioId,
             animalId: entrada.animalId,
-            fecha: toDateOnly(entrada.fecha),
-            pesoKg: entrada.pesoKg.toString(),
-            createdAt: entrada.createdAt,
-          })
+            datos: {
+              fecha: toDateOnly(entrada.fecha),
+              pesoKg: entrada.pesoKg,
+              createdAt: entrada.createdAt,
+            },
+          },
+          {
+            fuente: "creacion_animal_autorizada",
+            fincaId: entrada.fincaId,
+            usuarioId: entrada.usuarioId,
+          },
+        )
       },
     },
   }

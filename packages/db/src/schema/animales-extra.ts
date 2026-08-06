@@ -1,5 +1,7 @@
 import { sql } from "drizzle-orm"
 import {
+  type AnyPgColumn,
+  check,
   date,
   index,
   integer,
@@ -12,20 +14,37 @@ import {
 import { animales } from "./animales.js"
 import { usuarios } from "./auth.js"
 import { configCondicionesCorporales } from "./config.js"
+import {
+  auditoriaEventoCoherente,
+  columnasAuditoriaEvento,
+  hijoGrupalSinAuditoriaIndividual,
+} from "./evento-auditoria.js"
 import { imagenes } from "./imagenes.js"
 import { grupos, lotes, potreros, sectores } from "./maestros.js"
 import { registrosGrupales } from "./registros-grupales.js"
 
-export const animalesCondicionCorporal = pgTable("animales_condicion_corporal", {
-  id: text("id").primaryKey(),
-  animalId: text("animal_id")
-    .notNull()
-    .references(() => animales.id),
-  condicionId: text("condicion_id").references(() => configCondicionesCorporales.id),
-  puntaje: numeric("puntaje", { precision: 3, scale: 1 }).notNull(),
-  fecha: date("fecha").notNull(),
-  usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
-})
+export const animalesCondicionCorporal = pgTable(
+  "animales_condicion_corporal",
+  {
+    id: text("id").primaryKey(),
+    animalId: text("animal_id")
+      .notNull()
+      .references(() => animales.id),
+    registroGrupalId: text("registro_grupal_id").references(() => registrosGrupales.id),
+    condicionId: text("condicion_id").references(() => configCondicionesCorporales.id),
+    puntaje: numeric("puntaje", { precision: 3, scale: 1 }).notNull(),
+    fecha: date("fecha").notNull(),
+    usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
+    ...columnasAuditoriaEvento(),
+    corrigeAId: text("corrige_a_id").references((): AnyPgColumn => animalesCondicionCorporal.id),
+  },
+  (t) => [
+    index("idx_condicion_corporal_registro_grupal").on(t.registroGrupalId),
+    index("idx_condicion_corporal_corrige_a").on(t.corrigeAId),
+    check("ck_condicion_corporal_auditoria", auditoriaEventoCoherente(t)),
+    check("ck_condicion_corporal_hijo_grupal", hijoGrupalSinAuditoriaIndividual(t)),
+  ],
+)
 
 export const animalesImagenes = pgTable(
   "animales_imagenes",
@@ -64,6 +83,13 @@ export const animalesUbicacionHistorico = pgTable(
     fecha: timestamp("fecha", { withTimezone: true }).defaultNow().notNull(),
     motivo: text("motivo"),
     usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
+    ...columnasAuditoriaEvento(),
+    corrigeAId: text("corrige_a_id").references((): AnyPgColumn => animalesUbicacionHistorico.id),
   },
-  (t) => [index("idx_ubic_hist_animal").on(t.animalId, t.fecha)],
+  (t) => [
+    index("idx_ubic_hist_animal").on(t.animalId, t.fecha),
+    index("idx_ubic_hist_corrige_a").on(t.corrigeAId),
+    check("ck_ubic_hist_auditoria", auditoriaEventoCoherente(t)),
+    check("ck_ubic_hist_hijo_grupal", hijoGrupalSinAuditoriaIndividual(t)),
+  ],
 )

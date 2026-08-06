@@ -476,8 +476,8 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
   // total_animales = filas hijas) agrupa la vacunación aftosa del Lote 4.
   // ---------------------------------------------------------------
   await sql`
-    INSERT INTO registros_grupales (id, finca_id, tipo_evento, descripcion, lote_id, total_animales, fecha, usuario_creado_por) VALUES
-      ('rg-esp-trat-aftosa', 'finca-esperanza', 'tratamiento', 'Vacunación aftosa Lote 4', 'lote-esp-4', 3, '2026-06-20 09:00:00-05', 'user-admin')
+    INSERT INTO registros_grupales (id, finca_id, tipo_evento, descripcion, origen_seleccion, lote_id, total_animales, fecha, usuario_creado_por) VALUES
+      ('rg-esp-trat-aftosa', 'finca-esperanza', 'tratamiento', 'Vacunación aftosa Lote 4', 'lote', 'lote-esp-4', 3, '2026-06-20 09:00:00-05', 'user-admin')
     ON CONFLICT (id) DO NOTHING
   `
 

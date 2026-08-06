@@ -66,6 +66,7 @@ export default defineConfig({
       // #209 — catálogo de productos sanitarios: harness RBAC de las server
       // functions (PE-002, SAN-061/063, §13.10) con deps falsas.
       "src/server/sanidad-catalogo-actions.test.ts",
+      "tests/eventos-contract-boundary.test.ts",
     ],
     environment: "node",
   },

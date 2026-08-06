@@ -1,4 +1,6 @@
 import {
+  type AnyPgColumn,
+  check,
   date,
   index,
   integer,
@@ -11,6 +13,11 @@ import {
 } from "drizzle-orm/pg-core"
 import { animales } from "./animales.js"
 import { usuarios } from "./auth.js"
+import {
+  auditoriaEventoCoherente,
+  columnasAuditoriaEvento,
+  hijoGrupalSinAuditoriaIndividual,
+} from "./evento-auditoria.js"
 import { diagnosticosVeterinarios, veterinarios } from "./maestros.js"
 import { registrosGrupales } from "./registros-grupales.js"
 
@@ -35,8 +42,15 @@ export const servicios = pgTable(
     usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    ...columnasAuditoriaEvento(),
+    corrigeAId: text("corrige_a_id").references((): AnyPgColumn => servicios.id),
   },
-  (t) => [index("idx_servicios_animal").on(t.animalId, t.fecha)],
+  (t) => [
+    index("idx_servicios_animal").on(t.animalId, t.fecha),
+    index("idx_servicios_corrige_a").on(t.corrigeAId),
+    check("ck_servicios_auditoria", auditoriaEventoCoherente(t)),
+    check("ck_servicios_hijo_grupal", hijoGrupalSinAuditoriaIndividual(t)),
+  ],
 )
 
 export const palpaciones = pgTable(
@@ -56,8 +70,15 @@ export const palpaciones = pgTable(
     usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    ...columnasAuditoriaEvento(),
+    corrigeAId: text("corrige_a_id").references((): AnyPgColumn => palpaciones.id),
   },
-  (t) => [index("idx_palpaciones_animal").on(t.animalId, t.fecha)],
+  (t) => [
+    index("idx_palpaciones_animal").on(t.animalId, t.fecha),
+    index("idx_palpaciones_corrige_a").on(t.corrigeAId),
+    check("ck_palpaciones_auditoria", auditoriaEventoCoherente(t)),
+    check("ck_palpaciones_hijo_grupal", hijoGrupalSinAuditoriaIndividual(t)),
+  ],
 )
 
 export const partos = pgTable(
@@ -78,8 +99,15 @@ export const partos = pgTable(
     usuarioCreadoPor: text("usuario_creado_por").references(() => usuarios.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    ...columnasAuditoriaEvento(),
+    corrigeAId: text("corrige_a_id").references((): AnyPgColumn => partos.id),
   },
-  (t) => [index("idx_partos_animal").on(t.animalId, t.fecha)],
+  (t) => [
+    index("idx_partos_animal").on(t.animalId, t.fecha),
+    index("idx_partos_corrige_a").on(t.corrigeAId),
+    check("ck_partos_auditoria", auditoriaEventoCoherente(t)),
+    check("ck_partos_hijo_grupal", hijoGrupalSinAuditoriaIndividual(t)),
+  ],
 )
 
 export const partosCrias = pgTable(

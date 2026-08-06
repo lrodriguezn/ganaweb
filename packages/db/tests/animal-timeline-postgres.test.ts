@@ -38,6 +38,7 @@ const animalReactivado = `${fixture}-animal-reactivado`
 const registroAnulado = `${fixture}-reg-anulado`
 const registroVigente = `${fixture}-reg-vigente`
 const registroReactivado = `${fixture}-reg-reactivado`
+const usuarioAuditoria = `${fixture}-usuario-auditoria`
 
 async function execute(statement: ReturnType<typeof sql>) {
   return db.execute(statement)
@@ -47,6 +48,10 @@ beforeAll(async () => {
   await execute(sql`
     INSERT INTO fincas (id, codigo, nombre)
     VALUES (${fincaA}, ${`${fixture}-A`}, 'Finca A'), (${fincaB}, ${`${fixture}-B`}, 'Finca B')
+  `)
+  await execute(sql`
+    INSERT INTO usuarios (id, nombre, email)
+    VALUES (${usuarioAuditoria}, 'Timeline Audit', ${`${fixture}@ganaweb.test`})
   `)
   await execute(sql`
     INSERT INTO animales (id, finca_id, codigo, nombre, sexo_key, activo)
@@ -139,11 +144,12 @@ beforeAll(async () => {
       (${animalReactivado}, ${fincaA}, ${`${fixture}-T6`}, 'Reactivado', 1, 1)
   `)
   await execute(sql`
-    INSERT INTO registros_grupales (id, finca_id, tipo_evento, total_animales, anulado_en)
+    INSERT INTO registros_grupales
+      (id, finca_id, tipo_evento, total_animales, anulado_en, anulado_por, motivo_anulacion)
     VALUES
-      (${registroAnulado}, ${fincaA}, 'pesaje', 1, now()),
-      (${registroVigente}, ${fincaA}, 'pesaje', 1, NULL),
-      (${registroReactivado}, ${fincaA}, 'pesaje', 1, now())
+      (${registroAnulado}, ${fincaA}, 'pesaje', 1, now(), ${usuarioAuditoria}, 'Fixture anulado'),
+      (${registroVigente}, ${fincaA}, 'pesaje', 1, NULL, NULL, NULL),
+      (${registroReactivado}, ${fincaA}, 'pesaje', 1, now(), ${usuarioAuditoria}, 'Fixture reactivado')
   `)
   // Un evento por cada tabla con registro_grupal_id (9 fuentes), anidado en
   // el registro anulado y en el vigente.
@@ -233,6 +239,7 @@ afterAll(async () => {
   await execute(sql`DELETE FROM registros_grupales WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM productos_sanitarios WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM animales WHERE id LIKE ${`${fixture}%`}`)
+  await execute(sql`DELETE FROM usuarios WHERE id = ${usuarioAuditoria}`)
   await execute(sql`DELETE FROM fincas WHERE id LIKE ${`${fixture}%`}`)
 })
 
@@ -564,7 +571,8 @@ describe.skipIf(process.env.CI === "true")("DrizzleAnimalTimelineRepository (Pos
     expect(anulado.items).toEqual([])
 
     await execute(sql`
-      UPDATE registros_grupales SET anulado_en = NULL, updated_at = now()
+      UPDATE registros_grupales
+      SET anulado_en = NULL, anulado_por = NULL, motivo_anulacion = NULL, updated_at = now()
       WHERE id = ${registroReactivado}
     `)
 

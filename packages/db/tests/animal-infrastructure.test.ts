@@ -208,6 +208,7 @@ describe("PR2 animal DB infrastructure", () => {
       "0006_veterinarios_es_inseminador",
       "0007_inventario_sanitario",
       "0008_animales_lugar_compra_id",
+      "0009_eventos_contract",
     ])
   })
 })

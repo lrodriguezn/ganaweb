@@ -64,6 +64,13 @@
       "when": 1785963632540,
       "tag": "0008_animales_lugar_compra_id",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785983929966,
+      "tag": "0009_eventos_contract",
+      "breakpoints": true
     }
   ]
 }
