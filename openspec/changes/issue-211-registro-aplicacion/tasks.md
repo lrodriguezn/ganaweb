@@ -61,9 +61,9 @@ Dependencias: U3→U1+U2; U4→U3 (contrato); U5→U3+U4.
 
 ## Phase 3 — Unit 3: Server functions (web)
 
-- [ ] 3.1 RED: `apps/web/tests/sanidad-registro-contract.test.ts` — §13.10: invocación directa sin `sanidad:crear` → `permiso_denegado`; finca del input ≠ finca activa → `finca_no_autorizada` (SAN-063/PE-002); happy path devuelve `aplicado` con `registroGrupalId`, `refuerzosAutoCompletados` y `stockDisponible` (CM-042); `listarAnimalesSanidadFn` exige `sanidad:ver`.
-- [ ] 3.2 GREEN: `apps/web/src/server/sanidad-registro.server.ts` — `createSanidadRegistroActionHarness`/`RuntimeHarness` + `denySanidadRegistroAccess` (patrón `sanidad-almacen.server.ts`); cablea `aplicarProductoSanitario` con `DrizzleSanidadAdapter` + reloj.
-- [ ] 3.3 GREEN: `apps/web/src/server/sanidad-registro.ts` — módulo público bundleable (lazy import del harness): `registrarAplicacionFn` (POST) y `listarAnimalesSanidadFn` (GET, SAN-043).
+- [x] 3.1 RED: `apps/web/tests/sanidad-registro-contract.test.ts` — §13.10: invocación directa sin `sanidad:crear` → `permiso_denegado`; finca del input ≠ finca activa → `finca_no_autorizada` (SAN-063/PE-002); happy path devuelve `aplicado` con `registroGrupalId`, `refuerzosAutoCompletados` y `stockDisponible` (CM-042); `listarAnimalesSanidadFn` exige `sanidad:ver`.
+- [x] 3.2 GREEN: `apps/web/src/server/sanidad-registro.server.ts` — `createSanidadRegistroActionHarness`/`RuntimeHarness` + `denySanidadRegistroAccess` (patrón `sanidad-almacen.server.ts`); cablea `aplicarProductoSanitario` con `DrizzleSanidadAdapter` + reloj.
+- [x] 3.3 GREEN: `apps/web/src/server/sanidad-registro.ts` — módulo público bundleable (lazy import del harness): `registrarAplicacionFn` (POST) y `listarAnimalesSanidadFn` (GET, SAN-043).
 
 ## Phase 4 — Unit 4: FormularioVacuna (ui)
 

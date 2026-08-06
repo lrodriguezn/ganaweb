@@ -35,6 +35,17 @@ TDD: 1.1 RED (3 tests nuevos) → 1.2 GREEN (adapter + puerto + caso de uso + fa
 
 TDD: 2.1 RED (2 tests) → 2.2 GREEN (helper compartido `fechasSalidaPorAnimal` extraído de `obtenerAnimales`; filtro vía `evaluarAnimalEnFinca` del dominio) → REFACTOR limpio (safety net `obtenerAnimales` sigue verde).
 
+### Unit 3 — Server functions RBAC registrar + animales (PE-002/SAN-063)
+
+| Evidencia | Valor |
+|---|---|
+| Test enfocado | `pnpm exec tsx tests/sanidad-registro-contract.test.ts` (apps/web) → **sanidad-registro-contract: OK** (4 grupos: sin sesión/finca, permiso denegado, unión mapeada, listado gateado) |
+| RED | `ERR_MODULE_NOT_FOUND` — `sanidad-registro.server.js` no existía al escribir el contract test |
+| Runtime harness | Harness con puertos falsos y sesión inyectada (patrón `sanidad-almacen-contract.test.ts`): `no_autenticado`/`finca_no_autorizada`/`permiso_denegado` sin tocar escritura; happy path N=2 → `aplicado` con `registroGrupalId` no nulo, `refuerzosAutoCompletados=["app-previa-1"]` (RN-042), `stockDisponible=146` (150 − 2×2), `precioDosisSnapshot=3500`; escritura recibe `fincaId`/`usuarioCreadoPor` de la sesión; `validacion` (fecha futura RN-002), `conflicto` y `error` 1:1; `listarAnimales` gatea por `sanidad:ver` y pasa `(fincaId, fecha)` al puerto |
+| Rollback | Borrar `sanidad-registro.server.ts`/`sanidad-registro.ts` + la entrada del script `test` de apps/web |
+
+TDD: 3.1 RED (contract tsx) → 3.2/3.3 GREEN (harness + módulo público bundleable con lazy import) → REFACTOR: formato biome; typecheck web vía turbo (7/7 tasks) porque `@ganaweb/ui` requiere `dist` construido.
+
 ## Desviaciones
 
 - Ninguna frente a tasks.md hasta aquí. Nota: el focused test de U3 en tasks.md dice `pnpm vitest run apps/web -t sanidad-registro`, pero el patrón establecido de contract tests del proyecto es tsx + `node:assert/strict` (como `sanidad-almacen-contract.test.ts`); se seguirá el patrón tsx y se registrará en el script `test` de apps/web.
