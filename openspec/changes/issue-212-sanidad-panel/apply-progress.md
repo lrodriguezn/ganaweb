@@ -17,6 +17,20 @@
 8. **Server function de catálogo aditiva** (`listarCatalogoSanidadFn` en `sanidad-catalogo-actions.server.ts`): #209 dejó el harness sin `createServerFn`; el panel es el primer consumidor ruteado y necesita el catálogo activo para los selects de los drawers (SAN-003/SAN-014).
 9. **Historial con carga reactiva a la URL en la vista** (patrón `animales.tsx`): el loader de TanStack de esta versión no expone `search` tipado en el contexto, así que `sanidad/historial.tsx` lee `Route.useSearch()` y re-ejecuta la server function en un effect por cambio de filtro/página. Los filtros y la página viven en la URL (D-005).
 
+## Tamaño del change (trabajo autoral)
+
+`git diff --stat origin/master...HEAD` → **27 archivos, 4587 inserciones / 7 borrados (≈4594 líneas)**.
+
+| Categoría | Archivos | Inserciones |
+|-----------|----------|-------------|
+| Producción (`*/src/*`) | 14 | 2187 |
+| Tests (`*/tests/*`) | 8 | 2218 |
+| Docs/config (openspec, package.json, vitest.config) | 5 | 182 |
+
+- El **código de producción (2187)** está dentro del forecast de la fase tasks (1600–2100).
+- El **exceso sobre el presupuesto de excepción (4000)** proviene de la cobertura de tests exigida por el modo Strict TDD activo (RED + triangulación por tarea), que añade ~2218 líneas.
+- **Superávit**: ≈594 líneas por encima del presupuesto de excepción aprobado (4000). Se señala para decisión del mantenedor (aceptar el single-pr con size:exception, o pedir dividir en PRs encadenados U1+U2 / U3 / U4+U5 según el split sugerido en tasks.md).
+
 ## Work units
 
 ### U1 — Dominio y puerto read-model (tasks 1.1–1.3)
