@@ -63,6 +63,9 @@ export default defineConfig({
       // #150 CM-043 — creación inline de maestros por finca desde los
       // formularios de animales (SelectConCreacion).
       "tests/animal-creacion-inline.test.tsx",
+      // #209 — catálogo de productos sanitarios: harness RBAC de las server
+      // functions (PE-002, SAN-061/063, §13.10) con deps falsas.
+      "src/server/sanidad-catalogo-actions.test.ts",
     ],
     environment: "node",
   },

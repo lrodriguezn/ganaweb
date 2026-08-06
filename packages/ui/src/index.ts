@@ -86,6 +86,23 @@ export { BottomNav } from "./ganado/bottom-nav"
 export { CardAccion } from "./ganado/card-accion"
 export { CardActividad } from "./ganado/card-actividad"
 export { CardProduccion } from "./ganado/card-produccion"
+export {
+  CatalogoProductosSanitariosDesktop,
+  CatalogoProductosSanitariosMobile,
+  ConfirmacionEstadoProducto,
+  SemaforoStockProducto,
+} from "./ganado/catalogo-productos-sanitarios"
+export type {
+  CatalogoProductosSanitariosProps,
+  EstadoStockProductoUI,
+  FilaProductoSanitarioUI,
+} from "./ganado/catalogo-productos-sanitarios"
+export { FormularioProductoSanitario } from "./ganado/formulario-producto-sanitario"
+export type {
+  ErrorCampoProductoSanitario,
+  FormularioProductoSanitarioInicial,
+  FormularioProductoSanitarioProps,
+} from "./ganado/formulario-producto-sanitario"
 export { EmptyState } from "./ganado/empty-state"
 export {
   CategoriaBadge,
