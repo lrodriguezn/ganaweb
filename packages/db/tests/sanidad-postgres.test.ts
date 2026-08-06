@@ -30,6 +30,7 @@ import {
   animales,
   aplicacionesSanitarias,
   fincas,
+  muertes,
   productosSanitarios,
   registrosGrupales,
   syncOutbox,
@@ -140,6 +141,8 @@ describe.skipIf(!dbSmoke)("Issue #208: sanidad (smoke Postgres)", () => {
       .delete(aplicacionesSanitarias)
       .where(inArray(aplicacionesSanitarias.productoId, [productoAftosaId, productoIvermId]))
     await db.delete(registrosGrupales).where(eq(registrosGrupales.fincaId, fincaId))
+    // Issue #211: registrarAplicaciones ahora escribe filas sync_outbox.
+    await db.delete(syncOutbox).where(eq(syncOutbox.fincaId, fincaId))
     await db.delete(almacenEntradas).where(eq(almacenEntradas.id, entradaAftosaId))
     await db.delete(ventas).where(eq(ventas.animalId, animalVendidoId))
     await db.delete(animales).where(eq(animales.fincaId, fincaId))
@@ -569,3 +572,351 @@ describe.skipIf(!dbSmoke)("Issue #210: almacén de entradas (smoke Postgres)", (
     expect(listadoAjeno[0]?.productoId).toBe(productoAjenoId)
   })
 })
+
+/**
+ * Issue #211 (RN-060/T-002, §13.3/§13.8): `registrarAplicaciones` escribe la
+ * captura (cabecera `registros_grupales` si N>1 + filas hijas
+ * `aplicaciones_sanitarias`) Y sus filas `sync_outbox` en la MISMA
+ * transacción — patrón T-002 de #210 (`registrarEntradaAlmacen`).
+ *
+ * Prueba lo que sólo vive en el SQL real:
+ * - N>1: outbox con INSERT de la cabecera y de cada hija (payload camelCase,
+ *   convención `outboxBase`), todo atómico.
+ * - N=1: sin cabecera → outbox sólo de la hija.
+ * - Atomicidad: una FK inválida (producto inexistente) no deja escritas ni
+ *   las filas ni el outbox.
+ */
+describe.skipIf(!dbSmoke)(
+  "Issue #211: registro de aplicación — outbox T-002 y lectura EN_FINCA (smoke Postgres)",
+  () => {
+    const sufijo = crypto.randomUUID().slice(0, 8)
+    const fincaId = `finca-out-${sufijo}`
+    const fincaAjenaId = `finca-ajena-out-${sufijo}`
+    const productoId = `prod-out-${sufijo}`
+    const animalUnoId = `animal-out-1-${sufijo}`
+    const animalDosId = `animal-out-2-${sufijo}`
+    const animalVendidoAntesId = `animal-out-va-${sufijo}`
+    const animalVendidoDespuesId = `animal-out-vd-${sufijo}`
+    const animalMuertoAntesId = `animal-out-ma-${sufijo}`
+    const animalAjenoId = `animal-out-aj-${sufijo}`
+    const usuarioId = `user-out-${sufijo}`
+
+    let db: ReturnType<typeof createClient>
+    let adaptador: DrizzleSanidadAdapter
+
+    async function filasOutboxDeFinca(fid: string) {
+      return db.select().from(syncOutbox).where(eq(syncOutbox.fincaId, fid))
+    }
+
+    beforeAll(async () => {
+      db = createClient(process.env.DATABASE_URL)
+      adaptador = new DrizzleSanidadAdapter(db)
+
+      await db.insert(fincas).values([
+        {
+          id: fincaId,
+          codigo: `OUT-${sufijo.toUpperCase()}`,
+          nombre: "Finca Outbox Test",
+          activo: 1,
+        },
+        {
+          id: fincaAjenaId,
+          codigo: `OAJ-${sufijo.toUpperCase()}`,
+          nombre: "Finca Ajena Outbox",
+          activo: 1,
+        },
+      ])
+
+      await db.insert(usuarios).values({
+        id: usuarioId,
+        nombre: "Usuario Outbox Test",
+        email: `outbox-${sufijo}@ganaweb.test`,
+      })
+
+      await db.insert(productosSanitarios).values({
+        id: productoId,
+        fincaId,
+        codigo: "VAC-CARBUNCO",
+        descripcion: "Vacuna carbunco",
+        mlMgPorDosis: "2",
+        tipoTratamiento: "vacuna",
+        precioDosis: "2900",
+        activo: 1,
+      })
+
+      await db.insert(animales).values([
+        {
+          id: animalUnoId,
+          fincaId,
+          codigo: `OUT-001-${sufijo}`,
+          nombre: "Luna",
+          fechaNacimiento: 1615507200,
+          estadoAnimalKey: 0,
+        },
+        {
+          id: animalDosId,
+          fincaId,
+          codigo: `OUT-002-${sufijo}`,
+          nombre: "Sol",
+          fechaNacimiento: 1615507200,
+          estadoAnimalKey: 0,
+        },
+        {
+          // Vendido ANTES de la fecha del evento → excluido (RN-003).
+          id: animalVendidoAntesId,
+          fincaId,
+          codigo: `OUT-003-${sufijo}`,
+          fechaNacimiento: 1615507200,
+          estadoAnimalKey: 1,
+        },
+        {
+          // Vendido DESPUÉS de la fecha del evento → incluido (RN-003).
+          id: animalVendidoDespuesId,
+          fincaId,
+          codigo: `OUT-004-${sufijo}`,
+          fechaNacimiento: 1615507200,
+          estadoAnimalKey: 1,
+        },
+        {
+          // Muerto ANTES de la fecha del evento → excluido (RN-003).
+          id: animalMuertoAntesId,
+          fincaId,
+          codigo: `OUT-005-${sufijo}`,
+          fechaNacimiento: 1615507200,
+          estadoAnimalKey: 2,
+        },
+        {
+          // Animal de otra finca → nunca aparece (SAN-063).
+          id: animalAjenoId,
+          fincaId: fincaAjenaId,
+          codigo: `OAJ-001-${sufijo}`,
+          fechaNacimiento: 1615507200,
+          estadoAnimalKey: 0,
+        },
+      ])
+
+      await db.insert(ventas).values([
+        { id: `venta-va-${sufijo}`, animalId: animalVendidoAntesId, fecha: "2026-07-01" },
+        { id: `venta-vd-${sufijo}`, animalId: animalVendidoDespuesId, fecha: "2026-08-20" },
+      ])
+
+      await db.insert(muertes).values({
+        id: `muerte-ma-${sufijo}`,
+        animalId: animalMuertoAntesId,
+        fecha: "2026-07-15",
+      })
+    })
+
+    afterAll(async () => {
+      await db
+        .delete(aplicacionesSanitarias)
+        .where(eq(aplicacionesSanitarias.productoId, productoId))
+      await db.delete(registrosGrupales).where(eq(registrosGrupales.fincaId, fincaId))
+      await db.delete(syncOutbox).where(eq(syncOutbox.fincaId, fincaId))
+      await db.delete(muertes).where(eq(muertes.animalId, animalMuertoAntesId))
+      await db
+        .delete(ventas)
+        .where(inArray(ventas.animalId, [animalVendidoAntesId, animalVendidoDespuesId]))
+      await db.delete(animales).where(inArray(animales.fincaId, [fincaId, fincaAjenaId]))
+      await db.delete(productosSanitarios).where(eq(productosSanitarios.fincaId, fincaId))
+      await db.delete(fincas).where(inArray(fincas.id, [fincaId, fincaAjenaId]))
+      await db.delete(usuarios).where(eq(usuarios.id, usuarioId))
+      await db.$client.end()
+    })
+
+    it("RN-052/T-002: N>1 escribe cabecera (total_animales = hijas) + hijas + outbox de cabecera e hijas en la misma transacción", async () => {
+      const grupoId = `rg-out-${sufijo}`
+      const outboxAntes = await filasOutboxDeFinca(fincaId)
+
+      const resultado = await adaptador.registrarAplicaciones({
+        fincaId,
+        registroGrupal: {
+          id: grupoId,
+          fincaId,
+          tipoEvento: "tratamiento",
+          totalAnimales: 2,
+          fecha: new Date("2026-08-03T09:00:00-05:00"),
+          usuarioCreadoPor: usuarioId,
+          descripcion: "Vacunación lote outbox",
+        },
+        aplicaciones: [animalUnoId, animalDosId].map((animalId) => ({
+          animalId,
+          productoId,
+          fecha: "2026-08-03",
+          dosis: 2,
+          precioDosis: 2900,
+          proximaDosis: "2027-02-03",
+          comentarios: "Vacunación lote outbox",
+          registroGrupalId: grupoId,
+        })),
+        usuarioCreadoPor: usuarioId,
+      })
+
+      expect(resultado.tipo).toBe("aplicado")
+      if (resultado.tipo !== "aplicado") return
+      expect(resultado.aplicacionIds).toHaveLength(2)
+
+      // Cabecera RN-052: total_animales = filas hijas.
+      const [cabecera] = await db
+        .select()
+        .from(registrosGrupales)
+        .where(eq(registrosGrupales.id, grupoId))
+      expect(cabecera?.tipoEvento).toBe("tratamiento")
+      expect(cabecera?.totalAnimales).toBe(2)
+
+      const hijas = await db
+        .select()
+        .from(aplicacionesSanitarias)
+        .where(eq(aplicacionesSanitarias.registroGrupalId, grupoId))
+      expect(hijas).toHaveLength(2)
+
+      // Outbox: 1 fila por la cabecera + 1 por cada hija (INSERT, sin aplicar).
+      const outboxDespues = await filasOutboxDeFinca(fincaId)
+      expect(outboxDespues.length).toBe(outboxAntes.length + 3)
+      const nuevas = outboxDespues.filter(
+        (fila) => !outboxAntes.some((previa) => previa.id === fila.id),
+      )
+      expect(nuevas).toHaveLength(3)
+      for (const fila of nuevas) {
+        expect(fila.operacion).toBe("INSERT")
+        expect(fila.aplicadoEn).toBeNull()
+        expect(fila.dispositivoId).toBe("server")
+      }
+
+      const outboxCabecera = nuevas.filter((fila) => fila.tablaDestino === "registros_grupales")
+      expect(outboxCabecera).toHaveLength(1)
+      const payloadCabecera = outboxCabecera[0]?.payload as Record<string, unknown>
+      expect(payloadCabecera.id).toBe(grupoId)
+      expect(payloadCabecera.fincaId).toBe(fincaId)
+      expect(payloadCabecera.tipoEvento).toBe("tratamiento")
+      expect(payloadCabecera.totalAnimales).toBe(2)
+      expect(payloadCabecera.usuarioCreadoPor).toBe(usuarioId)
+
+      const outboxHijas = nuevas.filter((fila) => fila.tablaDestino === "aplicaciones_sanitarias")
+      expect(outboxHijas).toHaveLength(2)
+      const idsPayloadHijas = outboxHijas.map((fila) => (fila.payload as { id: string }).id)
+      expect([...idsPayloadHijas].sort()).toEqual([...resultado.aplicacionIds].sort())
+      const payloadHija = outboxHijas[0]?.payload as Record<string, unknown>
+      expect(payloadHija.productoId).toBe(productoId)
+      expect(payloadHija.registroGrupalId).toBe(grupoId)
+      expect(payloadHija.fecha).toBe("2026-08-03")
+      expect(payloadHija.dosis).toBe(2)
+      expect(payloadHija.precioDosis).toBe(2900)
+      expect(payloadHija.proximaDosis).toBe("2027-02-03")
+      expect(payloadHija.usuarioCreadoPor).toBe(usuarioId)
+    })
+
+    it("T-002: FK inexistente (producto) → conflicto, sin filas ni outbox", async () => {
+      const outboxAntes = await filasOutboxDeFinca(fincaId)
+
+      const resultado = await adaptador.registrarAplicaciones({
+        fincaId,
+        registroGrupal: {
+          id: `rg-out-fk-${sufijo}`,
+          fincaId,
+          tipoEvento: "tratamiento",
+          totalAnimales: 2,
+          fecha: new Date("2026-08-04T09:00:00-05:00"),
+          usuarioCreadoPor: usuarioId,
+          descripcion: null,
+        },
+        aplicaciones: [animalUnoId, animalDosId].map((animalId) => ({
+          animalId,
+          productoId: "prod-no-existe",
+          fecha: "2026-08-04",
+          dosis: 1,
+          precioDosis: null,
+          proximaDosis: null,
+          comentarios: null,
+          registroGrupalId: `rg-out-fk-${sufijo}`,
+        })),
+        usuarioCreadoPor: usuarioId,
+      })
+
+      expect(resultado.tipo).toBe("conflicto")
+
+      const hijas = await db
+        .select()
+        .from(aplicacionesSanitarias)
+        .where(eq(aplicacionesSanitarias.productoId, "prod-no-existe"))
+      expect(hijas).toHaveLength(0)
+      const [cabecera] = await db
+        .select()
+        .from(registrosGrupales)
+        .where(eq(registrosGrupales.id, `rg-out-fk-${sufijo}`))
+      expect(cabecera).toBeUndefined()
+      expect(await filasOutboxDeFinca(fincaId)).toHaveLength(outboxAntes.length)
+    })
+
+    it("RN-052/T-002: N=1 sin cabecera → outbox sólo de la hija", async () => {
+      const outboxAntes = await filasOutboxDeFinca(fincaId)
+
+      const resultado = await adaptador.registrarAplicaciones({
+        fincaId,
+        registroGrupal: null,
+        aplicaciones: [
+          {
+            animalId: animalUnoId,
+            productoId,
+            fecha: "2026-08-05",
+            dosis: 1,
+            precioDosis: 2900,
+            proximaDosis: null,
+            comentarios: null,
+            registroGrupalId: null,
+          },
+        ],
+        usuarioCreadoPor: usuarioId,
+      })
+
+      expect(resultado.tipo).toBe("aplicado")
+      if (resultado.tipo !== "aplicado") return
+      expect(resultado.aplicacionIds).toHaveLength(1)
+
+      const outboxDespues = await filasOutboxDeFinca(fincaId)
+      const nuevas = outboxDespues.filter(
+        (fila) => !outboxAntes.some((previa) => previa.id === fila.id),
+      )
+      expect(nuevas).toHaveLength(1)
+      expect(nuevas[0]?.tablaDestino).toBe("aplicaciones_sanitarias")
+      expect(nuevas[0]?.operacion).toBe("INSERT")
+      const payload = nuevas[0]?.payload as { id?: string; registroGrupalId?: string | null }
+      expect(payload.id).toBe(resultado.aplicacionIds[0])
+      expect(payload.registroGrupalId).toBeNull()
+    })
+
+    it("SAN-043/RN-003: listarAnimalesEnFinca devuelve solo los EN_FINCA a la fecha, con fila serializable {id, codigo, nombre}", async () => {
+      // A 2026-08-01: el vendido el 2026-07-01 y el muerto el 2026-07-15 ya
+      // salieron; el vendido el 2026-08-20 todavía estaba en la finca.
+      const listado = await adaptador.listarAnimalesEnFinca(fincaId, "2026-08-01")
+
+      const ids = listado.map((animal) => animal.id).sort()
+      expect(ids).toEqual([animalDosId, animalUnoId, animalVendidoDespuesId].sort())
+
+      // CM-042: la fila es serializable y trae sólo lo que el drawer necesita.
+      const luna = listado.find((animal) => animal.id === animalUnoId)
+      expect(luna).toEqual({ id: animalUnoId, codigo: `OUT-001-${sufijo}`, nombre: "Luna" })
+      const vendidoDespues = listado.find((animal) => animal.id === animalVendidoDespuesId)
+      expect(vendidoDespues?.codigo).toBe(`OUT-004-${sufijo}`)
+
+      // SAN-063: los animales de otra finca nunca aparecen.
+      expect(listado.some((animal) => animal.id === animalAjenoId)).toBe(false)
+    })
+
+    it("SAN-043/RN-003: a una fecha anterior a las salidas, los vendidos/muertos siguen listados", async () => {
+      // A 2026-06-15 ninguno había salido: los 5 de la finca estaban.
+      const listado = await adaptador.listarAnimalesEnFinca(fincaId, "2026-06-15")
+
+      const ids = listado.map((animal) => animal.id).sort()
+      expect(ids).toEqual(
+        [
+          animalUnoId,
+          animalDosId,
+          animalVendidoAntesId,
+          animalVendidoDespuesId,
+          animalMuertoAntesId,
+        ].sort(),
+      )
+    })
+  },
+)

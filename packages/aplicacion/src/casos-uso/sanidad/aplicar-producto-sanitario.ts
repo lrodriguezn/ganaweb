@@ -13,8 +13,8 @@
  *    advertencia), RN-050 (producto activo), RN-040 (snapshot de precio),
  *    RN-042 (refuerzo auto-completado), RN-041 (stock calculado; negativo =
  *    alerta de reconciliación, nunca bloqueo).
- * 3. Persistencia vía puertos: cabecera + filas en una transacción (T-002; el
- *    outbox se cablea en #209–#211).
+ * 3. Persistencia vía puertos: cabecera + filas + filas sync_outbox en una
+ *    transacción (T-002/RN-060; el outbox lo cableó #211).
  *
  * Resultado serializable estilo CM-042:
  * aplicado | validacion | permiso_denegado | conflicto | error.
@@ -387,6 +387,7 @@ export function aplicarProductoSanitario(deps: AplicarProductoSanitarioDeps) {
     if (!cabecera.valido) return { tipo: "error", detalle: cabecera.error.detalle }
 
     const escrito = await deps.escritura.registrarAplicaciones({
+      // SAN-063: el scope del outbox sale de la finca activa revalidada.
       fincaId: cmd.sesion.fincaActivaId,
       registroGrupal: escritura.registroGrupal,
       aplicaciones: escritura.aplicaciones,

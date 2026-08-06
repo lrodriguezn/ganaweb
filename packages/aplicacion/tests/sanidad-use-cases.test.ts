@@ -96,6 +96,7 @@ function fakeSanidadLectura(config: ConfigLectura = {}) {
       return config.stock ?? 150
     },
     listarEntradasAlmacen: async () => [],
+    listarAnimalesEnFinca: async () => [],
   }
   return { port, llamadas }
 }
@@ -105,6 +106,7 @@ type ResultadoEscrituraPort = Awaited<ReturnType<SanidadEscrituraPort["registrar
 function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
   const llamadas = {
     registrarAplicaciones: [] as Array<{
+      fincaId: string
       registroGrupal: RegistroGrupalTratamientoNuevo | null
       aplicaciones: readonly AplicacionSanitariaNueva[]
       usuarioCreadoPor: string
@@ -380,6 +382,8 @@ describe("aplicarProductoSanitario — RN-040/RN-041/RN-042/RN-052", () => {
     expect(escritura.llamadas.registrarAplicaciones).toHaveLength(1)
     expect(escritura.llamadas.registrarAplicaciones[0]?.registroGrupal).toBeNull()
     expect(escritura.llamadas.registrarAplicaciones[0]?.usuarioCreadoPor).toBe("user-admin")
+    // Issue #211 (SAN-063/T-002): el scope del outbox sale de la finca activa.
+    expect(escritura.llamadas.registrarAplicaciones[0]?.fincaId).toBe(FINCA_ID)
     expect(escritura.llamadas.registrarAplicaciones[0]?.aplicaciones).toHaveLength(1)
     expect(escritura.llamadas.registrarAplicaciones[0]?.aplicaciones[0]?.precioDosis).toBe(3500)
     expect(escritura.llamadas.registrarAplicaciones[0]?.aplicaciones[0]?.registroGrupalId).toBe(

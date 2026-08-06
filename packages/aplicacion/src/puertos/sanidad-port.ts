@@ -52,6 +52,16 @@ export type AnimalEventoSanidadReferencia = {
 }
 
 /**
+ * Issue #211 (SAN-043): animal selectable en el registro de aplicación —
+ * la forma mínima serializable (CM-042) que el drawer necesita.
+ */
+export type AnimalSanidadListado = {
+  readonly id: string
+  readonly codigo: string
+  readonly nombre: string
+}
+
+/**
  * Lecturas del caso de uso `aplicarProductoSanitario`.
  *
  * `obtenerProducto`/`obtenerAnimales` NO filtran por finca: el scope lo
@@ -86,6 +96,15 @@ export interface SanidadLecturaPort {
    * `productos_sanitarios` (`almacen_entradas` no tiene `finca_id`).
    */
   listarEntradasAlmacen(fincaId: string): Promise<readonly EntradaAlmacenListada[]>
+
+  /**
+   * Issue #211 (SAN-043/RN-003): animales de la finca que estaban EN_FINCA a
+   * `fecha` (ISO YYYY-MM-DD) — la selección del registro de aplicación. Un
+   * animal vendido/muerto cuenta como EN_FINCA si su fecha de salida es
+   * posterior a `fecha` (captura tardía permitida, RN-003). SQL portable a
+   * SQLite (D3): sin rasgos PG-only.
+   */
+  listarAnimalesEnFinca(fincaId: string, fecha: string): Promise<readonly AnimalSanidadListado[]>
 }
 
 /** Cabecera `registros_grupales` para una captura de tratamiento (RN-052). */
@@ -148,13 +167,19 @@ export type EntradaAlmacenNueva = {
 /**
  * Escritura del evento de aplicación y anulación grupal.
  *
- * `registrarAplicaciones` escribe cabecera (si existe) + filas hijas en UNA
- * transacción (T-002: append-only; el outbox se cablea en #209–#211).
+ * `registrarAplicaciones` escribe cabecera (si existe) + filas hijas Y sus
+ * filas `sync_outbox` en UNA transacción (T-002/RN-060, Issue #211:
+ * append-only; si alguna inserción falla no queda escrita ninguna).
  * `anularRegistroGrupal` marca `anulado_en` en la cabecera y anula lógicamente
  * todas las filas hijas en una transacción (RN-051).
  */
 export interface SanidadEscrituraPort {
   registrarAplicaciones(entrada: {
+    /**
+     * Scope de la captura para las filas `sync_outbox` (la tabla
+     * `aplicaciones_sanitarias` no tiene `finca_id`). Lo aporta el caso de
+     * uso tras revalidar la finca activa — nunca de la URL (SAN-063).
+     */
     readonly fincaId: string
     readonly registroGrupal: RegistroGrupalTratamientoNuevo | null
     readonly aplicaciones: readonly AplicacionSanitariaNueva[]

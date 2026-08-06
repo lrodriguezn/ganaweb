@@ -138,6 +138,7 @@ export type {
 } from "./puertos/catalogo-producto-sanitario-port.js"
 export type {
   AnimalEventoSanidadReferencia,
+  AnimalSanidadListado,
   AplicacionPreviaSanidad,
   AplicacionSanitariaNueva,
   EntradaAlmacenListada,
