@@ -46,8 +46,8 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1; U5→U3+U4.
 
 ## Phase 3 — Unit 3: Server functions
 
-- [ ] 3.1 RED: `apps/web/tests/sanidad-panel-contract.test.ts` — §13.10: invocación directa sin `sanidad:ver` → `permiso_denegado`; finca del input ≠ finca activa → `finca_no_autorizada` (SAN-063/PE-002); fallo parcial de una consulta → las demás cards responden (degradación por card).
-- [ ] 3.2 GREEN: `apps/web/src/server/sanidad-panel.server.ts` — patrón `sanidad-almacen.server.ts` (harness inyectable `deps`/`getSession`, `denySanidadPanelAccess`, runtime harness); una función por fuente de card: métricas, próximas, últimas, stock, historial.
+- [x] 3.1 RED: `apps/web/tests/sanidad-panel-contract.test.ts` — §13.10: invocación directa sin `sanidad:ver` → `permiso_denegado`; finca del input ≠ finca activa → `finca_no_autorizada` (SAN-063/PE-002); fallo parcial de una consulta → las demás cards responden (degradación por card).
+- [x] 3.2 GREEN: `apps/web/src/server/sanidad-panel.server.ts` — patrón `sanidad-almacen.server.ts` (harness inyectable `deps`/`getSession`, `denySanidadPanelAccess`, runtime harness); una función por fuente de card: métricas, próximas, últimas, stock, historial.
 
 ## Phase 4 — Unit 4: Componentes UI
 

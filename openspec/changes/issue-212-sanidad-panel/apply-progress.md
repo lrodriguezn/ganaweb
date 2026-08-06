@@ -13,6 +13,7 @@
 4. **Umbral de stock (T-001)**: el adaptador del panel reutiliza `obtenerStockMinimoDosis` del adaptador de catálogo (#209) y aplica el fallback del dominio `STOCK_MINIMO_DOSIS_DEFAULT` (el panel no tiene caso de uso; el patrón #209 aplica el fallback en la capa de uso, aquí el consumidor directo es el adaptador — el valor sigue sin hardcodearse en la lógica: viene de `config_parametros_finca` o de la constante de dominio documentada).
 5. **Objetivo de aplicación (SAN-004)**: `animal` (registro individual) | `lote` (registro grupal RN-052). "toda la finca" no es derivable del esquema v3 y queda fuera (tasks 2.3 ya lo acota a animal|lote).
 6. **Degradación por card**: cada server function del panel atrapa el fallo de su consulta y devuelve `{ tipo: "error" }` serializable; el loader de la ruta además aplica `.catch` fail-closed por card. El fallo de una card nunca tumba las demás.
+7. **apps/web no importa dominio** (regla dependency-cruiser `web-to-dominio-direct`): `agruparRefuerzosPorSemana` y el tipo `PeriodosRefuerzosSanidad` se re-exportan desde `@ganaweb/aplicacion` (capa permitida), igual que `STOCK_MINIMO_DOSIS_DEFAULT` en #209.
 
 ## Work units
 
@@ -43,7 +44,15 @@
 
 ### U3 — Server functions RBAC + degradación por card (tasks 3.1–3.2)
 
-- **Estado**: pendiente
+- **Estado**: completa
+- **Tests**: `apps/web/tests/sanidad-panel-contract.test.ts` (tsx + node:assert, patrón #210) — RBAC por permiso (§13.10/PE-001), revalidación de finca (SAN-063/PE-002), degradación por card, agrupación SAN-052 vía dominio, `hoy` del reloj inyectado. Cableado en `test`/`test:unit` de `apps/web/package.json`.
+- **Producción**: `apps/web/src/server/sanidad-panel.server.ts` — harness inyectable `deps`/`getSession`, `denySanidadPanelAccess`, `conDegradacion`, runtime harness + 5 `createServerFn` (GET) por card; re-export aditivo de `agruparRefuerzosPorSemana`/`PeriodosRefuerzosSanidad` en `@ganaweb/aplicacion`.
+- **Evidencia**:
+  - Focused test: `pnpm exec tsx tests/sanidad-panel-contract.test.ts` (apps/web) → `sanidad-panel-contract: OK`.
+  - Typecheck apps/web (`tsr generate && tsc --noEmit`): limpio (tras build de `@ganaweb/ui`).
+  - dependency-cruiser: 0 errores (warnings idénticos al patrón existente `sanidad-almacen.server.ts`).
+  - Runtime harness: contract test con `getSession`/`deps` falsos inyectados (el runtime real usa `auth-deps.server.ts` + `DrizzlePanelSanidadAdapter`).
+  - Rollback: borrar `sanidad-panel.server.ts`, su línea en los scripts de test y los re-exports de aplicacion.
 
 ### U4 — Componentes UI panel + historial (tasks 4.1–4.3)
 
