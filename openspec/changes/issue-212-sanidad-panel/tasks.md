@@ -63,8 +63,8 @@ Dependencias: U2→U1; U3→U1+U2; U4→U1; U5→U3+U4.
 
 ## Phase 6 — Verificación
 
-- [ ] 6.1 `pnpm turbo test` + `pnpm turbo typecheck` + `biome ci .` en verde.
-- [ ] 6.2 Mapa §13: item 1 → tests 2.1–2.4, 3.1–3.2, 4.1, 5.1 (panel y cards con fuentes correctas); item 2 → tests 1.1, 2.2, 4.1 (agrupación KPI-09 en 3 períodos); item 12 → dependencia de #214, no verificable en este change.
+- [x] 6.1 `pnpm turbo test` + `pnpm turbo typecheck` + `biome ci .` en verde.
+- [x] 6.2 Mapa §13: item 1 → tests 2.1–2.4, 3.1–3.2, 4.1, 5.1 (panel y cards con fuentes correctas); item 2 → tests 1.1, 2.2, 4.1 (agrupación KPI-09 en 3 períodos); item 12 → dependencia de #214, no verificable en este change.
 
 ## Dependencias y riesgos
 

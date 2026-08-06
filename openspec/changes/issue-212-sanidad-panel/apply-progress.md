@@ -84,4 +84,14 @@
 
 ### Verificación (tasks 6.1–6.2)
 
-- **Estado**: pendiente
+- **Estado**: completa
+- **6.1 — Gates**:
+  - `CI=true pnpm turbo test` → 13/13 tasks pass. **Nota ambiental**: este worktree no tiene Postgres local ni `CI` definido; los tests de db que exigen BD real están gateados `skipIf(process.env.CI === "true")` (se saltan en CI, igual que en GitHub Actions). Con `CI=true` (reproducción fiel de CI) la suite es verde. Sin `CI`, esos 41 tests pre-existentes (p. ej. `animal-mobile-list-postgres`) fallan por falta de BD — NO son regresiones de este change (archivos no tocados).
+  - `pnpm turbo typecheck` → 13/13 tasks pass.
+  - `biome ci .` → 420 archivos, 0 errores / 0 warnings.
+  - dependency-cruiser → 0 errores (warnings idénticos a patrones existentes).
+- **6.2 — Mapa §13**:
+  - **Item 1** (panel renderiza 4 MetricCards + cards Próximas/Registradas/Stock/Accesos con fuentes correctas): tests 2.1–2.4 (adaptador), 3.1–3.2 (server functions), 4.1 (PanelSanidad), 5.1 (loader/ruta). ✔
+  - **Item 2** (Próximas agrupa KPI-09 en Esta semana/Próxima semana/Este mes): tests 1.1 (`agruparRefuerzosPorSemana`), 2.2 (refuerzos EN_FINCA/RN-051), 3.2 (server function agrupa vía dominio), 4.1 (UI períodos). ✔
+  - **Item 12** (alertas "Requiere acción" del Inicio navegan al módulo — SAN-070): dependencia de #214; este change deja la consulta KPI-09/SAN-050 y la agrupación SAN-052 como insumo reutilizable. No verificable aquí. ⏳
+  - Items 3/4/8/9 (guardado/grupal/offline/auto-completado) son de #211/#208 — frontera respetada: `onGuardar` queda placeholder (SAN-047).
