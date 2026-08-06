@@ -128,6 +128,23 @@ export {
   type ListadoEntradasAlmacenProps,
 } from "./ganado/listado-entradas-almacen"
 export {
+  HistorialAplicacionesSanidad,
+  type FilaHistorialSanidadVista,
+  type FiltrosHistorialSanidadVista,
+  type HistorialAplicacionesSanidadProps,
+  type ProductoFiltroHistorial,
+} from "./ganado/historial-aplicaciones-sanidad"
+export {
+  PanelSanidad,
+  type AccesoPanelSanidadDestino,
+  type AlertaStockPanelVista,
+  type MetricasPanelSanidad,
+  type PanelSanidadProps,
+  type PeriodosRefuerzosPanelVista,
+  type RefuerzoPendientePanelVista,
+  type UltimaAplicacionPanelVista,
+} from "./ganado/panel-sanidad"
+export {
   MaestroCard,
   type MaestroCardVariante,
   MaestroFilaConsolidada,
