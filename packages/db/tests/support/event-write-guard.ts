@@ -52,6 +52,85 @@ export interface EventWriteViolation {
   readonly kind: "event-insert" | "dynamic-insert" | "event-sql" | "dynamic-sql"
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: one AST pass verifies imports and their composition without text matching.
+export function auditEventoCompositionRoot(source: string): readonly string[] {
+  const ast = ts.createSourceFile(
+    "eventos-contract.server.ts",
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+  )
+  const applicationFactories = new Set<string>()
+  const dbAdapters = new Set<string>()
+
+  for (const statement of ast.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      !statement.importClause?.namedBindings ||
+      !ts.isNamedImports(statement.importClause.namedBindings)
+    ) {
+      continue
+    }
+    for (const element of statement.importClause.namedBindings.elements) {
+      const imported = element.propertyName?.text ?? element.name.text
+      if (
+        statement.moduleSpecifier.text === "@ganaweb/aplicacion" &&
+        imported === "registrarEvento"
+      ) {
+        applicationFactories.add(element.name.text)
+      }
+      if (
+        statement.moduleSpecifier.text.startsWith("@ganaweb/db/") &&
+        imported === "createEventoWriteGateway"
+      ) {
+        dbAdapters.add(element.name.text)
+      }
+    }
+  }
+
+  let composesApplicationWithDbAdapter = false
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      applicationFactories.has(node.expression.text)
+    ) {
+      const adapter = node.arguments[0]
+      composesApplicationWithDbAdapter =
+        adapter !== undefined &&
+        ts.isCallExpression(adapter) &&
+        ts.isIdentifier(adapter.expression) &&
+        dbAdapters.has(adapter.expression.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(ast)
+
+  const violations: string[] = []
+  if (applicationFactories.size === 0) violations.push("missing-application-event-authorizer")
+  if (dbAdapters.size === 0) violations.push("missing-db-event-adapter")
+  if (!composesApplicationWithDbAdapter) violations.push("missing-authorized-composition")
+  return violations
+}
+
+export function auditDbEventoApplicationImports(source: string): readonly string[] {
+  const ast = ts.createSourceFile("db-event-adapter.ts", source, ts.ScriptTarget.Latest, true)
+  const violations: string[] = []
+  for (const statement of ast.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      statement.importClause?.isTypeOnly ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== "@ganaweb/aplicacion"
+    ) {
+      continue
+    }
+    violations.push("db-imports-application-runtime")
+  }
+  return violations
+}
+
 function staticString(node: ts.Expression): string | null {
   if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
   if (ts.isParenthesizedExpression(node)) return staticString(node.expression)

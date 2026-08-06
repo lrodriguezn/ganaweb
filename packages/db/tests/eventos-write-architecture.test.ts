@@ -1,7 +1,12 @@
 import { readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { auditEventWrites, auditEventWritesInRepo } from "./support/event-write-guard.js"
+import {
+  auditDbEventoApplicationImports,
+  auditEventWrites,
+  auditEventWritesInRepo,
+  auditEventoCompositionRoot,
+} from "./support/event-write-guard.js"
 
 const root = fileURLToPath(new URL("../../..", import.meta.url))
 
@@ -58,7 +63,7 @@ describe("event write architecture guard", () => {
     ).toEqual([])
   })
 
-  it("allows the exact internal gateway and rejects public export of it", async () => {
+  it("keeps direct inserts inside the internal primitive without exporting authorization", async () => {
     expect(
       auditEventWrites(
         'import { registrosGrupales } from "./schema"; tx.insert(registrosGrupales)',
@@ -68,7 +73,34 @@ describe("event write architecture guard", () => {
     const packageJson = JSON.parse(
       await readFile(new URL("../package.json", import.meta.url), "utf8"),
     ) as { exports: Record<string, unknown> }
-    expect(Object.keys(packageJson.exports)).toContain("./evento-write-authorized")
+    expect(Object.keys(packageJson.exports)).toContain("./evento-write-infrastructure")
+    expect(Object.keys(packageJson.exports)).not.toContain("./evento-write-authorized")
     expect(Object.keys(packageJson.exports)).not.toContain("./evento-write-internal")
+  })
+
+  it("keeps the authorized composition root in web", async () => {
+    const compositionRoot = await readFile(
+      new URL("../../../apps/web/src/server/eventos-contract.server.ts", import.meta.url),
+      "utf8",
+    )
+    expect(auditEventoCompositionRoot(compositionRoot)).toEqual([])
+    expect(
+      auditEventoCompositionRoot(
+        'import { registrarEvento } from "@ganaweb/aplicacion"; registrarEvento({})',
+      ),
+    ).toContain("missing-db-event-adapter")
+  })
+
+  it("prevents the DB adapter from owning application authorization", async () => {
+    const dbAdapter = await readFile(
+      new URL("../src/evento-write-internal.ts", import.meta.url),
+      "utf8",
+    )
+    expect(auditDbEventoApplicationImports(dbAdapter)).toEqual([])
+    expect(
+      auditDbEventoApplicationImports(
+        'import { registrarEvento } from "@ganaweb/aplicacion"; registrarEvento',
+      ),
+    ).toEqual(["db-imports-application-runtime"])
   })
 })
