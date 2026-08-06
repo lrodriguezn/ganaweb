@@ -9,7 +9,7 @@ import {
   AnimalFormScreen,
   type SelectOption,
 } from "@ganaweb/ui"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import {
   CrearMaestroInline,
   type MaestroInlineCreable,
@@ -429,6 +429,7 @@ function catalogsToFormOptions(catalogs: AnimalCatalogs): AnimalFormCatalogOptio
 function EditAnimalRoute() {
   const { fincaId, animalId } = Route.useParams()
   const navigate = useNavigate()
+  const router = useRouter()
   const loaderData = Route.useLoaderData() as EditAnimalLoaderData
   const initialValues = loaderData.initialValues
   const currentLocation = loaderData.currentLocation
@@ -465,6 +466,10 @@ function EditAnimalRoute() {
       })
       if (result && typeof result === "object" && "tipo" in result) {
         if (result.tipo === "actualizado") {
+          // Issue #221: invalidar la caché del router antes de navegar para
+          // que la ficha relea del servidor (con staleTime 60s mostraba datos
+          // obsoletos tras guardar).
+          void router.invalidate()
           // redesign-ficha-animal: a successful edit returns to the animal's
           // ficha, not the list (spec: Edit Save Returns to Ficha).
           void navigate({ to: `/fincas/${fincaId}/animales/${animalId}` })
