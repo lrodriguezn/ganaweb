@@ -13,7 +13,7 @@
  */
 
 import type { FiltrosHistorialSanidad, HistorialSanidadPagina } from "@ganaweb/aplicacion"
-import { HistorialAplicacionesSanidad, type FiltrosHistorialSanidadVista } from "@ganaweb/ui"
+import { type FiltrosHistorialSanidadVista, HistorialAplicacionesSanidad } from "@ganaweb/ui"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { listarCatalogoSanidadFn } from "../../../../../server/sanidad-catalogo-actions.server.js"
@@ -33,7 +33,8 @@ export interface HistorialSanidadSearch {
 export const Route = createFileRoute("/_app/fincas/$fincaId/sanidad/historial")({
   validateSearch: (search: Record<string, unknown>): HistorialSanidadSearch => {
     const resultado: HistorialSanidadSearch = {}
-    if (typeof search.producto === "string" && search.producto !== "") resultado.producto = search.producto
+    if (typeof search.producto === "string" && search.producto !== "")
+      resultado.producto = search.producto
     if (typeof search.desde === "string" && search.desde !== "") resultado.desde = search.desde
     if (typeof search.hasta === "string" && search.hasta !== "") resultado.hasta = search.hasta
     if (typeof search.animalOLote === "string" && search.animalOLote !== "") {
@@ -60,18 +61,22 @@ function HistorialSanidadRoute() {
   const navigate = useNavigate()
   const [estado, setEstado] = useState<EstadoHistorial>({ tipo: "cargando" })
 
-  // Clave estable de la búsqueda para re-ejecutar la carga en cada cambio.
-  const claveBusqueda = JSON.stringify(search)
+  // Campos individuales de la búsqueda: la carga se re-ejecuta en cada cambio.
+  const productoBuscado = search.producto
+  const desdeBuscado = search.desde
+  const hastaBuscado = search.hasta
+  const animalOLoteBuscado = search.animalOLote
+  const paginaBuscada = search.page
 
   useEffect(() => {
     let activo = true
     setEstado({ tipo: "cargando" })
     const filtros: FiltrosHistorialSanidad = {
-      productoId: search.producto ?? null,
-      desde: search.desde ?? null,
-      hasta: search.hasta ?? null,
-      animalOLote: search.animalOLote ?? null,
-      pagina: search.page ?? 1,
+      productoId: productoBuscado ?? null,
+      desde: desdeBuscado ?? null,
+      hasta: hastaBuscado ?? null,
+      animalOLote: animalOLoteBuscado ?? null,
+      pagina: paginaBuscada ?? 1,
       tamanoPagina: TAMANO_PAGINA,
     }
     void Promise.all([
@@ -97,8 +102,7 @@ function HistorialSanidadRoute() {
     return () => {
       activo = false
     }
-    // biome-ignore lint/correctness/useExhaustiveDependencies: la clave serializada cubre todos los campos de search.
-  }, [fincaId, claveBusqueda])
+  }, [fincaId, productoBuscado, desdeBuscado, hastaBuscado, animalOLoteBuscado, paginaBuscada])
 
   const navegarConSearch = (siguiente: HistorialSanidadSearch) =>
     void navigate({ to: `/fincas/${fincaId}/sanidad/historial`, search: siguiente })
@@ -133,7 +137,10 @@ function HistorialSanidadRoute() {
       </div>
 
       {estado.tipo === "cargando" ? (
-        <p className="rounded-card border bg-card p-4 text-support text-muted-foreground" aria-busy="true">
+        <p
+          className="rounded-card border bg-card p-4 text-support text-muted-foreground"
+          aria-busy="true"
+        >
           Cargando historial…
         </p>
       ) : estado.tipo === "error" ? (

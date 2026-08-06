@@ -24,19 +24,19 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 import {
-  obtenerMetricasPanelSanidadFn,
-  listarProximasPanelSanidadFn,
-  listarUltimasPanelSanidadFn,
-  listarStockPanelSanidadFn,
-  listarHistorialPanelSanidadFn,
-} from "../src/server/sanidad-panel.server.js"
+  type SanidadPanelLoaderData,
+  Route as SanidadRoute,
+  SanidadRouteView,
+} from "../src/routes/_app/fincas/$fincaId/sanidad.js"
 import { registrarEntradaAlmacenFn } from "../src/server/sanidad-almacen.server.js"
 import { listarCatalogoSanidadFn } from "../src/server/sanidad-catalogo-actions.server.js"
 import {
-  Route as SanidadRoute,
-  type SanidadPanelLoaderData,
-  SanidadRouteView,
-} from "../src/routes/_app/fincas/$fincaId/sanidad.js"
+  listarHistorialPanelSanidadFn,
+  listarProximasPanelSanidadFn,
+  listarStockPanelSanidadFn,
+  listarUltimasPanelSanidadFn,
+  obtenerMetricasPanelSanidadFn,
+} from "../src/server/sanidad-panel.server.js"
 
 vi.mock("../src/server/sanidad-panel.server.js", () => ({
   obtenerMetricasPanelSanidadFn: vi.fn(),
@@ -184,7 +184,12 @@ describe("sanidad route — loader fail-closed por card", () => {
     expect(data.ultimas).toEqual(ULTIMAS)
     expect(data.stock).toEqual(STOCK)
     expect(data.productosVacuna).toEqual([
-      { id: "prod-aftosa", descripcion: "Vacuna fiebre aftosa", mlPorDosis: 2, dosisDisponibles: 142 },
+      {
+        id: "prod-aftosa",
+        descripcion: "Vacuna fiebre aftosa",
+        mlPorDosis: 2,
+        dosisDisponibles: 142,
+      },
     ])
     expect(data.productosEntrada).toEqual([
       { id: "prod-aftosa", codigo: "VAC-AFTOSA", descripcion: "Vacuna fiebre aftosa" },
@@ -247,7 +252,12 @@ function dataPineada(overrides: Partial<SanidadPanelLoaderData> = {}): SanidadPa
     ultimas: ULTIMAS,
     stock: STOCK,
     productosVacuna: [
-      { id: "prod-aftosa", descripcion: "Vacuna fiebre aftosa", mlPorDosis: 2, dosisDisponibles: 142 },
+      {
+        id: "prod-aftosa",
+        descripcion: "Vacuna fiebre aftosa",
+        mlPorDosis: 2,
+        dosisDisponibles: 142,
+      },
     ],
     productosEntrada: [
       { id: "prod-aftosa", codigo: "VAC-AFTOSA", descripcion: "Vacuna fiebre aftosa" },
@@ -303,7 +313,10 @@ describe("sanidad route — SAN-003: registro de aplicación con producto precar
 describe("sanidad route — SAN-014/#210: entrada de almacén", () => {
   it("+ Entrada almacén abre el formulario y guarda vía registrarEntradaAlmacenFn", async () => {
     const user = userEvent.setup()
-    vi.mocked(registrarEntradaAlmacenFn).mockResolvedValue({ tipo: "registrada", entradaId: "ent-1" })
+    vi.mocked(registrarEntradaAlmacenFn).mockResolvedValue({
+      tipo: "registrada",
+      entradaId: "ent-1",
+    })
     renderVista()
 
     await user.click(screen.getByRole("button", { name: "+ Entrada almacén" }))

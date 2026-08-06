@@ -126,10 +126,7 @@ export interface SanidadPanelLecturaPort {
    * La agrupación por semana natural (SAN-052) y por producto (SAN-003)
    * la aplica el dominio con `agruparRefuerzosPorSemana`.
    */
-  listarRefuerzosPendientes(
-    fincaId: string,
-    hoy: string,
-  ): Promise<readonly RefuerzoPendienteFila[]>
+  listarRefuerzosPendientes(fincaId: string, hoy: string): Promise<readonly RefuerzoPendienteFila[]>
 
   /** SAN-004: las 4 aplicaciones más recientes. */
   listarUltimasAplicaciones(fincaId: string): Promise<readonly UltimaAplicacionPanel[]>

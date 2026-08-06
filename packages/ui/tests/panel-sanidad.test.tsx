@@ -131,6 +131,7 @@ function renderPanel(overrides: Partial<Parameters<typeof PanelSanidad>[0]> = {}
       stock={STOCK}
       onRegistrarAplicacion={() => {}}
       onEntradaAlmacen={() => {}}
+      hrefHistorial="/fincas/finca-1/sanidad/historial"
       onVerHistorial={() => {}}
       onNavegarAcceso={() => {}}
       {...overrides}

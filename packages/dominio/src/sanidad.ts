@@ -424,7 +424,11 @@ const MS_POR_DIA = 86_400_000
  * `dias` puede ser negativo.
  */
 export function sumarDiasAFechaIso(fecha: string, dias: number): string {
-  const base = Date.UTC(Number(fecha.slice(0, 4)), Number(fecha.slice(5, 7)) - 1, Number(fecha.slice(8, 10)))
+  const base = Date.UTC(
+    Number(fecha.slice(0, 4)),
+    Number(fecha.slice(5, 7)) - 1,
+    Number(fecha.slice(8, 10)),
+  )
   const resultado = new Date(base + dias * MS_POR_DIA)
   return resultado.toISOString().slice(0, 10)
 }

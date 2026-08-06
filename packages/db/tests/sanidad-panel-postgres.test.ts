@@ -50,8 +50,7 @@ function conditionHasColumn(condition: unknown, column: string): boolean {
   if (!condition || typeof condition !== "object") return false
   const chunks = (condition as { queryChunks?: unknown[] }).queryChunks ?? []
   return chunks.some(
-    (chunk) =>
-      conditionHasColumn(chunk, column) || (chunk as { name?: string }).name === column,
+    (chunk) => conditionHasColumn(chunk, column) || (chunk as { name?: string }).name === column,
   )
 }
 
@@ -65,7 +64,11 @@ function nombreTabla(tabla: unknown): string {
   for (const simbolo of Object.getOwnPropertySymbols(tabla)) {
     if (!simbolo.description?.includes("ViewBaseConfig")) continue
     const config = (tabla as Record<symbol, unknown>)[simbolo]
-    if (config && typeof config === "object" && typeof (config as { name?: unknown }).name === "string") {
+    if (
+      config &&
+      typeof config === "object" &&
+      typeof (config as { name?: unknown }).name === "string"
+    ) {
       return (config as { name: string }).name
     }
   }

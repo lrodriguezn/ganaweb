@@ -22,28 +22,26 @@
 import type {
   AlertaStockPanel,
   PanelSanidadMetricas,
-  PermisoUsuario,
   PeriodosRefuerzosSanidad,
+  PermisoUsuario,
   UltimaAplicacionPanel,
 } from "@ganaweb/aplicacion"
 import {
+  type AccesoPanelSanidadDestino,
+  type DatosEntradaAlmacen,
   Drawer,
   DrawerContent,
   FormularioEntradaAlmacen,
-  type DatosEntradaAlmacen,
   FormularioVacuna,
+  PanelSanidad,
   type ProductoEntradaAlmacen,
   type ProductoSanitario,
-  PanelSanidad,
-  type AccesoPanelSanidadDestino,
   crearPermisos,
 } from "@ganaweb/ui"
 import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
 import { useState } from "react"
-import {
-  listarCatalogoSanidadFn,
-} from "../../../../server/sanidad-catalogo-actions.server.js"
 import { registrarEntradaAlmacenFn } from "../../../../server/sanidad-almacen.server.js"
+import { listarCatalogoSanidadFn } from "../../../../server/sanidad-catalogo-actions.server.js"
 import {
   listarProximasPanelSanidadFn,
   listarStockPanelSanidadFn,
@@ -128,7 +126,12 @@ export interface SanidadRouteViewProps {
   readonly onNavegar: (ruta: string) => void
 }
 
-export function SanidadRouteView({ fincaId, data, onVerHistorial, onNavegar }: SanidadRouteViewProps) {
+export function SanidadRouteView({
+  fincaId,
+  data,
+  onVerHistorial,
+  onNavegar,
+}: SanidadRouteViewProps) {
   const permisos = crearPermisos([...data.permisos])
   const [aplicacionAbierta, setAplicacionAbierta] = useState(false)
   const [productoPrecargado, setProductoPrecargado] = useState<string | null>(null)
@@ -184,6 +187,7 @@ export function SanidadRouteView({ fincaId, data, onVerHistorial, onNavegar }: S
           setErroresEntrada({})
           setEntradaAbierta(true)
         }}
+        hrefHistorial={`/fincas/${fincaId}/sanidad/historial`}
         onVerHistorial={onVerHistorial}
         onNavegarAcceso={navegarAcceso}
       />

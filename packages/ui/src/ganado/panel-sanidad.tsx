@@ -93,6 +93,8 @@ export interface PanelSanidadProps {
   readonly onRegistrarAplicacion: (productoId: string) => void
   /** SAN-014/#210: abre la entrada de almacén. */
   readonly onEntradaAlmacen: () => void
+  /** SAN-004: href real del historial (enlace accesible); onVerHistorial navega. */
+  readonly hrefHistorial: string
   readonly onVerHistorial: () => void
   readonly onNavegarAcceso: (destino: AccesoPanelSanidadDestino) => void
   /** SAN-002: navegación de las métricas de stock al listado filtrado. */
@@ -168,7 +170,10 @@ const BADGE_ESTADO_STOCK: Record<
   { readonly clase: string; readonly texto: (alerta: AlertaStockPanelVista) => string }
 > = {
   agotado: { clase: "bg-peligro-100 text-peligro-600", texto: () => "Agotado" },
-  bajo: { clase: "bg-alerta-100 text-alerta-600", texto: (alerta) => `${alerta.dosisDisponibles} dosis` },
+  bajo: {
+    clase: "bg-alerta-100 text-alerta-600",
+    texto: (alerta) => `${alerta.dosisDisponibles} dosis`,
+  },
   ok: { clase: "bg-exito-100 text-exito-600", texto: () => "OK" },
 }
 
@@ -177,12 +182,55 @@ const ACCESOS: readonly {
   readonly titulo: string
   readonly descripcion: string
 }[] = [
-  { destino: "catalogo", titulo: "Catálogo de productos", descripcion: "Productos sanitarios y dosis" },
-  { destino: "historial", titulo: "Historial de aplicaciones", descripcion: "Registro completo por animal" },
+  {
+    destino: "catalogo",
+    titulo: "Catálogo de productos",
+    descripcion: "Productos sanitarios y dosis",
+  },
+  {
+    destino: "historial",
+    titulo: "Historial de aplicaciones",
+    descripcion: "Registro completo por animal",
+  },
   // D-007: copy confirmado "Entradas y stock" (el esquema v3 no respalda vencimientos).
   { destino: "almacen", titulo: "Almacén e inventario", descripcion: "Entradas y stock" },
-  { destino: "diagnosticos", titulo: "Diagnósticos veterinarios", descripcion: "Revisiones y tratamientos" },
+  {
+    destino: "diagnosticos",
+    titulo: "Diagnósticos veterinarios",
+    descripcion: "Revisiones y tratamientos",
+  },
 ]
+
+/** SAN-003/SAN-052: cuerpo de la card Próximas (degradada / vacía / períodos). */
+function ContenidoProximas({
+  proximas,
+  onRegistrar,
+}: {
+  readonly proximas: PeriodosRefuerzosPanelVista | null
+  readonly onRegistrar: (productoId: string) => void
+}) {
+  if (proximas === null) {
+    return <AvisoDegradacion mensaje="No se pudieron cargar las próximas aplicaciones." />
+  }
+  const sinRefuerzos =
+    proximas.estaSemana.length === 0 &&
+    proximas.proximaSemana.length === 0 &&
+    proximas.esteMes.length === 0
+  if (sinRefuerzos) {
+    return <p className="mt-3 text-support text-muted-foreground">Sin refuerzos pendientes.</p>
+  }
+  return (
+    <div className="mt-2 space-y-4">
+      <SeccionPeriodo titulo="Esta semana" filas={proximas.estaSemana} onRegistrar={onRegistrar} />
+      <SeccionPeriodo
+        titulo="Próxima semana"
+        filas={proximas.proximaSemana}
+        onRegistrar={onRegistrar}
+      />
+      <SeccionPeriodo titulo="Este mes" filas={proximas.esteMes} onRegistrar={onRegistrar} />
+    </div>
+  )
+}
 
 export function PanelSanidad({
   fincaNombre,
@@ -193,17 +241,13 @@ export function PanelSanidad({
   stock,
   onRegistrarAplicacion,
   onEntradaAlmacen,
+  hrefHistorial,
   onVerHistorial,
   onNavegarAcceso,
   onVerStock,
 }: PanelSanidadProps) {
   // PE-001/SAN-061: las acciones de escritura se gatean por permiso.
   const puedeCrear = tienePermiso(permisos, "sanidad", "crear")
-  const sinRefuerzos =
-    proximas !== null &&
-    proximas.estaSemana.length === 0 &&
-    proximas.proximaSemana.length === 0 &&
-    proximas.esteMes.length === 0
 
   return (
     <div className="space-y-4">
@@ -214,8 +258,7 @@ export function PanelSanidad({
           puedeCrear ? (
             <>
               <Button variant="outline" onClick={onEntradaAlmacen}>
-                <Plus aria-hidden="true" className="size-4" />
-                + Entrada almacén
+                <Plus aria-hidden="true" className="size-4" />+ Entrada almacén
               </Button>
               <Button onClick={() => onRegistrarAplicacion("")}>
                 <Syringe aria-hidden="true" className="size-4" />
@@ -252,25 +295,7 @@ export function PanelSanidad({
         {/* SAN-003/SAN-052: próximas aplicaciones */}
         <section aria-label="Próximas aplicaciones" className={CARD}>
           <h3 className={CARD_TITULO}>Próximas aplicaciones</h3>
-          {proximas === null ? (
-            <AvisoDegradacion mensaje="No se pudieron cargar las próximas aplicaciones." />
-          ) : sinRefuerzos ? (
-            <p className="mt-3 text-support text-muted-foreground">Sin refuerzos pendientes.</p>
-          ) : (
-            <div className="mt-2 space-y-4">
-              <SeccionPeriodo
-                titulo="Esta semana"
-                filas={proximas.estaSemana}
-                onRegistrar={onRegistrarAplicacion}
-              />
-              <SeccionPeriodo
-                titulo="Próxima semana"
-                filas={proximas.proximaSemana}
-                onRegistrar={onRegistrarAplicacion}
-              />
-              <SeccionPeriodo titulo="Este mes" filas={proximas.esteMes} onRegistrar={onRegistrarAplicacion} />
-            </div>
-          )}
+          <ContenidoProximas proximas={proximas} onRegistrar={onRegistrarAplicacion} />
         </section>
 
         {/* SAN-004: últimas registradas */}
@@ -300,7 +325,7 @@ export function PanelSanidad({
                 ))}
               </ul>
               <a
-                href="#"
+                href={hrefHistorial}
                 onClick={(evento) => {
                   evento.preventDefault()
                   onVerHistorial()
@@ -325,7 +350,9 @@ export function PanelSanidad({
           {stock === null ? (
             <AvisoDegradacion mensaje="No se pudieron cargar las alertas de stock." />
           ) : stock.length === 0 ? (
-            <p className="mt-3 text-support text-muted-foreground">Sin productos en el inventario.</p>
+            <p className="mt-3 text-support text-muted-foreground">
+              Sin productos en el inventario.
+            </p>
           ) : (
             <ul className="mt-2 -mx-1 divide-y divide-tierra-200">
               {stock.map((alerta) => {
@@ -336,7 +363,9 @@ export function PanelSanidad({
                       <span className="block text-support font-medium text-foreground truncate">
                         {alerta.descripcion}
                       </span>
-                      <span className="block text-caption text-muted-foreground">{alerta.codigo}</span>
+                      <span className="block text-caption text-muted-foreground">
+                        {alerta.codigo}
+                      </span>
                     </span>
                     <span
                       className={cn(
@@ -369,8 +398,12 @@ export function PanelSanidad({
                   )}
                 >
                   <span className="flex-1 min-w-0">
-                    <span className="block text-support font-medium text-foreground">{acceso.titulo}</span>
-                    <span className="block text-caption text-muted-foreground">{acceso.descripcion}</span>
+                    <span className="block text-support font-medium text-foreground">
+                      {acceso.titulo}
+                    </span>
+                    <span className="block text-caption text-muted-foreground">
+                      {acceso.descripcion}
+                    </span>
                   </span>
                   <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-tierra-400" />
                 </button>

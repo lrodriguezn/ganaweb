@@ -261,7 +261,8 @@ export function createSanidadPanelRuntimeHarness({
       runWithHarness((harness) => harness.ultimas(input)),
     stock: (input: { readonly fincaId: string }) =>
       runWithHarness((harness) => harness.stock(input)),
-    historial: (input: HistorialPanelInput) => runWithHarness((harness) => harness.historial(input)),
+    historial: (input: HistorialPanelInput) =>
+      runWithHarness((harness) => harness.historial(input)),
   }
 }
 

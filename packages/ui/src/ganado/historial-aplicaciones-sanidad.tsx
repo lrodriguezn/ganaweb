@@ -145,19 +145,34 @@ export function HistorialAplicacionesSanidad({
             <caption className="sr-only">Historial de aplicaciones sanitarias</caption>
             <thead>
               <tr className="border-b bg-muted/30">
-                <th scope="col" className="px-3 py-2 text-caption font-medium text-muted-foreground">
+                <th
+                  scope="col"
+                  className="px-3 py-2 text-caption font-medium text-muted-foreground"
+                >
                   Fecha
                 </th>
-                <th scope="col" className="px-3 py-2 text-caption font-medium text-muted-foreground">
+                <th
+                  scope="col"
+                  className="px-3 py-2 text-caption font-medium text-muted-foreground"
+                >
                   Producto
                 </th>
-                <th scope="col" className="px-3 py-2 text-caption font-medium text-muted-foreground">
+                <th
+                  scope="col"
+                  className="px-3 py-2 text-caption font-medium text-muted-foreground"
+                >
                   Animal / Lote
                 </th>
-                <th scope="col" className="px-3 py-2 text-caption font-medium text-muted-foreground">
+                <th
+                  scope="col"
+                  className="px-3 py-2 text-caption font-medium text-muted-foreground"
+                >
                   Dosis
                 </th>
-                <th scope="col" className="px-3 py-2 text-caption font-medium text-muted-foreground">
+                <th
+                  scope="col"
+                  className="px-3 py-2 text-caption font-medium text-muted-foreground"
+                >
                   Responsable
                 </th>
               </tr>

@@ -9,14 +9,17 @@
  * placeholder de SAN-047 (el caso de uso real llega con #211).
  */
 
-import type * as React from "react"
 import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type * as React from "react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { FormularioVacuna, type ProductoSanitario } from "../src/ganado/event-drawer/formulario-vacuna"
-import { Drawer, DrawerContent } from "../src/primitives/drawer"
+import {
+  FormularioVacuna,
+  type ProductoSanitario,
+} from "../src/ganado/event-drawer/formulario-vacuna"
 import type { AnimalResumen } from "../src/ganado/types"
+import { Drawer, DrawerContent } from "../src/primitives/drawer"
 
 beforeAll(() => {
   if (!HTMLElement.prototype.hasPointerCapture) {

@@ -106,7 +106,10 @@ export class DrizzlePanelSanidadAdapter implements SanidadPanelLecturaPort {
       .select({ id: aplicacionesSanitarias.id })
       .from(aplicacionesSanitarias)
       .innerJoin(productosSanitarios, eq(aplicacionesSanitarias.productoId, productosSanitarios.id))
-      .leftJoin(registrosGrupales, eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id))
+      .leftJoin(
+        registrosGrupales,
+        eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id),
+      )
       .where(
         and(
           eq(productosSanitarios.fincaId, fincaId),
@@ -125,7 +128,10 @@ export class DrizzlePanelSanidadAdapter implements SanidadPanelLecturaPort {
       })
       .from(aplicacionesSanitarias)
       .innerJoin(productosSanitarios, eq(aplicacionesSanitarias.productoId, productosSanitarios.id))
-      .leftJoin(registrosGrupales, eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id))
+      .leftJoin(
+        registrosGrupales,
+        eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id),
+      )
       .where(
         and(
           eq(productosSanitarios.fincaId, fincaId),
@@ -193,7 +199,10 @@ export class DrizzlePanelSanidadAdapter implements SanidadPanelLecturaPort {
       .from(aplicacionesSanitarias)
       .innerJoin(productosSanitarios, eq(aplicacionesSanitarias.productoId, productosSanitarios.id))
       .innerJoin(animales, eq(aplicacionesSanitarias.animalId, animales.id))
-      .leftJoin(registrosGrupales, eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id))
+      .leftJoin(
+        registrosGrupales,
+        eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id),
+      )
       .where(
         and(
           eq(productosSanitarios.fincaId, fincaId),
@@ -254,7 +263,10 @@ export class DrizzlePanelSanidadAdapter implements SanidadPanelLecturaPort {
       .from(aplicacionesSanitarias)
       .innerJoin(productosSanitarios, eq(aplicacionesSanitarias.productoId, productosSanitarios.id))
       .leftJoin(usuarios, eq(aplicacionesSanitarias.usuarioCreadoPor, usuarios.id))
-      .leftJoin(registrosGrupales, eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id))
+      .leftJoin(
+        registrosGrupales,
+        eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id),
+      )
       .where(and(eq(productosSanitarios.fincaId, fincaId), sinGruposAnulados()))
       .orderBy(desc(aplicacionesSanitarias.fecha), desc(aplicacionesSanitarias.createdAt))
       .limit(4)
@@ -313,11 +325,12 @@ export class DrizzlePanelSanidadAdapter implements SanidadPanelLecturaPort {
     fincaId: string,
     filtros: FiltrosHistorialSanidad,
   ): Promise<HistorialSanidadPagina> {
-    const condiciones = [
-      eq(productosSanitarios.fincaId, fincaId),
-      sinGruposAnulados(),
-    ]
-    if (filtros.productoId !== null && filtros.productoId !== undefined && filtros.productoId !== "") {
+    const condiciones = [eq(productosSanitarios.fincaId, fincaId), sinGruposAnulados()]
+    if (
+      filtros.productoId !== null &&
+      filtros.productoId !== undefined &&
+      filtros.productoId !== ""
+    ) {
       condiciones.push(eq(aplicacionesSanitarias.productoId, filtros.productoId))
     }
     if (filtros.desde !== null && filtros.desde !== undefined && filtros.desde !== "") {
@@ -329,7 +342,9 @@ export class DrizzlePanelSanidadAdapter implements SanidadPanelLecturaPort {
     const busqueda = filtros.animalOLote?.trim()
     if (busqueda !== undefined && busqueda !== "") {
       const patron = `%${busqueda}%`
-      condiciones.push(or(ilike(animales.codigo, patron), ilike(registrosGrupales.descripcion, patron)))
+      condiciones.push(
+        or(ilike(animales.codigo, patron), ilike(registrosGrupales.descripcion, patron)),
+      )
     }
 
     const filas = await this.db
@@ -349,7 +364,10 @@ export class DrizzlePanelSanidadAdapter implements SanidadPanelLecturaPort {
       .innerJoin(productosSanitarios, eq(aplicacionesSanitarias.productoId, productosSanitarios.id))
       .innerJoin(animales, eq(aplicacionesSanitarias.animalId, animales.id))
       .leftJoin(usuarios, eq(aplicacionesSanitarias.usuarioCreadoPor, usuarios.id))
-      .leftJoin(registrosGrupales, eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id))
+      .leftJoin(
+        registrosGrupales,
+        eq(aplicacionesSanitarias.registroGrupalId, registrosGrupales.id),
+      )
       .where(and(...condiciones))
       .orderBy(desc(aplicacionesSanitarias.fecha), desc(aplicacionesSanitarias.createdAt))
 

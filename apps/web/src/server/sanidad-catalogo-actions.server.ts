@@ -23,9 +23,9 @@ import {
   editarProductoSanitario,
   listarCatalogoProductoSanitario,
 } from "@ganaweb/aplicacion"
-import { createServerFn } from "@tanstack/react-start"
 import { DrizzleCatalogoProductoSanitarioAdapter } from "@ganaweb/db/catalogo-producto-sanitario-infrastructure"
 import { type DbClient, db } from "@ganaweb/db/client"
+import { createServerFn } from "@tanstack/react-start"
 
 export type SanidadCatalogoPermiso = "ver" | "crear" | "editar" | "anular"
 
