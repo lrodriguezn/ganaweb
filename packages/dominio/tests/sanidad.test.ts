@@ -23,16 +23,27 @@
  * del esquema v3).
  */
 import { describe, expect, it } from "vitest"
-import type { CapturaEntradaAlmacen, ErrorValidacionSanidad } from "../src/index.js"
+import type {
+  CapturaEntradaAlmacen,
+  ErrorValidacionSanidad,
+  RefuerzoPendienteFila,
+} from "../src/index.js"
 import {
+  agruparRefuerzosPorSemana,
   calcularStockDisponible,
   construirAplicacionesSanitarias,
+  contarAnimalesEnTratamiento,
   esAlertaReconciliacionStock,
   esFechaIso,
+  esRefuerzoPendienteSanidad,
   estadoStockSanidad,
   evaluarAnimalEnFinca,
+  finSemanaIso,
+  inicioSemanaIso,
   planificarRegistroGrupal,
+  propositoProductoSanitario,
   refuerzosAutoCompletados,
+  sumarDiasAFechaIso,
   validarAnulacionRegistroGrupal,
   validarCabeceraRegistroGrupal,
   validarCantidadAnimalesSanidad,
@@ -609,5 +620,323 @@ describe("ErrorValidacionSanidad: forma { campo, detalle }", () => {
     for (const error of errores) {
       expect(Object.keys(error).sort()).toEqual(["campo", "detalle"])
     }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Issue #212 — Panel Sanidad: reglas puras del read model                    */
+/* -------------------------------------------------------------------------- */
+
+describe("Aritmética de fechas ISO (insumo de SAN-052/KPI-09/D-002)", () => {
+  it("sumarDiasAFechaIso suma días cruzando mes y año", () => {
+    expect(sumarDiasAFechaIso("2026-08-05", 30)).toBe("2026-09-04")
+    expect(sumarDiasAFechaIso("2026-01-31", 1)).toBe("2026-02-01")
+    expect(sumarDiasAFechaIso("2026-12-31", 1)).toBe("2027-01-01")
+  })
+
+  it("sumarDiasAFechaIso resta días con desplazamiento negativo", () => {
+    expect(sumarDiasAFechaIso("2026-08-05", -30)).toBe("2026-07-06")
+    expect(sumarDiasAFechaIso("2026-08-05", 0)).toBe("2026-08-05")
+  })
+
+  it("inicioSemanaIso/finSemanaIso: la semana natural va de lunes a domingo (SAN-052)", () => {
+    // 2026-08-05 es miércoles; su semana natural: lunes 03 → domingo 09.
+    expect(inicioSemanaIso("2026-08-05")).toBe("2026-08-03")
+    expect(finSemanaIso("2026-08-05")).toBe("2026-08-09")
+    // Extremos de la semana: lunes y domingo mapean a su propia semana.
+    expect(inicioSemanaIso("2026-08-03")).toBe("2026-08-03")
+    expect(finSemanaIso("2026-08-09")).toBe("2026-08-09")
+    // Domingo: la semana natural NO salta a la siguiente (ISO lunes-domingo).
+    expect(inicioSemanaIso("2026-08-09")).toBe("2026-08-03")
+  })
+})
+
+describe("KPI-09/SAN-050: predicado de refuerzo pendiente", () => {
+  it("está pendiente: proxima_dosis ≤ hoy+30, sin aplicación posterior y EN_FINCA", () => {
+    const pendiente = esRefuerzoPendienteSanidad({
+      proximaDosis: "2026-08-20",
+      tieneAplicacionPosterior: false,
+      animalEnFinca: true,
+      hoy: HOY,
+    })
+    expect(pendiente).toBe(true)
+  })
+
+  it("límite KPI-09: proxima_dosis exactamente en hoy+30 sigue pendiente", () => {
+    expect(
+      esRefuerzoPendienteSanidad({
+        proximaDosis: "2026-09-04", // HOY + 30
+        tieneAplicacionPosterior: false,
+        animalEnFinca: true,
+        hoy: HOY,
+      }),
+    ).toBe(true)
+  })
+
+  it("fuera de la ventana KPI-09: proxima_dosis > hoy+30 no está pendiente", () => {
+    expect(
+      esRefuerzoPendienteSanidad({
+        proximaDosis: "2026-09-05", // HOY + 31
+        tieneAplicacionPosterior: false,
+        animalEnFinca: true,
+        hoy: HOY,
+      }),
+    ).toBe(false)
+  })
+
+  it("SAN-046/RN-042: con aplicación posterior del mismo producto ya no está pendiente", () => {
+    expect(
+      esRefuerzoPendienteSanidad({
+        proximaDosis: "2026-08-20",
+        tieneAplicacionPosterior: true,
+        animalEnFinca: true,
+        hoy: HOY,
+      }),
+    ).toBe(false)
+  })
+
+  it("SAN-050: solo animales EN_FINCA — fuera de la finca no está pendiente", () => {
+    expect(
+      esRefuerzoPendienteSanidad({
+        proximaDosis: "2026-08-20",
+        tieneAplicacionPosterior: false,
+        animalEnFinca: false,
+        hoy: HOY,
+      }),
+    ).toBe(false)
+  })
+
+  it("sin proxima_dosis no hay refuerzo pendiente", () => {
+    expect(
+      esRefuerzoPendienteSanidad({
+        proximaDosis: null,
+        tieneAplicacionPosterior: false,
+        animalEnFinca: true,
+        hoy: HOY,
+      }),
+    ).toBe(false)
+  })
+
+  it("refuerzo vencido (proxima_dosis en el pasado) sigue pendiente", () => {
+    expect(
+      esRefuerzoPendienteSanidad({
+        proximaDosis: "2026-07-15",
+        tieneAplicacionPosterior: false,
+        animalEnFinca: true,
+        hoy: HOY,
+      }),
+    ).toBe(true)
+  })
+})
+
+function filaRefuerzo(overrides: Partial<RefuerzoPendienteFila> = {}): RefuerzoPendienteFila {
+  return {
+    productoId: "prod-aftosa",
+    codigo: "VAC-AFTOSA",
+    descripcion: "Vacuna fiebre aftosa",
+    tipoTratamiento: "vacuna",
+    animalId: "animal-1",
+    proximaDosis: "2026-08-05",
+    ...overrides,
+  }
+}
+
+describe("SAN-052: agruparRefuerzosPorSemana — Esta semana / Próxima semana / Este mes", () => {
+  it("ubica cada refuerzo en su período de semana natural", () => {
+    const resultado = agruparRefuerzosPorSemana(
+      [
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-05" }), // esta semana (miércoles)
+        filaRefuerzo({ animalId: "a2", proximaDosis: "2026-08-12" }), // próxima semana
+        filaRefuerzo({ animalId: "a3", proximaDosis: "2026-08-25" }), // este mes
+      ],
+      HOY,
+    )
+
+    expect(resultado.estaSemana).toHaveLength(1)
+    expect(resultado.proximaSemana).toHaveLength(1)
+    expect(resultado.esteMes).toHaveLength(1)
+    expect(resultado.estaSemana[0]?.cantidadAnimales).toBe(1)
+    expect(resultado.estaSemana[0]?.venceFecha).toBe("2026-08-05")
+    expect(resultado.proximaSemana[0]?.venceFecha).toBe("2026-08-12")
+    expect(resultado.esteMes[0]?.venceFecha).toBe("2026-08-25")
+  })
+
+  it("límites de período: domingo de esta semana y lunes de la próxima", () => {
+    const resultado = agruparRefuerzosPorSemana(
+      [
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-09" }), // domingo: esta semana
+        filaRefuerzo({ animalId: "a2", proximaDosis: "2026-08-10" }), // lunes: próxima semana
+        filaRefuerzo({
+          productoId: "prod-iverm",
+          codigo: "IVERMECTINA",
+          descripcion: "Ivermectina 1%",
+          tipoTratamiento: "no_reproductivo",
+          animalId: "a3",
+          proximaDosis: "2026-08-16", // domingo: próxima semana
+        }),
+        filaRefuerzo({
+          productoId: "prod-cepa",
+          codigo: "VAC-CEPA",
+          descripcion: "Vacuna cepa",
+          animalId: "a4",
+          proximaDosis: "2026-08-17", // lunes siguiente: este mes
+        }),
+      ],
+      HOY,
+    )
+
+    expect(resultado.estaSemana.map((f) => f.venceFecha)).toEqual(["2026-08-09"])
+    expect(resultado.proximaSemana.map((f) => f.venceFecha)).toEqual(["2026-08-10", "2026-08-16"])
+    expect(resultado.esteMes.map((f) => f.venceFecha)).toEqual(["2026-08-17"])
+  })
+
+  it("un refuerzo vencido dentro de la semana actual cae en Esta semana", () => {
+    // HOY es miércoles 2026-08-05; el lunes 2026-08-03 ya pasó pero sigue pendiente.
+    const resultado = agruparRefuerzosPorSemana(
+      [filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-03" })],
+      HOY,
+    )
+
+    expect(resultado.estaSemana).toHaveLength(1)
+    expect(resultado.estaSemana[0]?.venceFecha).toBe("2026-08-03")
+    expect(resultado.proximaSemana).toHaveLength(0)
+    expect(resultado.esteMes).toHaveLength(0)
+  })
+
+  it("agrupa por producto dentro del período: N animales y vence más próximo (SAN-003)", () => {
+    const resultado = agruparRefuerzosPorSemana(
+      [
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-07" }),
+        filaRefuerzo({ animalId: "a2", proximaDosis: "2026-08-05" }),
+        filaRefuerzo({ animalId: "a3", proximaDosis: "2026-08-06" }),
+      ],
+      HOY,
+    )
+
+    expect(resultado.estaSemana).toHaveLength(1)
+    const fila = resultado.estaSemana[0]
+    expect(fila?.productoId).toBe("prod-aftosa")
+    expect(fila?.cantidadAnimales).toBe(3)
+    expect(fila?.venceFecha).toBe("2026-08-05") // el vence más próximo del grupo
+  })
+
+  it("el mismo producto en períodos distintos produce una fila por período", () => {
+    const resultado = agruparRefuerzosPorSemana(
+      [
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-06" }),
+        filaRefuerzo({ animalId: "a2", proximaDosis: "2026-08-12" }),
+      ],
+      HOY,
+    )
+
+    expect(resultado.estaSemana).toHaveLength(1)
+    expect(resultado.proximaSemana).toHaveLength(1)
+    expect(resultado.estaSemana[0]?.productoId).toBe("prod-aftosa")
+    expect(resultado.proximaSemana[0]?.productoId).toBe("prod-aftosa")
+    expect(resultado.estaSemana[0]?.cantidadAnimales).toBe(1)
+    expect(resultado.proximaSemana[0]?.cantidadAnimales).toBe(1)
+  })
+
+  it("defensa KPI-09: descarta filas fuera de la ventana hoy+30", () => {
+    const resultado = agruparRefuerzosPorSemana(
+      [filaRefuerzo({ animalId: "a1", proximaDosis: "2026-10-01" })],
+      HOY,
+    )
+
+    expect(resultado.estaSemana).toHaveLength(0)
+    expect(resultado.proximaSemana).toHaveLength(0)
+    expect(resultado.esteMes).toHaveLength(0)
+  })
+
+  it("el mismo animal contado una sola vez por producto y período", () => {
+    const resultado = agruparRefuerzosPorSemana(
+      [
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-05" }),
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-06" }),
+      ],
+      HOY,
+    )
+
+    expect(resultado.estaSemana[0]?.cantidadAnimales).toBe(1)
+  })
+
+  it("propósito derivado del tipo de tratamiento (SAN-003)", () => {
+    const resultado = agruparRefuerzosPorSemana(
+      [
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-05", tipoTratamiento: "vacuna" }),
+        filaRefuerzo({
+          productoId: "prod-iverm",
+          codigo: "IVERMECTINA",
+          descripcion: "Ivermectina 1%",
+          animalId: "a2",
+          proximaDosis: "2026-08-05",
+          tipoTratamiento: "no_reproductivo",
+        }),
+      ],
+      HOY,
+    )
+
+    const porProducto = new Map(resultado.estaSemana.map((f) => [f.productoId, f.proposito]))
+    expect(porProducto.get("prod-aftosa")).toBe("Vacuna")
+    expect(porProducto.get("prod-iverm")).toBe("Tratamiento")
+  })
+})
+
+describe("propositoProductoSanitario — propósito legible del producto (SAN-003)", () => {
+  it("mapea los tres tipos de tratamiento a su propósito", () => {
+    expect(propositoProductoSanitario("vacuna")).toBe("Vacuna")
+    expect(propositoProductoSanitario("reproductivo")).toBe("Tratamiento reproductivo")
+    expect(propositoProductoSanitario("no_reproductivo")).toBe("Tratamiento")
+  })
+})
+
+describe("D-002: animales en tratamiento (tipo ≠ vacuna, últimos 30 días)", () => {
+  it("cuenta animales distintos con tratamientos en los últimos 30 días", () => {
+    const total = contarAnimalesEnTratamiento(
+      [
+        { animalId: "a1", tipoTratamiento: "no_reproductivo", fecha: "2026-08-01" },
+        { animalId: "a2", tipoTratamiento: "reproductivo", fecha: "2026-07-20" },
+        { animalId: "a3", tipoTratamiento: "vacuna", fecha: "2026-08-01" },
+      ],
+      HOY,
+    )
+
+    // a3 es vacuna (prevención, no tratamiento — D-002): no cuenta.
+    expect(total).toBe(2)
+  })
+
+  it("el mismo animal con dos tratamientos cuenta una sola vez", () => {
+    const total = contarAnimalesEnTratamiento(
+      [
+        { animalId: "a1", tipoTratamiento: "no_reproductivo", fecha: "2026-08-01" },
+        { animalId: "a1", tipoTratamiento: "reproductivo", fecha: "2026-07-30" },
+      ],
+      HOY,
+    )
+
+    expect(total).toBe(1)
+  })
+
+  it("límite D-002: fecha exactamente en hoy-30 cuenta; un día antes no", () => {
+    const enLimite = contarAnimalesEnTratamiento(
+      [{ animalId: "a1", tipoTratamiento: "no_reproductivo", fecha: "2026-07-06" }], // HOY-30
+      HOY,
+    )
+    const fueraDeLimite = contarAnimalesEnTratamiento(
+      [{ animalId: "a1", tipoTratamiento: "no_reproductivo", fecha: "2026-07-05" }], // HOY-31
+      HOY,
+    )
+
+    expect(enLimite).toBe(1)
+    expect(fueraDeLimite).toBe(0)
+  })
+
+  it("aplicaciones futuras a hoy no cuentan (fecha de evento, no de captura)", () => {
+    const total = contarAnimalesEnTratamiento(
+      [{ animalId: "a1", tipoTratamiento: "no_reproductivo", fecha: "2026-08-06" }],
+      HOY,
+    )
+
+    expect(total).toBe(0)
   })
 })
