@@ -57,6 +57,10 @@
       "types": "./src/sanidad-infrastructure.ts",
       "import": "./src/sanidad-infrastructure.ts"
     },
+    "./evento-write-infrastructure": {
+      "types": "./src/evento-write-internal.ts",
+      "import": "./src/evento-write-internal.ts"
+    },
     "./sanidad-panel-infrastructure": {
       "types": "./src/sanidad-panel-infrastructure.ts",
       "import": "./src/sanidad-panel-infrastructure.ts"

@@ -155,6 +155,7 @@ export type EntradaAlmacenNueva = {
  */
 export interface SanidadEscrituraPort {
   registrarAplicaciones(entrada: {
+    readonly fincaId: string
     readonly registroGrupal: RegistroGrupalTratamientoNuevo | null
     readonly aplicaciones: readonly AplicacionSanitariaNueva[]
     /** PE-006: todo insert de evento lleva usuario_creado_por. */
@@ -169,6 +170,8 @@ export interface SanidadEscrituraPort {
     id: string,
     fincaId: string,
     anuladoEn: Date,
+    anuladoPor: string,
+    motivoAnulacion: string,
   ): Promise<
     | { readonly tipo: "anulado" }
     | { readonly tipo: "no_encontrado" }

@@ -79,6 +79,7 @@ export interface AnimalUseCaseDeps {
     registrarInicial(entrada: {
       readonly id: string
       readonly fincaId: string
+      readonly usuarioId: string
       readonly animalId: string
       readonly potreroId?: string
       readonly sectorId?: string
@@ -100,6 +101,7 @@ export interface AnimalUseCaseDeps {
     registrarInicial(entrada: {
       readonly id: string
       readonly fincaId: string
+      readonly usuarioId: string
       readonly animalId: string
       readonly pesoKg: number
       readonly fecha: Date
@@ -250,6 +252,7 @@ async function registrarUbicacionInicialAnimal(
   deps: AnimalUseCaseDeps,
   input: {
     readonly fincaId: string
+    readonly usuarioId: string
     readonly animalId: string
     readonly ubicacion: {
       readonly potreroId?: string
@@ -263,6 +266,7 @@ async function registrarUbicacionInicialAnimal(
   await deps.ubicaciones?.registrarInicial({
     id: id("ubicacion-animal"),
     fincaId: input.fincaId,
+    usuarioId: input.usuarioId,
     animalId: input.animalId,
     ...input.ubicacion,
     motivo: "inicial",
@@ -282,6 +286,7 @@ async function registrarPesoInicialAnimal(
   deps: AnimalUseCaseDeps,
   input: {
     readonly fincaId: string
+    readonly usuarioId: string
     readonly animalId: string
     readonly peso: { readonly pesoKg: number; readonly fecha: Date }
   },
@@ -290,6 +295,7 @@ async function registrarPesoInicialAnimal(
   await deps.pesajes?.registrarInicial({
     id: id("peso-animal"),
     fincaId: input.fincaId,
+    usuarioId: input.usuarioId,
     animalId: input.animalId,
     pesoKg: input.peso.pesoKg,
     fecha: input.peso.fecha,
@@ -438,12 +444,14 @@ async function persistirCreacionAnimal(
   if (cmd.ubicacionInicial)
     await registrarUbicacionInicialAnimal(deps, {
       fincaId: cmd.sesion.fincaActivaId,
+      usuarioId: cmd.sesion.usuarioId,
       animalId: animal.id,
       ubicacion: cmd.ubicacionInicial,
     })
   if (cmd.pesoInicial)
     await registrarPesoInicialAnimal(deps, {
       fincaId: cmd.sesion.fincaActivaId,
+      usuarioId: cmd.sesion.usuarioId,
       animalId: animal.id,
       peso: cmd.pesoInicial,
     })

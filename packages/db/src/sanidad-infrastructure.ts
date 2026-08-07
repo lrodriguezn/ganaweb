@@ -39,8 +39,11 @@ import type {
   SanidadEscrituraPort,
   SanidadLecturaPort,
 } from "@ganaweb/aplicacion"
+import { EventoForbiddenError } from "@ganaweb/dominio"
+import type { EventoWriteCommand } from "@ganaweb/dominio"
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
+import { persistirEventosInternos } from "./evento-write-internal.js"
 import {
   almacenEntradas,
   animales,
@@ -65,8 +68,9 @@ function aNumero(valor: string | number | null | undefined): number | null {
 
 /** Error de FK (postgres.js envuelve el PostgresError en `cause`). */
 function esViolacionForeignKey(error: unknown): boolean {
-  const causa = (error as { cause?: { code?: string } }).cause
-  return causa?.code === "23503"
+  if (!error || typeof error !== "object") return false
+  if ((error as { code?: string }).code === "23503") return true
+  return esViolacionForeignKey((error as { cause?: unknown }).cause)
 }
 
 type FilaAnimalEvento = {
@@ -248,6 +252,7 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
   }
 
   async registrarAplicaciones(entrada: {
+    readonly fincaId: string
     readonly registroGrupal: RegistroGrupalTratamientoNuevo | null
     readonly aplicaciones: readonly AplicacionSanitariaNueva[]
     readonly usuarioCreadoPor: string
@@ -257,41 +262,55 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
     | { readonly tipo: "error"; readonly detalle: string }
   > {
     try {
-      const aplicacionIds = await this.db.transaction(async (tx) => {
-        if (entrada.registroGrupal !== null) {
-          const cabecera = entrada.registroGrupal
-          await tx.insert(registrosGrupales).values({
-            id: cabecera.id,
-            fincaId: cabecera.fincaId,
-            tipoEvento: cabecera.tipoEvento,
-            totalAnimales: cabecera.totalAnimales,
-            fecha: cabecera.fecha,
-            usuarioCreadoPor: cabecera.usuarioCreadoPor,
-            descripcion: cabecera.descripcion,
-          })
+      const aplicacionIds = entrada.aplicaciones.map(() => crypto.randomUUID())
+      const commands: EventoWriteCommand[] = []
+      if (entrada.registroGrupal) {
+        commands.push({
+          tipo: "crear_registro_grupal",
+          evento: "aplicacion_sanitaria",
+          id: entrada.registroGrupal.id,
+          fincaId: entrada.fincaId,
+          usuarioId: entrada.usuarioCreadoPor,
+          totalAnimales: entrada.registroGrupal.totalAnimales,
+          criterio: { origen: "manual" },
+          fecha: entrada.registroGrupal.fecha,
+          descripcion: entrada.registroGrupal.descripcion,
+        })
+      }
+      entrada.aplicaciones.forEach((aplicacion, index) => {
+        const common = {
+          evento: "aplicacion_sanitaria" as const,
+          id: aplicacionIds[index] as string,
+          fincaId: entrada.fincaId,
+          usuarioId: entrada.usuarioCreadoPor,
+          animalId: aplicacion.animalId,
+          datos: {
+            productoId: aplicacion.productoId,
+            fecha: aplicacion.fecha,
+            dosis: aplicacion.dosis,
+            precioDosis: aplicacion.precioDosis,
+            proximaDosis: aplicacion.proximaDosis,
+            comentarios: aplicacion.comentarios,
+          },
         }
-        const filas = await tx
-          .insert(aplicacionesSanitarias)
-          .values(
-            entrada.aplicaciones.map((aplicacion) => ({
-              id: crypto.randomUUID(),
-              animalId: aplicacion.animalId,
-              registroGrupalId: aplicacion.registroGrupalId,
-              productoId: aplicacion.productoId,
-              fecha: aplicacion.fecha,
-              dosis: String(aplicacion.dosis),
-              precioDosis: aplicacion.precioDosis === null ? null : String(aplicacion.precioDosis),
-              proximaDosis: aplicacion.proximaDosis,
-              comentarios: aplicacion.comentarios,
-              usuarioCreadoPor: entrada.usuarioCreadoPor,
-            })),
-          )
-          .returning({ id: aplicacionesSanitarias.id })
-        return filas.map((fila) => fila.id)
+        commands.push(
+          aplicacion.registroGrupalId
+            ? {
+                ...common,
+                tipo: "crear_hijo_grupal",
+                registroGrupalId: aplicacion.registroGrupalId,
+              }
+            : { ...common, tipo: "crear_evento_individual" },
+        )
+      })
+      await persistirEventosInternos(this.db, commands, {
+        fuente: "sanidad_validada",
+        fincaId: entrada.fincaId,
+        usuarioId: entrada.usuarioCreadoPor,
       })
       return { tipo: "aplicado", aplicacionIds }
     } catch (error) {
-      if (esViolacionForeignKey(error)) {
+      if (error instanceof EventoForbiddenError || esViolacionForeignKey(error)) {
         return { tipo: "conflicto", detalle: "La aplicación referencia un registro inexistente." }
       }
       return { tipo: "error", detalle: "No se pudo registrar la aplicación sanitaria." }
@@ -302,6 +321,8 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
     id: string,
     fincaId: string,
     anuladoEn: Date,
+    anuladoPor: string,
+    motivoAnulacion: string,
   ): Promise<
     | { readonly tipo: "anulado" }
     | { readonly tipo: "no_encontrado" }
@@ -328,7 +349,7 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
       await this.db.transaction(async (tx) => {
         await tx
           .update(registrosGrupales)
-          .set({ anuladoEn, updatedAt: anuladoEn })
+          .set({ anuladoEn, anuladoPor, motivoAnulacion, updatedAt: anuladoEn })
           .where(eq(registrosGrupales.id, id))
         // RN-051: anulación lógica de TODAS las filas hijas en la misma
         // transacción — derivada de la cabecera (las hijas no tienen columna
