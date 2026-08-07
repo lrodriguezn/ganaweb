@@ -5,6 +5,12 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Open same-repository PR number targeting master
+        required: true
+        type: string
 
 # Cancel in-progress runs for the same ref to save CI minutes.
 concurrency:
@@ -18,6 +24,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      pull-requests: read
 
     services:
       postgres:
@@ -37,8 +44,27 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ganaweb
 
     steps:
-      - name: Checkout
+      - name: Checkout manual dispatch ref for resolver
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v4
+
+      - name: Resolve and verify manual PR
+        if: github.event_name == 'workflow_dispatch'
+        id: pr
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: node scripts/resolve-pr-context.mjs
+
+      - name: Checkout automatic event
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/checkout@v4
+
+      - name: Checkout verified manual PR SHA
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head-sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

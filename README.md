@@ -36,6 +36,19 @@ Sistema web para administrar fincas, animales y eventos productivos, diseñado p
 | `pnpm lint` | Lint con Biome |
 | `pnpm ci` | Pipeline completa de CI: lint → typecheck → test → build |
 
+### Recuperación manual de checks de PR
+
+Cuando GitHub no materialice los checks automáticos, selecciona la rama actual del PR en
+**Actions → workflow → Run workflow** e indica `pr_number`. Por CLI:
+
+```bash
+gh workflow run ci.yml --ref <rama-del-pr> -f pr_number=<numero>
+```
+
+Repite el comando para `e2e.yml`, `pr-check.yml` y `pr-validation.yml`. El workflow
+debe existir primero en `master`; cada ejecución falla si la rama o SHA seleccionados
+no coinciden con el PR abierto, si el PR es un fork o si no apunta a `master`.
+
 ## Despliegue
 
 > **Nota**: aún no hay Dockerfile ni GitHub Actions. El despliegue actual es manual sobre Node 24 + PostgreSQL 17.
