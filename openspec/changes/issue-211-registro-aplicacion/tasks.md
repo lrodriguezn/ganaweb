@@ -67,8 +67,8 @@ Dependencias: U3→U1+U2; U4→U3 (contrato); U5→U3+U4.
 
 ## Phase 4 — Unit 4: FormularioVacuna (ui)
 
-- [ ] 4.1 RED: extender `packages/ui/tests/formulario-vacuna.test.tsx` — campo fecha default hoy y fecha futura rechazada al guardar (RN-002); fecha pasada → advertencia de captura tardía sin bloquear el guardado (SAN-043); la dosis toma por default `ml_mg_por_dosis` al elegir producto (SAN-041); indicador "☁ offline" visible con `navigator.onLine=false` (SAN-044); prop aditiva `animalesIdsIniciales` acota la selección inicial (precarga SAN-011); el payload de `onGuardar` incluye `fecha`.
-- [ ] 4.2 GREEN: cambios aditivos en `packages/ui/src/ganado/event-drawer/formulario-vacuna.tsx`; quick-picks: mantener los actuales (+21 días/+6 meses/+1 año, cubren el ejemplo de SAN-041) — "configurables por producto" no tiene columna en el esquema → decisión D2.
+- [x] 4.1 RED: extender `packages/ui/tests/formulario-vacuna.test.tsx` — campo fecha default hoy y fecha futura rechazada al guardar (RN-002); fecha pasada → advertencia de captura tardía sin bloquear el guardado (SAN-043); la dosis toma por default `ml_mg_por_dosis` al elegir producto (SAN-041); indicador "☁ offline" visible con `navigator.onLine=false` (SAN-044); prop aditiva `animalesIdsIniciales` acota la selección inicial (precarga SAN-011); el payload de `onGuardar` incluye `fecha`.
+- [x] 4.2 GREEN: cambios aditivos en `packages/ui/src/ganado/event-drawer/formulario-vacuna.tsx`; quick-picks: mantener los actuales (+21 días/+6 meses/+1 año, cubren el ejemplo de SAN-041) — "configurables por producto" no tiene columna en el esquema → decisión D2.
 
 ## Phase 5 — Unit 5: Cableado de ruta y precarga (web)
 

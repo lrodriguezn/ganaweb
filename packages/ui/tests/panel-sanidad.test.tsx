@@ -53,6 +53,20 @@ const PROXIMAS: PeriodosRefuerzosPanelVista = {
       proposito: "Vacuna",
       cantidadAnimales: 12,
       venceFecha: "2026-08-06",
+      animalIds: [
+        "animal-1",
+        "animal-2",
+        "animal-3",
+        "animal-4",
+        "animal-5",
+        "animal-6",
+        "animal-7",
+        "animal-8",
+        "animal-9",
+        "animal-10",
+        "animal-11",
+        "animal-12",
+      ],
     },
   ],
   proximaSemana: [
@@ -63,6 +77,7 @@ const PROXIMAS: PeriodosRefuerzosPanelVista = {
       proposito: "Vacuna",
       cantidadAnimales: 4,
       venceFecha: "2026-08-12",
+      animalIds: ["animal-c1", "animal-c2", "animal-c3", "animal-c4"],
     },
   ],
   esteMes: [
@@ -73,6 +88,16 @@ const PROXIMAS: PeriodosRefuerzosPanelVista = {
       proposito: "Tratamiento",
       cantidadAnimales: 8,
       venceFecha: "2026-08-25",
+      animalIds: [
+        "animal-i1",
+        "animal-i2",
+        "animal-i3",
+        "animal-i4",
+        "animal-i5",
+        "animal-i6",
+        "animal-i7",
+        "animal-i8",
+      ],
     },
   ],
 }
@@ -188,7 +213,7 @@ describe("PanelSanidad — SAN-003/SAN-052: próximas aplicaciones", () => {
     expect(within(proximas).getByText(/vence 2026-08-06/)).toBeInTheDocument()
   })
 
-  it("clic en una fila abre el registro con el producto precargado (SAN-003)", async () => {
+  it("clic en una fila abre el registro con el producto Y animales precargados (SAN-003/SAN-011)", async () => {
     const user = userEvent.setup()
     const onRegistrarAplicacion = vi.fn()
     renderPanel({ onRegistrarAplicacion })
@@ -196,7 +221,23 @@ describe("PanelSanidad — SAN-003/SAN-052: próximas aplicaciones", () => {
     const fila = screen.getByRole("button", { name: /Vacuna fiebre aftosa.*12 animales/ })
     await user.click(fila)
 
-    expect(onRegistrarAplicacion).toHaveBeenCalledWith("prod-aftosa")
+    expect(onRegistrarAplicacion).toHaveBeenCalledWith(
+      "prod-aftosa",
+      expect.arrayContaining([
+        "animal-1",
+        "animal-2",
+        "animal-3",
+        "animal-4",
+        "animal-5",
+        "animal-6",
+        "animal-7",
+        "animal-8",
+        "animal-9",
+        "animal-10",
+        "animal-11",
+        "animal-12",
+      ]),
+    )
   })
 
   it("sin refuerzos pendientes muestra el estado vacío", () => {

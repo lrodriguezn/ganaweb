@@ -60,6 +60,12 @@ export interface FormularioVacunaProps {
    * panel (#213) filtra contra el catálogo cargado.
    */
   animalesIdsIniciales?: readonly string[]
+  /**
+   * Issue #211 (CM-042/RN-002): errores de validación del servidor mapeados
+   * por campo. Prop ADITIVA: la UI los muestra junto al footer sin pisar
+   * las validaciones locales (fecha futura / captura tardía).
+   */
+  erroresServidor?: Record<string, string>
   onGuardar: (datos: {
     productoId: string
     dosis: number
@@ -77,6 +83,7 @@ export function FormularioVacuna({
   productos = [],
   productoIdInicial,
   animalesIdsIniciales,
+  erroresServidor,
   onGuardar,
   onVolver,
 }: FormularioVacunaProps) {
@@ -92,6 +99,18 @@ export function FormularioVacuna({
     }
     return new Set(animales.map((a) => a.id))
   })
+  // Cuando la lista de animales llega del servidor (drawer SAN-043), actualiza
+  // la selección: con precarga se filtra contra los animales cargados (los
+  // ids fantasma se descartan, RN-002/SAN-011); sin precarga, auto-selecciona
+  // todos (UX de "Registrar aplicación" sin punto de partida).
+  useEffect(() => {
+    if (animalesIdsIniciales !== undefined) {
+      const cargados = new Set(animales.map((a) => a.id))
+      setSeleccion(new Set(animalesIdsIniciales.filter((id) => cargados.has(id))))
+    } else {
+      setSeleccion(new Set(animales.map((a) => a.id)))
+    }
+  }, [animales, animalesIdsIniciales])
   const [online, setOnline] = useState<boolean>(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
   )
@@ -360,6 +379,14 @@ export function FormularioVacuna({
 
       {/* Footer sticky con conteo real */}
       <div className="sticky bottom-0 border-t bg-card p-4 pb-safe">
+        {erroresServidor && Object.keys(erroresServidor).length > 0 ? (
+          <div
+            role="alert"
+            className="mb-2 rounded-md border border-peligro-600 bg-peligro-100 px-3 py-2 text-support text-peligro-600"
+          >
+            {Object.values(erroresServidor).join(" · ")}
+          </div>
+        ) : null}
         <Button
           className="w-full h-12 text-support font-medium"
           disabled={!puedeGuardar}
