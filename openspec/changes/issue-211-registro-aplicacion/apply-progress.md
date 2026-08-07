@@ -52,7 +52,59 @@ TDD: 3.1 RED (contract tsx) → 3.2/3.3 GREEN (harness + módulo público bundle
 
 ## Tareas pendientes
 
-- Phase 3 (U3): server functions RBAC registrar + animales.
-- Phase 4 (U4): FormularioVacuna — fecha, defaults, indicador offline, precarga animales.
-- Phase 5 (U5): cableado de ruta + precarga producto/animales.
+- ~~Phase 3 (U3)~~: server functions RBAC registrar + animales — **completada en commit 64ce670**.
+- ~~Phase 4 (U4)~~: FormularioVacuna — fecha, defaults, indicador offline, precarga animales — **completada en commit 84c7600**.
+- ~~Phase 5 (U5)~~: cableado de ruta + precarga producto/animales — **completada en commit 11f0e20** + 4ff7841 (contract test) + 26f1df1 (biome format).
 - Phase 6: verificación final.
+
+## Continuación (post-interrupción)
+
+Sesión reanudada tras corte de conexión con 2 commits previos (9e0f2e3 outbox+EN_FINCA, 64ce670 server functions). El orquestador confirmó HEAD = 64ce670 y working tree limpio; 8/17 checkboxes marcados en tasks.md (Phase 1–3 hechas). Esta continuación ejecuta las fases 4, 5 y 6.
+
+### Decisiones durante U4–U5
+
+6. **`useEffect` en `seleccion` (paquete UI)**: el state lazy initializer de `seleccion` sólo corre en el mount; al actualizar `animales` (drawer SAN-043) la selección quedaba en `Set([])`. Se añadió un `useEffect([animales, animalesIdsIniciales])` que re-deriva la selección: con precarga filtra contra los animales cargados (ignora ids fantasma); sin precarga auto-selecciona todos. Cubre el patrón UX de "abrir sin precarga = todos los animales EN_FINCA a la fecha".
+7. **`erroresServidor` prop aditivo en `FormularioVacuna`**: la spec del CM-042 (registro de aplicación) requiere que `validacion` mapee errores por campo. El handler no los recibía porque el `onGuardar: Promise<void>` no retornaba errores. Se añadió la prop `erroresServidor?: Record<string, string>` y un `role="alert"` sobre el footer con la concatenación de los detalles. La ruta hace el `Object.fromEntries(errores.map((e) => [e.campo, e.detalle]))`; el caso de uso ya devuelve `{ campo, detalle }[]` (RN-002).
+8. **Mapeo del union `RegistrarAplicacionServerResult`** (`apps/web/src/routes/.../sanidad.tsx`): la unión del harness RBAC y del caso de uso divergen en el shape de `permiso_denegado` (uno trae `permiso`, otro trae `detalle`). Se extrajo un helper `erroresAplicacionDe(resultado)` para reducir la complejidad cognitiva de 18 → ≤15 (límite biome) y para hacer el mapeo testeable.
+9. **Sincronía de `dist/` (`@ganaweb/ui`)**: el import del consumer (`apps/web`) lee el `dist/index.d.ts`. Cualquier cambio en `panel-sanidad.tsx` o `formulario-vacuna.tsx` requiere `pnpm --filter @ganaweb/ui build` antes del `tsc --noEmit` del consumer (la lección del PR #238). Documentado en este apply-progress para próximas sesiones.
+
+### Evidencia por work unit (U4 + U5)
+
+#### Unit 4 — FormularioVacuna: campo fecha, dosis, offline, precarga (84c7600)
+
+| Evidencia | Valor |
+|---|---|
+| Test enfocado | `pnpm --filter @ganaweb/ui exec vitest run tests/formulario-vacuna.test.tsx` → **15/15 passed** (3 existentes SAN-003 + 12 nuevos #211: 4 fecha, 3 dosis, 2 offline, 3 precarga) |
+| RED inicial | 8 tests fallidos: falta de `getByLabelText("Fecha")`, falta de `getByRole("alert")`, falta de `getByText(/offline/)`, falta de `getByRole("button", { name: /Guardar 1 registro/ })` para `animalesIdsIniciales` |
+| Runtime harness | N/A — componente jsdom; cobertura por el contrato del Form (fecha local hoy, validación RN-002, SAN-043 advertencia, SAN-041 default dosis, SAN-044 `navigator.onLine=false`, SAN-011 prop aditiva) |
+| Rollback | Revertir props aditivas (`animalesIdsIniciales`, `erroresServidor`) + estado de fecha/offline/selección de `formulario-vacuna.tsx`; tests quedan en RED |
+
+TDD: 4.1 RED (8 nuevos) → 4.2 GREEN (cambios aditivos: `useState`/`useEffect`/`useMemo` para fecha + dosis + online + auto-selección) → REFACTOR: biome format, typecheck limpio, sin cambios funcionales.
+
+#### Unit 5 — Cableado de ruta y precarga producto/animales (11f0e20 + 4ff7841)
+
+| Evidencia | Valor |
+|---|---|
+| Test enfocado | `pnpm --filter @ganaweb/web exec vitest run tests/sanidad-panel-route.test.tsx` → **12/12 passed** (8 previos + 4 nuevos #211: SAN-043, SAN-047, CM-042/RN-002, SAN-011) |
+| Test contrato | `pnpm exec tsx tests/sanidad-registro-contract.test.ts` → **sanidad-registro-contract: OK** (4ff7841 actualizó `sanidad-panel-contract.test.ts` para incluir `animalIds: ['animal-1']` en la salida de `agruparRefuerzosPorSemana`) |
+| RED inicial | 4 tests fallidos: spy `listarAnimalesSanidadFn` no llamado (drawer sin `onOpenChange` que dispare), `Guardar 2 registros` ausente (animales no se propagan al state `seleccion`), `permiso_denegado` tipo no encontrado (unión divergente con `detalle` vs `permiso`) |
+| Runtime harness | N/A — ruta jsdom + mocks `vi.mock("../src/server/sanidad-registro.js")`; el contrato de la server function ya está cubierto por `sanidad-registro-contract.test.ts` (harness + fakes + sesión inyectada) |
+| Rollback | Revertir `sanidad.tsx` (route) al placeholder SAN-047 + revertir `panel-sanidad.tsx` al callback `(productoId) => void` + revertir `sanidad.ts:RefuerzoPendienteAgrupado` quitando `animalIds`; #208/#210 intactos |
+
+TDD: 5.1 RED (4 tests) → 5.2 GREEN (route: `abrirRegistroAplicacion(productoId, animalIds)`, `cargarAnimalesDrawer(fecha)`, `guardarAplicacion` con `erroresAplicacionDe()`) + 5.3 GREEN (dominio `RefuerzoPendienteAgrupado.animalIds` + UI `onRegistrarAplicacion(productoId, animalIds)`) → REFACTOR: biome `noExcessiveCognitiveComplexity` con helper, biome format, typecheck limpio.
+
+### Resultados de los gates (Phase 6.1)
+
+- `pnpm turbo test --force` con `DATABASE_URL=...ganaweb_smoke211 DB_SMOKE=true`: 11/13 tasks turbo. **Fallos preexistentes no relacionados con #211** en `@ganaweb/db`: `animal-ficha-postgres.test.ts` y `animal-timeline-postgres.test.ts` fallan con `ck_registros_grupales_auditoria` (constraint de auditoría no migrada en la BD scratch `ganaweb_smoke211` — confirmado en `6c5323d` HEAD). Los tests de #211 en `sanidad-postgres.test.ts` y `sanidad-panel-postgres.test.ts` pasan **34/34** en la BD scratch. Aplicación (`@ganaweb/aplicacion`): 150/150. UI (`@ganaweb/ui`): 654/654. Web (`@ganaweb/web`): 429/429.
+- `pnpm turbo typecheck --force`: **13/13 tasks** verde.
+- `pnpm exec biome ci .`: 426 files, 0 errores (formato aplicado en commit 26f1df1).
+- `pnpm turbo build --force`: **7/7 tasks** verde. El gate de import-protection (lección del PR #238) no detectó `.server.*` en el bundle del cliente.
+- `pnpm no-sqlite`: verde, sin referencias a drivers SQLite en el código.
+
+### Mapa §13 (Phase 6.2)
+
+- Item 3 (cabecera + `total_animales` = hijas): cubierto por test 1.1 (commit 9e0f2e3).
+- Item 8 (escritura + outbox atómicos): cubierto por test 1.1 (commit 9e0f2e3).
+- Item 8 (indicador offline — semántica UI): cubierto por test 4.1 (commit 84c7600, SAN-044). El flujo completo sin señal→reconexión queda diferido al MVP de sync (decisión D1).
+- Item 9 (`refuerzosAutoCompletados` del caso de uso #208): cubierto por test 3.1 (commit 64ce670).
+- Item 11 (contrato de precarga): cubierto por test 5.1 (commit 11f0e20, SAN-011 + 4ff7841 contract test). El flujo completo de 2 taps desde la card de Refuerzo se verifica en #213.

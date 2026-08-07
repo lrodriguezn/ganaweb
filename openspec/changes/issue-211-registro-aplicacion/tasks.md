@@ -72,14 +72,14 @@ Dependencias: U3→U1+U2; U4→U3 (contrato); U5→U3+U4.
 
 ## Phase 5 — Unit 5: Cableado de ruta y precarga (web)
 
-- [ ] 5.1 RED: extender `apps/web/tests/sanidad-panel-route.test.tsx` — "Registrar aplicación" abre el drawer con animales EN_FINCA cargados vía `listarAnimalesSanidadFn` (SAN-043); guardar invoca `registrarAplicacionFn` y con `aplicado` cierra el drawer (SAN-047 resuelto); fila de Próximas abre con producto Y animales precargados (contrato de precarga §13.11; CardRefuerzo es de #213); `validacion` → errores por campo.
-- [ ] 5.2 GREEN: `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` — reemplazar el placeholder `onGuardar` por `registrarAplicacionFn` y cargar animales para el drawer.
-- [ ] 5.3 GREEN: precarga aditiva — `RefuerzoPendienteAgrupado` expone `animalIds` (dominio, `agruparPorProducto` en `packages/dominio/src/sanidad.ts`) y `onRegistrarAplicacion(productoId, animalIds)` en `panel-sanidad.tsx`; sin precarga el comportamiento actual no cambia.
+- [x] 5.1 RED: extender `apps/web/tests/sanidad-panel-route.test.tsx` — "Registrar aplicación" abre el drawer con animales EN_FINCA cargados vía `listarAnimalesSanidadFn` (SAN-043); guardar invoca `registrarAplicacionFn` y con `aplicado` cierra el drawer (SAN-047 resuelto); fila de Próximas abre con producto Y animales precargados (contrato de precarga §13.11; CardRefuerzo es de #213); `validacion` → errores por campo.
+- [x] 5.2 GREEN: `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` — reemplazar el placeholder `onGuardar` por `registrarAplicacionFn` y cargar animales para el drawer.
+- [x] 5.3 GREEN: precarga aditiva — `RefuerzoPendienteAgrupado` expone `animalIds` (dominio, `agruparPorProducto` en `packages/dominio/src/sanidad.ts`) y `onRegistrarAplicacion(productoId, animalIds)` en `panel-sanidad.tsx`; sin precarga el comportamiento actual no cambia.
 
 ## Phase 6 — Verificación
 
-- [ ] 6.1 `pnpm turbo test` + `pnpm turbo typecheck` + `biome ci .` + `pnpm turbo build` (gate de import-protection, lección PR #238) en verde; `pnpm no-sqlite` sigue verde.
-- [ ] 6.2 Mapa §13: item 3 → test 1.1 (cabecera + `total_animales` = hijas); item 8 → tests 1.1 (escritura + outbox atómicos) y 4.1 (indicador offline) — el flujo completo sin señal→reconexión queda diferido al MVP de sync (decisión D1); item 9 → test 3.1 sobre el caso de uso #208 (`refuerzosAutoCompletados`); item 11 → test 5.1 (contrato de precarga; el flujo de 2 taps se verifica en #213).
+- [x] 6.1 `pnpm turbo test` + `pnpm turbo typecheck` + `biome ci .` + `pnpm turbo build` (gate de import-protection, lección PR #238) en verde; `pnpm no-sqlite` sigue verde.
+- [x] 6.2 Mapa §13: item 3 → test 1.1 (cabecera + `total_animales` = hijas); item 8 → tests 1.1 (escritura + outbox atómicos) y 4.1 (indicador offline) — el flujo completo sin señal→reconexión queda diferido al MVP de sync (decisión D1); item 9 → test 3.1 sobre el caso de uso #208 (`refuerzosAutoCompletados`); item 11 → test 5.1 (contrato de precarga; el flujo de 2 taps se verifica en #213).
 
 ## Decisiones resueltas (mantenedor, 2026-08-06)
 
