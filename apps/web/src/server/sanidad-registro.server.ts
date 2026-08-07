@@ -98,7 +98,10 @@ interface SanidadRegistroHarnessDeps {
   readonly getSession: (fincaId?: string) => Promise<SesionAutorizada | null>
 }
 
-export function createSanidadRegistroActionHarness({ deps, getSession }: SanidadRegistroHarnessDeps) {
+export function createSanidadRegistroActionHarness({
+  deps,
+  getSession,
+}: SanidadRegistroHarnessDeps) {
   return {
     async registrar(input: RegistrarAplicacionWebInput): Promise<RegistrarAplicacionServerResult> {
       const session = await getSession(input.fincaId)
@@ -139,7 +142,9 @@ type SanidadRegistroRuntimeDepsFactory = () => SanidadRegistroDeps
 let sanidadRegistroRuntimeDepsFactory: SanidadRegistroRuntimeDepsFactory | null = () =>
   createSanidadRegistroDeps(db)
 
-export function configureSanidadRegistroRuntimeDeps(factory: SanidadRegistroRuntimeDepsFactory | null) {
+export function configureSanidadRegistroRuntimeDeps(
+  factory: SanidadRegistroRuntimeDepsFactory | null,
+) {
   sanidadRegistroRuntimeDepsFactory = factory
 }
 

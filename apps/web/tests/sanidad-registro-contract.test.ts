@@ -71,8 +71,7 @@ function fakeDeps(
   }
   const lectura: SanidadLecturaPort = {
     obtenerProducto: async (id) => {
-      const producto =
-        config.producto === undefined ? { id, fincaId: FINCA_ID } : config.producto
+      const producto = config.producto === undefined ? { id, fincaId: FINCA_ID } : config.producto
       if (producto === null) return null
       return {
         id: producto.id,
@@ -228,7 +227,9 @@ async function testListarAnimalesGateadoPorPermiso() {
   ]
 
   // Sin sesión → no_autenticado; sin sanidad:ver → permiso_denegado.
-  const { deps: depsSinSesion, llamadas: llamadasSinSesion } = fakeDeps({ animalesEnFinca: animales })
+  const { deps: depsSinSesion, llamadas: llamadasSinSesion } = fakeDeps({
+    animalesEnFinca: animales,
+  })
   const sinSesion = await harnessCon(depsSinSesion, null).listarAnimales({
     fincaId: FINCA_ID,
     fecha: "2026-08-05",
