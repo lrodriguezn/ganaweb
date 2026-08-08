@@ -171,6 +171,14 @@ export {
   type SeccionRefuerzosProps,
 } from "./ganado/seccion-refuerzos"
 export {
+  SanidadMobileView,
+  TabsSanidad,
+  type SanidadMobileViewProps,
+  type TabSanidadContenido,
+  type TabSanidadId,
+  type TabsSanidadProps,
+} from "./ganado/sanidad-mobile-view"
+export {
   MaestroCard,
   type MaestroCardVariante,
   MaestroFilaConsolidada,

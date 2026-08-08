@@ -47,8 +47,8 @@ Dependencias: U1 → (dominio listo, sin cambios); U2 → U1; U3 → U2; U4 en p
 
 ## Phase 2 — Unit 2: TabsSanidad + SanidadMobileView
 
-- [ ] 2.1 RED: `packages/ui/tests/sanidad-mobile-view.test.tsx` — 3 tabs Catálogo|Almacén|Refuerzos; tab Refuerzos default (SAN-010); selección cambia contenido (no URL); cada tab respeta su prop de permisos (SAN-060); header "Sanidad" siempre visible; `TabsSanidad` con `role="tablist"` + `aria-selected` correcto.
-- [ ] 2.2 GREEN: `packages/ui/src/ganado/tabs-sanidad.tsx` (pills ariadb, 3 opciones, mismo lenguaje visual que `PillsSegmentadas` pero extendido) y `sanidad-mobile-view.tsx` orquestador que renderiza el tab activo; export aditivo.
+- [x] 2.1 RED: `packages/ui/tests/sanidad-mobile-view.test.tsx` — 3 tabs Catálogo|Almacén|Refuerzos; tab Refuerzos default (SAN-010); selección cambia contenido (no URL); cada tab respeta su prop de permisos (SAN-060); header "Sanidad" siempre visible; `TabsSanidad` con `role="tablist"` + `aria-selected` correcto.
+- [x] 2.2 GREEN: `packages/ui/src/ganado/tabs-sanidad.tsx` (pills ariadb, 3 opciones, mismo lenguaje visual que `PillsSegmentadas` pero extendido) y `sanidad-mobile-view.tsx` orquestador que renderiza el tab activo; export aditivo.
 
 ## Phase 3 — Unit 3: useMatchMedia + switch responsive + Drawer precargado
 

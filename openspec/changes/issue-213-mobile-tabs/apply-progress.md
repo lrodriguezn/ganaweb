@@ -1,5 +1,20 @@
 # Apply Progress — Issue #213 mobile tabs (feat/issue-213-sanidad-mobile)
 
+## Work unit 2 — TabsSanidad + SanidadMobileView (DONE)
+
+- **Tests**: `packages/ui/tests/sanidad-mobile-view.test.tsx` (8) — 3 tabs + ARIA tablist, `aria-selected` correcto, callback no-URL, gating por permiso (Catálogo oculto sin sanidad:editar), header "Sanidad" siempre visible, tab default Refuerzos, cambio de contenido por tab, gating en `SanidadMobileView`.
+- **Production**: `packages/ui/src/ganado/sanidad-mobile-view.tsx` (componente único con `TabsSanidad` + `SanidadMobileView`; los dos viven en el mismo archivo porque comparten `PERMISO_POR_TAB` y el contrato).
+- **TDD evidence**:
+  - RED: tests written first; module not found.
+  - GREEN: 8/8 pass; full `@ganaweb/ui` suite (672 tests) verde.
+  - TRIANGULATE: 3 tests de tabs (render/aria/onChange) + 1 gating + 4 tests del view (header/default/cambio/permiso).
+  - REFACTOR: Biome auto-fix; sin cambios estructurales.
+- **Reglas**:
+  - SAN-010 (3 tabs, Refuerzos default, sin URL).
+  - SAN-060 (gating por permiso en cada tab; Catálogo = sanidad:editar, Almacén = sanidad:crear, Refuerzos = sanidad:ver).
+  - ARIA: `role="tablist"` / `role="tab"` / `aria-selected` / `aria-controls` / `aria-labelledby`.
+- **Tamaños**: 132 líneas prod + 170 líneas test.
+
 ## Work unit 1 — RefuerzoCard + secciones (DONE)
 
 - **Branch**: `feat/issue-213-sanidad-mobile` (base b52a303)
