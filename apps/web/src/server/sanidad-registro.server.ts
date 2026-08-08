@@ -31,6 +31,7 @@ import type {
 import { aplicarProductoSanitario } from "@ganaweb/aplicacion"
 import type { DbClient } from "@ganaweb/db/client"
 import { db } from "@ganaweb/db/client"
+import { DrizzleNotificacionesAdapter } from "@ganaweb/db/notificaciones-infrastructure"
 import { DrizzleSanidadAdapter } from "@ganaweb/db/sanidad-infrastructure"
 import { createServerFn } from "@tanstack/react-start"
 
@@ -46,7 +47,13 @@ export type SanidadRegistroDeps = AplicarProductoSanitarioDeps
 
 export function createSanidadRegistroDeps(client: DbClient): SanidadRegistroDeps {
   const adaptador = new DrizzleSanidadAdapter(client)
-  return { lectura: adaptador, escritura: adaptador, reloj: { ahora: () => new Date() } }
+  const notificaciones = new DrizzleNotificacionesAdapter(client)
+  return {
+    lectura: adaptador,
+    escritura: adaptador,
+    notificaciones,
+    reloj: { ahora: () => new Date() },
+  }
 }
 
 export function hasSanidadRegistroPermission(

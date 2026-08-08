@@ -117,7 +117,15 @@ function fakeDeps(
     anularRegistroGrupal: async () => ({ tipo: "no_encontrado" }),
     registrarEntradaAlmacen: async () => ({ tipo: "registrada", id: "ent-1" }),
   }
-  const deps: SanidadRegistroDeps = { lectura, escritura, reloj: { ahora: () => HOY } }
+  const notificaciones = {
+    insertarNotificacionesEnTx: async () => {},
+  }
+  const deps: SanidadRegistroDeps = {
+    lectura,
+    escritura,
+    notificaciones,
+    reloj: { ahora: () => HOY },
+  }
   return { deps, llamadas }
 }
 
