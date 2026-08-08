@@ -8,7 +8,9 @@ import {
   type AnimalListItem,
   type AnimalTimelineItem,
   type DominioEvento,
-  EventDrawer,
+  EventoWizard,
+  type PermisosEfectivosPorDominio,
+  type ResultadoCapturaEvento,
 } from "@ganaweb/ui"
 import {
   Outlet,
@@ -25,6 +27,12 @@ import {
   getAnimalFichaAction,
   reactivateAnimalAction,
 } from "../../../../../server/animal-actions.js"
+import {
+  buscarAnimalPorCodigoFn,
+  capturarEventoFn,
+  listarAnimalesPorOrigenFn,
+  listarCatalogosAlcanceFn,
+} from "../../../../../server/eventos-wizard.js"
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/$animalId")({
   loader: async ({ params }) => {
@@ -76,6 +84,8 @@ export interface AnimalFichaRouteViewProps {
   readonly onEditar?: () => void
   readonly onEliminar?: (event: React.FormEvent<HTMLFormElement>) => void
   readonly onReactivar?: () => void
+  /** Issue #229: el wizard de eventos invoca este callback al guardar. */
+  readonly onCapturaExitosa?: () => void
 }
 
 /** Estado interactivo del timeline (slice 3): el loader solo trae la página
@@ -111,6 +121,7 @@ export function AnimalFichaRouteView({
   onEditar,
   onEliminar,
   onReactivar,
+  onCapturaExitosa,
 }: AnimalFichaRouteViewProps) {
   const [drawerEventoAbierto, setDrawerEventoAbierto] = useState(false)
   const [estadoTimeline, setEstadoTimeline] = useState<EstadoTimelineFicha>({
@@ -191,13 +202,22 @@ export function AnimalFichaRouteView({
           {...(onEditar ? { onEdit: onEditar } : {})}
         />
       </div>
-      <EventDrawer
+      <EventoWizard
         open={drawerEventoAbierto}
         onOpenChange={setDrawerEventoAbierto}
-        animalesPreseleccionados={[data.animal]}
-        onGuardar={async () => {
-          // Slice 1 wires open/close only; event form submission lands with
-          // the event-form follow-up.
+        fincaId={fincaId}
+        animalPreseleccionado={data.animal}
+        permisosEfectivos={permisosEfectivosParaEventos()}
+        catalogos={CATALOGOS_PARA_ALCANCE_VACIOS}
+        cargarAnimalesPorOrigen={(origen, id) => cargarAnimalesPorOrigenEnRuta(fincaId, origen, id)}
+        buscarAnimalPorCodigo={(codigo) => buscarAnimalPorCodigoEnRuta(fincaId, codigo)}
+        onEnviar={(captura) => enviarCapturaEnRuta(fincaId, captura)}
+        onCapturado={(resultado) => {
+          // Issue #221: invalidar solo en la ruta de éxito para que la ficha
+          // relea el timeline con la nueva fila.
+          if (resultado.tipo === "capturado") {
+            onCapturaExitosa?.()
+          }
         }}
       />
       <section className="mx-auto max-w-6xl pb-6" aria-label="Acciones de ficha">
@@ -269,6 +289,93 @@ function AnimalFichaRoute() {
       }
       onEliminar={deleteOrInactivate}
       onReactivar={reactivate}
+      onCapturaExitosa={() => router.invalidate()}
     />
   )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Helpers del EventoWizard (Issue #229). El shell es UI puro:                */
+/* - Los loaders son server functions (TanStack Start) — revalida finca/sesión */
+/* - `enviarCaptura` mapea `ResultadoCapturaEvento` → 403 si el server rechaza */
+/* - PermisosEfectivosPorDominio se infiere conservadoramente como "todos     */
+/*   habilitados" — el server es la autoridad (fail-closed 403). El futuro   */
+/*   loader de ficha (siguiente slice) los emitirá por dominio.               */
+/* -------------------------------------------------------------------------- */
+
+const TODOS_PERMISOS_HABILITADOS: PermisosEfectivosPorDominio = {
+  reproductivo: true,
+  sanidad: true,
+  productivo: true,
+  movimientos: true,
+}
+
+const CATALOGOS_PARA_ALCANCE_VACIOS = {
+  lotes: [],
+  potreros: [],
+  grupos: [],
+} as const
+
+function permisosEfectivosParaEventos(): PermisosEfectivosPorDominio {
+  // Conservador: si la ficha permite ver/editar, asumimos habilitado en los
+  // 4 dominios. La autoridad real es el server (capturarEventoFn → 403 si el
+  // permiso no está). El loader de ficha futuro (#212 / #229 slice 2)
+  // emitirá el mapping exacto por dominio cuando el shell sirva a múltiples
+  // rutas (panel sanidad + eventos).
+  return TODOS_PERMISOS_HABILITADOS
+}
+
+async function buscarAnimalPorCodigoEnRuta(
+  fincaId: string,
+  codigo: string,
+): Promise<{ id: string; codigoAnimal: string } | null> {
+  const resultado = await buscarAnimalPorCodigoFn({ data: { fincaId, codigo } })
+  if (resultado.tipo === "encontrado") {
+    return { id: resultado.id, codigoAnimal: resultado.codigoAnimal }
+  }
+  return null
+}
+
+async function cargarAnimalesPorOrigenEnRuta(
+  fincaId: string,
+  origen: "manual" | "lote" | "potrero" | "grupo",
+  id: string,
+): Promise<ReadonlyArray<{ id: string; codigoAnimal: string }>> {
+  const resultado = await listarAnimalesPorOrigenFn({ data: { fincaId, origen, id } })
+  if (resultado.tipo === "lista") return resultado.animales ?? []
+  return []
+}
+
+async function enviarCapturaEnRuta(
+  fincaId: string,
+  captura: import("@ganaweb/ui").CapturaEvento,
+): Promise<ResultadoCapturaEvento> {
+  const alcance =
+    captura.seleccion.tipo === "individual"
+      ? { tipo: "individual" as const, animalId: captura.seleccion.animalId }
+      : {
+          tipo: "grupal" as const,
+          origen: captura.seleccion.origen,
+          ...(captura.seleccion.loteId ? { loteId: captura.seleccion.loteId } : {}),
+          ...(captura.seleccion.potreroId ? { potreroId: captura.seleccion.potreroId } : {}),
+          ...(captura.seleccion.grupoId ? { grupoId: captura.seleccion.grupoId } : {}),
+          animalIdsEfectivos: captura.seleccion.animalIdsEfectivos,
+        }
+  try {
+    const response = await capturarEventoFn({
+      data: {
+        fincaId,
+        tipo: captura.tipo,
+        alcance,
+        datos: captura.datos,
+      },
+    })
+    const body = (await response.json()) as ResultadoCapturaEvento
+    return body
+  } catch (error) {
+    return {
+      tipo: "error",
+      detalle: error instanceof Error ? error.message : "Fallo desconocido",
+    }
+  }
 }

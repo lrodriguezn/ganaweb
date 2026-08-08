@@ -88,22 +88,22 @@ function fichaProps(overrides: Partial<AnimalFichaRouteViewProps> = {}): AnimalF
   }
 }
 
-describe("animal ficha route — event drawer wiring (redesign-ficha-animal)", () => {
-  it("opens the EventDrawer from '+ Registrar evento' with the ficha animal preselected", async () => {
+describe("animal ficha route — event wizard wiring (issue #229)", () => {
+  it("opens the EventoWizard from '+ Registrar evento' with the ficha animal preselected", async () => {
     const user = userEvent.setup()
     render(<AnimalFichaRouteView {...fichaProps()} />)
 
     await user.click(await screen.findByRole("button", { name: "+ Registrar evento" }))
 
-    // Step 1 of the drawer: choose the event type.
+    // Step 1 of the wizard: choose the event type (agrupado por categoría).
     expect(await screen.findByText("¿Qué registrar?")).toBeInTheDocument()
 
-    // Preselection: with the ficha animal already chosen the drawer skips
-    // the alcance step and goes straight to the form for the chosen type.
-    await user.click(screen.getByRole("button", { name: "Vacuna" }))
-    expect(await screen.findByText("Registrar vacuna")).toBeInTheDocument()
+    // Preselection: con el animal de ficha ya elegido, el wizard salta al
+    // paso de datos sin pasar por alcance. La nueva shell expone "Aplicación
+    // sanitaria" (catálogo de 11 tipos canónicos del requisito §2).
+    await user.click(screen.getByRole("button", { name: /Aplicación sanitaria/ }))
+    expect(await screen.findByText("Registrar aplicación sanitaria")).toBeInTheDocument()
     expect(screen.queryByText("¿A quiénes?")).not.toBeInTheDocument()
-    expect(screen.getByText("Animales (1)")).toBeInTheDocument()
   })
 
   it("closing the drawer returns to the ficha without navigation", async () => {
