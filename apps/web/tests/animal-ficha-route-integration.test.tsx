@@ -78,7 +78,11 @@ function fichaProps(overrides: Partial<AnimalFichaRouteViewProps> = {}): AnimalF
           },
         ],
       },
-      permissions: { canEdit: true, canInactivate: true },
+      permissions: {
+        canEdit: true,
+        canInactivate: true,
+        eventos: { reproductivo: true, sanidad: true, productivo: true, movimientos: true },
+      },
     },
     onVolverAListado: vi.fn(),
     onEditar: vi.fn(),
@@ -167,7 +171,11 @@ describe("animal ficha route — event wizard wiring (issue #229)", () => {
         {...base}
         data={{
           ...base.data,
-          permissions: { canEdit: false, canInactivate: true },
+          permissions: {
+            canEdit: false,
+            canInactivate: true,
+            eventos: { reproductivo: true, sanidad: true, productivo: true, movimientos: true },
+          },
         }}
       />,
     )
@@ -176,6 +184,31 @@ describe("animal ficha route — event wizard wiring (issue #229)", () => {
     expect(desktop.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument()
     const mobile = within(screen.getByLabelText("04 Ficha Animal · Mobile"))
     expect(mobile.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument()
+  })
+
+  it("filters ficha event types by effective domain permissions (issue #234)", async () => {
+    const user = userEvent.setup()
+    const base = fichaProps()
+    render(
+      <AnimalFichaRouteView
+        {...base}
+        data={{
+          ...base.data,
+          permissions: {
+            ...base.data.permissions,
+            eventos: { reproductivo: false, sanidad: true, productivo: false, movimientos: false },
+          },
+        }}
+      />,
+    )
+
+    await user.click(await screen.findByRole("button", { name: "+ Registrar evento" }))
+    expect(await screen.findByRole("heading", { name: "Sanidad", level: 3 })).toBeInTheDocument()
+    expect(
+      screen.queryByRole("heading", { name: "Reproductivo", level: 3 }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "Productivo", level: 3 })).not.toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "Movimientos", level: 3 })).not.toBeInTheDocument()
   })
 
   it("shows and wires Editar in both frames when the loader grants animales:editar (issue #202)", async () => {

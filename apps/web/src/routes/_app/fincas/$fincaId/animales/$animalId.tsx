@@ -73,6 +73,7 @@ export interface AnimalFichaRouteViewData {
     /** Issue #202: gatea visualmente el botón Editar (`animales:editar`). */
     readonly canEdit: boolean
     readonly canInactivate: boolean
+    readonly eventos: PermisosEfectivosPorDominio
   }
 }
 
@@ -207,7 +208,7 @@ export function AnimalFichaRouteView({
         onOpenChange={setDrawerEventoAbierto}
         fincaId={fincaId}
         animalPreseleccionado={data.animal}
-        permisosEfectivos={permisosEfectivosParaEventos()}
+        permisosEfectivos={data.permissions.eventos}
         catalogos={CATALOGOS_PARA_ALCANCE_VACIOS}
         cargarAnimalesPorOrigen={(origen, id) => cargarAnimalesPorOrigenEnRuta(fincaId, origen, id)}
         buscarAnimalPorCodigo={(codigo) => buscarAnimalPorCodigoEnRuta(fincaId, codigo)}
@@ -294,36 +295,11 @@ function AnimalFichaRoute() {
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/* Helpers del EventoWizard (Issue #229). El shell es UI puro:                */
-/* - Los loaders son server functions (TanStack Start) — revalida finca/sesión */
-/* - `enviarCaptura` mapea `ResultadoCapturaEvento` → 403 si el server rechaza */
-/* - PermisosEfectivosPorDominio se infiere conservadoramente como "todos     */
-/*   habilitados" — el server es la autoridad (fail-closed 403). El futuro   */
-/*   loader de ficha (siguiente slice) los emitirá por dominio.               */
-/* -------------------------------------------------------------------------- */
-
-const TODOS_PERMISOS_HABILITADOS: PermisosEfectivosPorDominio = {
-  reproductivo: true,
-  sanidad: true,
-  productivo: true,
-  movimientos: true,
-}
-
 const CATALOGOS_PARA_ALCANCE_VACIOS = {
   lotes: [],
   potreros: [],
   grupos: [],
 } as const
-
-function permisosEfectivosParaEventos(): PermisosEfectivosPorDominio {
-  // Conservador: si la ficha permite ver/editar, asumimos habilitado en los
-  // 4 dominios. La autoridad real es el server (capturarEventoFn → 403 si el
-  // permiso no está). El loader de ficha futuro (#212 / #229 slice 2)
-  // emitirá el mapping exacto por dominio cuando el shell sirva a múltiples
-  // rutas (panel sanidad + eventos).
-  return TODOS_PERMISOS_HABILITADOS
-}
 
 async function buscarAnimalPorCodigoEnRuta(
   fincaId: string,

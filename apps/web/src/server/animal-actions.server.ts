@@ -50,7 +50,12 @@ import { DrizzleCatalogoFincaAdapter } from "@ganaweb/db/catalogo-finca-infrastr
 import { DrizzleCatalogoGlobalAdapter } from "@ganaweb/db/catalogo-global-infrastructure"
 import { DrizzleCatalogoPadresAdapter } from "@ganaweb/db/catalogo-padres-infrastructure"
 import { db } from "@ganaweb/db/client"
-import type { AnimalFichaResumen, AnimalListItem, AnimalTimelineItem } from "@ganaweb/ui"
+import type {
+  AnimalFichaResumen,
+  AnimalListItem,
+  AnimalTimelineItem,
+  PermisosEfectivosPorDominio,
+} from "@ganaweb/ui"
 import { createServerFn } from "@tanstack/react-start"
 import { resolverPermisosVisualesListado } from "./animal-listado-permissions.server.js"
 import {
@@ -76,6 +81,8 @@ export interface AnimalRoutePermissions {
   readonly canEdit: boolean
   readonly canInactivate: boolean
   readonly canDelete: boolean
+  /** Issue #234: creation permissions by event domain for the ficha wizard. */
+  readonly eventos: PermisosEfectivosPorDominio
 }
 
 export interface AnimalRouteViewModel {
@@ -558,6 +565,23 @@ function hasAnimalPermission(
   )
 }
 
+function resolveEventPermissions(
+  session: SesionAutorizada | SesionAnimal,
+): PermisosEfectivosPorDominio {
+  const tiene = (modulo: string) =>
+    session.permisos.some(
+      (permission) =>
+        (permission.modulo === modulo && permission.accion === "crear") ||
+        (permission.modulo === "*" && permission.accion === "*"),
+    )
+  return {
+    reproductivo: tiene("eventos_reproductivos"),
+    sanidad: tiene("sanidad"),
+    productivo: tiene("eventos_productivos"),
+    movimientos: tiene("movimientos"),
+  }
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: field mapper with many optional DB columns
 function pickCreateAnimalDatos(datos: CreateAnimalWebInput["datos"]): {
   codigo: string
@@ -727,6 +751,7 @@ export function resolveAnimalPermissions(session: SesionAutorizada): AnimalRoute
     canEdit: hasAnimalPermission(session, "editar"),
     canInactivate: hasAnimalPermission(session, "inactivar"),
     canDelete: hasAnimalPermission(session, "eliminar"),
+    eventos: resolveEventPermissions(session),
   }
 }
 
