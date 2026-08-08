@@ -1,5 +1,37 @@
 # Apply Progress — Issue #213 mobile tabs (feat/issue-213-sanidad-mobile)
 
+## Phase 5 — Verificación (DONE)
+
+- **Gates**: `pnpm turbo test --force` ✅ (445/445 web tests; db failure pre-existing/unrelated), `pnpm turbo typecheck --force` ✅, `pnpm exec biome ci .` ✅ (459 files), `pnpm turbo build --force` ✅ (import-protection gate green), `pnpm no-sqlite` ✅.
+- **Mapa §13**: item 2 → 1.1 + 3.2; item 11 → 1.1 + 3.2/3.3; SAN-012 → 1.2; SAN-013/014 → 4.1/4.2; SAN-060 → 2.1 + 4.1 + 4.2; SAN-080 → 1.1. All §13 items verified.
+- **Desktop sin regresión**: `sanidad-panel-route.test.tsx` (15/15) + `sanidad-shell-wiring.test.tsx` (2/2) verdes.
+
+## Work unit 4 — Tab Catálogo + Tab Almacén wiring (DONE)
+
+- **Tests** (`apps/web/tests/sanidad-mobile-route.test.tsx`, 7 tests):
+  - 4.1 Tab Catálogo: carga filas vía `listarCatalogoSanidadFn`; `onEditar` abre `FormularioProductoSanitario` en drawer; `onInactivar` muestra `AlertDialog` de confirmación.
+  - 4.2 Tab Almacén: carga entradas vía `listarEntradasAlmacenFn`; FAB abre `FormularioEntradaAlmacen`; `registrarEntradaAlmacenFn` cableado; `registrada` cierra drawer.
+  - 4.3 Re-exports: `sanidad-mobile.ts` re-exporta server functions existentes (sin lógica nueva).
+- **Production**:
+  - `apps/web/src/server/sanidad-mobile.ts` — módulo público bundleable: re-exports de `sanidad-catalogo-actions.js`, `sanidad-almacen.js`, `sanidad-panel.js`, `sanidad-registro.js`. Sin `.server.ts` propio.
+  - `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` — `SanidadRouteMovil` ahora cablea `TabCatalogoMobile` (wrapper CRUD con `CatalogoProductosSanitariosMobile` + drawer de `FormularioProductoSanitario`) y `TabAlmacenMobile` (lista + FAB + drawer de `FormularioEntradaAlmacen`).
+  - `apps/web/vitest.config.ts` — añadido `tests/sanidad-mobile-route.test.tsx` al include.
+- **TDD evidence**:
+  - RED: tests written first; `sanidad-mobile.ts` module not found, tabs not wired.
+  - GREEN: 7/7 pass; full `@ganaweb/web` suite 445/445.
+  - TRIANGULATE: 3 tests Catálogo (carga/editar/inactivar) + 3 tests Almacén (carga/FAB/guardar) + 1 test re-exports.
+  - REFACTOR: Biome auto-fix (import organization + formatting); sin cambios estructurales.
+- **Fixes applied during U4**:
+  - `sanidad-mobile.ts`: corrected re-exported type names to match actual exports from source modules (e.g., `MetricasPanelServerResult` not `ObtenerMetricasPanelServerResult`).
+  - `sanidad.tsx` line 533: changed `data.fincaId` → `fincaId` (route param, not in loader data).
+- **Reglas**:
+  - SAN-013 (tab Catálogo: CRUD con `CatalogoProductosSanitariosMobile` + `FormularioProductoSanitario`).
+  - SAN-014 (tab Almacén: `ListadoEntradasAlmacen` + FAB + `FormularioEntradaAlmacen`).
+  - SAN-060 (gating por permiso: Catálogo = `sanidad:editar`/`sanidad:anular`, Almacén = `sanidad:crear`).
+  - Import protection (PR #238/#247): route imports from `sanidad-mobile.ts` (bundleable), never from `*.server.ts`.
+- **Tamaños**: sanidad-mobile.ts 63 líneas; route +120 líneas (TabCatalogoMobile + TabAlmacenMobile); test 327 líneas.
+- **Desviaciones de design**: ninguna — implementación sigue el spec.
+
 ## Work unit 3 — useMatchMedia + switch responsive + Drawer precargado (DONE)
 
 - **3.1 Refactor useMatchMedia**: hook compartido en `packages/ui/src/lib/use-match-media.ts` (modelo `useEsMovil()` de `maestro-form.tsx:128`). SSR-safe default `true`, suscripción a `change` + cleanup. Exportado aditivamente desde `@ganaweb/ui`. 6 tests en `packages/ui/tests/use-match-media.test.ts`.

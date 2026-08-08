@@ -59,15 +59,15 @@ Dependencias: U1 → (dominio listo, sin cambios); U2 → U1; U3 → U2; U4 en p
 
 ## Phase 4 — Unit 4: Tab Catálogo + Tab Almacén wiring
 
-- [ ] 4.1 RED: `apps/web/tests/sanidad-mobile-route.test.tsx` — Tab Catálogo: `listarCatalogoSanidadFn` carga filas; `onEditar` abre `FormularioProductoSanitario` en drawer; `onInactivar` con `AlertDialog`; CRUD gateado por `sanidad:crear`/`sanidad:editar` (SAN-060). Sin regresión desktop.
-- [ ] 4.2 RED: Tab Almacén: `listarEntradasAlmacenFn` carga; FAB abre `FormularioEntradaAlmacen` en drawer; `registrarEntradaAlmacenFn` cableado (SAN-014); `registrada` cierra drawer, `validacion` muestra errores. Gating `sanidad:crear` (SAN-060).
-- [ ] 4.3 GREEN: `apps/web/src/server/sanidad-mobile.ts` (módulo público bundleable) — re-export de los server functions ya existentes que el loader consume (sin lógica nueva); sin `.server.ts` propio.
+- [x] 4.1 RED: `apps/web/tests/sanidad-mobile-route.test.tsx` — Tab Catálogo: `listarCatalogoSanidadFn` carga filas; `onEditar` abre `FormularioProductoSanitario` en drawer; `onInactivar` con `AlertDialog`; CRUD gateado por `sanidad:crear`/`sanidad:editar` (SAN-060). Sin regresión desktop.
+- [x] 4.2 RED: Tab Almacén: `listarEntradasAlmacenFn` carga; FAB abre `FormularioEntradaAlmacen` en drawer; `registrarEntradaAlmacenFn` cableado (SAN-014); `registrada` cierra drawer, `validacion` muestra errores. Gating `sanidad:crear` (SAN-060).
+- [x] 4.3 GREEN: `apps/web/src/server/sanidad-mobile.ts` (módulo público bundleable) — re-export de los server functions ya existentes que el loader consume (sin lógica nueva); sin `.server.ts` propio.
 
 ## Phase 5 — Verificación
 
-- [ ] 5.1 `pnpm turbo test` + `pnpm turbo typecheck` + `biome ci .` + **`pnpm turbo build`** (gate de import-protection, lección PR #238/#247) + `pnpm no-sqlite` (D3) en verde.
-- [ ] 5.2 Mapa §13: item 2 → tests 1.1, 3.2 (agrupación SAN-052 consistente desktop/mobile); item 11 → tests 3.2, 3.3 (2-tap precargado SAN-010/011); SAN-012 → test 1.2; SAN-013/014 → tests 3.2 + 4.1/4.2; SAN-060 → tests 2.1, 4.1, 4.2 (gating por permiso); SAN-080 → test 1.1 (assert altura 44px).
-- [ ] 5.3 Sin cambios en desktop: snapshot visual del panel + suite `sanidad-panel-route.test.tsx` + `sanidad-shell-wiring.test.tsx` siguen verdes.
+- [x] 5.1 `pnpm turbo test` + `pnpm turbo typecheck` + `biome ci .` + **`pnpm turbo build`** (gate de import-protection, lección PR #238/#247) + `pnpm no-sqlite` (D3) en verde.
+- [x] 5.2 Mapa §13: item 2 → tests 1.1, 3.2 (agrupación SAN-052 consistente desktop/mobile); item 11 → tests 3.2, 3.3 (2-tap precargado SAN-010/011); SAN-012 → test 1.2; SAN-013/014 → tests 3.2 + 4.1/4.2; SAN-060 → tests 2.1, 4.1, 4.2 (gating por permiso); SAN-080 → test 1.1 (assert altura 44px).
+- [x] 5.3 Sin cambios en desktop: snapshot visual del panel + suite `sanidad-panel-route.test.tsx` + `sanidad-shell-wiring.test.tsx` siguen verdes.
 
 ## Decisiones resueltas (mantenedor, 2026-08-06)
 
