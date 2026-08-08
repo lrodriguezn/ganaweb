@@ -19,6 +19,7 @@
 
 // Utilities
 export { cn } from "./lib/utils"
+export { useMatchMedia } from "./lib/use-match-media"
 
 // Domain components
 export { AnimalCard } from "./ganado/animal-card"
@@ -164,6 +165,20 @@ export {
   type RefuerzoPendientePanelVista,
   type UltimaAplicacionPanelVista,
 } from "./ganado/panel-sanidad"
+export { RefuerzoCard, type RefuerzoCardItem, type RefuerzoCardProps } from "./ganado/refuerzo-card"
+export {
+  SeccionRefuerzos,
+  type AlertaStockRefuerzoMovil,
+  type SeccionRefuerzosProps,
+} from "./ganado/seccion-refuerzos"
+export {
+  SanidadMobileView,
+  TabsSanidad,
+  type SanidadMobileViewProps,
+  type TabSanidadContenido,
+  type TabSanidadId,
+  type TabsSanidadProps,
+} from "./ganado/sanidad-mobile-view"
 export {
   MaestroCard,
   type MaestroCardVariante,
