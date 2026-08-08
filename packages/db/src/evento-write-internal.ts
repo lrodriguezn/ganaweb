@@ -1,5 +1,6 @@
 import type { EventoWriteGateway } from "@ganaweb/aplicacion"
 import type {
+  AnularEventoCommand,
   CrearEventoIndividualCommand,
   CrearHijoEventoGrupalCommand,
   EventoWriteCommand,
@@ -143,6 +144,10 @@ class DrizzleEventoWriteGateway implements EventoWriteGateway {
     return this.db.transaction((tx) => this.persistirEnTransaccion(tx, command))
   }
 
+  anular(command: AnularEventoCommand): Promise<void> {
+    return this.db.transaction((tx) => this.anularEnTransaccion(tx, command))
+  }
+
   persistirLote(commands: readonly EventoWriteCommand[]) {
     return this.db.transaction(async (tx) => {
       const results: { readonly id: string }[] = []
@@ -169,9 +174,44 @@ class DrizzleEventoWriteGateway implements EventoWriteGateway {
   }
 
   private persistirEnTransaccion(tx: Transaction, command: EventoWriteCommand) {
+    if (command.tipo === "anular_evento") {
+      return this.anularEnTransaccion(tx, command).then(() => ({ id: command.objetivoId }))
+    }
     return command.tipo === "crear_registro_grupal"
       ? this.persistHeader(tx, command)
       : this.persistAnimalEvent(tx, command)
+  }
+
+  private async anularEnTransaccion(tx: Transaction, command: AnularEventoCommand): Promise<void> {
+    const audit = {
+      fecha: command.fecha,
+      actor: command.usuarioId,
+      motivo: command.motivo.trim(),
+    }
+    const result =
+      command.objetivo === "grupal"
+        ? await tx.execute(
+            sql`UPDATE registros_grupales
+                SET anulado_en = ${audit.fecha}, anulado_por = ${audit.actor},
+                    motivo_anulacion = ${audit.motivo}, updated_at = ${audit.fecha}
+                WHERE id = ${command.objetivoId}
+                  AND finca_id = ${command.fincaId}
+                  AND anulado_en IS NULL`,
+          )
+        : await tx.execute(
+            sql`UPDATE ${sql.identifier(TABLES[command.evento].tableName)} evento
+                SET anulado_en = ${audit.fecha}, anulado_por = ${audit.actor},
+                    motivo_anulacion = ${audit.motivo}
+                FROM animales animal
+                WHERE evento.id = ${command.objetivoId}
+                  AND evento.animal_id = animal.id
+                  AND animal.finca_id = ${command.fincaId}
+                  AND evento.registro_grupal_id IS NULL
+                  AND evento.anulado_en IS NULL`,
+          )
+    if ((result as { readonly rowCount?: number }).rowCount !== 1) {
+      throw new EventoCommandInvalidError("objetivoId")
+    }
   }
 
   private async persistHeader(
