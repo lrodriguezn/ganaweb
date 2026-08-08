@@ -127,8 +127,10 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
         tipo: "aplicado" as const,
         aplicacionIds: entrada.aplicaciones.map((_, indice) => `app-creada-${indice + 1}`),
       }
-      // T-002/D1: simular la inserción atómica de notificaciones
-      // Si se proporciona el builder y el puerto, ejecutarlos
+      // T-002/D1: simular la inserción atómica de notificaciones.
+      // El adaptador real pasa el tx de la transacción; el fake modela
+      // un token de transacción para que los tests asserten que el mismo
+      // token se pasa a insertarNotificacionesEnTx (identity check).
       if (
         resultadoFinal.tipo === "aplicado" &&
         entrada.notificaciones &&
@@ -136,7 +138,8 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
       ) {
         const notificaciones = entrada.crearNotificaciones(resultadoFinal.aplicacionIds)
         if (notificaciones.length > 0) {
-          await entrada.notificaciones.insertarNotificacionesEnTx(null, notificaciones)
+          const fakeTxToken = { __kind: "fake_transaction_token" } as unknown
+          await entrada.notificaciones.insertarNotificacionesEnTx(fakeTxToken, notificaciones)
         }
       }
       return resultadoFinal
@@ -822,6 +825,24 @@ describe("aplicarProductoSanitario — SAN-051: notificaciones de refuerzo", () 
       expect(notifs[0]?.entidadId).toBe("app-1")
       expect(notifs[1]?.entidadId).toBe("app-2")
     }
+  })
+
+  it("el adaptador de escritura pasa un tx token a insertarNotificacionesEnTx, no null (T-002/D1 identity)", async () => {
+    const notificaciones = fakeNotificaciones()
+    const escritura = fakeSanidadEscritura()
+
+    await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, escritura.port, notificaciones.port),
+    )(comando({ proximaDosis: "2026-09-05" }))
+
+    // T-002/D1: el adaptador real pasa el tx de la transacción; el fake
+    // modela un token de transacción. El puerto debe recibir ese token,
+    // no null — prueba de que la transacción se propaga correctamente.
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(1)
+    const txRecibido = notificaciones.llamadas.insertarNotificacionesEnTx[0]?.tx
+    expect(txRecibido).toBeDefined()
+    expect(txRecibido).not.toBeNull()
+    expect(txRecibido).toHaveProperty("__kind", "fake_transaction_token")
   })
 
   it("si la inserción de notificaciones falla, se hace rollback de las aplicaciones", async () => {
