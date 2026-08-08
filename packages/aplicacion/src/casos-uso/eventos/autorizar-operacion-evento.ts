@@ -4,7 +4,7 @@ import {
   EventoForbiddenError,
   permisoEvento,
 } from "@ganaweb/dominio"
-import type { EventoWriteCommand, SesionAutorizada } from "@ganaweb/dominio"
+import type { AnularEventoCommand, EventoWriteCommand, SesionAutorizada } from "@ganaweb/dominio"
 
 export {
   EVENTOS_CANONICOS,
