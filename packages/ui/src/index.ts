@@ -19,6 +19,7 @@
 
 // Utilities
 export { cn } from "./lib/utils"
+export { useMatchMedia } from "./lib/use-match-media"
 
 // Domain components
 export { AnimalCard } from "./ganado/animal-card"

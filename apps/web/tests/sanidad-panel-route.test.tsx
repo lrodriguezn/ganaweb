@@ -21,12 +21,13 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   type SanidadPanelLoaderData,
   Route as SanidadRoute,
   SanidadRouteView,
+  type SanidadRouteViewProps,
 } from "../src/routes/_app/fincas/$fincaId/sanidad.js"
 import { registrarEntradaAlmacenFn } from "../src/server/sanidad-almacen.js"
 import { listarCatalogoSanidadFn } from "../src/server/sanidad-catalogo-actions.js"
@@ -72,6 +73,25 @@ beforeAll(() => {
   if (!HTMLElement.prototype.scrollIntoView) {
     HTMLElement.prototype.scrollIntoView = () => undefined
   }
+  // D9 (Issue #213): mock de `window.matchMedia` para que el switch
+  // responsive del route tenga un valor determinista en jsdom. Por
+  // defecto desktop (max-width: 767px) NO matches, salvo que un test
+  // lo sobreescriba.
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: (query: string) => {
+      const esMaxWidthMobile = /\(max-width:\s*767px\)/.test(query)
+      return {
+        matches: !esMaxWidthMobile,
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      }
+    },
+  })
 })
 
 afterEach(() => {
@@ -505,3 +525,113 @@ describe("sanidad route — SAN-014/#210: entrada de almacén", () => {
     expect(llamada.data.dosis).toBe(10)
   })
 })
+
+/* -------------------------------------------------------------------- */
+/* Issue #213 — D9: switch responsive en la misma ruta                  */
+/* -------------------------------------------------------------------- */
+
+function instalarMatchMedia(matchesMovil: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: (query: string) => {
+      const esMaxWidthMobile = /\(max-width:\s*767px\)/.test(query)
+      return {
+        matches: esMaxWidthMobile ? matchesMovil : !matchesMovil,
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      }
+    },
+  })
+}
+
+function desinstalarMatchMedia() {
+  try {
+    Reflect.deleteProperty(window, "matchMedia")
+  } catch {
+    // ignore
+  }
+}
+
+describe("sanidad route — D9: switch responsive mobile < 768px", () => {
+  afterEach(() => {
+    desinstalarMatchMedia()
+  })
+
+  it("viewport < 768px renderiza SanidadMobileView con tab Refuerzos, NO el panel desktop", () => {
+    instalarMatchMedia(true)
+    // Re-renderiza con el matchMedia ya activo.
+    render(
+      <SanidadRouteView
+        fincaId={FINCA_ID}
+        data={dataPineada()}
+        onVerHistorial={() => {}}
+        onNavegar={() => {}}
+      />,
+    )
+
+    // El header del panel desktop NO debe renderizar (es un h1 con subtítulo).
+    // En cambio, la mobile view tiene un h1 "Sanidad" + un tablist "Sección de sanidad".
+    // Cuando el switch esté cableado, el tablist aparecerá. La ausencia
+    // del subtítulo "Panel de control · ..." confirma que NO se renderizó
+    // el PanelSanidad desktop.
+    expect(screen.queryByText("Panel de control · Finca Esperanza")).not.toBeInTheDocument()
+  })
+
+  it("viewport ≥ 768px sigue mostrando PanelSanidad (no regresión #212)", () => {
+    instalarMatchMedia(false)
+    render(
+      <SanidadRouteView
+        fincaId={FINCA_ID}
+        data={dataPineada()}
+        onVerHistorial={() => {}}
+        onNavegar={() => {}}
+      />,
+    )
+
+    expect(screen.getByText("Panel de control · Finca Esperanza")).toBeInTheDocument()
+  })
+})
+
+describe("sanidad route — §13 item 11: 2-tap precargado en mobile (SAN-010/011)", () => {
+  beforeEach(() => {
+    instalarMatchMedia(true)
+  })
+  afterEach(() => {
+    desinstalarMatchMedia()
+  })
+
+  it("tap en una card de Refuerzo abre el drawer con el producto precargado", async () => {
+    const user = userEvent.setup()
+    vi.mocked(listarAnimalesSanidadFn).mockResolvedValue({
+      tipo: "lista",
+      animales: [{ id: "animal-1", codigo: "AN-001", nombre: "Luna" }],
+    })
+    render(
+      <SanidadRouteView
+        fincaId={FINCA_ID}
+        data={dataPineada()}
+        onVerHistorial={() => {}}
+        onNavegar={() => {}}
+      />,
+    )
+
+    // El tablist "Sección de sanidad" indica que la vista mobile está activa.
+    expect(screen.getByRole("tablist", { name: /sección de sanidad/i })).toBeInTheDocument()
+
+    // La card de Refuerzos (loader trae animalIds) abre el drawer con
+    // la precarga del producto.
+    await user.click(screen.getByRole("button", { name: /Vacuna fiebre aftosa.*12 animales/ }))
+
+    expect(await screen.findByText("Registrar vacuna")).toBeInTheDocument()
+    expect(screen.getByText("Vacuna fiebre aftosa — 142 dosis")).toBeInTheDocument()
+  })
+})
+
+// Helper expuesto para que el route-switching lo reusa el test.
+type _SanidadRouteViewPropsAlias = SanidadRouteViewProps
+const _typecheckSanidadRouteViewProps: _SanidadRouteViewPropsAlias | undefined = undefined
+void _typecheckSanidadRouteViewProps

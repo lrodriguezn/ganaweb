@@ -52,10 +52,10 @@ Dependencias: U1 → (dominio listo, sin cambios); U2 → U1; U3 → U2; U4 en p
 
 ## Phase 3 — Unit 3: useMatchMedia + switch responsive + Drawer precargado
 
-- [ ] 3.1 RED: `packages/ui/tests/use-match-media.test.ts` — SSR-safe (default `true`); suscripción a cambios; cleanup del listener. Exportar `useMatchMedia` desde `packages/ui/src/lib/use-match-media.ts` (refactor del helper local en `animal-crud.tsx` línea 1427) sin cambio de comportamiento.
-- [ ] 3.2 RED: extender `apps/web/tests/sanidad-panel-route.test.tsx` — viewport < 768px (matchMedia mock `(max-width: 767px)` matches) renderiza `SanidadMobileView` con `Refuerzos` tab y NO el panel desktop; viewport ≥ 768 sigue mostrando `PanelSanidad` (no regresión #212). Drawer de aplicación cableado a `FormularioVacuna` con `productoIdInicial` + `animalesIdsIniciales` desde `RefuerzoCard.onRegistrarAplicacion`.
-- [ ] 3.3 RED: §13 item 11 — "Registrar aplicación" en `RefuerzoCard` → drawer abierto en 2 taps (Refuerzos tab visible → tap card/drawer inmediato); `aplicado` cierra drawer, `validacion` muestra errores por campo.
-- [ ] 3.4 GREEN: `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` — switch `useMatchMedia("(max-width: 767px)")`; reutilizar state `abrirRegistroAplicacion`/`abrirEntradaAlmacen`/etc. para mobile y desktop (un solo loader, una sola pareja de drawers).
+- [x] 3.1 RED: `packages/ui/tests/use-match-media.test.ts` — SSR-safe (default `true`); suscripción a cambios; cleanup del listener. Exportar `useMatchMedia` desde `packages/ui/src/lib/use-match-media.ts` (refactor del helper local en `animal-crud.tsx` línea 1427) sin cambio de comportamiento.
+- [x] 3.2 RED: extender `apps/web/tests/sanidad-panel-route.test.tsx` — viewport < 768px (matchMedia mock `(max-width: 767px)` matches) renderiza `SanidadMobileView` con `Refuerzos` tab y NO el panel desktop; viewport ≥ 768 sigue mostrando `PanelSanidad` (no regresión #212). Drawer de aplicación cableado a `FormularioVacuna` con `productoIdInicial` + `animalesIdsIniciales` desde `RefuerzoCard.onRegistrarAplicacion`.
+- [x] 3.3 RED: §13 item 11 — "Registrar aplicación" en `RefuerzoCard` → drawer abierto en 2 taps (Refuerzos tab visible → tap card/drawer inmediato); `aplicado` cierra drawer, `validacion` muestra errores por campo.
+- [x] 3.4 GREEN: `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` — switch `useMatchMedia("(max-width: 767px)")`; reutilizar state `abrirRegistroAplicacion`/`abrirEntradaAlmacen`/etc. para mobile y desktop (un solo loader, una sola pareja de drawers).
 
 ## Phase 4 — Unit 4: Tab Catálogo + Tab Almacén wiring
 

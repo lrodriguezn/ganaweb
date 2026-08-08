@@ -28,6 +28,7 @@ import type {
 } from "@ganaweb/aplicacion"
 import {
   type AccesoPanelSanidadDestino,
+  type AlertaStockRefuerzoMovil,
   type DatosEntradaAlmacen,
   Drawer,
   DrawerContent,
@@ -36,7 +37,11 @@ import {
   PanelSanidad,
   type ProductoEntradaAlmacen,
   type ProductoSanitario,
+  type RefuerzoCardItem,
+  SanidadMobileView,
+  SeccionRefuerzos,
   crearPermisos,
+  useMatchMedia,
 } from "@ganaweb/ui"
 import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
 import { useState } from "react"
@@ -168,6 +173,8 @@ export function SanidadRouteView({
   onVerHistorial,
   onNavegar,
 }: SanidadRouteViewProps) {
+  // D9 (Issue #213): switch responsive en la misma ruta. Default `true` (SSR-safe).
+  const esMovil = useMatchMedia("(max-width: 767px)")
   const permisos = crearPermisos([...data.permisos])
   const [aplicacionAbierta, setAplicacionAbierta] = useState(false)
   const [productoPrecargado, setProductoPrecargado] = useState<string | null>(null)
@@ -309,22 +316,34 @@ export function SanidadRouteView({
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PanelSanidad
-        fincaNombre={data.fincaNombre}
-        permisos={permisos}
-        metricas={data.metricas}
-        proximas={data.proximas}
-        ultimas={data.ultimas}
-        stock={data.stock}
-        onRegistrarAplicacion={abrirRegistroAplicacion}
-        onEntradaAlmacen={() => {
-          setErroresEntrada({})
-          setEntradaAbierta(true)
-        }}
-        hrefHistorial={`/fincas/${fincaId}/sanidad/historial`}
-        onVerHistorial={onVerHistorial}
-        onNavegarAcceso={navegarAcceso}
-      />
+      {esMovil ? (
+        <SanidadRouteMovil
+          data={data}
+          permisos={permisos}
+          onRegistrarAplicacion={abrirRegistroAplicacion}
+          onEntradaAlmacen={() => {
+            setErroresEntrada({})
+            setEntradaAbierta(true)
+          }}
+        />
+      ) : (
+        <PanelSanidad
+          fincaNombre={data.fincaNombre}
+          permisos={permisos}
+          metricas={data.metricas}
+          proximas={data.proximas}
+          ultimas={data.ultimas}
+          stock={data.stock}
+          onRegistrarAplicacion={abrirRegistroAplicacion}
+          onEntradaAlmacen={() => {
+            setErroresEntrada({})
+            setEntradaAbierta(true)
+          }}
+          hrefHistorial={`/fincas/${fincaId}/sanidad/historial`}
+          onVerHistorial={onVerHistorial}
+          onNavegarAcceso={navegarAcceso}
+        />
+      )}
 
       {/* SAN-003/SAN-011/SAN-043: drawer del registro cableado a las server
           functions de #211. La precarga de animales sólo aplica cuando la
@@ -361,5 +380,111 @@ export function SanidadRouteView({
         </DrawerContent>
       </Drawer>
     </div>
+  )
+}
+
+/**
+ * Issue #213 / D9: vista mobile del panel de sanidad. Reutiliza los datos
+ * del loader y el `PermisosUsuario`. El tab Refuerzos renderiza
+ * `SeccionRefuerzos` con los datos ya calculados en el servidor
+ * (degradación por card: si `proximas` o `stock` son `null`, las
+ * secciones se renderizan vacías).
+ *
+ * Los tabs Catálogo y Almacén se cablean en U4; en U3 se renderizan
+ * con un placeholder honesto que nombra la próxima integración.
+ */
+function SanidadRouteMovil({
+  data,
+  permisos,
+  onRegistrarAplicacion,
+  onEntradaAlmacen,
+}: {
+  readonly data: SanidadPanelLoaderData
+  readonly permisos: ReturnType<typeof crearPermisos>
+  readonly onRegistrarAplicacion: (productoId: string, animalIds: readonly string[]) => void
+  readonly onEntradaAlmacen: () => void
+}) {
+  const refuerzoAItems = (
+    filas: readonly {
+      readonly productoId: string
+      readonly codigo: string
+      readonly descripcion: string
+      readonly proposito: string
+      readonly cantidadAnimales: number
+      readonly venceFecha: string
+      readonly animalIds: readonly string[]
+    }[],
+  ): readonly RefuerzoCardItem[] =>
+    filas.map((fila) => ({
+      productoId: fila.productoId,
+      codigo: fila.codigo,
+      descripcion: fila.descripcion,
+      proposito: fila.proposito,
+      cantidadAnimales: fila.cantidadAnimales,
+      venceFecha: fila.venceFecha,
+      animalIds: [...fila.animalIds],
+    }))
+
+  const estaSemana = data.proximas ? refuerzoAItems(data.proximas.estaSemana) : []
+  const proximaSemana = data.proximas ? refuerzoAItems(data.proximas.proximaSemana) : []
+
+  const stockMovil: readonly AlertaStockRefuerzoMovil[] = (data.stock ?? []).map((alerta) => {
+    if (alerta.estado === "bajo") {
+      return {
+        productoId: alerta.productoId,
+        descripcion: alerta.descripcion,
+        estado: "bajo",
+        dosis: alerta.dosisDisponibles,
+      }
+    }
+    if (alerta.estado === "agotado") {
+      return {
+        productoId: alerta.productoId,
+        descripcion: alerta.descripcion,
+        estado: "agotado",
+      }
+    }
+    return {
+      productoId: alerta.productoId,
+      descripcion: alerta.descripcion,
+      estado: "ok",
+    }
+  })
+
+  return (
+    <SanidadMobileView
+      fincaNombre={data.fincaNombre}
+      permisos={permisos}
+      tabInicial="refuerzos"
+      tabPermitidas={["catalogo", "almacen", "refuerzos"]}
+      contenidoRefuerzos={
+        <SeccionRefuerzos
+          permisos={permisos}
+          estaSemana={estaSemana}
+          proximaSemana={proximaSemana}
+          stock={stockMovil}
+          onRegistrarAplicacion={onRegistrarAplicacion}
+        />
+      }
+      contenidoCatalogo={
+        <p className="text-support text-muted-foreground">
+          El catálogo se cablea en la fase 4 (#213).
+        </p>
+      }
+      contenidoAlmacen={
+        <div className="flex flex-col gap-3">
+          <p className="text-support text-muted-foreground">
+            El almacén se cablea en la fase 4 (#213).
+          </p>
+          <button
+            type="button"
+            onClick={onEntradaAlmacen}
+            className="self-start min-h-[--h-touch] rounded-md border border-border bg-card px-3 py-2 text-support"
+          >
+            + Entrada almacén
+          </button>
+        </div>
+      }
+    />
   )
 }

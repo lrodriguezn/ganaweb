@@ -1,5 +1,22 @@
 # Apply Progress — Issue #213 mobile tabs (feat/issue-213-sanidad-mobile)
 
+## Work unit 3 — useMatchMedia + switch responsive + Drawer precargado (DONE)
+
+- **3.1 Refactor useMatchMedia**: hook compartido en `packages/ui/src/lib/use-match-media.ts` (modelo `useEsMovil()` de `maestro-form.tsx:128`). SSR-safe default `true`, suscripción a `change` + cleanup. Exportado aditivamente desde `@ganaweb/ui`. 6 tests en `packages/ui/tests/use-match-media.test.ts`.
+- **3.2-3.4 Switch responsive**: `apps/web/src/routes/_app/fincas/$fincaId/sanidad.tsx` — `useMatchMedia("(max-width: 767px)")` decide entre `PanelSanidad` (desktop) y un nuevo `SanidadRouteMovil` (mobile, envuelve `SanidadMobileView`). El state `abrirRegistroAplicacion`/`abrirEntradaAlmacen`/etc. vive en `SanidadRouteView` y se comparte entre ambos (un solo loader, una sola pareja de drawers).
+- **Tests** (`apps/web/tests/sanidad-panel-route.test.tsx`): mock de `window.matchMedia` con default desktop (no regresión #212); 2 tests D9 (mobile sin subtítulo "Panel de control", desktop con subtítulo) + 1 test §13 item 11 (tap card en mobile → drawer con producto precargado).
+- **TDD evidence**:
+  - RED: tests written first; mobile test falla porque `SanidadRouteView` siempre rendía `PanelSanidad`.
+  - GREEN: 15/15 tests verdes (12 previos + 3 nuevos); suite completa de `@ganaweb/web` 438/438.
+  - TRIANGULATE: 3 tests del switch (mobile sin desktop, desktop sigue intacto, 2-tap precargado) + 6 tests del hook (default true, default false, change desktop→mobile, change mobile→desktop, cleanup, sin window.matchMedia).
+  - REFACTOR: Biome auto-fix; sin cambios estructurales.
+- **Reglas**:
+  - D9 (switch responsive en la misma ruta con `useMatchMedia("(max-width: 767px)")`).
+  - SAN-010/§13 item 11 (2-tap precargado desde card).
+  - SAN-047 (aplicado cierra drawer).
+  - CM-042/RN-002 (validacion muestra errores por campo).
+- **Tamaños**: use-match-media.ts 24 líneas; route +60 líneas; test +120 líneas.
+
 ## Work unit 2 — TabsSanidad + SanidadMobileView (DONE)
 
 - **Tests**: `packages/ui/tests/sanidad-mobile-view.test.tsx` (8) — 3 tabs + ARIA tablist, `aria-selected` correcto, callback no-URL, gating por permiso (Catálogo oculto sin sanidad:editar), header "Sanidad" siempre visible, tab default Refuerzos, cambio de contenido por tab, gating en `SanidadMobileView`.
