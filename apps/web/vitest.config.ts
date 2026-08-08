@@ -67,6 +67,8 @@ export default defineConfig({
       // functions (PE-002, SAN-061/063, §13.10) con deps falsas.
       "src/server/sanidad-catalogo-actions.test.ts",
       "tests/eventos-contract-boundary.test.ts",
+      // #227 — boundary HTTP del read model de finca.
+      "tests/eventos-finca-read-boundary.test.ts",
       // #212 — panel de sanidad: loader fail-closed por card, encabezado
       // SAN-001 y wiring de los drawers de aplicación (SAN-003) y entrada
       // de almacén (SAN-014/#210).
