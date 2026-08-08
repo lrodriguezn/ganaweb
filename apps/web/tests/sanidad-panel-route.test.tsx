@@ -19,7 +19,7 @@
  */
 
 import "@testing-library/jest-dom/vitest"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -37,6 +37,7 @@ import {
   listarUltimasPanelSanidadFn,
   obtenerMetricasPanelSanidadFn,
 } from "../src/server/sanidad-panel.js"
+import { listarAnimalesSanidadFn, registrarAplicacionFn } from "../src/server/sanidad-registro.js"
 
 vi.mock("../src/server/sanidad-panel.js", () => ({
   obtenerMetricasPanelSanidadFn: vi.fn(),
@@ -51,6 +52,10 @@ vi.mock("../src/server/sanidad-almacen.js", () => ({
 }))
 vi.mock("../src/server/sanidad-catalogo-actions.js", () => ({
   listarCatalogoSanidadFn: vi.fn(),
+}))
+vi.mock("../src/server/sanidad-registro.js", () => ({
+  registrarAplicacionFn: vi.fn(),
+  listarAnimalesSanidadFn: vi.fn(),
 }))
 
 beforeAll(() => {
@@ -78,6 +83,8 @@ afterEach(() => {
   vi.mocked(listarHistorialPanelSanidadFn).mockReset()
   vi.mocked(registrarEntradaAlmacenFn).mockReset()
   vi.mocked(listarCatalogoSanidadFn).mockReset()
+  vi.mocked(registrarAplicacionFn).mockReset()
+  vi.mocked(listarAnimalesSanidadFn).mockReset()
 })
 
 const FINCA_ID = "finca-esperanza"
@@ -112,6 +119,7 @@ const PROXIMAS = {
       proposito: "Vacuna",
       cantidadAnimales: 12,
       venceFecha: "2026-08-06",
+      animalIds: [],
     },
   ],
   proximaSemana: [],
@@ -307,6 +315,165 @@ describe("sanidad route — SAN-003: registro de aplicación con producto precar
 
     expect(await screen.findByText("Registrar vacuna")).toBeInTheDocument()
     expect(screen.getByText("Elegir producto")).toBeInTheDocument()
+  })
+})
+
+describe("sanidad route — Issue #211: drawer del registro cableado a las server functions", () => {
+  const ANIMALES_FINCA = [
+    { id: "animal-1", codigo: "AN-001", nombre: "Luna" },
+    { id: "animal-2", codigo: "AN-002", nombre: "Sol" },
+  ]
+
+  it("al abrir el drawer se cargan los animales EN_FINCA vía listarAnimalesSanidadFn (SAN-043)", async () => {
+    const user = userEvent.setup()
+    vi.mocked(listarAnimalesSanidadFn).mockResolvedValue({
+      tipo: "lista",
+      animales: ANIMALES_FINCA,
+    })
+    renderVista()
+
+    await user.click(screen.getByRole("button", { name: "Registrar aplicación" }))
+
+    expect(await screen.findByText("Registrar vacuna")).toBeInTheDocument()
+    expect(listarAnimalesSanidadFn).toHaveBeenCalledTimes(1)
+    const llamada = vi.mocked(listarAnimalesSanidadFn).mock.calls[0]?.[0] as {
+      data: { fincaId: string; fecha: string }
+    }
+    expect(llamada.data.fincaId).toBe(FINCA_ID)
+    // La fecha es hoy en formato ISO local (AAAA-MM-DD).
+    expect(llamada.data.fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it("guardar invoca registrarAplicacionFn y cierra el drawer en 'aplicado' (SAN-047)", async () => {
+    const user = userEvent.setup()
+    vi.mocked(listarAnimalesSanidadFn).mockResolvedValue({
+      tipo: "lista",
+      animales: ANIMALES_FINCA,
+    })
+    vi.mocked(registrarAplicacionFn).mockResolvedValue({
+      tipo: "aplicado",
+      aplicacionIds: ["app-1"],
+      registroGrupalId: null,
+      precioDosisSnapshot: 3500,
+      refuerzosAutoCompletados: [],
+      advertencias: [],
+      stockDisponible: 140,
+      alertaStockNegativo: false,
+    })
+    renderVista()
+
+    await user.click(screen.getByRole("button", { name: "Registrar aplicación" }))
+    expect(await screen.findByText("Registrar vacuna")).toBeInTheDocument()
+    // Espera a que el listado de animales se monte en el drawer (state batch).
+    await waitFor(
+      () => {
+        expect(screen.getByRole("button", { name: /Guardar 2 registros/ })).toBeInTheDocument()
+      },
+      { timeout: 2000 },
+    )
+
+    // Selecciona el producto y guarda.
+    await user.click(screen.getByRole("combobox"))
+    await user.click(await screen.findByRole("option", { name: /Vacuna fiebre aftosa/ }))
+    await user.click(screen.getByRole("button", { name: /Guardar 2 registros/ }))
+
+    expect(registrarAplicacionFn).toHaveBeenCalledTimes(1)
+    const llamada = vi.mocked(registrarAplicacionFn).mock.calls[0]?.[0] as {
+      data: {
+        fincaId: string
+        productoId: string
+        dosis: number
+        fecha: string
+        animalIds: readonly string[]
+      }
+    }
+    expect(llamada.data.fincaId).toBe(FINCA_ID)
+    expect(llamada.data.productoId).toBe("prod-aftosa")
+    expect(llamada.data.fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(llamada.data.animalIds).toEqual(["animal-1", "animal-2"])
+
+    // El drawer se cierra tras "aplicado" (el título del form desaparece).
+    await waitFor(() => {
+      expect(screen.queryByText("Registrar vacuna")).not.toBeInTheDocument()
+    })
+  })
+
+  it("en 'validacion' los errores se mapean por campo (CM-042 / RN-002)", async () => {
+    const user = userEvent.setup()
+    vi.mocked(listarAnimalesSanidadFn).mockResolvedValue({
+      tipo: "lista",
+      animales: ANIMALES_FINCA,
+    })
+    vi.mocked(registrarAplicacionFn).mockResolvedValue({
+      tipo: "validacion",
+      errores: [{ campo: "fecha", detalle: "La fecha no puede ser futura (RN-002)." }],
+    })
+    renderVista()
+
+    await user.click(screen.getByRole("button", { name: "Registrar aplicación" }))
+    expect(await screen.findByText("Registrar vacuna")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Guardar 2 registros/ })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole("combobox"))
+    await user.click(await screen.findByRole("option", { name: /Vacuna fiebre aftosa/ }))
+    await user.click(screen.getByRole("button", { name: /Guardar 2 registros/ }))
+
+    expect(registrarAplicacionFn).toHaveBeenCalledTimes(1)
+    // El drawer sigue abierto mostrando el mensaje del servidor.
+    expect(screen.getByText("Registrar vacuna")).toBeInTheDocument()
+    // El detalle del error del servidor es visible.
+    expect(screen.getByText(/La fecha no puede ser futura \(RN-002\)\./)).toBeInTheDocument()
+  })
+
+  it("la fila de Próximas abre el drawer con animales precargados cuando el loader los aporta (SAN-011)", async () => {
+    const user = userEvent.setup()
+    vi.mocked(listarAnimalesSanidadFn).mockResolvedValue({
+      tipo: "lista",
+      animales: ANIMALES_FINCA,
+    })
+    vi.mocked(registrarAplicacionFn).mockResolvedValue({
+      tipo: "aplicado",
+      aplicacionIds: ["app-1"],
+      registroGrupalId: null,
+      precioDosisSnapshot: 3500,
+      refuerzosAutoCompletados: [],
+      advertencias: [],
+      stockDisponible: 140,
+      alertaStockNegativo: false,
+    })
+    renderVista({
+      proximas: {
+        estaSemana: [
+          {
+            productoId: "prod-aftosa",
+            codigo: "VAC-AFTOSA",
+            descripcion: "Vacuna fiebre aftosa",
+            proposito: "Vacuna",
+            cantidadAnimales: 2,
+            venceFecha: "2026-08-06",
+            animalIds: ["animal-1", "animal-2"],
+          },
+        ],
+        proximaSemana: [],
+        esteMes: [],
+      },
+    })
+
+    await user.click(screen.getByRole("button", { name: /Vacuna fiebre aftosa.*2 animales/ }))
+    expect(await screen.findByText("Registrar vacuna")).toBeInTheDocument()
+    // El precargo acota la selección: el botón cuenta sólo los 2 animales.
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Guardar 2 registros/ })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole("button", { name: /Guardar 2 registros/ }))
+
+    expect(registrarAplicacionFn).toHaveBeenCalledTimes(1)
+    const llamada = vi.mocked(registrarAplicacionFn).mock.calls[0]?.[0] as {
+      data: { animalIds: readonly string[] }
+    }
+    expect(llamada.data.animalIds).toEqual(["animal-1", "animal-2"])
   })
 })
 

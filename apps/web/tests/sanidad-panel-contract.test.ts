@@ -245,6 +245,9 @@ async function testProximasAgrupadasPorSemana() {
     proposito: "Vacuna",
     cantidadAnimales: 1,
     venceFecha: "2026-08-06",
+    // Issue #211/SAN-011: el dominio expone los animalIds del grupo para
+    // que la card de Próximas precargue el drawer.
+    animalIds: ["animal-1"],
   })
   assert.equal(proximas.periodos.proximaSemana[0]?.venceFecha, "2026-08-12")
   assert.deepEqual(llamadas.listarRefuerzosPendientes[0], { fincaId: FINCA_ID, hoy: HOY_ISO })

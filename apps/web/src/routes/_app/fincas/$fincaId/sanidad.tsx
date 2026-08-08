@@ -13,10 +13,10 @@
  * acá el denial se degrada a `null` (fail-closed de presentación).
  *
  * SAN-003/SAN-014: los drawers de registro de aplicación (FormularioVacuna
- * con `productoIdInicial`) y de entrada de almacén (FormularioEntradaAlmacen
- * cableado a `registrarEntradaAlmacenFn`) viven en la vista. El guardado de
- * la aplicación es el placeholder de SAN-047 (el caso de uso real llega con
- * #211); la entrada de almacén sí guarda (#210).
+ * con `productoIdInicial`/`animalesIdsIniciales`) y de entrada de almacén
+ * (FormularioEntradaAlmacen cableado a `registrarEntradaAlmacenFn`) viven en
+ * la vista. El guardado de la aplicación cablea a `registrarAplicacionFn` y
+ * la lista de animales para el drawer a `listarAnimalesSanidadFn` (#211).
  */
 
 import type {
@@ -48,6 +48,10 @@ import {
   listarUltimasPanelSanidadFn,
   obtenerMetricasPanelSanidadFn,
 } from "../../../../server/sanidad-panel.js"
+import {
+  listarAnimalesSanidadFn,
+  registrarAplicacionFn,
+} from "../../../../server/sanidad-registro.js"
 
 /** Data del loader: una fuente por card, `null` = card degradada (CM-042). */
 export interface SanidadPanelLoaderData {
@@ -78,11 +82,43 @@ export const Route = createFileRoute("/_app/fincas/$fincaId/sanidad")({
     ])
 
     const filasCatalogo = catalogo !== null && catalogo.tipo === "catalogo" ? catalogo.filas : []
+    const periodosRefuerzos = proximas !== null && proximas.tipo === "ok" ? proximas.periodos : null
     return {
       fincaNombre: sesion.fincaActivaNombre,
       permisos: sesion.permisos,
       metricas: metricas !== null && metricas.tipo === "ok" ? metricas.metricas : null,
-      proximas: proximas !== null && proximas.tipo === "ok" ? proximas.periodos : null,
+      proximas:
+        periodosRefuerzos === null
+          ? null
+          : {
+              estaSemana: periodosRefuerzos.estaSemana.map((fila) => ({
+                productoId: fila.productoId,
+                codigo: fila.codigo,
+                descripcion: fila.descripcion,
+                proposito: fila.proposito,
+                cantidadAnimales: fila.cantidadAnimales,
+                venceFecha: fila.venceFecha,
+                animalIds: [...fila.animalIds],
+              })),
+              proximaSemana: periodosRefuerzos.proximaSemana.map((fila) => ({
+                productoId: fila.productoId,
+                codigo: fila.codigo,
+                descripcion: fila.descripcion,
+                proposito: fila.proposito,
+                cantidadAnimales: fila.cantidadAnimales,
+                venceFecha: fila.venceFecha,
+                animalIds: [...fila.animalIds],
+              })),
+              esteMes: periodosRefuerzos.esteMes.map((fila) => ({
+                productoId: fila.productoId,
+                codigo: fila.codigo,
+                descripcion: fila.descripcion,
+                proposito: fila.proposito,
+                cantidadAnimales: fila.cantidadAnimales,
+                venceFecha: fila.venceFecha,
+                animalIds: [...fila.animalIds],
+              })),
+            },
       ultimas: ultimas !== null && ultimas.tipo === "ok" ? ultimas.aplicaciones : null,
       stock: stock !== null && stock.tipo === "ok" ? stock.alertas : null,
       productosVacuna: filasCatalogo.map((fila) => ({
@@ -135,13 +171,111 @@ export function SanidadRouteView({
   const permisos = crearPermisos([...data.permisos])
   const [aplicacionAbierta, setAplicacionAbierta] = useState(false)
   const [productoPrecargado, setProductoPrecargado] = useState<string | null>(null)
+  const [animalesPrecargados, setAnimalesPrecargados] = useState<readonly string[]>([])
+  const [animalesDrawer, setAnimalesDrawer] = useState<
+    readonly {
+      id: string
+      codigoAnimal: string
+      nombreAnimal: string | null
+      sexo: "macho" | "hembra" | "pajuela"
+      salud: "sano" | "enfermo"
+      estadoActual: "activo" | "vendido" | "muerto"
+    }[]
+  >([])
+  const [erroresAplicacion, setErroresAplicacion] = useState<Record<string, string>>({})
   const [entradaAbierta, setEntradaAbierta] = useState(false)
   const [erroresEntrada, setErroresEntrada] = useState<Record<string, string>>({})
 
-  // SAN-003: abrir el registro con el producto precargado ("" = sin precarga).
-  const abrirRegistroAplicacion = (productoId: string) => {
+  // SAN-003/SAN-011: abrir el registro con el producto y los animales precargados
+  // ("" = sin precarga; [] = selección abierta, comportamiento existente).
+  const abrirRegistroAplicacion = (productoId: string, animalIds: readonly string[]) => {
     setProductoPrecargado(productoId === "" ? null : productoId)
+    setAnimalesPrecargados([...animalIds])
     setAplicacionAbierta(true)
+    // SAN-043: la lista de animales se pide a la fecha del evento (hoy).
+    const hoy = new Date()
+    const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`
+    void cargarAnimalesDrawer(fecha)
+  }
+
+  // SAN-043: cargar los animales EN_FINCA a la fecha del evento para el drawer.
+  // Si la fuente cae, el drawer abre con `animalesPrecargados` (o vacío) — la
+  // selección manual sigue disponible.
+  const cargarAnimalesDrawer = async (fecha: string) => {
+    try {
+      const resultado = await listarAnimalesSanidadFn({ data: { fincaId, fecha } })
+      if (resultado.tipo === "lista") {
+        setAnimalesDrawer(
+          resultado.animales.map((a) => ({
+            id: a.id,
+            codigoAnimal: a.codigo,
+            nombreAnimal: a.nombre,
+            // El puerto ya filtró EN_FINCA a la fecha; los demás campos del
+            // AnimalResumen no se usan en el drawer (sólo id/codigo/nombre).
+            sexo: "hembra" as const,
+            salud: "sano" as const,
+            estadoActual: "activo" as const,
+          })),
+        )
+      }
+    } catch {
+      setAnimalesDrawer([])
+    }
+  }
+
+  // SAN-040..SAN-047: el guardado del registro invoca el caso de uso #208 vía
+  // `registrarAplicacionFn` (#211). La unión del resultado se mapea 1:1: en
+  // `aplicado` cerramos el drawer; en `validacion` los errores van al form.
+  const guardarAplicacion = async (datos: {
+    readonly productoId: string
+    readonly dosis: number
+    readonly fecha: string
+    readonly proximaDosis: string | null
+    readonly comentarios?: string
+    readonly animalesIds: string[]
+  }) => {
+    const resultado = await registrarAplicacionFn({
+      data: {
+        fincaId,
+        productoId: datos.productoId,
+        dosis: datos.dosis,
+        fecha: datos.fecha,
+        ...(datos.proximaDosis !== null ? { proximaDosis: datos.proximaDosis } : {}),
+        animalIds: datos.animalesIds,
+        ...(datos.comentarios !== undefined ? { comentarios: datos.comentarios } : {}),
+      },
+    })
+    const errores = erroresAplicacionDe(resultado)
+    if (errores === null) {
+      setErroresAplicacion({})
+      setAplicacionAbierta(false)
+      return
+    }
+    setErroresAplicacion(errores)
+  }
+
+  // Mapea el resultado del harness a errores presentables por campo (CM-042).
+  // null = "aplicado" (cerrar drawer); {} o record = drawer sigue abierto.
+  function erroresAplicacionDe(
+    resultado: Awaited<ReturnType<typeof registrarAplicacionFn>>,
+  ): Record<string, string> | null {
+    if (resultado.tipo === "aplicado") return null
+    if (resultado.tipo === "validacion") {
+      return Object.fromEntries(resultado.errores.map((e) => [e.campo, e.detalle]))
+    }
+    if (resultado.tipo === "conflicto" || resultado.tipo === "error") {
+      return { formulario: resultado.detalle }
+    }
+    if (resultado.tipo === "permiso_denegado") {
+      // El harness devuelve `permiso` (RBAC) y el caso de uso `detalle`; la
+      // unión conserva ambos. La UI sólo necesita un mensaje presentable.
+      if ("detalle" in resultado) return { formulario: resultado.detalle }
+      return {
+        formulario: `No tiene permiso para registrar la aplicación (${resultado.permiso}).`,
+      }
+    }
+    // "no_autenticado" / "finca_no_autorizada" — sin detalle, mensaje neutro.
+    return { formulario: "No se pudo registrar la aplicación." }
   }
 
   // SAN-014/#210: la entrada de almacén guarda vía la server function.
@@ -192,17 +326,21 @@ export function SanidadRouteView({
         onNavegarAcceso={navegarAcceso}
       />
 
-      {/* SAN-003: registro de aplicación con producto precargado. El guardado
-          es el placeholder de SAN-047 — el caso de uso real llega con #211. */}
+      {/* SAN-003/SAN-011/SAN-043: drawer del registro cableado a las server
+          functions de #211. La precarga de animales sólo aplica cuando la
+          card de Próximas la aporta (animalIds > 0); sin ella la selección
+          se abre con todos los animales EN_FINCA a la fecha. */}
       <Drawer open={aplicacionAbierta} onOpenChange={setAplicacionAbierta}>
         <DrawerContent className="rounded-t-sheet h-[90vh]">
           <FormularioVacuna
-            animales={[]}
+            animales={[...animalesDrawer]}
             productos={[...data.productosVacuna]}
             {...(productoPrecargado !== null ? { productoIdInicial: productoPrecargado } : {})}
-            onGuardar={async () => {
-              setAplicacionAbierta(false)
-            }}
+            {...(animalesPrecargados.length > 0
+              ? { animalesIdsIniciales: animalesPrecargados }
+              : {})}
+            erroresServidor={erroresAplicacion}
+            onGuardar={guardarAplicacion}
           />
         </DrawerContent>
       </Drawer>

@@ -514,6 +514,12 @@ export type RefuerzoPendienteAgrupado = {
   readonly cantidadAnimales: number
   /** La proxima_dosis más próxima del grupo. */
   readonly venceFecha: string
+  /**
+   * Issue #211/SAN-011: ids de los animales del grupo, para que la card
+   * pueda precargar el drawer con la selección. Vacío cuando el panel no
+   * conoce los animales (#212 sólo conoce conteos); #213 los aportará.
+   */
+  readonly animalIds: readonly string[]
 }
 
 /** Períodos de la semana natural (SAN-052), consistentes desktop/mobile. */
@@ -592,6 +598,7 @@ function agruparPorProducto(filas: readonly RefuerzoPendienteFila[]): RefuerzoPe
       proposito: propositoProductoSanitario(primera.tipoTratamiento),
       cantidadAnimales: animalesDistintos.size,
       venceFecha: primera.proximaDosis,
+      animalIds: [...animalesDistintos],
     })
   }
   // Orden estable: el vence más próximo primero.
