@@ -308,6 +308,7 @@ async function testServerGuards() {
     canEdit: true,
     canInactivate: true,
     canDelete: false,
+    eventos: { reproductivo: false, sanidad: false, productivo: false, movimientos: false },
   })
   assert.deepEqual(denyAnimalRouteAccess(authorized, "finca-1", "ver"), null)
   assert.deepEqual(denyAnimalRouteAccess(authorized, "finca-2", "ver"), {
