@@ -149,6 +149,14 @@ export type {
   SanidadLecturaPort,
 } from "./puertos/sanidad-port.js"
 export type {
+  ContadoresEventosFinca,
+  EventosFincaPagina,
+  EventosFincaReadPort,
+  EventosFincaReadRequest,
+  FeedFincaItem,
+  HistorialFincaItem,
+} from "./puertos/eventos-finca-read-port.js"
+export type {
   AlertaStockPanel,
   FilaHistorialSanidad,
   FiltrosHistorialSanidad,
@@ -193,6 +201,9 @@ export * from "./casos-uso/listar-propietarios-por-finca.js"
 export * from "./casos-uso/maestros/index.js"
 export * from "./casos-uso/sanidad/index.js"
 export * from "./casos-uso/eventos/autorizar-operacion-evento.js"
+export * from "./casos-uso/eventos/index.js"
+export { PAGE_SIZE_FEED_FINCA, PAGE_SIZE_HISTORIAL_FINCA } from "@ganaweb/dominio"
+export type { CategoriaFiltroFinca, DominioEvento, PermisoVerDominio } from "@ganaweb/dominio"
 export type * from "./puertos/auth-repository-port.js"
 export type {
   DecisionAutorizacion,
