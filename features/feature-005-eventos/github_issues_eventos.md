@@ -253,3 +253,54 @@ descartada: crear tabla/permisos
 - [x] Buscar duplicados abiertos/cerrados y actualizar referencias a #167/#181/#183/#211.
 - [x] Confirmar labels existentes y replicar el formulario `feature_request.yml` por API según `CONTRIBUTING.md`.
 - [x] Verificar que la épica cubre EV-CA-001..011 exactamente una vez o por dependencia explícita.
+
+---
+
+## Feature Branch Chain publicada para #227
+
+> Publicada el 2026-08-08. Tracker draft hacia `master` con `Closes #227`; cuatro PRs hijos encadenados por capa (dominio → aplicación → db → web), cada uno contra su padre inmediato y el primero contra `master`. `size:exception` aplicada a los hijos y al tracker que superan 400 líneas. Ningún PR fusionado todavía.
+
+### Topología
+
+```text
+master
+ ├── #257 feat/issue-227-eventos-readmodel   (tracker draft → master, Closes #227, type:feature, size:exception)
+ │
+ ├── #248 feat/issue-227-eventos-readmodel-01-dominio    (Refs #227 → master, +354, type:feature)
+ │     └── #254 feat/issue-227-eventos-readmodel-02-aplicacion (Refs #227 → 01-dominio, +651, type:feature, size:exception)
+ │           └── #255 feat/issue-227-eventos-readmodel-03-db    (Refs #227 → 02-aplicacion, +1064, type:feature, size:exception)
+ │                 └── #256 feat/issue-227-eventos-readmodel-04-web  (Refs #227 → 03-db, +238, type:feature)
+```
+
+### PRs
+
+| # | URL | Capa | Base | Head | Líneas | Labels | Estado |
+|---|---|---|---|---|---|---|---|
+| [#248](https://github.com/lrodriguezn/ganaweb/pull/248) | https://github.com/lrodriguezn/ganaweb/pull/248 | Dominio (RBAC + filtros) | `master` | `feat/issue-227-eventos-readmodel-01-dominio` | +354 / -0 (3 files) | `type:feature` | draft, no-merge |
+| [#254](https://github.com/lrodriguezn/ganaweb/pull/254) | https://github.com/lrodriguezn/ganaweb/pull/254 | Aplicación (caso de uso + puerto) | `01-dominio` | `feat/issue-227-eventos-readmodel-02-aplicacion` | +651 / -0 (5 files) | `type:feature`, `size:exception` | draft, no-merge |
+| [#255](https://github.com/lrodriguezn/ganaweb/pull/255) | https://github.com/lrodriguezn/ganaweb/pull/255 | DB (Drizzle UNION ALL) | `02-aplicacion` | `feat/issue-227-eventos-readmodel-03-db` | +1064 / -0 (3 files) | `type:feature`, `size:exception` | draft, no-merge |
+| [#256](https://github.com/lrodriguezn/ganaweb/pull/256) | https://github.com/lrodriguezn/ganaweb/pull/256 | Web (boundary HTTP) | `03-db` | `feat/issue-227-eventos-readmodel-04-web` | +238 / -0 (3 files) | `type:feature` | draft, no-merge |
+| [#257](https://github.com/lrodriguezn/ganaweb/pull/257) | https://github.com/lrodriguezn/ganaweb/pull/257 | Tracker (integración) | `master` | `feat/issue-227-eventos-readmodel` | +2307 / -0 (14 files) | `type:feature`, `size:exception` | draft, no-merge, Closes #227 |
+
+### Ramas en `origin`
+
+- `feat/issue-227-eventos-readmodel` (tracker)
+- `feat/issue-227-eventos-readmodel-01-dominio`
+- `feat/issue-227-eventos-readmodel-02-aplicacion`
+- `feat/issue-227-eventos-readmodel-03-db`
+- `feat/issue-227-eventos-readmodel-04-web`
+
+### Notas operativas
+
+- Cada PR replica `.github/PULL_REQUEST_TEMPLATE.md` y añade la sección `## Chain Context` con diagrama, posición, base, dependencia, follow-up, líneas, inicio/fin, scope y autonomy.
+- Los PRs hijos llevan `Refs #227`; el tracker lleva `Closes #227`. Todos con `type:feature` único.
+- Verificación local previa al push: tests por capa en `packages/{dominio,aplicacion,db}` y boundary en `apps/web`. CI fresco se materializa con `gh workflow run` (ver bloque inferior) desde la rama del tracker contra el PR #257, vía dispatch manual del #245.
+- El contenido aprobado de issues (secciones anteriores) queda intacto. Esta sección se añadió al final del archivo para registrar la trazabilidad de la cadena.
+- Comandos de recuperación manual del CI (tracker):
+
+```bash
+gh workflow run pr-validation.yml --ref feat/issue-227-eventos-readmodel -f pr_number=257
+gh workflow run pr-check.yml      --ref feat/issue-227-eventos-readmodel -f pr_number=257
+gh workflow run ci.yml            --ref feat/issue-227-eventos-readmodel -f pr_number=257
+gh workflow run e2e.yml           --ref feat/issue-227-eventos-readmodel -f pr_number=257
+```
