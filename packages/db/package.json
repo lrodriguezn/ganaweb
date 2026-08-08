@@ -72,6 +72,14 @@
     "./catalogo-producto-sanitario-infrastructure": {
       "types": "./src/catalogo-producto-sanitario-infrastructure.ts",
       "import": "./src/catalogo-producto-sanitario-infrastructure.ts"
+    },
+    "./notificaciones-infrastructure": {
+      "types": "./src/notificaciones-infrastructure.ts",
+      "import": "./src/notificaciones-infrastructure.ts"
+    },
+    "./dashboard-inicio-infrastructure": {
+      "types": "./src/dashboard-inicio-infrastructure.ts",
+      "import": "./src/dashboard-inicio-infrastructure.ts"
     }
   },
   "scripts": {
