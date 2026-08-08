@@ -164,6 +164,12 @@ export {
   type RefuerzoPendientePanelVista,
   type UltimaAplicacionPanelVista,
 } from "./ganado/panel-sanidad"
+export { RefuerzoCard, type RefuerzoCardItem, type RefuerzoCardProps } from "./ganado/refuerzo-card"
+export {
+  SeccionRefuerzos,
+  type AlertaStockRefuerzoMovil,
+  type SeccionRefuerzosProps,
+} from "./ganado/seccion-refuerzos"
 export {
   MaestroCard,
   type MaestroCardVariante,
