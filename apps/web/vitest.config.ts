@@ -73,6 +73,9 @@ export default defineConfig({
       "tests/sanidad-panel-route.test.tsx",
       // #212 — wiring del shell: deriveActivoId resalta "sanidad" (D-006).
       "tests/sanidad-shell-wiring.test.tsx",
+      // #229 — wizard de eventos: harness con RBAC, exclusiones, transacción y
+      // 403 desde el boundary.
+      "src/server/eventos-wizard.test.ts",
     ],
     environment: "node",
   },
