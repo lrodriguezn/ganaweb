@@ -25,7 +25,9 @@ export function FormularioPesaje({ numeroAnimales, onVolver, onGuardar }: Formul
   const hoy = new Date().toISOString().slice(0, 10)
   const [fecha, setFecha] = useState(hoy)
   const [pesoKg, setPesoKg] = useState("")
-  const [tipoPeso, setTipoPeso] = useState<"control" | "destete" | "preparto" | "postparto">("control")
+  const [tipoPeso, setTipoPeso] = useState<"control" | "destete" | "preparto" | "postparto">(
+    "control",
+  )
   const [comentarios, setComentarios] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
