@@ -860,6 +860,22 @@ describe("SAN-052: agruparRefuerzosPorSemana — Esta semana / Próxima semana /
     expect(resultado.estaSemana[0]?.cantidadAnimales).toBe(1)
   })
 
+  it("expone animalIds: ids distintos del grupo para precarga del drawer (SAN-011)", () => {
+    const resultado = agruparRefuerzosPorSemana(
+      [
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-05" }),
+        filaRefuerzo({ animalId: "a2", proximaDosis: "2026-08-07" }),
+        filaRefuerzo({ animalId: "a3", proximaDosis: "2026-08-06" }),
+        filaRefuerzo({ animalId: "a1", proximaDosis: "2026-08-09" }), // duplicado: a1 ya está
+      ],
+      HOY,
+    )
+
+    const fila = resultado.estaSemana[0]
+    expect(fila?.cantidadAnimales).toBe(3)
+    expect(new Set(fila?.animalIds ?? [])).toEqual(new Set(["a1", "a2", "a3"]))
+  })
+
   it("propósito derivado del tipo de tratamiento (SAN-003)", () => {
     const resultado = agruparRefuerzosPorSemana(
       [

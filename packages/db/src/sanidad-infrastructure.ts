@@ -15,8 +15,12 @@
  *   columna de anulación en el esquema v3: su anulación lógica se deriva de la
  *   cabecera vía `registro_grupal_id`; se refresca `updated_at` para que el
  *   pull incremental por cursor las re-sincronice).
- * - RN-052: `registrarAplicaciones` escribe cabecera + filas hijas en una
- *   transacción (T-002: append-only; el outbox se cablea en #209–#211).
+ * - RN-052: `registrarAplicaciones` delega en `persistirEventosInternos`
+ *   (Issue #244): la cabecera `registros_grupales` + las filas hijas
+ *   `aplicaciones_sanitarias` se escriben en una sola transacción a través
+ *   del contrato canónico (T-002: append-only; atomicidad por contrato).
+ *   La emisión del outbox para estos eventos queda en manos del contrato
+ *   (gap documentado; ver `evento-write-internal.ts`).
  * - PE-002: las lecturas NO filtran por finca; el caso de uso revalida el
  *   scope comparando `fincaId` (patrón CM-024).
  * - Issue #210 (SAN-030, T-002): `registrarEntradaAlmacen` inserta la entrada
@@ -30,6 +34,7 @@
 
 import type {
   AnimalEventoSanidadReferencia,
+  AnimalSanidadListado,
   AplicacionPreviaSanidad,
   AplicacionSanitariaNueva,
   EntradaAlmacenListada,
@@ -39,7 +44,7 @@ import type {
   SanidadEscrituraPort,
   SanidadLecturaPort,
 } from "@ganaweb/aplicacion"
-import { EventoForbiddenError } from "@ganaweb/dominio"
+import { EventoForbiddenError, evaluarAnimalEnFinca } from "@ganaweb/dominio"
 import type { EventoWriteCommand } from "@ganaweb/dominio"
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm"
 import type { DbClient } from "./client.js"
@@ -142,6 +147,32 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
     }
   }
 
+  /**
+   * RN-003: fechas de salida (venta/muerte) por animal. Consultas agrupadas
+   * separadas, portables a SQLite (D3). Compartida por `obtenerAnimales` y
+   * `listarAnimalesEnFinca` (Issue #211).
+   */
+  private async fechasSalidaPorAnimal(ids: readonly string[]): Promise<{
+    readonly ventaPorAnimal: ReadonlyMap<string, string>
+    readonly muertePorAnimal: ReadonlyMap<string, string>
+  }> {
+    if (ids.length === 0) return { ventaPorAnimal: new Map(), muertePorAnimal: new Map() }
+    const fechasVenta = await this.db
+      .select({ animalId: ventas.animalId, fechaSalida: sql<string>`MAX(${ventas.fecha})` })
+      .from(ventas)
+      .where(inArray(ventas.animalId, ids))
+      .groupBy(ventas.animalId)
+    const fechasMuerte = await this.db
+      .select({ animalId: muertes.animalId, fechaSalida: sql<string>`MAX(${muertes.fecha})` })
+      .from(muertes)
+      .where(inArray(muertes.animalId, ids))
+      .groupBy(muertes.animalId)
+    return {
+      ventaPorAnimal: new Map(fechasVenta.map((fila) => [fila.animalId, fila.fechaSalida])),
+      muertePorAnimal: new Map(fechasMuerte.map((fila) => [fila.animalId, fila.fechaSalida])),
+    }
+  }
+
   async obtenerAnimales(ids: readonly string[]): Promise<readonly AnimalEventoSanidadReferencia[]> {
     if (ids.length === 0) return []
     const filasAnimales = await this.db
@@ -155,23 +186,54 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
       .from(animales)
       .where(inArray(animales.id, [...ids]))
 
-    // RN-003: la fecha de salida (venta/muerte) permite evaluar el estado a la
-    // fecha del evento. Consultas agrupadas separadas (portables a SQLite).
     const idsEncontrados = filasAnimales.map((fila) => fila.id)
-    const fechasVenta = await this.db
-      .select({ animalId: ventas.animalId, fechaSalida: sql<string>`MAX(${ventas.fecha})` })
-      .from(ventas)
-      .where(inArray(ventas.animalId, idsEncontrados))
-      .groupBy(ventas.animalId)
-    const fechasMuerte = await this.db
-      .select({ animalId: muertes.animalId, fechaSalida: sql<string>`MAX(${muertes.fecha})` })
-      .from(muertes)
-      .where(inArray(muertes.animalId, idsEncontrados))
-      .groupBy(muertes.animalId)
-    const ventaPorAnimal = new Map(fechasVenta.map((fila) => [fila.animalId, fila.fechaSalida]))
-    const muertePorAnimal = new Map(fechasMuerte.map((fila) => [fila.animalId, fila.fechaSalida]))
+    const { ventaPorAnimal, muertePorAnimal } = await this.fechasSalidaPorAnimal(idsEncontrados)
 
     return filasAnimales.map((fila) => mapearAnimalEvento(fila, ventaPorAnimal, muertePorAnimal))
+  }
+
+  /**
+   * Issue #211 (SAN-043/RN-003): animales de la finca EN_FINCA a `fecha`.
+   * Reutiliza el mapeo de estado/fechas de `obtenerAnimales` y la regla de
+   * dominio `evaluarAnimalEnFinca`: un vendido/muerto con salida posterior a
+   * `fecha` seguía en la finca ese día (captura tardía). Orden por código
+   * para una selección estable en el drawer. SQL portable a SQLite (D3).
+   */
+  async listarAnimalesEnFinca(
+    fincaId: string,
+    fecha: string,
+  ): Promise<readonly AnimalSanidadListado[]> {
+    const filasAnimales = await this.db
+      .select({
+        id: animales.id,
+        fincaId: animales.fincaId,
+        codigo: animales.codigo,
+        nombre: animales.nombre,
+        estadoAnimalKey: animales.estadoAnimalKey,
+        fechaNacimiento: animales.fechaNacimiento,
+        fechaCompra: animales.fechaCompra,
+      })
+      .from(animales)
+      .where(eq(animales.fincaId, fincaId))
+      .orderBy(animales.codigo)
+    if (filasAnimales.length === 0) return []
+
+    const idsEncontrados = filasAnimales.map((fila) => fila.id)
+    const { ventaPorAnimal, muertePorAnimal } = await this.fechasSalidaPorAnimal(idsEncontrados)
+
+    const enFinca: AnimalSanidadListado[] = []
+    for (const fila of filasAnimales) {
+      const referencia = mapearAnimalEvento(fila, ventaPorAnimal, muertePorAnimal)
+      const evaluacion = evaluarAnimalEnFinca({
+        fechaEvento: fecha,
+        estadoActual: referencia.estadoActual,
+        fechaSalida: referencia.fechaSalida,
+      })
+      if (evaluacion.valido) {
+        enFinca.push({ id: fila.id, codigo: fila.codigo, nombre: fila.nombre ?? "" })
+      }
+    }
+    return enFinca
   }
 
   async listarAplicacionesPrevias(
@@ -317,6 +379,12 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
     }
   }
 
+  /**
+   * Gap heredado (Issue #211, tarea 1.3): la anulación NO emite filas
+   * `sync_outbox` (UPDATE de cabecera + hijas). El tratamiento de la
+   * anulación en el transporte de sync queda pendiente para el MVP de sync
+   * (RN-060); acá sólo se documenta, no se amplía alcance.
+   */
   async anularRegistroGrupal(
     id: string,
     fincaId: string,

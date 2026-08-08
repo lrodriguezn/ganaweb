@@ -87,6 +87,7 @@ function fakeDeps(
       llamadas.listarEntradasAlmacen.push(fincaId)
       return config.entradas ?? []
     },
+    listarAnimalesEnFinca: async () => [],
   }
   const escritura: SanidadEscrituraPort = {
     registrarAplicaciones: async () => ({ tipo: "aplicado", aplicacionIds: [] }),

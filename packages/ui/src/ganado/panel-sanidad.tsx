@@ -12,8 +12,8 @@
  * - SAN-002: 4 MetricCards; las de stock navegables cuando se provee
  *   `onVerStock` (llevan al listado filtrado).
  * - SAN-003/SAN-052: Próximas agrupadas en Esta semana / Próxima semana /
- *   Este mes; clic en una fila → `onRegistrarAplicacion(productoId)` con el
- *   producto precargado.
+ *   Este mes; clic en una fila → `onRegistrarAplicacion(productoId, animalIds)`
+ *   con el producto Y los animales precargados.
  * - SAN-004: últimas 4 registradas + enlace "Ver historial →".
  * - SAN-005: hasta 4 alertas de stock con badge por estado (el estado llega
  *   calculado del servidor con el umbral real — T-001; nunca se recalcula aquí).
@@ -48,6 +48,12 @@ export interface RefuerzoPendientePanelVista {
   readonly cantidadAnimales: number
   /** ISO YYYY-MM-DD. */
   readonly venceFecha: string
+  /**
+   * Issue #211/SAN-011: ids de los animales del grupo, para que la card de
+   * Próximas precargue el drawer con la selección. Vacío cuando el panel
+   * no conoce los animales (#212 sólo conoce conteos); #213 los aporta.
+   */
+  readonly animalIds: readonly string[]
 }
 
 /** SAN-052: los tres períodos de la semana natural. */
@@ -89,8 +95,8 @@ export interface PanelSanidadProps {
   readonly proximas: PeriodosRefuerzosPanelVista | null
   readonly ultimas: readonly UltimaAplicacionPanelVista[] | null
   readonly stock: readonly AlertaStockPanelVista[] | null
-  /** SAN-003: abre el registro de aplicación con el producto precargado. */
-  readonly onRegistrarAplicacion: (productoId: string) => void
+  /** SAN-003/SAN-011: abre el registro con el producto y los animales precargados. */
+  readonly onRegistrarAplicacion: (productoId: string, animalIds: readonly string[]) => void
   /** SAN-014/#210: abre la entrada de almacén. */
   readonly onEntradaAlmacen: () => void
   /** SAN-004: href real del historial (enlace accesible); onVerHistorial navega. */
@@ -114,12 +120,12 @@ function FilaRefuerzo({
   onRegistrar,
 }: {
   readonly refuerzo: RefuerzoPendientePanelVista
-  readonly onRegistrar: (productoId: string) => void
+  readonly onRegistrar: (productoId: string, animalIds: readonly string[]) => void
 }) {
   return (
     <button
       type="button"
-      onClick={() => onRegistrar(refuerzo.productoId)}
+      onClick={() => onRegistrar(refuerzo.productoId, refuerzo.animalIds)}
       className={cn(
         "w-full flex items-center gap-3 px-1 py-3 min-h-[--h-touch] rounded-md text-left",
         "hover:bg-muted/40 active:bg-muted transition-colors duration-100",
@@ -146,7 +152,7 @@ function SeccionPeriodo({
 }: {
   readonly titulo: string
   readonly filas: readonly RefuerzoPendientePanelVista[]
-  readonly onRegistrar: (productoId: string) => void
+  readonly onRegistrar: (productoId: string, animalIds: readonly string[]) => void
 }) {
   if (filas.length === 0) return null
   return (
@@ -207,7 +213,7 @@ function ContenidoProximas({
   onRegistrar,
 }: {
   readonly proximas: PeriodosRefuerzosPanelVista | null
-  readonly onRegistrar: (productoId: string) => void
+  readonly onRegistrar: (productoId: string, animalIds: readonly string[]) => void
 }) {
   if (proximas === null) {
     return <AvisoDegradacion mensaje="No se pudieron cargar las próximas aplicaciones." />
@@ -260,7 +266,7 @@ export function PanelSanidad({
               <Button variant="outline" onClick={onEntradaAlmacen}>
                 <Plus aria-hidden="true" className="size-4" />+ Entrada almacén
               </Button>
-              <Button onClick={() => onRegistrarAplicacion("")}>
+              <Button onClick={() => onRegistrarAplicacion("", [])}>
                 <Syringe aria-hidden="true" className="size-4" />
                 Registrar aplicación
               </Button>
