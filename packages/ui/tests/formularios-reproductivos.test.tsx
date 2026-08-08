@@ -13,9 +13,9 @@ import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { FormularioServicio } from "../src/ganado/evento-wizard/formularios/formulario-servicio"
 import { FormularioPalpacion } from "../src/ganado/evento-wizard/formularios/formulario-palpacion"
 import { FormularioParto } from "../src/ganado/evento-wizard/formularios/formulario-parto"
+import { FormularioServicio } from "../src/ganado/evento-wizard/formularios/formulario-servicio"
 
 afterEach(() => {
   cleanup()
