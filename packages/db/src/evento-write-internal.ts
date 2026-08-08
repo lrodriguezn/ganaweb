@@ -153,6 +153,21 @@ class DrizzleEventoWriteGateway implements EventoWriteGateway {
     })
   }
 
+  /** T-002/D1: batch persist + extra hook in the SAME transaction. */
+  persistirLoteConTransaccion(
+    commands: readonly EventoWriteCommand[],
+    enTransaccion: (tx: Transaction) => Promise<void>,
+  ) {
+    return this.db.transaction(async (tx) => {
+      const results: { readonly id: string }[] = []
+      for (const command of commands) {
+        results.push(await this.persistirEnTransaccion(tx, command))
+      }
+      await enTransaccion(tx)
+      return results
+    })
+  }
+
   private persistirEnTransaccion(tx: Transaction, command: EventoWriteCommand) {
     return command.tipo === "crear_registro_grupal"
       ? this.persistHeader(tx, command)
@@ -271,11 +286,22 @@ export function persistirEventosInternos(
   db: DbClient,
   commands: readonly EventoWriteCommand[],
   contexto: ContextoEscrituraEventoInterno,
+  opciones?: { readonly enTransaccion?: (tx: unknown) => Promise<void> },
 ) {
   for (const command of commands) {
     if (contexto.fincaId !== command.fincaId || contexto.usuarioId !== command.usuarioId) {
       throw new EventoForbiddenError("alcance_invalido")
     }
   }
-  return new DrizzleEventoWriteGateway(db).persistirLote(commands)
+  const gateway = new DrizzleEventoWriteGateway(db)
+  const enTransaccion = opciones?.enTransaccion
+  if (enTransaccion) {
+    // T-002/D1: ejecutar la persistencia y el callback adicional en la
+    // misma transacción para atomicidad (ej: inserción de notificaciones).
+    return gateway.persistirLoteConTransaccion(
+      commands,
+      enTransaccion as (tx: Transaction) => Promise<void>,
+    )
+  }
+  return gateway.persistirLote(commands)
 }

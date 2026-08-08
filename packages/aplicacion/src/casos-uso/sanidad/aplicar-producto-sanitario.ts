@@ -390,36 +390,38 @@ export function aplicarProductoSanitario(deps: AplicarProductoSanitarioDeps) {
     })
     if (!cabecera.valido) return { tipo: "error", detalle: cabecera.error.detalle }
 
+    // SAN-051/RN-042: preparar datos de notificaciones para cada aplicación
+    // con proximaDosis futura. Se pasan al adaptador de escritura para que
+    // las inserte dentro de la MISMA transacción que las filas y el outbox
+    // (T-002/RN-060). Si la inserción falla, se hace rollback de TODO (atomicidad).
+    const proximaDosis = cmd.proximaDosis
+    const crearNotificaciones =
+      proximaDosis !== null && proximaDosis !== undefined
+        ? (aplicacionIds: readonly string[]) =>
+            aplicacionIds.map((aplicacionId) => ({
+              fincaId: cmd.sesion.fincaActivaId,
+              tipo: "refuerzo_vacuna" as const,
+              titulo: "Refuerzo de vacuna pendiente",
+              mensaje: `Vacuna ${pasoProducto.producto.descripcion} con refuerzo programado para ${proximaDosis}`,
+              entidadTipo: "aplicacion_sanitaria",
+              entidadId: aplicacionId,
+              fechaEvento: Math.floor(new Date(proximaDosis).getTime() / 1000),
+              usuarioId: cmd.sesion.usuarioId,
+            }))
+        : undefined
+
     const escrito = await deps.escritura.registrarAplicaciones({
       // SAN-063: el scope del outbox sale de la finca activa revalidada.
       fincaId: cmd.sesion.fincaActivaId,
       registroGrupal: escritura.registroGrupal,
       aplicaciones: escritura.aplicaciones,
       usuarioCreadoPor: cmd.sesion.usuarioId,
+      // T-002/D1: pasar el puerto de notificaciones y el builder para
+      // inserción atómica dentro de la misma transacción.
+      ...(crearNotificaciones ? { notificaciones: deps.notificaciones, crearNotificaciones } : {}),
     })
     if (escrito.tipo === "conflicto") return { tipo: "conflicto", detalle: escrito.detalle }
     if (escrito.tipo === "error") return { tipo: "error", detalle: escrito.detalle }
-
-    // SAN-051/RN-042: crear notificaciones de refuerzo para cada aplicación
-    // con proximaDosis futura, dentro de la MISMA transacción que las filas
-    // y el outbox (T-002/RN-060). Si la inserción falla, se hace rollback
-    // de TODO (atomicidad).
-    let notificacionesCreadas = 0
-    const proximaDosis = cmd.proximaDosis
-    if (proximaDosis !== null && proximaDosis !== undefined) {
-      const notificaciones = escrito.aplicacionIds.map((aplicacionId) => ({
-        fincaId: cmd.sesion.fincaActivaId,
-        tipo: "refuerzo_vacuna" as const,
-        titulo: "Refuerzo de vacuna pendiente",
-        mensaje: `Vacuna ${pasoProducto.producto.descripcion} con refuerzo programado para ${proximaDosis}`,
-        entidadTipo: "aplicacion_sanitaria",
-        entidadId: aplicacionId,
-        fechaEvento: Math.floor(new Date(proximaDosis).getTime() / 1000),
-        usuarioId: cmd.sesion.usuarioId,
-      }))
-      await deps.notificaciones.insertarNotificacionesEnTx(null, notificaciones)
-      notificacionesCreadas = notificaciones.length
-    }
 
     return {
       tipo: "aplicado",
@@ -430,7 +432,7 @@ export function aplicarProductoSanitario(deps: AplicarProductoSanitarioDeps) {
       advertencias: pasoAnimales.advertencias,
       stockDisponible,
       alertaStockNegativo: esAlertaReconciliacionStock(stockDisponible),
-      notificacionesCreadas,
+      notificacionesCreadas: crearNotificaciones ? escrito.aplicacionIds.length : 0,
     }
   }
 }

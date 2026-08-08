@@ -112,6 +112,8 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
       registroGrupal: RegistroGrupalTratamientoNuevo | null
       aplicaciones: readonly AplicacionSanitariaNueva[]
       usuarioCreadoPor: string
+      notificaciones?: NotificacionesEscrituraPort
+      crearNotificaciones?: (aplicacionIds: readonly string[]) => readonly NotificacionNueva[]
     }>,
     anularRegistroGrupal: [] as Array<{ id: string; fincaId: string }>,
     registrarEntradaAlmacen: [] as Array<
@@ -121,12 +123,23 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
   const port: SanidadEscrituraPort = {
     registrarAplicaciones: async (entrada) => {
       llamadas.registrarAplicaciones.push(entrada)
-      return (
-        resultado ?? {
-          tipo: "aplicado",
-          aplicacionIds: entrada.aplicaciones.map((_, indice) => `app-creada-${indice + 1}`),
+      const resultadoFinal = resultado ?? {
+        tipo: "aplicado" as const,
+        aplicacionIds: entrada.aplicaciones.map((_, indice) => `app-creada-${indice + 1}`),
+      }
+      // T-002/D1: simular la inserción atómica de notificaciones
+      // Si se proporciona el builder y el puerto, ejecutarlos
+      if (
+        resultadoFinal.tipo === "aplicado" &&
+        entrada.notificaciones &&
+        entrada.crearNotificaciones
+      ) {
+        const notificaciones = entrada.crearNotificaciones(resultadoFinal.aplicacionIds)
+        if (notificaciones.length > 0) {
+          await entrada.notificaciones.insertarNotificacionesEnTx(null, notificaciones)
         }
-      )
+      }
+      return resultadoFinal
     },
     anularRegistroGrupal: async (id, fincaId) => {
       llamadas.anularRegistroGrupal.push({ id, fincaId })
@@ -787,12 +800,45 @@ describe("aplicarProductoSanitario — SAN-051: notificaciones de refuerzo", () 
     expect(notificaciones.llamadas.insertarNotificacionesEnTx[0]?.notificaciones).toHaveLength(3)
   })
 
-  it("pasa null como tx al notificaciones port (D1 server-first)", async () => {
+  it("pasa el puerto de notificaciones y el builder al adaptador de escritura (T-002/D1)", async () => {
     const notificaciones = fakeNotificaciones()
+    const escritura = fakeSanidadEscritura()
+
     await aplicarProductoSanitario(
-      deps(fakeSanidadLectura().port, fakeSanidadEscritura().port, notificaciones.port),
+      deps(fakeSanidadLectura().port, escritura.port, notificaciones.port),
     )(comando({ proximaDosis: "2026-09-05" }))
 
-    expect(notificaciones.llamadas.insertarNotificacionesEnTx[0]?.tx).toBeNull()
+    // T-002/D1: las notificaciones se insertan DENTRO de la transacción
+    // del adaptador de escritura, no después. El puerto de notificaciones
+    // y el builder se pasan al adaptador.
+    expect(escritura.llamadas.registrarAplicaciones[0]?.notificaciones).toBe(notificaciones.port)
+    expect(escritura.llamadas.registrarAplicaciones[0]?.crearNotificaciones).toBeDefined()
+    // El builder debe generar notificaciones cuando se le pasa los IDs
+    const builder = escritura.llamadas.registrarAplicaciones[0]?.crearNotificaciones
+    if (builder) {
+      const notifs = builder(["app-1", "app-2"])
+      expect(notifs).toHaveLength(2)
+      expect(notifs[0]?.tipo).toBe("refuerzo_vacuna")
+      expect(notifs[0]?.entidadId).toBe("app-1")
+      expect(notifs[1]?.entidadId).toBe("app-2")
+    }
+  })
+
+  it("si la inserción de notificaciones falla, se hace rollback de las aplicaciones", async () => {
+    const notificaciones = fakeNotificaciones()
+    const escritura = fakeSanidadEscritura({
+      tipo: "error",
+      detalle: "Error en notificaciones",
+    })
+
+    const resultado = await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, escritura.port, notificaciones.port),
+    )(comando({ proximaDosis: "2026-09-05" }))
+
+    // Si el adaptador de escritura falla (por error en notificaciones),
+    // el resultado debe ser error, no aplicado.
+    expect(resultado.tipo).toBe("error")
+    // Las notificaciones NO deben haber sido insertadas independientemente.
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(0)
   })
 })

@@ -18,6 +18,7 @@ import type {
   AplicacionSanitariaNueva,
   EstadoAnimalEventoSanidad,
 } from "@ganaweb/dominio"
+import type { NotificacionNueva, NotificacionesEscrituraPort } from "./notificaciones-port.js"
 
 export type { AplicacionPreviaSanidad, AplicacionSanitariaNueva, EstadoAnimalEventoSanidad }
 
@@ -185,6 +186,21 @@ export interface SanidadEscrituraPort {
     readonly aplicaciones: readonly AplicacionSanitariaNueva[]
     /** PE-006: todo insert de evento lleva usuario_creado_por. */
     readonly usuarioCreadoPor: string
+    /**
+     * T-002/D1: puerto de notificaciones para insertar dentro de la misma
+     * transacción que las aplicaciones y el outbox. Si se proporciona, las
+     * notificaciones se insertan dentro de la transacción del adaptador;
+     * si falla, se hace rollback de TODO (atomicidad).
+     */
+    readonly notificaciones?: NotificacionesEscrituraPort | undefined
+    /**
+     * T-002/D1: función que genera las notificaciones a partir de los
+     * IDs de las aplicaciones creadas. Se ejecuta dentro de la transacción
+     * del adaptador después de crear las aplicaciones.
+     */
+    readonly crearNotificaciones?: (
+      aplicacionIds: readonly string[],
+    ) => readonly NotificacionNueva[]
   }): Promise<
     | { readonly tipo: "aplicado"; readonly aplicacionIds: readonly string[] }
     | { readonly tipo: "conflicto"; readonly detalle: string }
