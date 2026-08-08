@@ -73,6 +73,9 @@ export default defineConfig({
       // SAN-001 y wiring de los drawers de aplicación (SAN-003) y entrada
       // de almacén (SAN-014/#210).
       "tests/sanidad-panel-route.test.tsx",
+      // #213 — tabs mobile Catálogo + Almacén con mock de matchMedia
+      // (SAN-013/SAN-014/SAN-060, U4).
+      "tests/sanidad-mobile-route.test.tsx",
       // #212 — wiring del shell: deriveActivoId resalta "sanidad" (D-006).
       "tests/sanidad-shell-wiring.test.tsx",
       // #229 — wizard de eventos: harness con RBAC, exclusiones, transacción y

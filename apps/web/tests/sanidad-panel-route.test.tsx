@@ -29,34 +29,28 @@ import {
   SanidadRouteView,
   type SanidadRouteViewProps,
 } from "../src/routes/_app/fincas/$fincaId/sanidad.js"
-import { registrarEntradaAlmacenFn } from "../src/server/sanidad-almacen.js"
-import { listarCatalogoSanidadFn } from "../src/server/sanidad-catalogo-actions.js"
+import { registrarEntradaAlmacenFn } from "../src/server/sanidad-mobile.js"
+import { listarCatalogoSanidadFn } from "../src/server/sanidad-mobile.js"
 import {
   listarHistorialPanelSanidadFn,
   listarProximasPanelSanidadFn,
   listarStockPanelSanidadFn,
   listarUltimasPanelSanidadFn,
   obtenerMetricasPanelSanidadFn,
-} from "../src/server/sanidad-panel.js"
-import { listarAnimalesSanidadFn, registrarAplicacionFn } from "../src/server/sanidad-registro.js"
+} from "../src/server/sanidad-mobile.js"
+import { listarAnimalesSanidadFn, registrarAplicacionFn } from "../src/server/sanidad-mobile.js"
 
-vi.mock("../src/server/sanidad-panel.js", () => ({
+vi.mock("../src/server/sanidad-mobile.js", () => ({
   obtenerMetricasPanelSanidadFn: vi.fn(),
   listarProximasPanelSanidadFn: vi.fn(),
   listarUltimasPanelSanidadFn: vi.fn(),
   listarStockPanelSanidadFn: vi.fn(),
   listarHistorialPanelSanidadFn: vi.fn(),
-}))
-vi.mock("../src/server/sanidad-almacen.js", () => ({
-  registrarEntradaAlmacenFn: vi.fn(),
-  listarEntradasAlmacenFn: vi.fn(),
-}))
-vi.mock("../src/server/sanidad-catalogo-actions.js", () => ({
   listarCatalogoSanidadFn: vi.fn(),
-}))
-vi.mock("../src/server/sanidad-registro.js", () => ({
-  registrarAplicacionFn: vi.fn(),
+  listarEntradasAlmacenFn: vi.fn(),
+  registrarEntradaAlmacenFn: vi.fn(),
   listarAnimalesSanidadFn: vi.fn(),
+  registrarAplicacionFn: vi.fn(),
 }))
 
 beforeAll(() => {

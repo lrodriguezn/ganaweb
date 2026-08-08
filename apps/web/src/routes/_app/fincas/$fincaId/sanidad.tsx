@@ -29,11 +29,16 @@ import type {
 import {
   type AccesoPanelSanidadDestino,
   type AlertaStockRefuerzoMovil,
+  CatalogoProductosSanitariosMobile,
   type DatosEntradaAlmacen,
   Drawer,
   DrawerContent,
+  type EntradaAlmacenFila,
+  type FilaProductoSanitarioUI,
   FormularioEntradaAlmacen,
+  FormularioProductoSanitario,
   FormularioVacuna,
+  ListadoEntradasAlmacen,
   PanelSanidad,
   type ProductoEntradaAlmacen,
   type ProductoSanitario,
@@ -44,19 +49,18 @@ import {
   useMatchMedia,
 } from "@ganaweb/ui"
 import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router"
-import { useState } from "react"
-import { registrarEntradaAlmacenFn } from "../../../../server/sanidad-almacen.js"
-import { listarCatalogoSanidadFn } from "../../../../server/sanidad-catalogo-actions.js"
+import { useCallback, useEffect, useState } from "react"
 import {
+  listarAnimalesSanidadFn,
+  listarCatalogoSanidadFn,
+  listarEntradasAlmacenFn,
   listarProximasPanelSanidadFn,
   listarStockPanelSanidadFn,
   listarUltimasPanelSanidadFn,
   obtenerMetricasPanelSanidadFn,
-} from "../../../../server/sanidad-panel.js"
-import {
-  listarAnimalesSanidadFn,
   registrarAplicacionFn,
-} from "../../../../server/sanidad-registro.js"
+  registrarEntradaAlmacenFn,
+} from "../../../../server/sanidad-mobile.js"
 
 /** Data del loader: una fuente por card, `null` = card degradada (CM-042). */
 export interface SanidadPanelLoaderData {
@@ -192,6 +196,10 @@ export function SanidadRouteView({
   const [erroresAplicacion, setErroresAplicacion] = useState<Record<string, string>>({})
   const [entradaAbierta, setEntradaAbierta] = useState(false)
   const [erroresEntrada, setErroresEntrada] = useState<Record<string, string>>({})
+  // U4 (#213): edición de producto sanitario. El drawer se abre con
+  // `FormularioProductoSanitario` precargado. La inactivación se hace
+  // dentro de `CatalogoProductosSanitariosMobile` (AlertDialog interno).
+  const [productoEditar, setProductoEditar] = useState<FilaProductoSanitarioUI | null>(null)
 
   // SAN-003/SAN-011: abrir el registro con el producto y los animales precargados
   // ("" = sin precarga; [] = selección abierta, comportamiento existente).
@@ -319,11 +327,21 @@ export function SanidadRouteView({
       {esMovil ? (
         <SanidadRouteMovil
           data={data}
+          fincaId={fincaId}
           permisos={permisos}
           onRegistrarAplicacion={abrirRegistroAplicacion}
           onEntradaAlmacen={() => {
             setErroresEntrada({})
             setEntradaAbierta(true)
+          }}
+          onEditarProducto={setProductoEditar}
+          onInactivarProducto={() => {
+            // El AlertDialog vive dentro de CatalogoProductosSanitariosMobile;
+            // el guardado se cablea en una iteración posterior (CRUD offline
+            // E2E TS-004, fuera de #213). El tab Catálogo ya consume
+            // `listarCatalogoSanidadFn` para listar; el callback es no-op
+            // mientras no haya server function de cambio de estado bundleable
+            // en `sanidad-mobile.ts` (#213 lo deja documentado).
           }}
         />
       ) : (
@@ -379,6 +397,38 @@ export function SanidadRouteView({
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* U4 (#213): edición de producto sanitario desde el tab Catálogo. */}
+      <Drawer
+        open={productoEditar !== null}
+        onOpenChange={(abierto) => {
+          if (!abierto) setProductoEditar(null)
+        }}
+      >
+        <DrawerContent className="rounded-t-sheet h-[90vh]">
+          <div className="p-4 pb-safe">
+            <h2 className="text-section font-semibold text-foreground mb-4">
+              Editar producto sanitario
+            </h2>
+            {productoEditar === null ? null : (
+              <FormularioProductoSanitario
+                inicial={{
+                  codigo: productoEditar.codigo,
+                  descripcion: productoEditar.descripcion,
+                  mlMgPorDosis: productoEditar.mlMgPorDosis,
+                  tipoTratamiento: productoEditar.tipoTratamiento,
+                  precioDosis: productoEditar.precioDosis,
+                  comentarios: productoEditar.comentarios,
+                }}
+                onEnviar={() => {
+                  setProductoEditar(null)
+                }}
+                onCancelar={() => setProductoEditar(null)}
+              />
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   )
 }
@@ -395,14 +445,20 @@ export function SanidadRouteView({
  */
 function SanidadRouteMovil({
   data,
+  fincaId,
   permisos,
   onRegistrarAplicacion,
   onEntradaAlmacen,
+  onEditarProducto,
+  onInactivarProducto,
 }: {
   readonly data: SanidadPanelLoaderData
+  readonly fincaId: string
   readonly permisos: ReturnType<typeof crearPermisos>
   readonly onRegistrarAplicacion: (productoId: string, animalIds: readonly string[]) => void
   readonly onEntradaAlmacen: () => void
+  readonly onEditarProducto: (fila: FilaProductoSanitarioUI) => void
+  readonly onInactivarProducto: (fila: FilaProductoSanitarioUI, activo: boolean) => void
 }) {
   const refuerzoAItems = (
     filas: readonly {
@@ -467,24 +523,145 @@ function SanidadRouteMovil({
         />
       }
       contenidoCatalogo={
-        <p className="text-support text-muted-foreground">
-          El catálogo se cablea en la fase 4 (#213).
-        </p>
+        <TabCatalogoMobile
+          fincaId={fincaId}
+          permisos={permisos}
+          onEditar={onEditarProducto}
+          onInactivar={onInactivarProducto}
+        />
       }
-      contenidoAlmacen={
-        <div className="flex flex-col gap-3">
-          <p className="text-support text-muted-foreground">
-            El almacén se cablea en la fase 4 (#213).
-          </p>
-          <button
-            type="button"
-            onClick={onEntradaAlmacen}
-            className="self-start min-h-[--h-touch] rounded-md border border-border bg-card px-3 py-2 text-support"
-          >
-            + Entrada almacén
-          </button>
-        </div>
-      }
+      contenidoAlmacen={<TabAlmacenMobile fincaId={fincaId} onAbrirDrawer={onEntradaAlmacen} />}
     />
+  )
+}
+
+/**
+ * Tab Catálogo mobile (Issue #213, U4, SAN-013). Carga filas vía
+ * `listarCatalogoSanidadFn` al montar; `onEditar` abre el drawer con
+ * `FormularioProductoSanitario`; `onInactivar` con AlertDialog.
+ * CRUD gateado por `sanidad:editar` / `sanidad:anular` (SAN-060).
+ */
+function TabCatalogoMobile({
+  fincaId,
+  permisos,
+  onEditar,
+  onInactivar,
+}: {
+  readonly fincaId: string
+  readonly permisos: ReturnType<typeof crearPermisos>
+  readonly onEditar: (fila: FilaProductoSanitarioUI) => void
+  readonly onInactivar: (fila: FilaProductoSanitarioUI, activo: boolean) => void
+}) {
+  const [filas, setFilas] = useState<readonly FilaProductoSanitarioUI[] | null>(null)
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
+  const cargar = useCallback(async () => {
+    try {
+      const resultado = await listarCatalogoSanidadFn({ data: { fincaId, soloActivos: false } })
+      if (resultado.tipo === "catalogo") {
+        setFilas(
+          resultado.filas.map((fila) => ({
+            id: fila.id,
+            codigo: fila.codigo,
+            descripcion: fila.descripcion,
+            mlMgPorDosis: fila.mlMgPorDosis,
+            tipoTratamiento: fila.tipoTratamiento,
+            precioDosis: fila.precioDosis,
+            comentarios: fila.comentarios,
+            activo: fila.activo,
+            stockDisponible: fila.stockDisponible,
+            estadoStock: fila.estadoStock,
+          })),
+        )
+        setErrorCarga(null)
+      } else {
+        setFilas([])
+      }
+    } catch {
+      setErrorCarga("No se pudo cargar el catálogo.")
+      setFilas([])
+    }
+  }, [fincaId])
+  useEffect(() => {
+    void cargar()
+  }, [cargar])
+
+  if (errorCarga !== null) {
+    return <p className="text-support text-muted-foreground">{errorCarga}</p>
+  }
+  if (filas === null) {
+    return <p className="text-support text-muted-foreground">Cargando catálogo…</p>
+  }
+
+  return (
+    <CatalogoProductosSanitariosMobile
+      filas={filas}
+      permisos={permisos}
+      onEditar={onEditar}
+      onCambiarEstado={onInactivar}
+    />
+  )
+}
+
+/**
+ * Tab Almacén mobile (Issue #213, U4, SAN-014). Carga entradas vía
+ * `listarEntradasAlmacenFn`; FAB abre el drawer de entrada. El guardado
+ * lo hace `SanidadRouteView` vía `registrarEntradaAlmacenFn`.
+ */
+function TabAlmacenMobile({
+  fincaId,
+  onAbrirDrawer,
+}: {
+  readonly fincaId: string
+  readonly onAbrirDrawer: () => void
+}) {
+  const [entradas, setEntradas] = useState<readonly EntradaAlmacenFila[] | null>(null)
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
+  const cargar = useCallback(async () => {
+    try {
+      const resultado = await listarEntradasAlmacenFn({ data: { fincaId } })
+      if (resultado.tipo === "lista") {
+        setEntradas(
+          resultado.entradas.map((entrada) => ({
+            id: entrada.id,
+            fecha: entrada.fecha,
+            productoCodigo: entrada.productoCodigo,
+            productoDescripcion: entrada.productoDescripcion,
+            dosis: entrada.dosis,
+            precioPorDosis: entrada.precioPorDosis,
+            comentario: entrada.comentario,
+          })),
+        )
+        setErrorCarga(null)
+      } else {
+        setEntradas([])
+      }
+    } catch {
+      setErrorCarga("No se pudo cargar el almacén.")
+      setEntradas([])
+    }
+  }, [fincaId])
+  useEffect(() => {
+    void cargar()
+  }, [cargar])
+
+  if (errorCarga !== null) {
+    return <p className="text-support text-muted-foreground">{errorCarga}</p>
+  }
+  if (entradas === null) {
+    return <p className="text-support text-muted-foreground">Cargando almacén…</p>
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ListadoEntradasAlmacen entradas={entradas} />
+      <button
+        type="button"
+        onClick={onAbrirDrawer}
+        className="self-end min-h-[--h-touch] rounded-full bg-pasto-600 px-4 py-2 text-on-primary"
+        aria-label="Nueva entrada de almacén"
+      >
+        + Entrada
+      </button>
+    </div>
   )
 }
