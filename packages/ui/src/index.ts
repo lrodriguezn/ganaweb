@@ -112,6 +112,26 @@ export {
   StockBadge,
 } from "./ganado/estado-badge"
 export { EventDrawer } from "./ganado/event-drawer"
+export {
+  EventoWizard,
+  type EventoWizardProps,
+  type ResultadoCapturaEvento,
+  type ResultadoIds,
+} from "./ganado/evento-wizard"
+export type {
+  BuscarAnimalPorCodigo,
+  CapturaEvento,
+  CargaAnimalesPorOrigen,
+  CatalogosParaAlcance,
+  DominioEventoWizard,
+  OrigenSeleccionGrupal,
+  PermisosEfectivosPorDominio,
+  Seleccion,
+  SeleccionGrupal,
+  SeleccionIndividual,
+  TipoEventoMeta,
+  TipoEventoWizard,
+} from "./ganado/evento-wizard/types"
 export { EstiloSwitcher } from "./ganado/estilo-switcher"
 export type { EstiloSwitcherProps } from "./ganado/estilo-switcher"
 export { Fab } from "./ganado/fab"
