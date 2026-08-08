@@ -16,6 +16,8 @@ import type {
   AplicarProductoSanitarioDeps,
   CommandAplicarProductoSanitario,
   CommandRegistrarEntradaAlmacen,
+  NotificacionNueva,
+  NotificacionesEscrituraPort,
   ProductoSanitarioReferencia,
   RegistroGrupalTratamientoNuevo,
   ResultadoAplicarProductoSanitario,
@@ -156,8 +158,29 @@ function fakeSanidadEscrituraConResultado(resultado: ResultadoEntradaPort) {
 function deps(
   lectura: SanidadLecturaPort,
   escritura: SanidadEscrituraPort,
+  notificaciones?: NotificacionesEscrituraPort,
 ): AplicarProductoSanitarioDeps {
-  return { lectura, escritura, reloj: { ahora: () => HOY } }
+  return {
+    lectura,
+    escritura,
+    notificaciones: notificaciones ?? fakeNotificaciones().port,
+    reloj: { ahora: () => HOY },
+  }
+}
+
+function fakeNotificaciones() {
+  const llamadas = {
+    insertarNotificacionesEnTx: [] as Array<{
+      tx: unknown
+      notificaciones: readonly NotificacionNueva[]
+    }>,
+  }
+  const port: NotificacionesEscrituraPort = {
+    insertarNotificacionesEnTx: async (tx, notificaciones) => {
+      llamadas.insertarNotificacionesEnTx.push({ tx, notificaciones })
+    },
+  }
+  return { port, llamadas }
 }
 
 function comando(
@@ -710,5 +733,66 @@ describe("registrarEntradaAlmacen — registro y stock (SAN-030, RN-041, SAN-031
       ),
     )(comandoEntrada())
     expect(error).toEqual({ tipo: "error", detalle: "timeout de base de datos" })
+  })
+})
+
+describe("aplicarProductoSanitario — SAN-051: notificaciones de refuerzo", () => {
+  it("crea notificación refuerzo_vacuna cuando hay proximaDosis futura", async () => {
+    const notificaciones = fakeNotificaciones()
+    const resultado = await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, fakeSanidadEscritura().port, notificaciones.port),
+    )(comando({ proximaDosis: "2026-09-05" }))
+
+    expect(resultado.tipo).toBe("aplicado")
+    if (resultado.tipo === "aplicado") {
+      expect(resultado.notificacionesCreadas).toBe(1)
+    }
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(1)
+    const notif = notificaciones.llamadas.insertarNotificacionesEnTx[0]?.notificaciones[0]
+    expect(notif?.tipo).toBe("refuerzo_vacuna")
+    expect(notif?.entidadTipo).toBe("aplicacion_sanitaria")
+  })
+
+  it("NO crea notificación cuando proximaDosis es null", async () => {
+    const notificaciones = fakeNotificaciones()
+    const resultado = await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, fakeSanidadEscritura().port, notificaciones.port),
+    )(comando({ proximaDosis: null }))
+
+    expect(resultado.tipo).toBe("aplicado")
+    if (resultado.tipo === "aplicado") {
+      expect(resultado.notificacionesCreadas).toBe(0)
+    }
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(0)
+  })
+
+  it("crea N notificaciones para N animales con proximaDosis", async () => {
+    const notificaciones = fakeNotificaciones()
+    const lectura = fakeSanidadLectura({
+      animales: [
+        animalFixture({ id: "a1" }),
+        animalFixture({ id: "a2" }),
+        animalFixture({ id: "a3" }),
+      ],
+    })
+    const resultado = await aplicarProductoSanitario(
+      deps(lectura.port, fakeSanidadEscritura().port, notificaciones.port),
+    )(comando({ animalIds: ["a1", "a2", "a3"], proximaDosis: "2026-09-05" }))
+
+    expect(resultado.tipo).toBe("aplicado")
+    if (resultado.tipo === "aplicado") {
+      expect(resultado.notificacionesCreadas).toBe(3)
+    }
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(1)
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx[0]?.notificaciones).toHaveLength(3)
+  })
+
+  it("pasa null como tx al notificaciones port (D1 server-first)", async () => {
+    const notificaciones = fakeNotificaciones()
+    await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, fakeSanidadEscritura().port, notificaciones.port),
+    )(comando({ proximaDosis: "2026-09-05" }))
+
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx[0]?.tx).toBeNull()
   })
 })
