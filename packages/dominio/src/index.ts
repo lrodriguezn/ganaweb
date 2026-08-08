@@ -160,3 +160,22 @@ export {
   validarAuditoriaAnulacion,
   validarCriterioSeleccionGrupal,
 } from "./eventos.js"
+export type { ErrorValidacionNotificacion, TipoNotificacion } from "./notificaciones.js"
+export {
+  DIAS_ANTICIPACION_DEFAULT,
+  TIPOS_NOTIFICACION,
+  calcularFechaNotificacionRefuerzo,
+  validarPreferenciasNotificacion,
+  validarTipoNotificacion,
+} from "./notificaciones.js"
+export type {
+  AlertaAccionInicio,
+  MetricaEnfermos,
+  RefuerzoPorVencer,
+  StockBajoAlerta,
+} from "./dashboard-inicio.js"
+export {
+  esAlertaRequiereAccion,
+  placeholderMetricaEnfermos,
+  seleccionarAlertasInicio,
+} from "./dashboard-inicio.js"
