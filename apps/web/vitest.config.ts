@@ -78,6 +78,10 @@ export default defineConfig({
       // #229 — wizard de eventos: harness con RBAC, exclusiones, transacción y
       // 403 desde el boundary.
       "src/server/eventos-wizard.test.ts",
+      // #228 — Tablero e Historial de Eventos: 4 tarjetas por categoría, feed
+      // reciente, permisos parciales, vacíos, "Ver todo", paginación, atajos
+      // de "+ Registrar" hacia el wizard de #229.
+      "tests/eventos-tablero-route.test.tsx",
     ],
     environment: "node",
   },

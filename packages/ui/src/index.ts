@@ -176,6 +176,19 @@ export { PageHeader } from "./ganado/page-header"
 export type { PageHeaderProps } from "./ganado/page-header"
 export { Sidebar } from "./ganado/sidebar"
 export { SyncPill } from "./ganado/sync-pill"
+export { TableroEventos } from "./ganado/tablero-eventos"
+export type { TableroEventosProps } from "./ganado/tablero-eventos"
+export { HistorialEventos } from "./ganado/tablero-eventos/historial"
+export type { HistorialEventosProps } from "./ganado/tablero-eventos/historial"
+export type {
+  CategoriaEventoMeta,
+  CategoriaEventoTablero,
+  ContadoresEventosFinca,
+  EstadoCargaEventos,
+  EventoFeedItem,
+  EventoHistorialItem,
+  FiltrosEventosFinca,
+} from "./ganado/tablero-eventos/types"
 export { ThemeToggle } from "./ganado/theme-toggle"
 export { Timeline } from "./ganado/timeline"
 
