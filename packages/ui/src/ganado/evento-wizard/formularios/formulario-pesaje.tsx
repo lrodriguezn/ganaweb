@@ -25,7 +25,7 @@ export function FormularioPesaje({ numeroAnimales, onVolver, onGuardar }: Formul
   const hoy = new Date().toISOString().slice(0, 10)
   const [fecha, setFecha] = useState(hoy)
   const [pesoKg, setPesoKg] = useState("")
-  const [tipoPeso, setTipoPeso] = useState<"常规" | "destete" | "preparto" | "postparto">("常规")
+  const [tipoPeso, setTipoPeso] = useState<"control" | "destete" | "preparto" | "postparto">("control")
   const [comentarios, setComentarios] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -92,7 +92,7 @@ export function FormularioPesaje({ numeroAnimales, onVolver, onGuardar }: Formul
         valor={tipoPeso}
         onCambiar={setTipoPeso}
         opciones={[
-          { value: "常规", label: "常规" },
+          { value: "control", label: "Control" },
           { value: "destete", label: "Destete" },
           { value: "preparto", label: "Preparto" },
           { value: "postparto", label: "Postparto" },
