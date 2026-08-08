@@ -6,7 +6,7 @@
  * No toca el server ni TanStack Router — se testea con loader data pineada
  * (mismo patrón que `SanidadRouteView` y `AnimalsListRouteView`).
  *
- * Layout responsive (sin temas nuevos, sin dark:*):
+ * Layout responsive (sin temas nuevos, sin variante de oscuridad):
  *  - mobile (< 768px):  1 columna para tarjetas + 1 columna para feed.
  *  - tablet (768–1023): 2 columnas para tarjetas + 1 columna para feed.
  *  - desktop (≥ 1024):  4 columnas para tarjetas + 1 columna para feed.
