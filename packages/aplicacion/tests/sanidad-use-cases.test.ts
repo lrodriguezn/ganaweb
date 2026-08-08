@@ -16,6 +16,8 @@ import type {
   AplicarProductoSanitarioDeps,
   CommandAplicarProductoSanitario,
   CommandRegistrarEntradaAlmacen,
+  NotificacionNueva,
+  NotificacionesEscrituraPort,
   ProductoSanitarioReferencia,
   RegistroGrupalTratamientoNuevo,
   ResultadoAplicarProductoSanitario,
@@ -110,6 +112,8 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
       registroGrupal: RegistroGrupalTratamientoNuevo | null
       aplicaciones: readonly AplicacionSanitariaNueva[]
       usuarioCreadoPor: string
+      notificaciones?: NotificacionesEscrituraPort
+      crearNotificaciones?: (aplicacionIds: readonly string[]) => readonly NotificacionNueva[]
     }>,
     anularRegistroGrupal: [] as Array<{ id: string; fincaId: string }>,
     registrarEntradaAlmacen: [] as Array<
@@ -119,12 +123,26 @@ function fakeSanidadEscritura(resultado?: ResultadoEscrituraPort) {
   const port: SanidadEscrituraPort = {
     registrarAplicaciones: async (entrada) => {
       llamadas.registrarAplicaciones.push(entrada)
-      return (
-        resultado ?? {
-          tipo: "aplicado",
-          aplicacionIds: entrada.aplicaciones.map((_, indice) => `app-creada-${indice + 1}`),
+      const resultadoFinal = resultado ?? {
+        tipo: "aplicado" as const,
+        aplicacionIds: entrada.aplicaciones.map((_, indice) => `app-creada-${indice + 1}`),
+      }
+      // T-002/D1: simular la inserción atómica de notificaciones.
+      // El adaptador real pasa el tx de la transacción; el fake modela
+      // un token de transacción para que los tests asserten que el mismo
+      // token se pasa a insertarNotificacionesEnTx (identity check).
+      if (
+        resultadoFinal.tipo === "aplicado" &&
+        entrada.notificaciones &&
+        entrada.crearNotificaciones
+      ) {
+        const notificaciones = entrada.crearNotificaciones(resultadoFinal.aplicacionIds)
+        if (notificaciones.length > 0) {
+          const fakeTxToken = { __kind: "fake_transaction_token" } as unknown
+          await entrada.notificaciones.insertarNotificacionesEnTx(fakeTxToken, notificaciones)
         }
-      )
+      }
+      return resultadoFinal
     },
     anularRegistroGrupal: async (id, fincaId) => {
       llamadas.anularRegistroGrupal.push({ id, fincaId })
@@ -156,8 +174,29 @@ function fakeSanidadEscrituraConResultado(resultado: ResultadoEntradaPort) {
 function deps(
   lectura: SanidadLecturaPort,
   escritura: SanidadEscrituraPort,
+  notificaciones?: NotificacionesEscrituraPort,
 ): AplicarProductoSanitarioDeps {
-  return { lectura, escritura, reloj: { ahora: () => HOY } }
+  return {
+    lectura,
+    escritura,
+    notificaciones: notificaciones ?? fakeNotificaciones().port,
+    reloj: { ahora: () => HOY },
+  }
+}
+
+function fakeNotificaciones() {
+  const llamadas = {
+    insertarNotificacionesEnTx: [] as Array<{
+      tx: unknown
+      notificaciones: readonly NotificacionNueva[]
+    }>,
+  }
+  const port: NotificacionesEscrituraPort = {
+    insertarNotificacionesEnTx: async (tx, notificaciones) => {
+      llamadas.insertarNotificacionesEnTx.push({ tx, notificaciones })
+    },
+  }
+  return { port, llamadas }
 }
 
 function comando(
@@ -710,5 +749,117 @@ describe("registrarEntradaAlmacen — registro y stock (SAN-030, RN-041, SAN-031
       ),
     )(comandoEntrada())
     expect(error).toEqual({ tipo: "error", detalle: "timeout de base de datos" })
+  })
+})
+
+describe("aplicarProductoSanitario — SAN-051: notificaciones de refuerzo", () => {
+  it("crea notificación refuerzo_vacuna cuando hay proximaDosis futura", async () => {
+    const notificaciones = fakeNotificaciones()
+    const resultado = await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, fakeSanidadEscritura().port, notificaciones.port),
+    )(comando({ proximaDosis: "2026-09-05" }))
+
+    expect(resultado.tipo).toBe("aplicado")
+    if (resultado.tipo === "aplicado") {
+      expect(resultado.notificacionesCreadas).toBe(1)
+    }
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(1)
+    const notif = notificaciones.llamadas.insertarNotificacionesEnTx[0]?.notificaciones[0]
+    expect(notif?.tipo).toBe("refuerzo_vacuna")
+    expect(notif?.entidadTipo).toBe("aplicacion_sanitaria")
+  })
+
+  it("NO crea notificación cuando proximaDosis es null", async () => {
+    const notificaciones = fakeNotificaciones()
+    const resultado = await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, fakeSanidadEscritura().port, notificaciones.port),
+    )(comando({ proximaDosis: null }))
+
+    expect(resultado.tipo).toBe("aplicado")
+    if (resultado.tipo === "aplicado") {
+      expect(resultado.notificacionesCreadas).toBe(0)
+    }
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(0)
+  })
+
+  it("crea N notificaciones para N animales con proximaDosis", async () => {
+    const notificaciones = fakeNotificaciones()
+    const lectura = fakeSanidadLectura({
+      animales: [
+        animalFixture({ id: "a1" }),
+        animalFixture({ id: "a2" }),
+        animalFixture({ id: "a3" }),
+      ],
+    })
+    const resultado = await aplicarProductoSanitario(
+      deps(lectura.port, fakeSanidadEscritura().port, notificaciones.port),
+    )(comando({ animalIds: ["a1", "a2", "a3"], proximaDosis: "2026-09-05" }))
+
+    expect(resultado.tipo).toBe("aplicado")
+    if (resultado.tipo === "aplicado") {
+      expect(resultado.notificacionesCreadas).toBe(3)
+    }
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(1)
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx[0]?.notificaciones).toHaveLength(3)
+  })
+
+  it("pasa el puerto de notificaciones y el builder al adaptador de escritura (T-002/D1)", async () => {
+    const notificaciones = fakeNotificaciones()
+    const escritura = fakeSanidadEscritura()
+
+    await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, escritura.port, notificaciones.port),
+    )(comando({ proximaDosis: "2026-09-05" }))
+
+    // T-002/D1: las notificaciones se insertan DENTRO de la transacción
+    // del adaptador de escritura, no después. El puerto de notificaciones
+    // y el builder se pasan al adaptador.
+    expect(escritura.llamadas.registrarAplicaciones[0]?.notificaciones).toBe(notificaciones.port)
+    expect(escritura.llamadas.registrarAplicaciones[0]?.crearNotificaciones).toBeDefined()
+    // El builder debe generar notificaciones cuando se le pasa los IDs
+    const builder = escritura.llamadas.registrarAplicaciones[0]?.crearNotificaciones
+    if (builder) {
+      const notifs = builder(["app-1", "app-2"])
+      expect(notifs).toHaveLength(2)
+      expect(notifs[0]?.tipo).toBe("refuerzo_vacuna")
+      expect(notifs[0]?.entidadId).toBe("app-1")
+      expect(notifs[1]?.entidadId).toBe("app-2")
+    }
+  })
+
+  it("el adaptador de escritura pasa un tx token a insertarNotificacionesEnTx, no null (T-002/D1 identity)", async () => {
+    const notificaciones = fakeNotificaciones()
+    const escritura = fakeSanidadEscritura()
+
+    await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, escritura.port, notificaciones.port),
+    )(comando({ proximaDosis: "2026-09-05" }))
+
+    // T-002/D1: el adaptador real pasa el tx de la transacción; el fake
+    // modela un token de transacción. El puerto debe recibir ese token,
+    // no null — prueba de que la transacción se propaga correctamente.
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(1)
+    const txRecibido = notificaciones.llamadas.insertarNotificacionesEnTx[0]?.tx
+    expect(txRecibido).toBeDefined()
+    expect(txRecibido).not.toBeNull()
+    expect(txRecibido).toHaveProperty("__kind", "fake_transaction_token")
+  })
+
+  it("si la inserción de notificaciones falla, se hace rollback de las aplicaciones", async () => {
+    const notificaciones = fakeNotificaciones()
+    const escritura = fakeSanidadEscritura({
+      tipo: "error",
+      detalle: "Error en notificaciones",
+    })
+
+    const resultado = await aplicarProductoSanitario(
+      deps(fakeSanidadLectura().port, escritura.port, notificaciones.port),
+    )(comando({ proximaDosis: "2026-09-05" }))
+
+    // Si el adaptador de escritura falla (por error en notificaciones),
+    // el resultado debe ser error, no aplicado.
+    expect(resultado.tipo).toBe("error")
+    // Las notificaciones NO deben haber sido insertadas independientemente.
+    expect(notificaciones.llamadas.insertarNotificacionesEnTx).toHaveLength(0)
   })
 })

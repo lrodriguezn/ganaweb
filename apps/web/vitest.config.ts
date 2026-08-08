@@ -85,6 +85,8 @@ export default defineConfig({
       // reciente, permisos parciales, vacíos, "Ver todo", paginación, atajos
       // de "+ Registrar" hacia el wizard de #229.
       "tests/eventos-tablero-route.test.tsx",
+      // #214 — dashboard Inicio: cableado con server functions, SAN-071 token.
+      "tests/dashboard-inicio-route.test.ts",
     ],
     environment: "node",
   },

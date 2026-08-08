@@ -121,10 +121,16 @@ export { STOCK_MINIMO_DOSIS_DEFAULT } from "@ganaweb/dominio"
 // Issue #212 (SAN-052/KPI-09): la agrupación por semana natural del panel es
 // una regla pura del dominio; apps/web no importa dominio (dependency-cruiser,
 // regla web-to-dominio-direct), así que se re-exporta aquí.
-export { agruparRefuerzosPorSemana } from "@ganaweb/dominio"
+export {
+  agruparRefuerzosPorSemana,
+  placeholderMetricaEnfermos,
+  seleccionarAlertasInicio,
+} from "@ganaweb/dominio"
 export type {
+  AlertaAccionInicio,
   EspecificacionCampoMaestro,
   EspecificacionFamiliaMaestro,
+  MetricaEnfermos,
   PeriodosRefuerzosSanidad,
   RefuerzoPendienteAgrupado,
   TipoCampoMaestro,
@@ -205,6 +211,17 @@ export * from "./casos-uso/eventos/autorizar-operacion-evento.js"
 export * from "./casos-uso/eventos/index.js"
 export { PAGE_SIZE_FEED_FINCA, PAGE_SIZE_HISTORIAL_FINCA } from "@ganaweb/dominio"
 export type { CategoriaFiltroFinca, DominioEvento, PermisoVerDominio } from "@ganaweb/dominio"
+export type {
+  NotificacionNueva,
+  NotificacionSanidad,
+  NotificacionesEscrituraPort,
+  NotificacionesLecturaPort,
+  PreferenciaNotificacion,
+} from "./puertos/notificaciones-port.js"
+export type {
+  DashboardInicioLecturaPort,
+  DashboardInicioResultado,
+} from "./puertos/dashboard-inicio-port.js"
 export type * from "./puertos/auth-repository-port.js"
 export type {
   DecisionAutorizacion,

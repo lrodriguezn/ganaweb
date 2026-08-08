@@ -13,13 +13,14 @@
  *      `dashboard-metric-hero` — bajo `.theme-b` la CSS le aplica
  *      `bg-primary-gradient` + `hero-shadow` y `grid-column: 1 / -1`
  *      (bento hero, D10). En A no hay diferencia visual.
- *   3. `CardAccion` con `MOCK_ALERTAS` (5 alertas: 2 peligro + 3 alerta).
+ *   3. `CardAccion` con alertas reales del server (SAN-070, Issue #214).
  *   4. `CardProduccion` con `MOCK_PRODUCCION` + deltaPct.
  *   5. `CardActividad accordion` — en mobile el título es un disclosure
  *      (cierra/expande la lista); en desktop se ve como h3 plano.
  *
- * Datos: `apps/web/src/lib/fixtures/dashboard.ts`. En un PR futuro, un
- * server function (loader) reemplaza las constantes por datos en vivo.
+ * Issue #214: alertas reales del server vía `listarAlertasInicioFn`.
+ * D-003: métrica "Enfermos" es placeholder (valor 0, sin href).
+ * MOCK_METRICS[0..2] se mantiene hasta que otros sub-issues los cableen.
  *
  * **Gradient discipline (D12, REQ-BVA-004)**: el CTA "Registrar evento"
  * usa `bg-primary` sólido (variant `default` del Button primitive) —
@@ -30,6 +31,7 @@
  * Sin dark:, sin dependencias del dominio (T-004 / D10). i18n es-CO (T-003).
  */
 
+import type { AlertaAccionInicio, MetricaEnfermos } from "@ganaweb/aplicacion"
 import { Button, CardAccion, CardActividad, CardProduccion, MetricCard } from "@ganaweb/ui"
 import { createFileRoute } from "@tanstack/react-router"
 import { Plus } from "lucide-react"
@@ -37,17 +39,68 @@ import type * as React from "react"
 
 import {
   MOCK_ACTIVIDAD,
-  MOCK_ALERTAS,
   MOCK_METRICS,
   MOCK_PRODUCCION,
   MOCK_PRODUCCION_DELTA,
 } from "../../lib/fixtures/dashboard"
+import { listarAlertasInicioFn } from "../../server/dashboard-inicio"
+
+type InicioLoaderData = {
+  readonly alertas: readonly AlertaAccionInicio[]
+  readonly metricaEnfermos: MetricaEnfermos
+}
 
 export const Route = createFileRoute("/_app/")({
+  loader: async ({ context }): Promise<InicioLoaderData> => {
+    const fincaId = context.sesion?.fincaActivaId
+    if (!fincaId) {
+      return {
+        alertas: [],
+        metricaEnfermos: {
+          id: "enfermos",
+          label: "Enfermos",
+          labelMobile: "Enfermos",
+          value: "0",
+          href: null,
+        },
+      }
+    }
+    const resultado = await listarAlertasInicioFn({ data: { fincaId } }).catch(() => null)
+    if (!resultado || resultado.tipo !== "ok") {
+      return {
+        alertas: [],
+        metricaEnfermos: {
+          id: "enfermos",
+          label: "Enfermos",
+          labelMobile: "Enfermos",
+          value: "0",
+          href: null,
+        },
+      }
+    }
+    return {
+      alertas: resultado.alertas,
+      metricaEnfermos: resultado.metricaEnfermos,
+    }
+  },
   component: Dashboard,
 })
 
 function Dashboard() {
+  const { alertas, metricaEnfermos } = Route.useLoaderData()
+
+  // Construir las métricas: MOCK_METRICS[0..2] + Enfermos del server
+  const metricas = [
+    ...MOCK_METRICS.slice(0, 3),
+    {
+      id: "enfermos" as const,
+      label: metricaEnfermos.label,
+      labelMobile: metricaEnfermos.labelMobile,
+      value: metricaEnfermos.value,
+      href: metricaEnfermos.href ?? undefined,
+    },
+  ]
+
   return (
     <div className="mx-auto max-w-6xl space-y-4 md:space-y-6">
       {/* ---- Header: título + fecha + CTA ---- */}
@@ -76,7 +129,7 @@ function Dashboard() {
         className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4"
         aria-label="Métricas del día"
       >
-        {MOCK_METRICS.map((m, index) => {
+        {metricas.map((m, index) => {
           const props: {
             label: React.ReactNode
             value: string
@@ -93,10 +146,8 @@ function Dashboard() {
               </>
             ),
             value: m.value,
-            contextTone: m.contextTone ?? "neutral",
+            contextTone: "neutral",
           }
-          if (m.context !== undefined) props.context = m.context
-          if (m.critical) props.critical = true
           if (m.id === "prenadas") props.contextBelow = true
           // D10 + REQ-BVA-004: only the FIRST metric card is the bento
           // hero under .theme-b. Subsequent cards stay plain MetricCard
@@ -110,8 +161,12 @@ function Dashboard() {
       {/* ---- Fila de cards: alertas + producción ---- */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4" aria-label="Alertas y producción">
         <CardAccion
-          count={MOCK_ALERTAS.length}
-          alertas={[...MOCK_ALERTAS]}
+          count={alertas.length}
+          alertas={alertas.map((a: AlertaAccionInicio) => ({
+            id: a.id,
+            texto: a.texto,
+            severidad: a.severidad,
+          }))}
           onVerTodas={() => {
             // biome-ignore lint/suspicious/noConsole: pendiente de cablear a /alertas
             console.log("[dashboard] ver todas las alertas")

@@ -39,6 +39,8 @@ import type {
   AplicacionSanitariaNueva,
   EntradaAlmacenListada,
   EntradaAlmacenNueva,
+  NotificacionNueva,
+  NotificacionesEscrituraPort,
   ProductoSanitarioReferencia,
   RegistroGrupalTratamientoNuevo,
   SanidadEscrituraPort,
@@ -318,6 +320,10 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
     readonly registroGrupal: RegistroGrupalTratamientoNuevo | null
     readonly aplicaciones: readonly AplicacionSanitariaNueva[]
     readonly usuarioCreadoPor: string
+    readonly notificaciones?: NotificacionesEscrituraPort
+    readonly crearNotificaciones?: (
+      aplicacionIds: readonly string[],
+    ) => readonly NotificacionNueva[]
   }): Promise<
     | { readonly tipo: "aplicado"; readonly aplicacionIds: readonly string[] }
     | { readonly tipo: "conflicto"; readonly detalle: string }
@@ -365,11 +371,47 @@ export class DrizzleSanidadAdapter implements SanidadLecturaPort, SanidadEscritu
             : { ...common, tipo: "crear_evento_individual" },
         )
       })
-      await persistirEventosInternos(this.db, commands, {
-        fuente: "sanidad_validada",
-        fincaId: entrada.fincaId,
-        usuarioId: entrada.usuarioCreadoPor,
-      })
+
+      // T-002/D1: si se proporciona el puerto de notificaciones y el builder,
+      // crear las notificaciones DENTRO de la misma transacción que las
+      // aplicaciones y el outbox. Si la inserción de notificaciones falla,
+      // se hace rollback de TODO (atomicidad).
+      if (entrada.notificaciones && entrada.crearNotificaciones) {
+        // T-002/D1: persistir eventos e insertar notificaciones en la
+        // misma transacción para atomicidad.
+        await persistirEventosInternos(
+          this.db,
+          commands,
+          {
+            fuente: "sanidad_validada",
+            fincaId: entrada.fincaId,
+            usuarioId: entrada.usuarioCreadoPor,
+          },
+          {
+            enTransaccion: async (tx) => {
+              // Generar notificaciones usando los IDs de las aplicaciones creadas
+              const crearNotificaciones = entrada.crearNotificaciones
+              if (crearNotificaciones) {
+                const notificacionesNuevas = crearNotificaciones(aplicacionIds)
+                if (notificacionesNuevas.length > 0) {
+                  const notificacionesPort = entrada.notificaciones
+                  if (notificacionesPort) {
+                    await notificacionesPort.insertarNotificacionesEnTx(tx, notificacionesNuevas)
+                  }
+                }
+              }
+            },
+          },
+        )
+      } else {
+        // Sin notificaciones, persistir normalmente
+        await persistirEventosInternos(this.db, commands, {
+          fuente: "sanidad_validada",
+          fincaId: entrada.fincaId,
+          usuarioId: entrada.usuarioCreadoPor,
+        })
+      }
+
       return { tipo: "aplicado", aplicacionIds }
     } catch (error) {
       if (error instanceof EventoForbiddenError || esViolacionForeignKey(error)) {

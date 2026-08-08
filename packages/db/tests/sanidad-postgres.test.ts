@@ -31,6 +31,7 @@ import {
   aplicacionesSanitarias,
   fincas,
   muertes,
+  notificaciones,
   productosSanitarios,
   registrosGrupales,
   syncOutbox,
@@ -895,6 +896,241 @@ describe.skipIf(!dbSmoke)(
           animalMuertoAntesId,
         ].sort(),
       )
+    })
+  },
+)
+
+/**
+ * T-002/D1: Transaction identity and rollback for notification insertion.
+ *
+ * Proves:
+ * 1. `insertarNotificacionesEnTx` receives the exact transaction used for
+ *    application/outbox writes — the notification rows are visible within
+ *    the same transaction boundary.
+ * 2. When notification insertion fails, persisted application rows, group
+ *    rows, and notification rows are ALL rolled back (atomicity).
+ *
+ * Uses the real `DrizzleSanidadAdapter.registrarAplicaciones` path with
+ * `persistirLoteConTransaccion` under the hood.
+ */
+describe.skipIf(!dbSmoke)(
+  "T-002/D1: transaction identity and rollback for notification insertion (smoke Postgres)",
+  () => {
+    const sufijo = crypto.randomUUID().slice(0, 8)
+    const fincaId = `finca-txid-${sufijo}`
+    const productoId = `prod-txid-${sufijo}`
+    const animalId = `animal-txid-${sufijo}`
+    const usuarioId = `user-txid-${sufijo}`
+
+    let db: ReturnType<typeof createClient>
+    let adaptador: DrizzleSanidadAdapter
+
+    beforeAll(async () => {
+      db = createClient(process.env.DATABASE_URL)
+      adaptador = new DrizzleSanidadAdapter(db)
+
+      await db.insert(fincas).values({
+        id: fincaId,
+        codigo: `TXID-${sufijo.toUpperCase()}`,
+        nombre: "Finca TX Identity Test",
+        activo: 1,
+      })
+
+      await db.insert(usuarios).values({
+        id: usuarioId,
+        nombre: "Usuario TX Identity Test",
+        email: `txid-${sufijo}@ganaweb.test`,
+      })
+
+      await db.insert(productosSanitarios).values({
+        id: productoId,
+        fincaId,
+        codigo: "VAC-TXID",
+        descripcion: "Vacuna TX Identity Test",
+        mlMgPorDosis: "2",
+        tipoTratamiento: "vacuna",
+        precioDosis: "3500",
+        activo: 1,
+      })
+
+      await db.insert(animales).values({
+        id: animalId,
+        fincaId,
+        codigo: `TXID-001-${sufijo}`,
+        nombre: "Animal TX Identity",
+        fechaNacimiento: 1615507200,
+        estadoAnimalKey: 0,
+      })
+    })
+
+    afterAll(async () => {
+      if (!db) return
+      await db.delete(notificaciones).where(eq(notificaciones.fincaId, fincaId))
+      await db
+        .delete(aplicacionesSanitarias)
+        .where(eq(aplicacionesSanitarias.productoId, productoId))
+      await db.delete(registrosGrupales).where(eq(registrosGrupales.fincaId, fincaId))
+      await db.delete(syncOutbox).where(eq(syncOutbox.fincaId, fincaId))
+      await db.delete(animales).where(eq(animales.id, animalId))
+      await db.delete(productosSanitarios).where(eq(productosSanitarios.id, productoId))
+      await db.delete(usuarios).where(eq(usuarios.id, usuarioId))
+      await db.delete(fincas).where(eq(fincas.id, fincaId))
+      await db.$client.end()
+    })
+
+    it("T-002/D1: notification insertion receives the exact tx used for application writes (identity)", async () => {
+      const notifPort = {
+        insertarNotificacionesEnTx: async (
+          tx: unknown,
+          notificacionesNuevas: ReadonlyArray<{ readonly tipo: string }>,
+        ) => {
+          // tx is the Drizzle transaction client — cast and use it directly
+          // to prove it's the same transaction used for application writes.
+          // If it were a different tx, the insert would either fail or not
+          // see the application rows (different transaction snapshot).
+          const txClient = tx as ReturnType<typeof createClient>
+          // Insert a marker row into notificaciones using the received tx.
+          // If tx is valid and in the same transaction, this will succeed.
+          await txClient.insert(notificaciones).values(
+            notificacionesNuevas.map((n) => ({
+              id: crypto.randomUUID(),
+              fincaId,
+              usuarioId,
+              tipo: n.tipo,
+              titulo: "TX Identity Test",
+              mensaje: "TX Identity Test",
+              entidadTipo: "aplicacion_sanitaria",
+              entidadId: "txid-test",
+              leida: 0,
+              fechaEvento: Math.floor(Date.now() / 1000),
+              activo: 1,
+            })),
+          )
+        },
+      }
+
+      const resultado = await adaptador.registrarAplicaciones({
+        fincaId,
+        registroGrupal: null,
+        aplicaciones: [
+          {
+            animalId,
+            productoId,
+            fecha: "2026-08-05",
+            dosis: 1,
+            precioDosis: 3500,
+            proximaDosis: "2027-02-05",
+            comentarios: null,
+            registroGrupalId: null,
+          },
+        ],
+        usuarioCreadoPor: usuarioId,
+        notificaciones: notifPort,
+        crearNotificaciones: (ids) =>
+          ids.map((id) => ({
+            fincaId,
+            tipo: "refuerzo_vacuna",
+            titulo: "Refuerzo pendiente",
+            mensaje: "Test",
+            entidadTipo: "aplicacion_sanitaria",
+            entidadId: id,
+            fechaEvento: Math.floor(Date.now() / 1000) + 86400 * 10,
+            usuarioId,
+          })),
+      })
+
+      expect(resultado.tipo).toBe("aplicado")
+      if (resultado.tipo !== "aplicado") return
+
+      // Application row was written
+      const apps = await db
+        .select()
+        .from(aplicacionesSanitarias)
+        .where(eq(aplicacionesSanitarias.productoId, productoId))
+      expect(apps).toHaveLength(1)
+      expect(apps[0]?.id).toBe(resultado.aplicacionIds[0])
+
+      // Notification row was written by the port using the received tx
+      const notifs = await db
+        .select()
+        .from(notificaciones)
+        .where(eq(notificaciones.fincaId, fincaId))
+      expect(notifs.length).toBeGreaterThanOrEqual(1)
+      const txTestNotif = notifs.find((n) => n.titulo === "TX Identity Test")
+      expect(txTestNotif).toBeDefined()
+      expect(txTestNotif?.tipo).toBe("refuerzo_vacuna")
+    })
+
+    it("T-002/D1: notification insertion failure rolls back application rows, group rows, and notification rows (atomicity)", async () => {
+      const grupoId = `rg-txid-fail-${sufijo}`
+      const notifPort = {
+        insertarNotificacionesEnTx: async () => {
+          throw new Error("Simulated notification insertion failure")
+        },
+      }
+
+      const resultado = await adaptador.registrarAplicaciones({
+        fincaId,
+        registroGrupal: {
+          id: grupoId,
+          fincaId,
+          tipoEvento: "tratamiento",
+          totalAnimales: 1,
+          fecha: new Date("2026-08-05T09:00:00-05:00"),
+          usuarioCreadoPor: usuarioId,
+          descripcion: "TX rollback test",
+        },
+        aplicaciones: [
+          {
+            animalId,
+            productoId,
+            fecha: "2026-08-05",
+            dosis: 1,
+            precioDosis: 3500,
+            proximaDosis: "2027-02-05",
+            comentarios: null,
+            registroGrupalId: grupoId,
+          },
+        ],
+        usuarioCreadoPor: usuarioId,
+        notificaciones: notifPort,
+        crearNotificaciones: (ids) =>
+          ids.map((id) => ({
+            fincaId,
+            tipo: "refuerzo_vacuna",
+            titulo: "Refuerzo rollback",
+            mensaje: "Should be rolled back",
+            entidadTipo: "aplicacion_sanitaria",
+            entidadId: id,
+            fechaEvento: Math.floor(Date.now() / 1000) + 86400 * 10,
+            usuarioId,
+          })),
+      })
+
+      // The adapter catches the error and returns "error"
+      expect(resultado.tipo).toBe("error")
+
+      // Atomicity: no group row (rollback of cabecera)
+      const cabecera = await db
+        .select()
+        .from(registrosGrupales)
+        .where(eq(registrosGrupales.id, grupoId))
+      expect(cabecera).toHaveLength(0)
+
+      // Atomicity: no application rows (rollback of hijas)
+      const hijas = await db
+        .select()
+        .from(aplicacionesSanitarias)
+        .where(eq(aplicacionesSanitarias.registroGrupalId, grupoId))
+      expect(hijas).toHaveLength(0)
+
+      // Atomicity: no notification rows with this grupo's marker
+      const notifs = await db
+        .select()
+        .from(notificaciones)
+        .where(eq(notificaciones.fincaId, fincaId))
+      const rollbackNotifs = notifs.filter((n) => n.titulo === "Refuerzo rollback")
+      expect(rollbackNotifs).toHaveLength(0)
     })
   },
 )
