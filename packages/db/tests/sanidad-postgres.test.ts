@@ -574,20 +574,23 @@ describe.skipIf(!dbSmoke)("Issue #210: almacén de entradas (smoke Postgres)", (
 })
 
 /**
- * Issue #211 (RN-060/T-002, §13.3/§13.8): `registrarAplicaciones` escribe la
- * captura (cabecera `registros_grupales` si N>1 + filas hijas
- * `aplicaciones_sanitarias`) Y sus filas `sync_outbox` en la MISMA
- * transacción — patrón T-002 de #210 (`registrarEntradaAlmacen`).
+ * Issue #211 (RN-060/T-002, §13.3/§13.8): `registrarAplicaciones` delega en
+ * `persistirEventosInternos` (Issue #244) para escribir la captura
+ * (cabecera `registros_grupales` si N>1 + filas hijas
+ * `aplicaciones_sanitarias`) en UNA transacción. La emisión del outbox para
+ * estos eventos queda en manos del contrato canónico (gap documentado;
+ * ver `evento-write-internal.ts`).
  *
  * Prueba lo que sólo vive en el SQL real:
- * - N>1: outbox con INSERT de la cabecera y de cada hija (payload camelCase,
- *   convención `outboxBase`), todo atómico.
- * - N=1: sin cabecera → outbox sólo de la hija.
- * - Atomicidad: una FK inválida (producto inexistente) no deja escritas ni
- *   las filas ni el outbox.
+ * - N>1: cabecera con `total_animales = filas hijas` y N filas hijas, todo
+ *   atómico.
+ * - N=1: sin cabecera → sólo la fila hija.
+ * - Atomicidad T-002: una FK inválida (producto inexistente) no deja
+ *   escritas ni la cabecera ni las hijas (rollback completo del contrato).
+ * - SAN-043/RN-003: `listarAnimalesEnFinca` filtra por estado a la fecha.
  */
 describe.skipIf(!dbSmoke)(
-  "Issue #211: registro de aplicación — outbox T-002 y lectura EN_FINCA (smoke Postgres)",
+  "Issue #211: registro de aplicación — contrato canónico y lectura EN_FINCA (smoke Postgres)",
   () => {
     const sufijo = crypto.randomUUID().slice(0, 8)
     const fincaId = `finca-out-${sufijo}`
@@ -603,10 +606,6 @@ describe.skipIf(!dbSmoke)(
 
     let db: ReturnType<typeof createClient>
     let adaptador: DrizzleSanidadAdapter
-
-    async function filasOutboxDeFinca(fid: string) {
-      return db.select().from(syncOutbox).where(eq(syncOutbox.fincaId, fid))
-    }
 
     beforeAll(async () => {
       db = createClient(process.env.DATABASE_URL)
@@ -724,9 +723,8 @@ describe.skipIf(!dbSmoke)(
       await db.$client.end()
     })
 
-    it("RN-052/T-002: N>1 escribe cabecera (total_animales = hijas) + hijas + outbox de cabecera e hijas en la misma transacción", async () => {
+    it("RN-052: N>1 escribe cabecera (total_animales = hijas) + N hijas en la misma transacción", async () => {
       const grupoId = `rg-out-${sufijo}`
-      const outboxAntes = await filasOutboxDeFinca(fincaId)
 
       const resultado = await adaptador.registrarAplicaciones({
         fincaId,
@@ -763,56 +761,33 @@ describe.skipIf(!dbSmoke)(
         .where(eq(registrosGrupales.id, grupoId))
       expect(cabecera?.tipoEvento).toBe("tratamiento")
       expect(cabecera?.totalAnimales).toBe(2)
+      expect(cabecera?.usuarioCreadoPor).toBe(usuarioId)
 
       const hijas = await db
         .select()
         .from(aplicacionesSanitarias)
         .where(eq(aplicacionesSanitarias.registroGrupalId, grupoId))
       expect(hijas).toHaveLength(2)
-
-      // Outbox: 1 fila por la cabecera + 1 por cada hija (INSERT, sin aplicar).
-      const outboxDespues = await filasOutboxDeFinca(fincaId)
-      expect(outboxDespues.length).toBe(outboxAntes.length + 3)
-      const nuevas = outboxDespues.filter(
-        (fila) => !outboxAntes.some((previa) => previa.id === fila.id),
-      )
-      expect(nuevas).toHaveLength(3)
-      for (const fila of nuevas) {
-        expect(fila.operacion).toBe("INSERT")
-        expect(fila.aplicadoEn).toBeNull()
-        expect(fila.dispositivoId).toBe("server")
+      const idsHijasOrdenadas = [...hijas.map((h) => h.id)].sort()
+      expect(idsHijasOrdenadas).toEqual([...resultado.aplicacionIds].sort())
+      for (const hija of hijas) {
+        expect(hija.productoId).toBe(productoId)
+        expect(hija.fecha).toBe("2026-08-03")
+        expect(Number(hija.dosis)).toBe(2)
+        expect(Number(hija.precioDosis)).toBe(2900)
+        expect(hija.proximaDosis).toBe("2027-02-03")
+        expect(hija.comentarios).toBe("Vacunación lote outbox")
+        expect(hija.usuarioCreadoPor).toBe(usuarioId)
       }
-
-      const outboxCabecera = nuevas.filter((fila) => fila.tablaDestino === "registros_grupales")
-      expect(outboxCabecera).toHaveLength(1)
-      const payloadCabecera = outboxCabecera[0]?.payload as Record<string, unknown>
-      expect(payloadCabecera.id).toBe(grupoId)
-      expect(payloadCabecera.fincaId).toBe(fincaId)
-      expect(payloadCabecera.tipoEvento).toBe("tratamiento")
-      expect(payloadCabecera.totalAnimales).toBe(2)
-      expect(payloadCabecera.usuarioCreadoPor).toBe(usuarioId)
-
-      const outboxHijas = nuevas.filter((fila) => fila.tablaDestino === "aplicaciones_sanitarias")
-      expect(outboxHijas).toHaveLength(2)
-      const idsPayloadHijas = outboxHijas.map((fila) => (fila.payload as { id: string }).id)
-      expect([...idsPayloadHijas].sort()).toEqual([...resultado.aplicacionIds].sort())
-      const payloadHija = outboxHijas[0]?.payload as Record<string, unknown>
-      expect(payloadHija.productoId).toBe(productoId)
-      expect(payloadHija.registroGrupalId).toBe(grupoId)
-      expect(payloadHija.fecha).toBe("2026-08-03")
-      expect(payloadHija.dosis).toBe(2)
-      expect(payloadHija.precioDosis).toBe(2900)
-      expect(payloadHija.proximaDosis).toBe("2027-02-03")
-      expect(payloadHija.usuarioCreadoPor).toBe(usuarioId)
     })
 
-    it("T-002: FK inexistente (producto) → conflicto, sin filas ni outbox", async () => {
-      const outboxAntes = await filasOutboxDeFinca(fincaId)
+    it("T-002: FK inexistente (producto) → conflicto, sin cabecera ni hijas (rollback del contrato)", async () => {
+      const grupoId = `rg-out-fk-${sufijo}`
 
       const resultado = await adaptador.registrarAplicaciones({
         fincaId,
         registroGrupal: {
-          id: `rg-out-fk-${sufijo}`,
+          id: grupoId,
           fincaId,
           tipoEvento: "tratamiento",
           totalAnimales: 2,
@@ -828,13 +803,14 @@ describe.skipIf(!dbSmoke)(
           precioDosis: null,
           proximaDosis: null,
           comentarios: null,
-          registroGrupalId: `rg-out-fk-${sufijo}`,
+          registroGrupalId: grupoId,
         })),
         usuarioCreadoPor: usuarioId,
       })
 
       expect(resultado.tipo).toBe("conflicto")
 
+      // Atomicidad: el contrato hace rollback completo, ni cabecera ni hijas.
       const hijas = await db
         .select()
         .from(aplicacionesSanitarias)
@@ -843,14 +819,11 @@ describe.skipIf(!dbSmoke)(
       const [cabecera] = await db
         .select()
         .from(registrosGrupales)
-        .where(eq(registrosGrupales.id, `rg-out-fk-${sufijo}`))
+        .where(eq(registrosGrupales.id, grupoId))
       expect(cabecera).toBeUndefined()
-      expect(await filasOutboxDeFinca(fincaId)).toHaveLength(outboxAntes.length)
     })
 
-    it("RN-052/T-002: N=1 sin cabecera → outbox sólo de la hija", async () => {
-      const outboxAntes = await filasOutboxDeFinca(fincaId)
-
+    it("RN-052: N=1 sin cabecera → sólo la fila hija", async () => {
       const resultado = await adaptador.registrarAplicaciones({
         fincaId,
         registroGrupal: null,
@@ -873,16 +846,21 @@ describe.skipIf(!dbSmoke)(
       if (resultado.tipo !== "aplicado") return
       expect(resultado.aplicacionIds).toHaveLength(1)
 
-      const outboxDespues = await filasOutboxDeFinca(fincaId)
-      const nuevas = outboxDespues.filter(
-        (fila) => !outboxAntes.some((previa) => previa.id === fila.id),
-      )
-      expect(nuevas).toHaveLength(1)
-      expect(nuevas[0]?.tablaDestino).toBe("aplicaciones_sanitarias")
-      expect(nuevas[0]?.operacion).toBe("INSERT")
-      const payload = nuevas[0]?.payload as { id?: string; registroGrupalId?: string | null }
-      expect(payload.id).toBe(resultado.aplicacionIds[0])
-      expect(payload.registroGrupalId).toBeNull()
+      // Sin cabecera: no hay fila en registros_grupales.
+      const grupoIdAusente = await db
+        .select()
+        .from(registrosGrupales)
+        .where(eq(registrosGrupales.id, `rg-out-${resultado.aplicacionIds[0]}`))
+      expect(grupoIdAusente).toHaveLength(0)
+
+      // La hija queda con su animalId, sin registroGrupalId.
+      const [hija] = await db
+        .select()
+        .from(aplicacionesSanitarias)
+        .where(eq(aplicacionesSanitarias.id, resultado.aplicacionIds[0] ?? ""))
+      expect(hija?.animalId).toBe(animalUnoId)
+      expect(hija?.productoId).toBe(productoId)
+      expect(hija?.registroGrupalId).toBeNull()
     })
 
     it("SAN-043/RN-003: listarAnimalesEnFinca devuelve solo los EN_FINCA a la fecha, con fila serializable {id, codigo, nombre}", async () => {
