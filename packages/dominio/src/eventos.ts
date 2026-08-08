@@ -80,10 +80,19 @@ export interface CrearRegistroGrupalCommand extends ComandoEventoBase {
   readonly corrigeAId?: string | null
 }
 
+export interface AnularEventoCommand extends ComandoEventoBase {
+  readonly tipo: "anular_evento"
+  readonly objetivo: "individual" | "grupal"
+  readonly objetivoId: string
+  readonly motivo: string
+  readonly fecha: Date
+}
+
 export type EventoWriteCommand =
   | CrearEventoIndividualCommand
   | CrearHijoEventoGrupalCommand
   | CrearRegistroGrupalCommand
+  | AnularEventoCommand
 
 export class EventoForbiddenError extends Error {
   readonly status = 403

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
+  type AnularEventoCommand,
   EVENTOS_CANONICOS,
   EventoForbiddenError,
   type EventoWriteCommand,
+  anularEvento,
   registrarEvento,
 } from "../src/casos-uso/eventos/autorizar-operacion-evento.js"
 import type { SesionAutorizada } from "../src/index.js"
@@ -52,6 +54,7 @@ describe("mandatory event write gateway", () => {
         received.push(value)
         return { id: value.id }
       },
+      async anular() {},
     }
     const boundary = registrarEvento(gateway)
     await expect(
@@ -61,7 +64,7 @@ describe("mandatory event write gateway", () => {
       }),
     ).resolves.toEqual({ id: "peso-1" })
     expect(received).toEqual([command])
-    expect(Object.keys(gateway)).toEqual(["persistir"])
+    expect(Object.keys(gateway)).toEqual(["persistir", "anular"])
   })
 
   it("fails closed before persistence for foreign farms, actors and permissions", async () => {
@@ -71,6 +74,7 @@ describe("mandatory event write gateway", () => {
         calls += 1
         return { id: value.id }
       },
+      async anular() {},
     })
     await expect(
       boundary({ sesion: sesion([]), command: { ...command, fincaId: "f-2" } }),
@@ -88,5 +92,44 @@ describe("mandatory event write gateway", () => {
       permiso: "eventos_productivos:crear",
     })
     expect(calls).toBe(0)
+  })
+
+  it("requires the domain annulment permission and a non-empty reason", async () => {
+    const command: AnularEventoCommand = {
+      tipo: "anular_evento",
+      evento: "pesaje",
+      id: "audit-1",
+      fincaId: "f-1",
+      usuarioId: "u-1",
+      objetivo: "individual",
+      objetivoId: "peso-1",
+      motivo: "Dato duplicado",
+      fecha: new Date("2026-08-08T12:00:00.000Z"),
+    }
+    let received: AnularEventoCommand | undefined
+    const boundary = anularEvento({
+      async persistir(value) {
+        return { id: value.id }
+      },
+      async anular(value) {
+        received = value
+      },
+    })
+    await expect(
+      boundary({ sesion: sesion([{ modulo: "eventos_productivos", accion: "anular" }]), command }),
+    ).resolves.toBeUndefined()
+    expect(received).toEqual(command)
+    await expect(
+      boundary({
+        sesion: sesion([{ modulo: "eventos_productivos", accion: "crear" }]),
+        command,
+      }),
+    ).rejects.toMatchObject({ permiso: "eventos_productivos:anular" })
+    await expect(
+      boundary({
+        sesion: sesion([{ modulo: "eventos_productivos", accion: "anular" }]),
+        command: { ...command, motivo: "   " },
+      }),
+    ).rejects.toMatchObject({ campo: "motivo" })
   })
 })

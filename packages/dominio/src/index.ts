@@ -128,6 +128,7 @@ export { AnimalExportacionOverflowError } from "./errores.js"
 export type {
   AccionEvento,
   CategoriaFiltroFinca,
+  AnularEventoCommand,
   CriterioRegistroGrupal,
   CrearEventoIndividualCommand,
   CrearHijoEventoGrupalCommand,

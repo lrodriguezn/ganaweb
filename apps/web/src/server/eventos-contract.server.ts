@@ -1,8 +1,11 @@
-import { EventoForbiddenError, registrarEvento } from "@ganaweb/aplicacion"
+import { EventoForbiddenError, anularEvento, registrarEvento } from "@ganaweb/aplicacion"
 import { db } from "@ganaweb/db/client"
 import { createEventoWriteGateway } from "@ganaweb/db/evento-write-infrastructure"
 
 export const createEventoContractBoundary = () => registrarEvento(createEventoWriteGateway(db))
+
+/** Issue #235: audited append-only annulment boundary. */
+export const createEventoAnnulmentBoundary = () => anularEvento(createEventoWriteGateway(db))
 
 export async function mapEventoBoundaryToHttp<T>(work: () => Promise<T>): Promise<Response> {
   try {
