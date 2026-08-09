@@ -114,7 +114,7 @@ const ITEMS_SIDEBAR: ItemNav[] = [
 const ITEMS_BOTTOM: ItemNav[] = [
   { id: "inicio", label: "Inicio", icon: Home, href: "/" },
   { id: "animales", label: "Animales", icon: PawPrint, href: "/animales" },
-  { id: "tareas", label: "Tareas", icon: CheckSquare, href: "/tareas" },
+  { id: "eventos", label: "Eventos", icon: Calendar, href: "/eventos" },
   { id: "mas", label: "Más", icon: Menu, href: "/mas" },
 ]
 
@@ -202,7 +202,9 @@ function AppLayout() {
       ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` }
       : item.id === "sanidad"
         ? { ...item, href: `/fincas/${sesion.fincaActivaId}/sanidad` }
-        : item,
+        : item.id === "eventos"
+          ? { ...item, href: `/fincas/${sesion.fincaActivaId}/eventos` }
+          : item,
   )
 
   const navegar = (item: ItemNav) => {

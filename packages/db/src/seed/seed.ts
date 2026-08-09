@@ -588,7 +588,7 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
     ('animal-mt-139', 'finca-roble', 'MT-139', '', 1738195200, NULL, 0, 0, 0, 'animal-mt-133', 'MT-133', 'raza-romosinuano', 'col-rojo', 'pot-rob-3', 'sec-rob-b', 'lote-rob-2', NULL, 'hie-rob-1', 'prop-rob-1', 'cal-bueno', 'exp-cria', 0, 0, '982000100139', 'A-139', 0, 0, 0, 0, 'no_aplica', false, false, false, NULL, 'Ternero hijo de MT-133.', 1, 'user-admin')
     ON CONFLICT (id) DO NOTHING
   `
-  
+
   await sql`
     INSERT INTO aplicaciones_sanitarias (id, animal_id, registro_grupal_id, producto_id, fecha, dosis, precio_dosis, proxima_dosis, comentarios, usuario_creado_por) VALUES
       ('ap-esp-aftosa-120', 'animal-mt-120', NULL, 'prod-esp-aftosa', '2026-06-05', 1, 3500, '2026-12-05', 'Primer ciclo.', 'user-admin'),
@@ -598,8 +598,7 @@ async function seedDemo(sql: ReturnType<typeof postgres>) {
       ('ap-esp-aftosa-127', 'animal-mt-127', NULL, 'prod-esp-aftosa', '2026-01-15', 1, 3500, '2026-07-15', 'Refuerzo vencido: pendiente.', 'user-admin'),
       ('ap-esp-iverm-124', 'animal-mt-124', NULL, 'prod-esp-iverm', '2026-06-25', 1, 1800, NULL, 'Tratamiento antiparasitario.', 'user-admin')
     ON CONFLICT (id) DO NOTHING
-  `  
-  
+  `
 }
 
 // =====================================================================
