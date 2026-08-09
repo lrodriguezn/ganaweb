@@ -144,6 +144,7 @@ export function deriveActivoId(pathname: string): string {
   if (pathname.includes("/animales")) return "animales"
   // Issue #212 (SAN-001/D-006): la ruta de sanidad vive bajo /fincas/$fincaId.
   if (pathname.includes("/sanidad")) return "sanidad"
+  if (pathname.includes("/eventos")) return "eventos"
   const segment = pathname.split("/")[1] ?? ""
   return segment || "inicio"
 }
@@ -192,7 +193,9 @@ function AppLayout() {
       ? { ...item, href: `/fincas/${sesion.fincaActivaId}/animales` }
       : item.id === "sanidad"
         ? { ...item, href: `/fincas/${sesion.fincaActivaId}/sanidad` }
-        : item,
+        : item.id === "eventos"
+          ? { ...item, href: `/fincas/${sesion.fincaActivaId}/eventos` }
+          : item,
   )
   const itemsBottom = ITEMS_BOTTOM.map((item) =>
     item.id === "animales"

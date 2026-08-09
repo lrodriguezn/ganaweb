@@ -39,6 +39,8 @@ describe("_app shell — SAN-001/D-006: ítem activo de sanidad", () => {
   it("la ruta del panel y el historial resaltan 'sanidad'", () => {
     expect(deriveActivoId("/fincas/finca-1/sanidad")).toBe("sanidad")
     expect(deriveActivoId("/fincas/finca-1/sanidad/historial")).toBe("sanidad")
+    expect(deriveActivoId("/fincas/finca-1/eventos")).toBe("eventos")
+    expect(deriveActivoId("/fincas/finca-1/eventos?vista=historial")).toBe("eventos")
   })
 
   it("los demás casos se conservan", () => {
