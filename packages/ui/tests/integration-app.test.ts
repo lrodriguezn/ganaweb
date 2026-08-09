@@ -232,6 +232,20 @@ describe("PR6.T-006.4 — _app.tsx shell wiring (D7, D9, D14)", () => {
     )
   })
 
+  it("#268 — BottomNav replaces Tareas with finca-scoped Eventos", () => {
+    const bottomItemsBlock = source.match(/const ITEMS_BOTTOM:[\s\S]*?\n\]/)?.[0] ?? ""
+    expect(bottomItemsBlock).toMatch(
+      /\{\s*id:\s*["']eventos["']\s*,\s*label:\s*["']Eventos["']\s*,\s*icon:\s*Calendar\s*,\s*href:\s*["']\/eventos["']\s*\}/,
+    )
+    expect(bottomItemsBlock).not.toMatch(/id:\s*["']tareas["']/)
+
+    const bottomItemsMapping =
+      source.match(/const itemsBottom = ITEMS_BOTTOM\.map\([\s\S]*?\n\s*\)\n/)?.[0] ?? ""
+    expect(bottomItemsMapping).toMatch(
+      /item\.id\s*===\s*["']eventos["'][\s\S]*?`\/fincas\/\$\{sesion\.fincaActivaId\}\/eventos`/,
+    )
+  })
+
   it("T-004 — no `dark:` or `theme-b:` Tailwind variants in _app.tsx", () => {
     // Same rule as for /mas. The shell uses Tailwind utilities
     // for layout (grid, flex, padding) but MUST NOT switch theme

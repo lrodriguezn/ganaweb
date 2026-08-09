@@ -11,7 +11,7 @@ import type { ItemNav } from "./types"
  *
  *   [ items[0] ] [ items[1] ] [ FAB ] [ items[2] ] [ items[3] ]
  *
- * El consumer pasa EXACTAMENTE 4 ítems (Inicio, Animales, Tareas, Más);
+ * El consumer pasa EXACTAMENTE 4 ítems (Inicio, Animales, Eventos, Más);
  * la FAB en posición 3 es invariante del shell — es la acción primaria
  * del operario en campo (registrar evento). El icono del slot "Más" lo
  * elige el consumer (típicamente `Menu` / `MoreHorizontal`).
