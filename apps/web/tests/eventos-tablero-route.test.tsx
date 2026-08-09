@@ -19,12 +19,12 @@
  *    "Ver todo" navega a la vista historial.
  *  - EV-UI-006: vacío inicial ≠ vacío por filtro (copy y CTA distintos);
  *    loading con skeleton; error con reintento.
- *  - EV-UI-007: atajos "+ Registrar" por tarjeta filtran al wizard.
+ *  - EV-UI-007: atajos "Registrar" por tarjeta filtran al wizard.
  *  - EV-SEC-004: permisos parciales → solo se renderizan categorías
  *    autorizadas; el feed refleja esa restricción.
  *  - Paginación keyset del historial (#227 / #183).
  *  - Filtros: aplicar / limpiar; "Todos ▾" como opción neutral.
- *  - Wizard (#229) cableado: el botón "+ Registrar evento" abre el
+ *  - Wizard (#229) cableado: el botón "Registrar evento" abre el
  *    EventoWizard sin duplicar el shell.
  *  - Loader fail-closed por fuente (patrón #212).
  *  - Bridge server fn lanza `EventosFincaReadHttpError` 403 cuando la sesión
@@ -283,7 +283,7 @@ describe("eventos tablero — EV-UI-001/002/003: 4 tarjetas de categoría + feed
 })
 
 describe("eventos tablero — EV-UI-006: estados", () => {
-  it("vacío inicial: CTA '+ Registrar evento' en el feed", () => {
+  it("vacío inicial: CTA 'Registrar evento' con icono en el feed", () => {
     renderVista(
       dataPineada({
         feed: { tipo: "ok", items: FEED_VACIO },
@@ -302,8 +302,12 @@ describe("eventos tablero — EV-UI-006: estados", () => {
     // El CTA primario del EmptyState coincide con el botón del header;
     // verificamos que ambos están presentes (el usuario tiene dos vías
     // equivalentes para abrir el wizard desde el empty inicial).
-    const botonesRegistrar = screen.getAllByRole("button", { name: "+ Registrar evento" })
+    const botonesRegistrar = screen.getAllByRole("button", { name: "Registrar evento" })
     expect(botonesRegistrar.length).toBeGreaterThanOrEqual(1)
+    const botonEmpty = botonesRegistrar.find((button) => button.querySelector("svg"))
+    expect(botonEmpty).toBeDefined()
+    expect(botonEmpty).toHaveAccessibleName("Registrar evento")
+    expect(botonEmpty?.textContent).not.toContain("++")
   })
 
   it("vacío por filtro: copy distinto y CTA 'Limpiar filtros'", () => {
@@ -335,10 +339,10 @@ describe("eventos tablero — EV-UI-006: estados", () => {
     // La vista no tiene flag de error separado en el primer paint (loader
     // fail-closed degrada a `feed: { items: [] }`); verificamos que el
     // empty state se renderiza (la acción primaria del empty inicial es
-    // "+ Registrar evento" — el router.invalidate se gatilla desde el
+    // "Registrar evento" — el router.invalidate se gatilla desde el
     // botón de reintento de la vista del feed solo cuando el loader
     // falla en el cliente, no en el primer paint).
-    const botonesRegistrar = screen.getAllByRole("button", { name: "+ Registrar evento" })
+    const botonesRegistrar = screen.getAllByRole("button", { name: "Registrar evento" })
     expect(botonesRegistrar.length).toBeGreaterThanOrEqual(1)
   })
 
@@ -403,7 +407,7 @@ describe("eventos tablero — EV-SEC-004: permisos parciales", () => {
   })
 })
 
-describe("eventos tablero — EV-UI-005/007: Ver todo y atajos + Registrar", () => {
+describe("eventos tablero — EV-UI-005/007: Ver todo y atajos Registrar", () => {
   it("clic en 'Ver todo' invoca onNavegarSearch con vista=historial", async () => {
     const user = userEvent.setup()
     const onNavegar = vi.fn()
@@ -415,7 +419,7 @@ describe("eventos tablero — EV-UI-005/007: Ver todo y atajos + Registrar", () 
     expect(onNavegar.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ vista: "historial" }))
   })
 
-  it("cada tarjeta expone un atajo '+ Registrar' específico de la categoría", () => {
+  it("cada tarjeta expone un atajo 'Registrar' específico de la categoría", () => {
     renderVista(dataPineada())
 
     expect(screen.getByTestId("eventos-registrar-reproductivo")).toBeInTheDocument()
@@ -424,23 +428,36 @@ describe("eventos tablero — EV-UI-005/007: Ver todo y atajos + Registrar", () 
     expect(screen.getByTestId("eventos-registrar-movimientos")).toBeInTheDocument()
   })
 
-  it("clic en el atajo de tarjeta abre el wizard de #229 sin duplicar el shell", async () => {
+  it("clic en el atajo de tarjeta muestra solo su categoría sin preseleccionar tipo", async () => {
     const user = userEvent.setup()
     renderVista(dataPineada())
 
     await user.click(screen.getByTestId("eventos-registrar-sanidad"))
 
-    // El EventoWizard (#229) renderiza su paso 1: "¿Qué registrar?".
     expect(await screen.findByText("¿Qué registrar?")).toBeInTheDocument()
+    const categoria = await screen.findByTestId("evento-wizard-category-sanidad")
+    expect(categoria).toHaveFocus()
+    expect(screen.queryByTestId("evento-wizard-category-reproductivo")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("evento-wizard-category-productivo")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("evento-wizard-category-movimientos")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Aplicación sanitaria/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    )
   })
 
-  it("el botón superior '+ Registrar evento' abre el wizard sin preselección de tipo", async () => {
+  it("el botón superior 'Registrar evento' abre el wizard sin preselección de tipo", async () => {
     const user = userEvent.setup()
     renderVista(dataPineada())
 
     await user.click(screen.getByTestId("eventos-registrar-cta"))
 
     expect(await screen.findByText("¿Qué registrar?")).toBeInTheDocument()
+    expect(screen.getByTestId("evento-wizard-category-reproductivo")).toBeInTheDocument()
+    expect(screen.getByTestId("evento-wizard-category-sanidad")).toBeInTheDocument()
+    expect(screen.getByTestId("evento-wizard-category-productivo")).toBeInTheDocument()
+    expect(screen.getByTestId("evento-wizard-category-movimientos")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Ver todos los tipos" })).not.toBeInTheDocument()
   })
 
   it("clic en una tarjeta emite onNavegarSearch con la categoría", async () => {
@@ -633,7 +650,7 @@ describe("HistorialEventos — paginación, filtros, vacíos", () => {
     expect(onAnterior).toHaveBeenCalledTimes(1)
   })
 
-  it("vacío inicial muestra CTA '+ Registrar evento'", () => {
+  it("vacío inicial muestra CTA 'Registrar evento' con icono", () => {
     renderHistorial({ feed: [] })
 
     expect(screen.getByText("Aún no hay eventos registrados")).toBeInTheDocument()

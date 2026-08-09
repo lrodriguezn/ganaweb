@@ -13,9 +13,9 @@
  *
  * Reglas de composición:
  *  - Cero formularios/redux/reducer (D6 + consistencia con #212).
- *  - Cero duplicación con el wizard de #229: el botón "+ Registrar evento"
+ *  - Cero duplicación con el wizard de #229: el botón "Registrar evento"
  *    solo dispara el callback `onAbrirWizard`; el wizard vive en la ruta.
- *  - Atajos "+ Registrar →" por tarjeta filtran al wizard por categoría
+ *  - Atajos "Registrar →" por tarjeta filtran al wizard por categoría
  *    (`onAbrirWizardConCategoria`).
  *  - Vacío inicial ≠ vacío por filtro (EV-UI-006): copy + acción distintos.
  *  - RBAC: la vista solo renderiza categorías/feed que el loader resolvió
@@ -119,7 +119,13 @@ export interface TableroEventosProps {
 function copyVacioFeed(
   vacioPorFiltro: boolean,
   categoria: CategoriaEventoTablero | undefined,
-): { title: string; description: string; actionLabel?: string; onAction?: () => void } {
+): {
+  title: string
+  description: string
+  actionLabel?: string
+  actionIcon?: typeof Plus
+  onAction?: () => void
+} {
   if (vacioPorFiltro) {
     return {
       title: "Sin eventos con este filtro",
@@ -133,7 +139,8 @@ function copyVacioFeed(
     title: `Aún no hay eventos${sufijo}`,
     description:
       "Cuando registres servicios, pesajes, aplicaciones o movimientos, aparecerán aquí en orden cronológico.",
-    actionLabel: "+ Registrar evento",
+    actionLabel: "Registrar evento",
+    actionIcon: Plus,
   }
 }
 
@@ -170,7 +177,8 @@ export function TableroEventos({
         subtitulo={`Tablero · ${fincaNombre}`}
         acciones={
           <Button onClick={onAbrirWizard} data-testid="eventos-registrar-cta">
-            <Plus aria-hidden="true" className="size-4" />+ Registrar evento
+            <Plus aria-hidden="true" className="size-4" />
+            Registrar evento
           </Button>
         }
       />
@@ -309,7 +317,8 @@ function TarjetaCategoriaEvento({
         data-testid={`eventos-registrar-${categoria.id}`}
         className="self-start text-pasto-600"
       >
-        <Plus aria-hidden="true" className="size-4" />+ Registrar {categoria.label.toLowerCase()}
+        <Plus aria-hidden="true" className="size-4" />
+        Registrar {categoria.label.toLowerCase()}
       </Button>
     </div>
   )
@@ -397,6 +406,7 @@ interface FeedVacioProps {
     readonly title: string
     readonly description: string
     readonly actionLabel?: string
+    readonly actionIcon?: typeof Plus
   }
   readonly onLimpiar: () => void
   readonly onRegistrar: () => void
@@ -410,6 +420,7 @@ function FeedVacio({ copy, onLimpiar, onRegistrar }: FeedVacioProps) {
       title={copy.title}
       description={copy.description}
       {...(copy.actionLabel ? { actionLabel: copy.actionLabel } : {})}
+      {...(copy.actionIcon ? { actionIcon: copy.actionIcon } : {})}
       onAction={esLimpiar ? onLimpiar : onRegistrar}
     />
   )

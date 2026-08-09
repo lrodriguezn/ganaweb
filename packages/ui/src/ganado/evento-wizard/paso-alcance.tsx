@@ -169,59 +169,83 @@ export function PasoAlcance({
   }
 
   return (
-    <div className="px-4 pb-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-section font-semibold">¿A quiénes?</h2>
-        <button type="button" onClick={onVolver} className="text-support text-primary font-medium">
-          ‹ Cambiar tipo
-        </button>
+    <div className="min-h-0 flex-1 flex flex-col">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 space-y-4"
+        data-testid="evento-wizard-scope-scroll"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-section font-semibold">¿A quiénes?</h2>
+          <button
+            type="button"
+            onClick={onVolver}
+            className="text-support text-primary font-medium"
+          >
+            ‹ Cambiar tipo
+          </button>
+        </div>
+
+        {permiteGrupal ? (
+          <PillsSegmentadas
+            id="alcance"
+            label="Alcance"
+            value={alcance}
+            onChange={(v) => setAlcance(v as "individual" | "grupal")}
+            options={[
+              { value: "individual", label: "Individual" },
+              { value: "grupal", label: "Grupal" },
+            ]}
+          />
+        ) : (
+          <p className="text-caption text-muted-foreground" data-testid="alcance-solo-individual">
+            {tipo.label} solo admite alcance individual en esta versión.
+          </p>
+        )}
+
+        {alcance === "individual" ? (
+          <SeccionIndividual
+            codigo={codigoIndividual}
+            onCambiarCodigo={setCodigoIndividual}
+            onBuscar={handleBuscarIndividual}
+            error={errorIndividual}
+            animal={animalIndividual}
+            onAceptarPreseleccion={handleSeleccionarIndividualExistente}
+            animalPreseleccionado={animalPreseleccionado}
+            buscarAnimalPorCodigo={buscarAnimalPorCodigo}
+          />
+        ) : (
+          <SeccionGrupal
+            origen={origen}
+            onCambiarOrigen={setOrigen}
+            catalogos={catalogos}
+            criterioId={criterioId}
+            onCambiarCriterio={setCriterioId}
+            animalesCargados={animalesCargados}
+            excluidos={excluidos}
+            cargando={cargandoOrigen}
+            error={errorCarga}
+            onQuitar={handleQuitarExcluido}
+            onRevertir={handleRevertirExcluido}
+            totalEfectivo={animalesEfectivos.length}
+            totalCargado={animalesCargados.length}
+          />
+        )}
       </div>
-
-      {permiteGrupal ? (
-        <PillsSegmentadas
-          id="alcance"
-          label="Alcance"
-          value={alcance}
-          onChange={(v) => setAlcance(v as "individual" | "grupal")}
-          options={[
-            { value: "individual", label: "Individual" },
-            { value: "grupal", label: "Grupal" },
-          ]}
-        />
-      ) : (
-        <p className="text-caption text-muted-foreground" data-testid="alcance-solo-individual">
-          {tipo.label} solo admite alcance individual en esta versión.
-        </p>
-      )}
-
-      {alcance === "individual" ? (
-        <SeccionIndividual
-          codigo={codigoIndividual}
-          onCambiarCodigo={setCodigoIndividual}
-          onBuscar={handleBuscarIndividual}
-          error={errorIndividual}
-          animal={animalIndividual}
-          onAceptarPreseleccion={handleSeleccionarIndividualExistente}
-          animalPreseleccionado={animalPreseleccionado}
-          buscarAnimalPorCodigo={buscarAnimalPorCodigo}
-        />
-      ) : (
-        <SeccionGrupal
-          origen={origen}
-          onCambiarOrigen={setOrigen}
-          catalogos={catalogos}
-          criterioId={criterioId}
-          onCambiarCriterio={setCriterioId}
-          animalesCargados={animalesCargados}
-          excluidos={excluidos}
-          cargando={cargandoOrigen}
-          error={errorCarga}
-          onQuitar={handleQuitarExcluido}
-          onRevertir={handleRevertirExcluido}
-          onConfirmar={handleConfirmarGrupal}
-          totalEfectivo={animalesEfectivos.length}
-          totalCargado={animalesCargados.length}
-        />
+      {alcance === "grupal" && (
+        <div
+          className="shrink-0 border-t bg-card p-4 pb-safe"
+          data-testid="evento-wizard-scope-footer"
+        >
+          <Button
+            type="button"
+            className="w-full h-12"
+            onClick={handleConfirmarGrupal}
+            disabled={animalesEfectivos.length === 0}
+          >
+            Confirmar {animalesEfectivos.length}{" "}
+            {animalesEfectivos.length === 1 ? "animal" : "animales"}
+          </Button>
+        </div>
       )}
     </div>
   )
@@ -307,7 +331,6 @@ function SeccionGrupal({
   error,
   onQuitar,
   onRevertir,
-  onConfirmar,
   totalEfectivo,
   totalCargado,
 }: {
@@ -322,7 +345,6 @@ function SeccionGrupal({
   readonly error: string | null
   readonly onQuitar: (id: string) => void
   readonly onRevertir: (id: string) => void
-  readonly onConfirmar: () => void
   readonly totalEfectivo: number
   readonly totalCargado: number
 }) {
@@ -433,15 +455,6 @@ function SeccionGrupal({
           </ul>
         </div>
       )}
-
-      <Button
-        type="button"
-        className="w-full h-12"
-        onClick={onConfirmar}
-        disabled={totalEfectivo === 0}
-      >
-        Confirmar {totalEfectivo} {totalEfectivo === 1 ? "animal" : "animales"}
-      </Button>
     </div>
   )
 }

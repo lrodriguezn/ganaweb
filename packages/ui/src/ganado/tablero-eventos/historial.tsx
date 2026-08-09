@@ -8,12 +8,12 @@
  * paginan keyset (#227 / #183) — acá solo se renderiza y se navega.
  *
  * Empty-states consistentes con `TableroEventos`:
- *  - Vacío inicial (sin filtros): CTA "+ Registrar evento".
+ *  - Vacío inicial (sin filtros): CTA "Registrar evento" con icono Plus.
  *  - Vacío por filtro: acción "Limpiar filtros".
  *  - Error: reintento.
  *  - Loading: skeleton.
  */
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react"
 
 import { cn } from "../../lib/utils"
 import { Button } from "../../primitives/button"
@@ -380,7 +380,8 @@ function HistorialVacio({ vacioPorFiltro, onLimpiar, onRegistrar }: HistorialVac
       icon={ChevronRight}
       title="Aún no hay eventos registrados"
       description="Cuando registres servicios, pesajes, aplicaciones o movimientos, aparecerán aquí."
-      actionLabel="+ Registrar evento"
+      actionLabel="Registrar evento"
+      actionIcon={Plus}
       onAction={onRegistrar}
     />
   )

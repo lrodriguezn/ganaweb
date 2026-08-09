@@ -527,9 +527,7 @@ export function EventosRouteView({
           if (!open) setCorreccionDeId(undefined)
         }}
         fincaId={data.fincaId}
-        {...(categoriaPreseleccionada
-          ? { tipoPreseleccionado: tipoPorCategoria(categoriaPreseleccionada) }
-          : {})}
+        {...(categoriaPreseleccionada ? { categoriaInicial: categoriaPreseleccionada } : {})}
         {...(correccionDeId ? { corrigeAId: correccionDeId } : {})}
         permisosEfectivos={data.permisosEfectivos}
         catalogos={CATALOGOS_VACIOS}
@@ -652,21 +650,6 @@ async function recargarHistorialImpl(
     setEstado(next)
   } catch {
     setEstado({ tipo: "error" })
-  }
-}
-
-function tipoPorCategoria(
-  cat: CategoriaEventoTableroUi,
-): "servicio" | "aplicacion_sanitaria" | "pesaje" | "venta" {
-  switch (cat) {
-    case "reproductivo":
-      return "servicio"
-    case "sanidad":
-      return "aplicacion_sanitaria"
-    case "productivo":
-      return "pesaje"
-    case "movimientos":
-      return "venta"
   }
 }
 

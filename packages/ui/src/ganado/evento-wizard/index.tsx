@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { cn } from "../../lib/utils"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "../../primitives/drawer"
@@ -12,6 +12,7 @@ import type {
   CapturaEvento,
   CargaAnimalesPorOrigen,
   CatalogosParaAlcance,
+  DominioEventoWizard,
   PermisosEfectivosPorDominio,
   Seleccion,
   TipoEventoWizard,
@@ -38,6 +39,8 @@ export interface EventoWizardProps {
   readonly animalPreseleccionado?: AnimalResumen
   /** Tipo preseleccionado desde tarjeta → salta al paso 2 respetando selección. */
   readonly tipoPreseleccionado?: TipoEventoWizard
+  /** Categoría inicial desde Eventos → filtra el selector sin elegir un tipo. */
+  readonly categoriaInicial?: DominioEventoWizard
   readonly corrigeAId?: string
   /** Permisos efectivos por dominio. El server los revalida. */
   readonly permisosEfectivos: PermisosEfectivosPorDominio
@@ -72,6 +75,7 @@ export function EventoWizard({
   onOpenChange,
   animalPreseleccionado,
   tipoPreseleccionado,
+  categoriaInicial,
   corrigeAId,
   permisosEfectivos,
   catalogos,
@@ -87,12 +91,20 @@ export function EventoWizard({
   const [pasoActual, setPasoActual] = useState<Paso>(
     pasoInicial(tipoPreseleccionado, animalPreseleccionado),
   )
+  const [categoriaContextual, setCategoriaContextual] = useState<DominioEventoWizard | undefined>(
+    categoriaInicial,
+  )
   const [errorServidor, setErrorServidor] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (open) setCategoriaContextual(categoriaInicial)
+  }, [categoriaInicial, open])
 
   const reset = () => {
     if (!animalPreseleccionado) setSeleccion(undefined)
     if (!tipoPreseleccionado) setTipo(undefined)
     setPasoActual(pasoInicial(tipoPreseleccionado, animalPreseleccionado))
+    setCategoriaContextual(categoriaInicial)
     setErrorServidor(null)
   }
 
@@ -173,25 +185,36 @@ export function EventoWizard({
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
       <DrawerContent
-        className={cn("rounded-t-sheet", pasoActual === "datos" ? "h-[90vh]" : "h-[50vh]")}
+        className={cn(
+          "rounded-t-sheet",
+          pasoActual === "tipo" || pasoActual === "alcance"
+            ? "h-[90dvh] max-h-[760px] sm:inset-x-auto sm:left-1/2 sm:bottom-auto sm:top-1/2 sm:w-[min(720px,calc(100vw-2rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-card sm:h-[85dvh]"
+            : pasoActual === "datos"
+              ? "h-[90vh]"
+              : "h-[50vh]",
+        )}
       >
         {pasoActual === "tipo" && (
           <>
-            <DrawerHeader className="pb-2">
+            <DrawerHeader className="shrink-0 pb-2">
               <DrawerTitle className="text-section">¿Qué registrar?</DrawerTitle>
+              <PasoIndicador pasoActual={pasoActual} />
             </DrawerHeader>
             <PasoTipo
               tipoInicial={tipo}
+              categoriaContextual={categoriaContextual}
               permisosEfectivos={permisosEfectivos}
               onSeleccionar={handleSeleccionTipo}
+              onVerTodosTipos={() => setCategoriaContextual(undefined)}
             />
           </>
         )}
 
         {pasoActual === "alcance" && tipo && meta && (
           <>
-            <DrawerHeader className="pb-2">
+            <DrawerHeader className="shrink-0 pb-2">
               <DrawerTitle className="text-section">{meta.label}</DrawerTitle>
+              <PasoIndicador pasoActual={pasoActual} />
             </DrawerHeader>
             <PasoAlcance
               tipo={meta}
@@ -214,12 +237,17 @@ export function EventoWizard({
 
         {pasoActual === "datos" && tipo && seleccion && (
           <>
-            <PasoDatos
-              tipo={tipo}
-              numeroAnimales={numeroAnimales}
-              onVolver={handleVolverAAlcance}
-              onGuardar={handleGuardar}
-            />
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="shrink-0 px-4 pt-3">
+                <PasoIndicador pasoActual={pasoActual} />
+              </div>
+              <PasoDatos
+                tipo={tipo}
+                numeroAnimales={numeroAnimales}
+                onVolver={handleVolverAAlcance}
+                onGuardar={handleGuardar}
+              />
+            </div>
             {errorServidor && (
               <p
                 className="text-caption text-peligro-600 px-4 pb-2"
@@ -251,4 +279,32 @@ function pasoInicial(
 ): Paso {
   if (tipoPreseleccionado) return animalPreseleccionado ? "datos" : "alcance"
   return "tipo"
+}
+
+function PasoIndicador({ pasoActual }: { readonly pasoActual: Paso }) {
+  const pasos: readonly { id: Paso; label: string }[] = [
+    { id: "tipo", label: "Tipo" },
+    { id: "alcance", label: "Alcance" },
+    { id: "datos", label: "Datos" },
+  ]
+
+  return (
+    <ol
+      aria-label="Progreso del registro de evento"
+      className="flex items-center gap-2 text-caption text-muted-foreground"
+      data-testid="evento-wizard-step-indicator"
+    >
+      {pasos.map((paso, index) => (
+        <li key={paso.id} className="flex items-center gap-2">
+          <span
+            aria-current={paso.id === pasoActual ? "step" : undefined}
+            className={paso.id === pasoActual ? "font-semibold text-foreground" : undefined}
+          >
+            {index + 1}. {paso.label}
+          </span>
+          {index < pasos.length - 1 && <span aria-hidden="true">/</span>}
+        </li>
+      ))}
+    </ol>
+  )
 }

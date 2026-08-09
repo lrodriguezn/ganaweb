@@ -1,5 +1,7 @@
+import { useEffect, useRef } from "react"
+
 import { CATEGORIAS_EVENTO, TIPOS_EVENTO_WIZARD, metaDeTipo } from "./catalogo-tipos"
-import type { PermisosEfectivosPorDominio, TipoEventoWizard } from "./types"
+import type { DominioEventoWizard, PermisosEfectivosPorDominio, TipoEventoWizard } from "./types"
 
 /**
  * Paso 1 del wizard (EV-CAP-001): selector de tipo agrupado por categoría.
@@ -10,24 +12,71 @@ import type { PermisosEfectivosPorDominio, TipoEventoWizard } from "./types"
  */
 export interface PasoTipoProps {
   readonly tipoInicial?: TipoEventoWizard | undefined
+  readonly categoriaContextual?: DominioEventoWizard | undefined
   readonly permisosEfectivos: PermisosEfectivosPorDominio
   readonly onSeleccionar: (tipo: TipoEventoWizard) => void
+  readonly onVerTodosTipos: () => void
 }
 
-export function PasoTipo({ tipoInicial, permisosEfectivos, onSeleccionar }: PasoTipoProps) {
-  const tiposVisibles = TIPOS_EVENTO_WIZARD.filter((t) => permisosEfectivos[t.dominio] === true)
+export function PasoTipo({
+  tipoInicial,
+  categoriaContextual,
+  permisosEfectivos,
+  onSeleccionar,
+  onVerTodosTipos,
+}: PasoTipoProps) {
+  const categoriaRefs = useRef<Partial<Record<DominioEventoWizard, HTMLElement>>>({})
+  const verTodosRef = useRef<HTMLButtonElement>(null)
+  const tiposAutorizados = TIPOS_EVENTO_WIZARD.filter(
+    (tipo) => permisosEfectivos[tipo.dominio] === true,
+  )
+  const tiposVisibles = categoriaContextual
+    ? tiposAutorizados.filter((tipo) => tipo.categoria === categoriaContextual)
+    : tiposAutorizados
+
+  useEffect(() => {
+    if (!categoriaContextual) return
+    const section = categoriaRefs.current[categoriaContextual]
+    if (section) {
+      section.scrollIntoView({ block: "nearest" })
+      section.focus({ preventScroll: true })
+      return
+    }
+    verTodosRef.current?.focus()
+  }, [categoriaContextual])
 
   return (
-    <div className="px-4 pb-6 space-y-5">
+    <div
+      className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 space-y-5"
+      data-testid="evento-wizard-type-scroll"
+    >
+      {categoriaContextual && (
+        <button
+          ref={verTodosRef}
+          type="button"
+          onClick={onVerTodosTipos}
+          className="min-h-11 text-support font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Ver todos los tipos
+        </button>
+      )}
       {CATEGORIAS_EVENTO.map((categoria) => {
         const tiposDeCategoria = tiposVisibles.filter((t) => t.categoria === categoria.id)
         if (tiposDeCategoria.length === 0) return null
         return (
-          <section key={categoria.id} aria-labelledby={`cat-${categoria.id}`}>
+          <section
+            ref={(section) => {
+              if (section) categoriaRefs.current[categoria.id] = section
+            }}
+            key={categoria.id}
+            aria-labelledby={`cat-${categoria.id}`}
+            data-testid={`evento-wizard-category-${categoria.id}`}
+            tabIndex={-1}
+          >
             <h3 id={`cat-${categoria.id}`} className="text-support font-semibold mb-2">
               {categoria.label}
             </h3>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {tiposDeCategoria.map((tipo) => {
                 const Icon = tipo.icon
                 const activo = tipoInicial === tipo.id
@@ -40,7 +89,7 @@ export function PasoTipo({ tipoInicial, permisosEfectivos, onSeleccionar }: Paso
                     onClick={() => onSeleccionar(tipo.id)}
                     aria-pressed={activo}
                     aria-label={`${tipo.label}${tipo.grupal ? "" : " — solo individual"}`}
-                    className={`h-[88px] rounded-card border bg-card flex flex-col items-center justify-center gap-2 active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    className={`min-h-16 rounded-card border bg-card flex flex-col items-center justify-center gap-1 px-2 py-2 active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       activo ? "border-pasto-600" : "border-input"
                     }`}
                   >
@@ -49,8 +98,12 @@ export function PasoTipo({ tipoInicial, permisosEfectivos, onSeleccionar }: Paso
                     >
                       <Icon className="size-5" aria-hidden="true" />
                     </span>
-                    <span className="text-caption font-medium">{tipo.label}</span>
-                    {!tipo.grupal && <span className="sr-only">(solo individual)</span>}
+                    <span className="text-caption text-center font-medium">{tipo.label}</span>
+                    {!tipo.grupal && (
+                      <span className="text-[10px] leading-tight text-muted-foreground">
+                        Solo individual
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -58,7 +111,13 @@ export function PasoTipo({ tipoInicial, permisosEfectivos, onSeleccionar }: Paso
           </section>
         )
       })}
-      {tiposVisibles.length === 0 && (
+      {categoriaContextual && tiposVisibles.length === 0 && (
+        // biome-ignore lint/a11y/useSemanticElements: status announcements belong in a paragraph, not a form-associated <output>.
+        <p className="text-support text-muted-foreground text-center py-6" role="status">
+          No tienes tipos autorizados en esta categoría.
+        </p>
+      )}
+      {!categoriaContextual && tiposAutorizados.length === 0 && (
         // biome-ignore lint/a11y/useSemanticElements: status announcements belong in a paragraph, not a form-associated <output>.
         <p className="text-support text-muted-foreground text-center py-6" role="status">
           No tienes permisos de creación para ningún dominio. Pide a un administrador que habilite
