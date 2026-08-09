@@ -13,6 +13,7 @@ export interface EmptyStateProps {
   title: string
   description?: string
   actionLabel?: string
+  actionIcon?: React.ComponentType<{ className?: string }>
   onAction?: () => void
   className?: string
 }
@@ -22,6 +23,7 @@ export function EmptyState({
   title,
   description,
   actionLabel,
+  actionIcon: ActionIcon,
   onAction,
   className,
 }: EmptyStateProps) {
@@ -36,6 +38,7 @@ export function EmptyState({
       )}
       {actionLabel && onAction && (
         <Button variant="secondary" className="mt-4 min-h-[--h-touch]" onClick={onAction}>
+          {ActionIcon && <ActionIcon aria-hidden="true" className="size-4" />}
           {actionLabel}
         </Button>
       )}

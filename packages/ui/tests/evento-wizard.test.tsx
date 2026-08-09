@@ -95,6 +95,96 @@ describe("EventoWizard — Paso 1: selector de tipo agrupado por categoría", ()
     expect(screen.getByText("Sanidad")).toBeInTheDocument()
     expect(screen.getByText("Productivo")).toBeInTheDocument()
     expect(screen.getByText("Movimientos")).toBeInTheDocument()
+    expect(screen.getByTestId("evento-wizard-type-scroll")).toHaveClass("overflow-y-auto")
+    expect(screen.getByTestId("evento-wizard-step-indicator")).toHaveAttribute(
+      "aria-label",
+      "Progreso del registro de evento",
+    )
+  })
+
+  it("renders every catalog option with compact responsive classes", () => {
+    render(<EventoWizard {...props()} />)
+
+    for (const label of [
+      "Servicio",
+      "Palpación",
+      "Parto",
+      "Aplicación sanitaria",
+      "Revisión veterinaria",
+      "Pesaje",
+      "Producción láctea",
+      "Condición corporal",
+      "Venta",
+      "Muerte",
+      "Traslado",
+    ]) {
+      expect(screen.getByRole("button", { name: new RegExp(label) })).toBeInTheDocument()
+    }
+    expect(screen.getByRole("button", { name: /Parto.*solo individual/i })).toHaveTextContent(
+      "Solo individual",
+    )
+  })
+
+  it.each([
+    ["reproductivo", ["Servicio", "Palpación", "Parto"], "Pesaje"],
+    ["sanidad", ["Aplicación sanitaria", "Revisión veterinaria"], "Servicio"],
+    ["productivo", ["Pesaje", "Producción láctea", "Condición corporal"], "Venta"],
+    ["movimientos", ["Venta", "Muerte", "Traslado"], "Pesaje"],
+  ] as const)(
+    "filters the contextual %s category without selecting a type",
+    async (categoria, tiposEsperados, tipoAusente) => {
+      render(<EventoWizard {...props({ categoriaInicial: categoria })} />)
+
+      const category = screen.getByTestId(`evento-wizard-category-${categoria}`)
+      await waitFor(() => expect(category).toHaveFocus())
+      for (const label of tiposEsperados) {
+        expect(screen.getByRole("button", { name: new RegExp(label) })).toHaveAttribute(
+          "aria-pressed",
+          "false",
+        )
+      }
+      expect(
+        screen.queryByRole("button", { name: new RegExp(tipoAusente) }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Ver todos los tipos" })).toBeInTheDocument()
+    },
+  )
+
+  it("restores every authorized category without closing the wizard", async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    render(<EventoWizard {...props({ categoriaInicial: "sanidad", onOpenChange })} />)
+
+    await user.click(screen.getByRole("button", { name: "Ver todos los tipos" }))
+
+    expect(screen.getByText("Reproductivo")).toBeInTheDocument()
+    expect(screen.getByText("Sanidad")).toBeInTheDocument()
+    expect(screen.getByText("Productivo")).toBeInTheDocument()
+    expect(screen.getByText("Movimientos")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Ver todos los tipos" })).not.toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  it("fails closed in an unauthorized contextual category and allows showing authorized types", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          categoriaInicial: "sanidad",
+          permisosEfectivos: PERMISOS_SOLO_PRODUCTIVO,
+        })}
+      />,
+    )
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "No tienes tipos autorizados en esta categoría.",
+    )
+    expect(screen.queryByText("Productivo")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Ver todos los tipos" }))
+
+    expect(screen.getByText("Productivo")).toBeInTheDocument()
+    expect(screen.queryByText("Sanidad")).not.toBeInTheDocument()
   })
 
   it("oculta categorías sin permiso de creación (RBAC visual fail-closed)", () => {
@@ -111,6 +201,23 @@ describe("EventoWizard — Paso 1: selector de tipo agrupado por categoría", ()
     expect(parto.getAttribute("aria-label")).toMatch(/solo individual/)
     const pesaje = screen.getByRole("button", { name: /Pesaje/ })
     expect(pesaje.getAttribute("aria-label")).not.toMatch(/solo individual/)
+    expect(parto).toHaveClass("focus-visible:ring-2")
+  })
+
+  it("avanza de Tipo a Alcance al seleccionar una opción", async () => {
+    const user = userEvent.setup()
+    render(<EventoWizard {...props()} />)
+
+    await user.click(screen.getByRole("button", { name: /Pesaje/ }))
+
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+    expect(screen.getByTestId("evento-wizard-step-indicator")).toHaveTextContent(
+      /1\. Tipo\s*\/\s*2\. Alcance\s*\/\s*3\. Datos/,
+    )
+    expect(
+      screen.getByTestId("evento-wizard-step-indicator").querySelector('[aria-current="step"]'),
+    ).toHaveTextContent("2. Alcance")
+    expect(screen.queryByText("¿Qué registrar?")).not.toBeInTheDocument()
   })
 })
 
@@ -129,6 +236,9 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     expect(screen.queryByText("¿Qué registrar?")).not.toBeInTheDocument()
     expect(screen.queryByText("¿A quiénes?")).not.toBeInTheDocument()
     expect(screen.getByText("Registrar pesaje")).toBeInTheDocument()
+    expect(
+      screen.getByTestId("evento-wizard-step-indicator").querySelector('[aria-current="step"]'),
+    ).toHaveTextContent("3. Datos")
   })
 
   it("muestra el Paso 1 cuando SOLO hay animal preseleccionado (RBAC requiere tipo)", () => {
@@ -149,6 +259,27 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     // El Paso 2 (alcance) está visible. El Paso 1 (tipo) NO.
     expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
     expect(screen.queryByText("¿Qué registrar?")).not.toBeInTheDocument()
+    expect(
+      screen.getByTestId("evento-wizard-step-indicator").querySelector('[aria-current="step"]'),
+    ).toHaveTextContent("2. Alcance")
+  })
+
+  it("avanza de individual a Datos después de buscar un animal", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          buscarAnimalPorCodigo: vi.fn(async () => ({ id: "a-1", codigoAnimal: "MT-122" })),
+        })}
+      />,
+    )
+
+    await user.type(screen.getByLabelText("Código del animal"), "MT-122")
+    await user.click(screen.getByRole("button", { name: "Buscar" }))
+
+    expect(screen.getByText("Registrar pesaje")).toBeInTheDocument()
+    expect(screen.getByTestId("evento-wizard-step-indicator")).toHaveTextContent("3. Datos")
   })
 
   it("ofrece alcance grupal para tipos que lo permiten", () => {
@@ -186,6 +317,27 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     // Confirmar: emite selección grupal con 2 efectivos.
     const confirmar = screen.getByRole("button", { name: /Confirmar 2 animales/ })
     await user.click(confirmar)
+    expect(screen.getByText("Registrar pesaje")).toBeInTheDocument()
+    expect(screen.getByTestId("evento-wizard-step-indicator")).toHaveTextContent("3. Datos")
+  })
+
+  it("mantiene el footer grupal persistente y deshabilitado sin animales efectivos", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          cargarAnimalesPorOrigen: vi.fn(async () => []),
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    const footer = await screen.findByTestId("evento-wizard-scope-footer")
+    const confirmar = within(footer).getByRole("button", { name: "Confirmar 0 animales" })
+    expect(footer).toHaveClass("shrink-0", "border-t")
+    expect(confirmar).toBeDisabled()
+    expect(screen.getByTestId("evento-wizard-scope-scroll")).toHaveClass("overflow-y-auto")
   })
 })
 
