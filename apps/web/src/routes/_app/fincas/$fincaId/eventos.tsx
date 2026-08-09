@@ -27,7 +27,9 @@
  *  - `EventosRouteView` — presentacional puro (testable con props).
  */
 import {
+  AnulacionEventoDialog,
   type CategoriaEventoTablero as CategoriaEventoTableroUi,
+  type EventoHistorialItem,
   EventoWizard,
   type FiltrosEventosFinca,
   HistorialEventos,
@@ -58,6 +60,7 @@ import {
   leerEventosFincaTableroFn,
 } from "../../../../server/eventos-finca-read.js"
 import {
+  anularEventoFn,
   buscarAnimalPorCodigoFn,
   capturarEventoFn,
   listarAnimalesPorOrigenFn,
@@ -326,15 +329,19 @@ export function EventosRouteView({
   const [estadoHistorial, setEstadoHistorial] = useState<EstadoHistorial>({ tipo: "cargando" })
   const [paginaActual, setPaginaActual] = useState<number>(1)
   const [filtrosActivos, setFiltrosActivos] = useState<FiltrosEventosFinca>({})
+  const [eventoAuditable, setEventoAuditable] = useState<EventoHistorialItem | null>(null)
+  const [correccionDeId, setCorreccionDeId] = useState<string | undefined>(undefined)
 
   const vista: VistaEventos = search.vista === "historial" ? "historial" : "tablero"
 
   const onAbrirWizard = () => {
     setCategoriaPreseleccionada(undefined)
+    setCorreccionDeId(undefined)
     setWizardAbierto(true)
   }
   const onAbrirWizardConCategoria = (cat: CategoriaEventoTableroUi) => {
     setCategoriaPreseleccionada(cat)
+    setCorreccionDeId(undefined)
     setWizardAbierto(true)
   }
 
@@ -377,6 +384,20 @@ export function EventosRouteView({
         page: 1,
         cursor: undefined,
       }),
+    )
+  }
+
+  const puedeAnular = (dominio: CategoriaEventoTableroUi) => {
+    const modulo =
+      dominio === "reproductivo"
+        ? "eventos_reproductivos"
+        : dominio === "productivo"
+          ? "eventos_productivos"
+          : dominio === "sanidad"
+            ? "sanidad"
+            : "movimientos"
+    return data.sesion.permisos.some(
+      (permiso) => permiso.modulo === modulo && permiso.accion === "anular",
     )
   }
 
@@ -489,16 +510,27 @@ export function EventosRouteView({
           onPaginaAnterior={onPaginaAnterior}
           onReintentar={onReintentarHistorial}
           onRegistrar={onAbrirWizard}
+          puedeAnular={puedeAnular}
+          onAnular={setEventoAuditable}
+          onCorregir={(evento) => {
+            setCorreccionDeId(evento.registroGrupalId ?? evento.id)
+            setCategoriaPreseleccionada(evento.dominio)
+            setWizardAbierto(true)
+          }}
         />
       )}
 
       <EventoWizard
         open={wizardAbierto}
-        onOpenChange={setWizardAbierto}
+        onOpenChange={(open) => {
+          setWizardAbierto(open)
+          if (!open) setCorreccionDeId(undefined)
+        }}
         fincaId={data.fincaId}
         {...(categoriaPreseleccionada
           ? { tipoPreseleccionado: tipoPorCategoria(categoriaPreseleccionada) }
           : {})}
+        {...(correccionDeId ? { corrigeAId: correccionDeId } : {})}
         permisosEfectivos={data.permisosEfectivos}
         catalogos={CATALOGOS_VACIOS}
         cargarAnimalesPorOrigen={(origen, id) =>
@@ -508,6 +540,39 @@ export function EventosRouteView({
         onEnviar={(captura) => enviarCapturaEnRuta(data.fincaId, captura)}
         onCapturado={() => {
           onInvalidarRouter()
+        }}
+      />
+      <AnulacionEventoDialog
+        evento={eventoAuditable}
+        open={eventoAuditable !== null}
+        onOpenChange={(open) => {
+          if (!open) setEventoAuditable(null)
+        }}
+        onConfirmar={async (motivo) => {
+          if (!eventoAuditable) return { tipo: "error", detalle: "Evento no seleccionado." }
+          const resultado = await anularEventoFn({
+            data: {
+              fincaId: data.fincaId,
+              evento: eventoAuditable.tipo,
+              objetivo: eventoAuditable.registroGrupalId ? "grupal" : "individual",
+              objetivoId: eventoAuditable.registroGrupalId ?? eventoAuditable.id,
+              motivo,
+            },
+          })
+          if (resultado.tipo === "ok") {
+            onInvalidarRouter()
+            return resultado
+          }
+          return {
+            tipo: "error",
+            detalle: "detalle" in resultado ? resultado.detalle : "No autorizado.",
+          }
+        }}
+        onCorregir={(evento) => {
+          setEventoAuditable(null)
+          setCorreccionDeId(evento.registroGrupalId ?? evento.id)
+          setCategoriaPreseleccionada(evento.dominio)
+          setWizardAbierto(true)
         }}
       />
     </div>
@@ -650,6 +715,7 @@ async function enviarCapturaEnRuta(
         tipo: captura.tipo,
         alcance,
         datos: captura.datos,
+        ...(captura.corrigeAId ? { corrigeAId: captura.corrigeAId } : {}),
       },
     })
     const body = (await response.json()) as import("@ganaweb/ui").ResultadoCapturaEvento

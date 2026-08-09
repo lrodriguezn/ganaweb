@@ -42,6 +42,9 @@ export interface HistorialEventosProps {
   readonly onPaginaAnterior: () => void
   readonly onReintentar: () => void
   readonly onRegistrar: () => void
+  readonly puedeAnular?: boolean | ((dominio: CategoriaEventoTablero) => boolean)
+  readonly onAnular?: (evento: EventoHistorialItem) => void
+  readonly onCorregir?: (evento: EventoHistorialItem) => void
 }
 
 const _TAMANO_PAGINA = 20
@@ -62,6 +65,9 @@ export function HistorialEventos({
   onPaginaAnterior,
   onReintentar,
   onRegistrar,
+  puedeAnular = false,
+  onAnular = () => {},
+  onCorregir = () => {},
 }: HistorialEventosProps) {
   const hayFiltrosAplicados = Boolean(
     filtros.categoria || filtros.tipo || filtros.fechaDesde || filtros.fechaHasta,
@@ -106,7 +112,14 @@ export function HistorialEventos({
             <ul className="-mx-1 divide-y divide-tierra-200" data-testid="eventos-historial-lista">
               {feed.map((item) => (
                 <li key={item.id} className="px-1 py-3">
-                  <FilaHistorialEvento item={item} />
+                  <FilaHistorialEvento
+                    item={item}
+                    puedeAnular={
+                      typeof puedeAnular === "function" ? puedeAnular(item.dominio) : puedeAnular
+                    }
+                    onAnular={onAnular}
+                    onCorregir={onCorregir}
+                  />
                 </li>
               ))}
             </ul>
@@ -259,11 +272,19 @@ function legible(tipo: string): string {
 
 interface FilaHistorialEventoProps {
   readonly item: EventoHistorialItem
+  readonly puedeAnular: boolean
+  readonly onAnular: (evento: EventoHistorialItem) => void
+  readonly onCorregir: (evento: EventoHistorialItem) => void
 }
 
-function FilaHistorialEvento({ item }: FilaHistorialEventoProps) {
+function FilaHistorialEvento({
+  item,
+  puedeAnular,
+  onAnular,
+  onCorregir,
+}: FilaHistorialEventoProps) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1">
       <span className="block text-support font-medium text-foreground">
         {item.animalCodigo}
         {item.animalNombre ? ` · ${item.animalNombre}` : ""}
@@ -275,7 +296,18 @@ function FilaHistorialEvento({ item }: FilaHistorialEventoProps) {
       <span className="block text-caption text-muted-foreground num">
         {item.fecha}
         {item.registroGrupalId ? " · Grupal" : ""}
+        {item.anulado ? " · Anulado" : ""}
       </span>
+      {puedeAnular && !item.anulado && (
+        <Button size="sm" variant="ghost" onClick={() => onAnular(item)}>
+          Anular
+        </Button>
+      )}
+      {item.anulado && (
+        <Button size="sm" variant="ghost" onClick={() => onCorregir(item)}>
+          Registrar corrección
+        </Button>
+      )}
     </div>
   )
 }

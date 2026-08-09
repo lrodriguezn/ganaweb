@@ -195,6 +195,8 @@ export { TableroEventos } from "./ganado/tablero-eventos"
 export type { TableroEventosProps } from "./ganado/tablero-eventos"
 export { HistorialEventos } from "./ganado/tablero-eventos/historial"
 export type { HistorialEventosProps } from "./ganado/tablero-eventos/historial"
+export { AnulacionEventoDialog } from "./ganado/tablero-eventos/anulacion-dialog"
+export type { AnulacionEventoDialogProps } from "./ganado/tablero-eventos/anulacion-dialog"
 export type {
   CategoriaEventoMeta,
   CategoriaEventoTablero,
