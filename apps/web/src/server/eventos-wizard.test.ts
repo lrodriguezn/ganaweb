@@ -22,7 +22,7 @@
  */
 import { describe, expect, it, vi } from "vitest"
 
-import type { SesionAutorizada } from "@ganaweb/aplicacion"
+import { EventoForbiddenError, type SesionAutorizada } from "@ganaweb/aplicacion"
 
 import {
   type EventoWizardResultado,
@@ -380,5 +380,112 @@ describe("createEventoWizardActionHarness — mapeo de errores del boundary", ()
       datos: { fecha: "2026-08-07", pesoKg: 400 },
     })
     expect(resultado).toEqual({ tipo: "error", detalle: "DB timeout" })
+  })
+})
+
+describe("createEventoAnnulmentHarness — anulación auditada", () => {
+  const input = {
+    fincaId: FINCA,
+    evento: "venta",
+    objetivo: "individual" as const,
+    objetivoId: "venta-1",
+    motivo: "Venta duplicada",
+  }
+
+  it("rechaza sin sesión o con finca activa distinta", async () => {
+    const { createEventoAnnulmentHarness } = await import("./eventos-wizard.server.js")
+    const anular = vi.fn()
+
+    expect(
+      await createEventoAnnulmentHarness({
+        anular,
+        getSession: async () => null,
+        reloj,
+      }).anular(input),
+    ).toEqual({ tipo: "no_autenticado" })
+
+    expect(
+      await createEventoAnnulmentHarness({
+        anular,
+        getSession: async () => ({ ...sesionCompleta(), fincaActivaId: "finca-2" }),
+        reloj,
+      }).anular(input),
+    ).toEqual({ tipo: "finca_no_autorizada" })
+    expect(anular).not.toHaveBeenCalled()
+  })
+
+  it("rechaza tipo u objetivo inválidos antes de delegar", async () => {
+    const { createEventoAnnulmentHarness } = await import("./eventos-wizard.server.js")
+    const anular = vi.fn()
+    const harness = createEventoAnnulmentHarness({
+      anular,
+      getSession: async () => sesionCompleta(),
+      reloj,
+    })
+
+    await expect(harness.anular({ ...input, evento: "evento_inexistente" })).resolves.toEqual({
+      tipo: "validacion",
+      detalle: "El tipo y el objetivo son obligatorios.",
+    })
+    await expect(harness.anular({ ...input, objetivoId: "   " })).resolves.toEqual({
+      tipo: "validacion",
+      detalle: "El tipo y el objetivo son obligatorios.",
+    })
+    expect(anular).not.toHaveBeenCalled()
+  })
+
+  it("mapea la entrada a un comando anular_evento y devuelve éxito", async () => {
+    const { createEventoAnnulmentHarness } = await import("./eventos-wizard.server.js")
+    const anular = vi.fn()
+    const harness = createEventoAnnulmentHarness({
+      anular,
+      getSession: async () => sesionCompleta(),
+      reloj,
+    })
+
+    await expect(harness.anular(input)).resolves.toEqual({ tipo: "ok" })
+    expect(anular).toHaveBeenCalledTimes(1)
+    expect(anular).toHaveBeenCalledWith({
+      sesion: sesionCompleta(),
+      command: expect.objectContaining({
+        tipo: "anular_evento",
+        fincaId: FINCA,
+        usuarioId: USUARIO,
+        evento: "venta",
+        objetivo: "individual",
+        objetivoId: "venta-1",
+        motivo: "Venta duplicada",
+        fecha: HOY,
+      }),
+    })
+    const command = anular.mock.calls[0]?.[0].command
+    expect(command.id).toMatch(/^an-/)
+  })
+
+  it("mapea permiso denegado y errores inesperados", async () => {
+    const { createEventoAnnulmentHarness } = await import("./eventos-wizard.server.js")
+    const permiso = createEventoAnnulmentHarness({
+      anular: vi.fn(async () => {
+        throw new EventoForbiddenError("permiso_denegado", "movimientos:anular")
+      }),
+      getSession: async () => sesionCompleta(),
+      reloj,
+    })
+    await expect(permiso.anular(input)).resolves.toEqual({
+      tipo: "permiso_denegado",
+      permiso: "movimientos:anular",
+    })
+
+    const error = createEventoAnnulmentHarness({
+      anular: vi.fn(async () => {
+        throw new Error("DB timeout")
+      }),
+      getSession: async () => sesionCompleta(),
+      reloj,
+    })
+    await expect(error.anular(input)).resolves.toEqual({
+      tipo: "error",
+      detalle: "DB timeout",
+    })
   })
 })

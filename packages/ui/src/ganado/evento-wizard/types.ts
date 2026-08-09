@@ -71,6 +71,7 @@ export interface CapturaEvento {
   readonly datos: Readonly<Record<string, string | number | null>>
   /** ISO YYYY-MM-DD; si falta la hereda el formulario del dominio. */
   readonly fecha?: string
+  readonly corrigeAId?: string
 }
 
 export type CargaAnimalesPorOrigen = (

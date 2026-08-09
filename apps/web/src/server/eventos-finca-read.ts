@@ -65,6 +65,9 @@ export interface EventoFeedItemDto {
   readonly totalAnimales: number | null
   readonly animalCodigo: string | null
   readonly animalNombre: string | null
+  readonly anulado: boolean
+  readonly anuladoEn: string | null
+  readonly motivoAnulacion: string | null
 }
 
 export interface EventoHistorialItemDto {
@@ -77,6 +80,9 @@ export interface EventoHistorialItemDto {
   readonly animalCodigo: string
   readonly animalNombre: string | null
   readonly registroGrupalId: string | null
+  readonly anulado: boolean
+  readonly anuladoEn: string | null
+  readonly motivoAnulacion: string | null
 }
 
 export interface EventoFeedRespuesta {

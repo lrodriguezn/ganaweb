@@ -38,6 +38,7 @@ export interface EventoWizardProps {
   readonly animalPreseleccionado?: AnimalResumen
   /** Tipo preseleccionado desde tarjeta → salta al paso 2 respetando selección. */
   readonly tipoPreseleccionado?: TipoEventoWizard
+  readonly corrigeAId?: string
   /** Permisos efectivos por dominio. El server los revalida. */
   readonly permisosEfectivos: PermisosEfectivosPorDominio
   readonly catalogos: CatalogosParaAlcance
@@ -71,6 +72,7 @@ export function EventoWizard({
   onOpenChange,
   animalPreseleccionado,
   tipoPreseleccionado,
+  corrigeAId,
   permisosEfectivos,
   catalogos,
   cargarAnimalesPorOrigen,
@@ -133,6 +135,7 @@ export function EventoWizard({
       tipo,
       seleccion,
       datos,
+      ...(corrigeAId ? { corrigeAId } : {}),
     }
     const resultado = await onEnviar(captura)
     if (resultado.tipo === "capturado") {

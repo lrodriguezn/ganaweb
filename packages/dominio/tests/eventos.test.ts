@@ -6,6 +6,7 @@ import {
   PAGE_SIZE_HISTORIAL_FINCA,
   PERMISOS_VER_POR_DOMINIO,
   TIPOS_POR_DOMINIO,
+  compensarMovimiento,
   dominiosAutorizadosParaSesion,
   normalizarFiltroEventosFinca,
   permisoEvento,
@@ -14,6 +15,25 @@ import {
   validarAuditoriaAnulacion,
   validarCriterioSeleccionGrupal,
 } from "../src/eventos.js"
+
+describe("compensarMovimiento", () => {
+  it("does not resurrect a later movement", () => {
+    expect(
+      compensarMovimiento({ id: "venta-1", tipo: "venta", fecha: "2026-01-01", anulado: true }, [
+        { id: "muerte-2", tipo: "muerte", fecha: "2026-01-02", anulado: false },
+      ]),
+    ).toMatchObject({ segura: false, estado: "muerto", motivo: "evento_posterior_conserva_estado" })
+  })
+
+  it("restores the last effective state when the target is current", () => {
+    expect(
+      compensarMovimiento(
+        { id: "traslado-2", tipo: "traslado", fecha: "2026-01-02", anulado: true },
+        [{ id: "traslado-1", tipo: "traslado", fecha: "2026-01-01", anulado: false }],
+      ),
+    ).toMatchObject({ segura: true, estado: "activo", movimientoUbicacionId: "traslado-1" })
+  })
+})
 
 describe("contrato transversal de eventos", () => {
   it("conserva exactamente el criterio correspondiente al origen grupal", () => {

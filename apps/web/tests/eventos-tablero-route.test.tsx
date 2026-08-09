@@ -53,6 +53,7 @@ import {
   leerEventosFincaTableroFn,
 } from "../src/server/eventos-finca-read.js"
 import {
+  anularEventoFn,
   buscarAnimalPorCodigoFn,
   capturarEventoFn,
   listarAnimalesPorOrigenFn,
@@ -74,6 +75,7 @@ vi.mock("../src/server/eventos-finca-read.js", () => ({
   },
 }))
 vi.mock("../src/server/eventos-wizard.js", () => ({
+  anularEventoFn: vi.fn(),
   capturarEventoFn: vi.fn(),
   listarAnimalesPorOrigenFn: vi.fn(),
   buscarAnimalPorCodigoFn: vi.fn(),
@@ -101,6 +103,7 @@ afterEach(() => {
   vi.mocked(leerEventosFincaHistorialFn).mockReset()
   vi.mocked(leerContadoresEventosFincaFn).mockReset()
   vi.mocked(capturarEventoFn).mockReset()
+  vi.mocked(anularEventoFn).mockReset()
   vi.mocked(listarAnimalesPorOrigenFn).mockReset()
   vi.mocked(buscarAnimalPorCodigoFn).mockReset()
 })
@@ -514,6 +517,13 @@ const HISTORIAL_BASE: readonly EventoHistorialItem[] = [
   },
 ]
 
+const HISTORIAL_ANULABLE = {
+  ...HISTORIAL_BASE[0],
+  anulado: false,
+  anuladoEn: null,
+  motivoAnulacion: null,
+} as EventoHistorialItem
+
 function renderHistorial(overrides: Partial<Parameters<typeof HistorialEventos>[0]> = {}) {
   const props: Parameters<typeof HistorialEventos>[0] = {
     feed: HISTORIAL_BASE,
@@ -655,6 +665,55 @@ describe("HistorialEventos — paginación, filtros, vacíos", () => {
     renderHistorial()
 
     expect(screen.getByText(/24 eventos en el mes en curso/)).toBeInTheDocument()
+  })
+})
+
+describe("eventos historial — anulación y corrección", () => {
+  it("anula, invalida el router solo al confirmar y abre la corrección", async () => {
+    const user = userEvent.setup()
+    const onInvalidarRouter = vi.fn()
+    const recargarHistorial: EventosRouteViewProps["recargarHistorial"] = (
+      _filtros,
+      _cursor,
+      setEstado,
+    ) => {
+      setEstado({ tipo: "listo", items: [HISTORIAL_ANULABLE] })
+    }
+    vi.mocked(anularEventoFn).mockResolvedValue({ tipo: "ok" })
+
+    renderVista(
+      dataPineada({
+        sesion: {
+          usuarioId: "user-1",
+          fincaActivaId: FINCA_ID,
+          fincaActivaNombre: "Finca Esperanza",
+          permisos: [...PERMISOS_COMPLETOS, { modulo: "eventos_reproductivos", accion: "anular" }],
+        },
+      }),
+      {
+        search: { vista: "historial" },
+        onInvalidarRouter,
+        recargarHistorial,
+      },
+    )
+
+    await user.click(await screen.findByRole("button", { name: "Anular" }))
+    await user.type(screen.getByTestId("anulacion-motivo"), "Dato duplicado")
+    await user.click(screen.getByTestId("anulacion-confirmar"))
+
+    expect(anularEventoFn).toHaveBeenCalledWith({
+      data: {
+        fincaId: FINCA_ID,
+        evento: "servicio",
+        objetivo: "individual",
+        objetivoId: "h-1",
+        motivo: "Dato duplicado",
+      },
+    })
+    expect(onInvalidarRouter).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByTestId("anulacion-corregir"))
+    expect(await screen.findByText("¿Qué registrar?")).toBeInTheDocument()
   })
 })
 

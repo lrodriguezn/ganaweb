@@ -184,7 +184,7 @@ class DrizzleEventoWriteGateway implements EventoWriteGateway {
 
   private async anularEnTransaccion(tx: Transaction, command: AnularEventoCommand): Promise<void> {
     const audit = {
-      fecha: command.fecha,
+      fecha: command.fecha.toISOString(),
       actor: command.usuarioId,
       motivo: command.motivo.trim(),
     }
@@ -209,8 +209,22 @@ class DrizzleEventoWriteGateway implements EventoWriteGateway {
                   AND evento.registro_grupal_id IS NULL
                   AND evento.anulado_en IS NULL`,
           )
-    if ((result as { readonly rowCount?: number }).rowCount !== 1) {
+    if ((result as { readonly count?: number }).count !== 1) {
       throw new EventoCommandInvalidError("objetivoId")
+    }
+    if (["venta", "muerte", "traslado"].includes(command.evento)) {
+      const tabla = TABLES[command.evento].tableName
+      const targets =
+        command.objetivo === "individual"
+          ? ((await tx.execute(
+              sql`SELECT id, animal_id, fecha::text AS fecha FROM ${sql.identifier(tabla)} WHERE id = ${command.objetivoId}`,
+            )) as unknown as readonly { id: string; animal_id: string; fecha: string }[])
+          : ((await tx.execute(
+              sql`SELECT id, animal_id, fecha::text AS fecha FROM ${sql.identifier(tabla)} WHERE registro_grupal_id = ${command.objetivoId}`,
+            )) as unknown as readonly { id: string; animal_id: string; fecha: string }[])
+      for (const target of targets) {
+        await this.reproyectarMovimiento(tx, target.animal_id, command.evento === "traslado")
+      }
     }
   }
 
@@ -250,7 +264,63 @@ class DrizzleEventoWriteGateway implements EventoWriteGateway {
       corrigeAId: command.tipo === "crear_evento_individual" ? (command.corrigeAId ?? null) : null,
       usuarioCreadoPor: command.usuarioId,
     } as never)
+    if (["venta", "muerte", "traslado"].includes(command.evento)) {
+      await this.reproyectarMovimiento(tx, command.animalId, command.evento === "traslado")
+    }
     return { id: command.id }
+  }
+
+  private async reproyectarMovimiento(
+    tx: Transaction,
+    animalId: string,
+    reproyectarUbicacion: boolean,
+  ): Promise<void> {
+    await tx.execute(sql`
+      WITH movimientos AS (
+        SELECT v.id, 'venta'::text AS tipo, v.fecha FROM ventas v
+        LEFT JOIN registros_grupales rg ON rg.id = v.registro_grupal_id
+        WHERE v.animal_id = ${animalId} AND v.anulado_en IS NULL
+          AND (v.registro_grupal_id IS NULL OR rg.anulado_en IS NULL)
+        UNION ALL
+        SELECT m.id, 'muerte', m.fecha FROM muertes m
+        LEFT JOIN registros_grupales rg ON rg.id = m.registro_grupal_id
+        WHERE m.animal_id = ${animalId} AND m.anulado_en IS NULL
+          AND (m.registro_grupal_id IS NULL OR rg.anulado_en IS NULL)
+        UNION ALL
+        SELECT h.id, 'traslado', (h.fecha AT TIME ZONE 'UTC')::date
+        FROM animales_ubicacion_historico h
+        LEFT JOIN registros_grupales rg ON rg.id = h.registro_grupal_id
+        WHERE h.animal_id = ${animalId} AND h.anulado_en IS NULL
+          AND (h.registro_grupal_id IS NULL OR rg.anulado_en IS NULL)
+      ), ubicaciones AS (
+        SELECT h.id, h.potrero_id, h.sector_id, h.lote_id, h.grupo_id,
+          (h.fecha AT TIME ZONE 'UTC')::date AS fecha
+        FROM animales_ubicacion_historico h
+        LEFT JOIN registros_grupales rg ON rg.id = h.registro_grupal_id
+        WHERE h.animal_id = ${animalId} AND h.anulado_en IS NULL
+          AND (h.registro_grupal_id IS NULL OR rg.anulado_en IS NULL)
+      ), ubicacion AS (
+        SELECT
+          (array_agg(potrero_id ORDER BY fecha DESC, id DESC)
+            FILTER (WHERE potrero_id IS NOT NULL))[1] AS potrero_id,
+          (array_agg(sector_id ORDER BY fecha DESC, id DESC)
+            FILTER (WHERE sector_id IS NOT NULL))[1] AS sector_id,
+          (array_agg(lote_id ORDER BY fecha DESC, id DESC)
+            FILTER (WHERE lote_id IS NOT NULL))[1] AS lote_id,
+          (array_agg(grupo_id ORDER BY fecha DESC, id DESC)
+            FILTER (WHERE grupo_id IS NOT NULL))[1] AS grupo_id
+        FROM ubicaciones
+      )
+      UPDATE animales a SET
+        estado_animal_key = CASE (SELECT tipo FROM movimientos ORDER BY fecha DESC, id DESC LIMIT 1)
+          WHEN 'venta' THEN 1 WHEN 'muerte' THEN 2 ELSE 0 END,
+        potrero_id = CASE WHEN ${reproyectarUbicacion} THEN ubicacion.potrero_id ELSE a.potrero_id END,
+        sector_id = CASE WHEN ${reproyectarUbicacion} THEN ubicacion.sector_id ELSE a.sector_id END,
+        lote_id = CASE WHEN ${reproyectarUbicacion} THEN ubicacion.lote_id ELSE a.lote_id END,
+        grupo_id = CASE WHEN ${reproyectarUbicacion} THEN ubicacion.grupo_id ELSE a.grupo_id END,
+        updated_at = NOW()
+      FROM ubicacion WHERE a.id = ${animalId}
+    `)
   }
 
   private async validateAnimalScope(

@@ -198,6 +198,58 @@ export function validarAuditoriaAnulacion(input: {
   return input.motivo.trim().length > 0 && input.actorId.trim().length > 0 && input.fecha !== null
 }
 
+export type MovimientoCanonico = "venta" | "muerte" | "traslado"
+
+export interface MovimientoEfectivo {
+  readonly id: string
+  readonly tipo: MovimientoCanonico
+  readonly fecha: string
+  readonly anulado: boolean
+}
+
+export interface CompensacionMovimiento {
+  readonly segura: boolean
+  readonly estado: "activo" | "vendido" | "muerto"
+  readonly movimientoUbicacionId: string | null
+  readonly motivo: "sin_eventos_posteriores" | "evento_posterior_conserva_estado"
+}
+
+/**
+ * Computes the state that may be projected after an annulment. A later
+ * effective movement always wins; an old annulment must never resurrect it.
+ */
+export function compensarMovimiento(
+  objetivo: MovimientoEfectivo,
+  eventos: readonly MovimientoEfectivo[],
+): CompensacionMovimiento {
+  const comparar = (a: MovimientoEfectivo, b: MovimientoEfectivo) =>
+    `${a.fecha}:${a.id}`.localeCompare(`${b.fecha}:${b.id}`)
+  const posteriores = eventos
+    .filter((evento) => !evento.anulado && comparar(evento, objetivo) > 0)
+    .sort((a, b) => `${b.fecha}:${b.id}`.localeCompare(`${a.fecha}:${a.id}`))
+  const posterior = posteriores[0]
+  if (posterior) {
+    return {
+      segura: false,
+      estado:
+        posterior.tipo === "venta" ? "vendido" : posterior.tipo === "muerte" ? "muerto" : "activo",
+      movimientoUbicacionId: posterior.tipo === "traslado" ? posterior.id : null,
+      motivo: "evento_posterior_conserva_estado",
+    }
+  }
+  const anteriores = eventos
+    .filter((evento) => !evento.anulado && comparar(evento, objetivo) < 0)
+    .sort((a, b) => `${b.fecha}:${b.id}`.localeCompare(`${a.fecha}:${a.id}`))
+  const anterior = anteriores[0]
+  return {
+    segura: true,
+    estado:
+      anterior?.tipo === "venta" ? "vendido" : anterior?.tipo === "muerte" ? "muerto" : "activo",
+    movimientoUbicacionId: anterior?.tipo === "traslado" ? anterior.id : null,
+    motivo: "sin_eventos_posteriores",
+  }
+}
+
 /* =====================================================================
  * Issue #227 — Read model de finca (EV-UI-002..005, EV-INT-001)
  * El read model unificado reutiliza el UNION del timeline y la

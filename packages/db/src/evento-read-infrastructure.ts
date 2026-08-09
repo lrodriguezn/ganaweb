@@ -69,7 +69,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "reproductivo",
     tipo: "servicio",
     tabla: "servicios",
-    fechaExpr: "fecha",
+    fechaExpr: "servicios.fecha",
     detalleExpr: "tipo",
     tieneRegistroGrupal: true,
   },
@@ -77,7 +77,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "reproductivo",
     tipo: "palpacion",
     tabla: "palpaciones",
-    fechaExpr: "fecha",
+    fechaExpr: "palpaciones.fecha",
     detalleExpr: "resultado",
     tieneRegistroGrupal: true,
   },
@@ -85,7 +85,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "reproductivo",
     tipo: "parto",
     tabla: "partos",
-    fechaExpr: "fecha",
+    fechaExpr: "partos.fecha",
     detalleExpr: "tipo_parto",
     tieneRegistroGrupal: true,
   },
@@ -93,7 +93,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "sanidad",
     tipo: "aplicacion_sanitaria",
     tabla: "aplicaciones_sanitarias",
-    fechaExpr: "fecha",
+    fechaExpr: "aplicaciones_sanitarias.fecha",
     detalleExpr: "dosis::text",
     tieneRegistroGrupal: true,
   },
@@ -101,7 +101,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "sanidad",
     tipo: "revision_veterinaria",
     tabla: "revisiones_veterinarias",
-    fechaExpr: "fecha",
+    fechaExpr: "revisiones_veterinarias.fecha",
     detalleExpr: "tipo_diagnostico",
     tieneRegistroGrupal: true,
   },
@@ -109,7 +109,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "productivo",
     tipo: "pesaje",
     tabla: "pesos",
-    fechaExpr: "fecha",
+    fechaExpr: "pesos.fecha",
     detalleExpr: "peso_kg::text || ' kg'",
     tieneRegistroGrupal: true,
   },
@@ -117,7 +117,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "productivo",
     tipo: "produccion_lactea",
     tabla: "producciones_lacteas",
-    fechaExpr: "fecha",
+    fechaExpr: "producciones_lacteas.fecha",
     detalleExpr: "(cantidad_am + cantidad_pm)::text || ' L'",
     tieneRegistroGrupal: true,
   },
@@ -125,7 +125,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "productivo",
     tipo: "condicion_corporal",
     tabla: "animales_condicion_corporal",
-    fechaExpr: "fecha",
+    fechaExpr: "animales_condicion_corporal.fecha",
     detalleExpr: "puntaje::text",
     tieneRegistroGrupal: false,
   },
@@ -133,7 +133,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "movimientos",
     tipo: "venta",
     tabla: "ventas",
-    fechaExpr: "fecha",
+    fechaExpr: "ventas.fecha",
     detalleExpr: "comprador",
     tieneRegistroGrupal: true,
   },
@@ -141,7 +141,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "movimientos",
     tipo: "muerte",
     tabla: "muertes",
-    fechaExpr: "fecha",
+    fechaExpr: "muertes.fecha",
     detalleExpr: "NULL::text",
     tieneRegistroGrupal: false,
   },
@@ -149,7 +149,7 @@ const RAMAS_FINCA: readonly RamaFinca[] = [
     dominio: "movimientos",
     tipo: "traslado",
     tabla: "animales_ubicacion_historico",
-    fechaExpr: "(fecha AT TIME ZONE 'UTC')::date",
+    fechaExpr: "(animales_ubicacion_historico.fecha AT TIME ZONE 'UTC')::date",
     detalleExpr: "motivo",
     tieneRegistroGrupal: true,
   },
@@ -247,6 +247,10 @@ function condicionVigenciaGrupal(tabla: string, tieneRegistroGrupal: boolean): S
   )`
 }
 
+function condicionAnulado(tabla: string, incluirAnulados: boolean): SQL {
+  return incluirAnulados ? sql`` : sql` AND ${sql.raw(tabla)}.anulado_en IS NULL`
+}
+
 function condicionTipo(rama: RamaFinca, tipo: string | undefined): SQL {
   if (!tipo) return sql``
   // Doble check: la rama debe tener el tipo pedido Y pertenecer al
@@ -273,6 +277,7 @@ function ramaFeedFinca(
   fechaDesde: string | undefined,
   fechaHasta: string | undefined,
   tipo: string | undefined,
+  incluirAnulados: boolean,
 ): SQL {
   const fecha = sql.raw(rama.fechaExpr)
   const tabla = sql.raw(rama.tabla)
@@ -295,9 +300,13 @@ function ramaFeedFinca(
               ${condicionVigenciaGrupalInterna(rama.tabla, "h")})`
           : sql`NULL::int`
       } AS total_animales
-    FROM ${tabla}
-    INNER JOIN ${animales} ON ${animales}.id = ${tabla}.animal_id
-    WHERE ${animales}.finca_id = ${fincaId}${condicionVigenciaGrupal(rama.tabla, rama.tieneRegistroGrupal)}${condicionTipo(rama, tipo)}${condicionFechaFiltro(fecha, fechaDesde, fechaHasta)}
+       ,${rama.tieneRegistroGrupal ? sql`(registros_grupales.anulado_en IS NOT NULL)` : sql`${tabla}.anulado_en IS NOT NULL`} AS anulado
+       ,${rama.tieneRegistroGrupal ? sql`COALESCE(registros_grupales.anulado_en, ${tabla}.anulado_en)` : sql`${tabla}.anulado_en`} AS anulado_en
+       ,${rama.tieneRegistroGrupal ? sql`COALESCE(registros_grupales.motivo_anulacion, ${tabla}.motivo_anulacion)` : sql`${tabla}.motivo_anulacion`} AS motivo_anulacion
+     FROM ${tabla}
+     INNER JOIN ${animales} ON ${animales}.id = ${tabla}.animal_id
+     ${rama.tieneRegistroGrupal ? sql`LEFT JOIN registros_grupales ON registros_grupales.id = ${tabla}.registro_grupal_id` : sql``}
+     WHERE ${animales}.finca_id = ${fincaId}${condicionVigenciaGrupal(rama.tabla, rama.tieneRegistroGrupal)}${condicionAnulado(rama.tabla, incluirAnulados)}${condicionTipo(rama, tipo)}${condicionFechaFiltro(fecha, fechaDesde, fechaHasta)}
   `
 }
 
@@ -339,9 +348,13 @@ function ramaHistorialFinca(
       ${
         rama.tieneRegistroGrupal ? sql`${tabla}.registro_grupal_id::text` : sql`NULL::text`
       } AS registro_grupal_id
-    FROM ${tabla}
-    INNER JOIN ${animales} ON ${animales}.id = ${tabla}.animal_id
-    WHERE ${animales}.finca_id = ${fincaId}${condicionVigenciaGrupal(rama.tabla, rama.tieneRegistroGrupal)}${condicionTipo(rama, tipo)}${condicionFechaFiltro(fecha, fechaDesde, fechaHasta)}
+       ,${rama.tieneRegistroGrupal ? sql`(registros_grupales.anulado_en IS NOT NULL)` : sql`${tabla}.anulado_en IS NOT NULL`} AS anulado
+       ,${rama.tieneRegistroGrupal ? sql`COALESCE(registros_grupales.anulado_en, ${tabla}.anulado_en)` : sql`${tabla}.anulado_en`} AS anulado_en
+       ,${rama.tieneRegistroGrupal ? sql`COALESCE(registros_grupales.motivo_anulacion, ${tabla}.motivo_anulacion)` : sql`${tabla}.motivo_anulacion`} AS motivo_anulacion
+     FROM ${tabla}
+     INNER JOIN ${animales} ON ${animales}.id = ${tabla}.animal_id
+     ${rama.tieneRegistroGrupal ? sql`LEFT JOIN registros_grupales ON registros_grupales.id = ${tabla}.registro_grupal_id` : sql``}
+     WHERE ${animales}.finca_id = ${fincaId}${condicionTipo(rama, tipo)}${condicionFechaFiltro(fecha, fechaDesde, fechaHasta)}
   `
 }
 
@@ -376,7 +389,7 @@ export class DrizzleEventosFincaReadRepository implements EventosFincaReadPort {
 
     const union = sql.join(
       ramas.map((rama) =>
-        ramaFeedFinca(rama, fincaId, request.fechaDesde, request.fechaHasta, request.tipo),
+        ramaFeedFinca(rama, fincaId, request.fechaDesde, request.fechaHasta, request.tipo, false),
       ),
       sql.raw(" UNION ALL "),
     )
@@ -398,7 +411,10 @@ export class DrizzleEventosFincaReadRepository implements EventosFincaReadPort {
           animal_nombre,
           registro_grupal_id,
           (CASE WHEN registro_grupal_id IS NOT NULL THEN TRUE ELSE FALSE END) AS es_cabecera_grupal,
-          total_animales,
+           total_animales,
+           anulado,
+           anulado_en,
+           motivo_anulacion,
           (COUNT(*) OVER ())::int AS total_tras_cursor
         FROM (
           SELECT
@@ -425,6 +441,9 @@ export class DrizzleEventosFincaReadRepository implements EventosFincaReadPort {
       readonly registro_grupal_id: string | null
       readonly es_cabecera_grupal: boolean
       readonly total_animales: number | null
+      readonly anulado: boolean
+      readonly anulado_en: string | null
+      readonly motivo_anulacion: string | null
       readonly total_tras_cursor: number
     }[]
 
@@ -439,6 +458,9 @@ export class DrizzleEventosFincaReadRepository implements EventosFincaReadPort {
       totalAnimales: fila.total_animales,
       animalCodigo: fila.animal_codigo,
       animalNombre: fila.animal_nombre,
+      anulado: fila.anulado,
+      anuladoEn: fila.anulado_en,
+      motivoAnulacion: fila.motivo_anulacion,
     })) as readonly FeedFincaItem[]
 
     const ultimo = items[items.length - 1]
@@ -482,7 +504,10 @@ export class DrizzleEventosFincaReadRepository implements EventosFincaReadPort {
           animal_id,
           animal_codigo,
           animal_nombre,
-          registro_grupal_id,
+           registro_grupal_id,
+           anulado,
+           anulado_en,
+           motivo_anulacion,
           (COUNT(*) OVER ())::int AS total_tras_cursor
         FROM (${union}) AS evento
         ${cursor ? sql`WHERE (fecha < ${cursor.f}::date OR (fecha = ${cursor.f}::date AND id < ${cursor.id}))` : sql``}
@@ -499,6 +524,9 @@ export class DrizzleEventosFincaReadRepository implements EventosFincaReadPort {
       readonly animal_nombre: string | null
       readonly registro_grupal_id: string | null
       readonly total_tras_cursor: number
+      readonly anulado: boolean
+      readonly anulado_en: string | null
+      readonly motivo_anulacion: string | null
     }[]
 
     const items = filas.slice(0, request.pageSize).map((fila) => ({
@@ -511,6 +539,9 @@ export class DrizzleEventosFincaReadRepository implements EventosFincaReadPort {
       animalCodigo: fila.animal_codigo,
       animalNombre: fila.animal_nombre,
       registroGrupalId: fila.registro_grupal_id,
+      anulado: fila.anulado,
+      anuladoEn: fila.anulado_en,
+      motivoAnulacion: fila.motivo_anulacion,
     })) as readonly HistorialFincaItem[]
 
     const ultimo = items[items.length - 1]

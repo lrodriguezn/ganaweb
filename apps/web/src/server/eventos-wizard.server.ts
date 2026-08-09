@@ -4,8 +4,10 @@ import {
   EventoForbiddenError,
   type EventoWriteCommand,
   type SesionAutorizada,
+  anularEvento,
 } from "@ganaweb/aplicacion"
 import { db } from "@ganaweb/db/client"
+import { createEventoWriteGateway } from "@ganaweb/db/evento-write-infrastructure"
 import {
   type ContextoEscrituraEventoInterno,
   persistirEventosInternos,
@@ -68,6 +70,7 @@ export interface EventoWizardWebInput {
         readonly animalIdsEfectivos: readonly string[]
       }
   readonly datos: Readonly<Record<string, string | number | null>>
+  readonly corrigeAId?: string
 }
 
 const TIPOS_PERMITIDOS = new Set<string>([
@@ -114,6 +117,85 @@ export type EventoWizardDeps = {
   ) => Promise<readonly { readonly id: string }[]>
   readonly getSession: (fincaId?: string) => Promise<SesionAutorizada | null>
   readonly reloj: () => Date
+}
+
+export interface EventoAnulacionInput {
+  readonly fincaId: string
+  readonly evento: string
+  readonly objetivo: "individual" | "grupal"
+  readonly objetivoId: string
+  readonly motivo: string
+}
+
+export type EventoAnulacionResultado =
+  | { readonly tipo: "ok" }
+  | { readonly tipo: "no_autenticado" | "finca_no_autorizada" }
+  | { readonly tipo: "permiso_denegado"; readonly permiso: string }
+  | { readonly tipo: "validacion"; readonly detalle: string }
+  | { readonly tipo: "error"; readonly detalle: string }
+
+export interface EventoAnnulmentDeps {
+  readonly anular: (input: {
+    readonly sesion: SesionAutorizada
+    readonly command: Extract<EventoWriteCommand, { tipo: "anular_evento" }>
+  }) => Promise<void>
+  readonly getSession: (fincaId?: string) => Promise<SesionAutorizada | null>
+  readonly reloj: () => Date
+}
+
+export function createEventoAnnulmentDeps(): EventoAnnulmentDeps {
+  return {
+    anular: anularEvento(createEventoWriteGateway(db)),
+    getSession: getAuthorizedSession,
+    reloj: () => new Date(),
+  }
+}
+
+export function createEventoAnnulmentHarness(deps: EventoAnnulmentDeps) {
+  return {
+    async anular(input: EventoAnulacionInput): Promise<EventoAnulacionResultado> {
+      const sesion = await deps.getSession(input.fincaId)
+      if (!sesion) return { tipo: "no_autenticado" }
+      if (sesion.fincaActivaId !== input.fincaId) return { tipo: "finca_no_autorizada" }
+      const validacion = validarAnulacionInput(input)
+      if (validacion) return validacion
+      try {
+        await deps.anular({
+          sesion,
+          command: {
+            tipo: "anular_evento",
+            id: `an-${randomUUID()}`,
+            fincaId: input.fincaId,
+            usuarioId: sesion.usuarioId,
+            evento: input.evento as EventoWriteCommand["evento"],
+            objetivo: input.objetivo,
+            objetivoId: input.objetivoId,
+            motivo: input.motivo,
+            fecha: deps.reloj(),
+          },
+        })
+        return { tipo: "ok" }
+      } catch (error) {
+        return mapAnulacionError(error)
+      }
+    },
+  }
+}
+
+function validarAnulacionInput(
+  input: EventoAnulacionInput,
+): Extract<EventoAnulacionResultado, { tipo: "validacion" }> | null {
+  return !TIPOS_PERMITIDOS.has(input.evento) || !input.objetivoId.trim()
+    ? { tipo: "validacion", detalle: "El tipo y el objetivo son obligatorios." }
+    : null
+}
+
+function mapAnulacionError(error: unknown): EventoAnulacionResultado {
+  if (error instanceof EventoForbiddenError && error.motivo === "permiso_denegado") {
+    return { tipo: "permiso_denegado", permiso: error.permiso ?? "desconocido" }
+  }
+  if (error instanceof EventoForbiddenError) return { tipo: "finca_no_autorizada" }
+  return { tipo: "error", detalle: error instanceof Error ? error.message : "Fallo desconocido" }
 }
 
 export function createEventosWizardDeps(): EventoWizardDeps {
@@ -183,6 +265,7 @@ async function capturarIndividual(
       ...input.datos,
       fecha: input.datos.fecha ?? deps.reloj().toISOString().slice(0, 10),
     },
+    ...(input.corrigeAId ? { corrigeAId: input.corrigeAId } : {}),
   }
   try {
     const [result] = await deps.persistirLote([command], {
@@ -246,6 +329,7 @@ async function capturarGrupal(
     totalAnimales: input.alcance.animalIdsEfectivos.length,
     criterio,
     fecha: deps.reloj(),
+    ...(input.corrigeAId ? { corrigeAId: input.corrigeAId } : {}),
   }
   const datosHijo = {
     ...input.datos,

@@ -127,6 +127,7 @@ export type {
 export { AnimalExportacionOverflowError } from "./errores.js"
 export type {
   AccionEvento,
+  CompensacionMovimiento,
   CategoriaFiltroFinca,
   AnularEventoCommand,
   CriterioRegistroGrupal,
@@ -140,6 +141,8 @@ export type {
   PermisoVerDominio,
   TipoEventoCanonico,
   ValorEventoPersistible,
+  MovimientoCanonico,
+  MovimientoEfectivo,
 } from "./eventos.js"
 export {
   EVENTOS_CANONICOS,
@@ -160,6 +163,7 @@ export {
   validarAlcanceFincaRead,
   validarAuditoriaAnulacion,
   validarCriterioSeleccionGrupal,
+  compensarMovimiento,
 } from "./eventos.js"
 export type { ErrorValidacionNotificacion, TipoNotificacion } from "./notificaciones.js"
 export {

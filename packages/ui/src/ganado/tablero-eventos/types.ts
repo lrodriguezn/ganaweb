@@ -46,6 +46,9 @@ export interface EventoFeedItem {
   readonly totalAnimales: number | null
   readonly animalCodigo: string | null
   readonly animalNombre: string | null
+  readonly anulado: boolean
+  readonly anuladoEn: string | null
+  readonly motivoAnulacion: string | null
 }
 
 /** Item del historial (ver `HistorialFincaItem` del puerto #227). */
@@ -59,6 +62,9 @@ export interface EventoHistorialItem {
   readonly animalCodigo: string
   readonly animalNombre: string | null
   readonly registroGrupalId: string | null
+  readonly anulado: boolean
+  readonly anuladoEn: string | null
+  readonly motivoAnulacion: string | null
 }
 
 /** Contadores mensuales del tablero (ver `ContadoresEventosFinca` del puerto). */

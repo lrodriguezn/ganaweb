@@ -67,6 +67,9 @@ export interface FeedFincaItem {
   /** Codigo del animal (solo para eventos individuales). */
   readonly animalCodigo: string | null
   readonly animalNombre: string | null
+  readonly anulado: boolean
+  readonly anuladoEn: string | null
+  readonly motivoAnulacion: string | null
 }
 
 export interface HistorialFincaItem {
@@ -79,6 +82,9 @@ export interface HistorialFincaItem {
   readonly animalCodigo: string
   readonly animalNombre: string | null
   readonly registroGrupalId: string | null
+  readonly anulado: boolean
+  readonly anuladoEn: string | null
+  readonly motivoAnulacion: string | null
 }
 
 export interface EventosFincaPagina<TItem> {

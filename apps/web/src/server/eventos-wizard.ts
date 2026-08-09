@@ -13,6 +13,8 @@ import { createServerFn } from "@tanstack/react-start"
  */
 
 export type {
+  EventoAnulacionInput,
+  EventoAnulacionResultado,
   EventoWizardResultado,
   EventoWizardResultadoIds,
   EventoWizardWebInput,
@@ -64,6 +66,15 @@ export const capturarEventoFn = createServerFn({ method: "POST" })
       return Response.json(resultado, { status: 422 })
     }
     return Response.json(resultado, { status: 500 })
+  })
+
+export const anularEventoFn = createServerFn({ method: "POST" })
+  .validator((data: import("./eventos-wizard.server.js").EventoAnulacionInput) => data)
+  .handler(async ({ data }) => {
+    const { createEventoAnnulmentDeps, createEventoAnnulmentHarness } = await import(
+      "./eventos-wizard.server.js"
+    )
+    return createEventoAnnulmentHarness(createEventoAnnulmentDeps()).anular(data)
   })
 
 export const listarCatalogosAlcanceFn = createServerFn({ method: "GET" })
