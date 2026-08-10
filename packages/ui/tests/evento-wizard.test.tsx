@@ -529,6 +529,30 @@ describe("EventoWizard — Paso 3: formulario del dominio", () => {
     expect(screen.getByLabelText(/Peso/)).toHaveValue(420)
   })
 
+  it("closes with Escape when the initial preselection has not changed", async () => {
+    const user = userEvent.setup()
+    function ControlledWizard() {
+      const [open, setOpen] = useState(true)
+      return (
+        <EventoWizard
+          {...props({
+            open,
+            onOpenChange: setOpen,
+            animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+          })}
+        />
+      )
+    }
+
+    render(<ControlledWizard />)
+    expect(screen.getByText("¿Qué registrar?")).toBeInTheDocument()
+
+    await user.keyboard("{Escape}")
+
+    expect(screen.queryByText("¿Qué registrar?")).not.toBeInTheDocument()
+    expect(screen.queryByText("¿Cerrar el wizard?")).not.toBeInTheDocument()
+  })
+
   it("offers edit or discard when closing with pending changes", async () => {
     const user = userEvent.setup()
     function ControlledWizard() {
@@ -545,7 +569,7 @@ describe("EventoWizard — Paso 3: formulario del dominio", () => {
     render(<ControlledWizard />)
 
     await user.click(screen.getByRole("button", { name: /Pesaje/ }))
-    await user.click(screen.getByRole("button", { name: "Cerrar wizard" }))
+    await user.keyboard("{Escape}")
     expect(screen.getByText("¿Cerrar el wizard?")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Continuar editando" })).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Continuar editando" }))

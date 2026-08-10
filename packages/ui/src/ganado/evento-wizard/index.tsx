@@ -108,6 +108,7 @@ export function EventoWizard({
   )
   const [errorServidor, setErrorServidor] = useState<string | null>(null)
   const [datosComunes, setDatosComunes] = useState<BorradorEvento["datosComunes"]>({})
+  const [hayCambiosPendientes, setHayCambiosPendientes] = useState(false)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
 
   useEffect(() => {
@@ -121,12 +122,13 @@ export function EventoWizard({
     setCategoriaContextual(categoriaInicial)
     setErrorServidor(null)
     setDatosComunes({})
+    setHayCambiosPendientes(false)
     setConfirmarCierre(false)
   }
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
-      if (tipo || seleccion || Object.keys(datosComunes).length > 0) {
+      if (hayCambiosPendientes) {
         setConfirmarCierre(true)
         return
       }
@@ -136,6 +138,7 @@ export function EventoWizard({
   }
 
   const handleSeleccionTipo = (nuevo: TipoEventoWizard) => {
+    setHayCambiosPendientes(true)
     setTipo(nuevo)
     // Si ya hay selección previa (de un tipo anterior) Y el nuevo tipo
     // permite grupal/individual, mantenemos la selección; si no, limpiamos.
@@ -147,10 +150,11 @@ export function EventoWizard({
       // individual elegida manualmente podría ser inválida para parto; el form
       // lo advertirá. Mantenemos y dejamos que la validación lo recoja.
     }
-    setPasoActual("alcance")
+    setPasoActual(animalPreseleccionado ? "datos" : "alcance")
   }
 
   const handleSeleccionAlcance = (next: Seleccion) => {
+    setHayCambiosPendientes(true)
     setSeleccion(next)
     setPasoActual("datos")
   }
@@ -286,7 +290,10 @@ export function EventoWizard({
                 onVolver={handleVolverAAlcance}
                 onGuardar={handleGuardar}
                 datosIniciales={datosComunes}
-                onDatosChange={(datos) => setDatosComunes((actual) => ({ ...actual, ...datos }))}
+                onDatosChange={(datos) => {
+                  setHayCambiosPendientes(true)
+                  setDatosComunes((actual) => ({ ...actual, ...datos }))
+                }}
               />
             </div>
             {errorServidor && (
