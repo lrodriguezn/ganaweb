@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
   CampoTextoEvento,
   MarcoFormularioEvento,
@@ -15,6 +15,7 @@ import {
  */
 export interface FormularioCondicionCorporalProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -23,6 +24,7 @@ export interface FormularioCondicionCorporalProps {
 
 export function FormularioCondicionCorporal({
   numeroAnimales,
+  catalogos: _catalogos,
   onVolver,
   onGuardar,
   datosIniciales,

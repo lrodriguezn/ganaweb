@@ -66,4 +66,29 @@ export class DrizzleCatalogoPadresAdapter implements CatalogoPadresPort {
       nombre: row.nombre ?? null,
     }))
   }
+
+  async listarPajuelas(
+    fincaId: string,
+    excludedIds: readonly string[],
+  ): Promise<readonly ParentComboboxOption[]> {
+    const conditions = [eq(animales.fincaId, fincaId), eq(animales.sexoKey, 2)]
+    if (excludedIds.length > 0) {
+      conditions.push(notInArray(animales.id, [...excludedIds]))
+    }
+    const rows = await this.db
+      .select({
+        id: animales.id,
+        codigo: animales.codigo,
+        nombre: animales.nombre,
+      })
+      .from(animales)
+      .where(and(...conditions))
+      .orderBy(animales.codigo)
+
+    return rows.map((row) => ({
+      id: row.id,
+      codigo: row.codigo,
+      nombre: row.nombre ?? null,
+    }))
+  }
 }

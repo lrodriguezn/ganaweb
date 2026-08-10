@@ -28,6 +28,7 @@
  */
 import {
   AnulacionEventoDialog,
+  type CatalogosParaAlcance,
   type CategoriaEventoTablero as CategoriaEventoTableroUi,
   type EventoHistorialItem,
   EventoWizard,
@@ -65,6 +66,7 @@ import {
   buscarAnimalPorCodigoFn,
   capturarEventoFn,
   listarAnimalesPorOrigenFn,
+  listarCatalogosEventoFn,
   revisarMembresiaActualFn,
 } from "../../../../server/eventos-wizard.js"
 
@@ -128,6 +130,7 @@ export interface EventosFincaLoaderData {
   readonly feed: EventoFeedRespuesta
   readonly contadores: ContadoresEventosFincaRespuesta
   readonly sesion: SesionParaEventos
+  readonly catalogos?: CatalogosParaAlcance
 }
 
 const PERMISOS_VER_POR_DOMINIO: Readonly<
@@ -267,13 +270,15 @@ export const Route = createFileRoute("/_app/fincas/$fincaId/eventos")({
           fincaActivaNombre: "",
           permisos: [],
         },
+        catalogos: CATALOGOS_VACIOS,
       }
     }
     const inputFeed: LeerEventosFincaWebInput = { fincaId: params.fincaId }
     const inputContadores: LeerContadoresEventosFincaWebInput = { fincaId: params.fincaId }
-    const [feed, contadores] = await Promise.all([
+    const [feed, contadores, catalogos] = await Promise.all([
       leerEventosFincaTableroFn({ data: inputFeed }).catch(() => null),
       leerContadoresEventosFincaFn({ data: inputContadores }).catch(() => null),
+      listarCatalogosEventoFn({ data: { fincaId: params.fincaId } }).catch(() => null),
     ])
 
     return {
@@ -284,6 +289,8 @@ export const Route = createFileRoute("/_app/fincas/$fincaId/eventos")({
       feed: feed && feed.tipo === "ok" ? feed : feedVacio(),
       contadores: contadores && contadores.tipo === "ok" ? contadores : contadoresVacios(),
       sesion: ctx.sesion,
+      catalogos:
+        catalogos?.tipo === "lista" && catalogos.catalogos ? catalogos.catalogos : CATALOGOS_VACIOS,
     }
   },
   component: EventosRoute,
@@ -532,7 +539,7 @@ export function EventosRouteView({
         {...(categoriaPreseleccionada ? { categoriaInicial: categoriaPreseleccionada } : {})}
         {...(correccionDeId ? { corrigeAId: correccionDeId } : {})}
         permisosEfectivos={data.permisosEfectivos}
-        catalogos={CATALOGOS_VACIOS}
+        catalogos={data.catalogos ?? CATALOGOS_VACIOS}
         cargarAnimalesPorOrigen={(origen, id) =>
           cargarAnimalesPorOrigenEnRuta(data.fincaId, origen, id)
         }

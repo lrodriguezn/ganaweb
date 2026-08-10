@@ -27,4 +27,8 @@ export interface CatalogoPadresPort {
     fincaId: string,
     excludedIds: readonly string[],
   ): Promise<readonly ParentComboboxOption[]>
+  listarPajuelas(
+    fincaId: string,
+    excludedIds: readonly string[],
+  ): Promise<readonly ParentComboboxOption[]>
 }

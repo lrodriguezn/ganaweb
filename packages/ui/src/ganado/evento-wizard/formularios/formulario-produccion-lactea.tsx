@@ -1,7 +1,8 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
+  CampoCatalogoEvento,
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
@@ -16,6 +17,7 @@ import {
  */
 export interface FormularioProduccionLacteaProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -24,6 +26,7 @@ export interface FormularioProduccionLacteaProps {
 
 export function FormularioProduccionLactea({
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -131,33 +134,37 @@ export function FormularioProduccionLactea({
           step={0.1}
         />
       </div>
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="pl-lote"
-        etiqueta="Lote (ID)"
+        etiqueta="Lote"
         valor={loteId}
         onCambiar={setLoteId}
+        opciones={catalogos.lotes}
         descripcion="Opcional"
       />
       <div className="grid grid-cols-2 gap-3">
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="pl-potrero"
-          etiqueta="Potrero (ID)"
+          etiqueta="Potrero"
           valor={potreroId}
           onCambiar={setPotreroId}
+          opciones={catalogos.potreros}
           descripcion="Opcional; seleccionable desde catálogo"
         />
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="pl-sector"
-          etiqueta="Sector (ID)"
+          etiqueta="Sector"
           valor={sectorId}
           onCambiar={setSectorId}
+          opciones={catalogos.sectores ?? []}
           descripcion="Opcional; seleccionable desde catálogo"
         />
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="pl-grupo"
-          etiqueta="Grupo (ID)"
+          etiqueta="Grupo"
           valor={grupoId}
           onCambiar={setGrupoId}
+          opciones={catalogos.grupos}
           descripcion="Opcional; seleccionable desde catálogo"
         />
       </div>

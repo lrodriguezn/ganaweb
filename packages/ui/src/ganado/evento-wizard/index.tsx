@@ -349,6 +349,7 @@ export function EventoWizard({
               <PasoDatos
                 tipo={tipo}
                 numeroAnimales={numeroAnimales}
+                catalogos={catalogos}
                 onVolver={handleVolverAAlcance}
                 onGuardar={handleGuardar}
                 datosIniciales={datosComunes}

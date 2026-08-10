@@ -71,7 +71,21 @@ const PERMISOS_SOLO_PRODUCTIVO = {
   movimientos: false,
 } as const
 
-const CATALOGOS_VACIOS = { lotes: [], potreros: [], grupos: [] }
+const CATALOGOS_VACIOS = {
+  lotes: [],
+  potreros: [],
+  grupos: [],
+  sectores: [{ id: "sector-1", nombre: "Sector 1" }],
+  padres: [{ id: "padre-1", nombre: "Padre 1", codigo: "P-1" }],
+  pajuelas: [{ id: "pajuela-1", nombre: "Pajuela 1", codigo: "PJ-1" }],
+  inseminadores: [{ id: "vet-1", nombre: "Veterinario 1" }],
+  veterinarios: [{ id: "vet-1", nombre: "Veterinario 1" }],
+  diagnosticos: [{ id: "diag-1", nombre: "Diagnóstico 1" }],
+  productosSanitarios: [{ id: "producto-1", nombre: "Producto 1", codigo: "PROD-1" }],
+  motivosVenta: [{ id: "motivo-1", nombre: "Motivo 1" }],
+  lugaresVenta: [{ id: "lugar-1", nombre: "Lugar 1" }],
+  causasMuerte: [{ id: "causa-1", nombre: "Causa 1" }],
+}
 
 const POLITICA_RIESGO_ELEGIDA = {
   tiposSensibles: ["revision_veterinaria", "parto", "servicio", "palpacion"],
@@ -674,15 +688,50 @@ describe("EventoWizard — Paso 3: formulario del dominio", () => {
     const campo =
       tipo === "produccion_lactea"
         ? await screen.findByRole("spinbutton", { name: /Cantidad AM/ })
-        : await screen.findByRole("textbox", { name: regexParaNombre(etiqueta) })
-    await user.type(campo, valor)
+        : [
+              "Diagnóstico (ID)",
+              "Producto (ID)",
+              "Veterinario (ID)",
+              "Causa de muerte (ID)",
+            ].includes(etiqueta)
+          ? await screen.findByRole("combobox", {
+              name: etiqueta.startsWith("Producto")
+                ? "Producto sanitario"
+                : etiqueta.replace(" (ID)", ""),
+            })
+          : await screen.findByRole("textbox", { name: regexParaNombre(etiqueta) })
+    if (campo.getAttribute("role") === "combobox") {
+      await user.click(campo)
+      await user.click(
+        screen.getByRole("option", {
+          name: valor === "producto-1" ? /Producto 1/ : new RegExp(valor),
+        }),
+      )
+    } else {
+      await user.type(campo, valor)
+    }
     await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
     await user.click(screen.getByRole("button", { name: "Continuar con este animal" }))
     const campoRestaurado =
       tipo === "produccion_lactea"
         ? screen.getByRole("spinbutton", { name: /Cantidad AM/ })
-        : screen.getByRole("textbox", { name: regexParaNombre(etiqueta) })
-    expect(campoRestaurado).toHaveValue(tipo === "produccion_lactea" ? Number(valor) : valor)
+        : [
+              "Diagnóstico (ID)",
+              "Producto (ID)",
+              "Veterinario (ID)",
+              "Causa de muerte (ID)",
+            ].includes(etiqueta)
+          ? screen.getByRole("combobox", {
+              name: etiqueta.startsWith("Producto")
+                ? "Producto sanitario"
+                : etiqueta.replace(" (ID)", ""),
+            })
+          : screen.getByRole("textbox", { name: regexParaNombre(etiqueta) })
+    if (campoRestaurado.getAttribute("role") === "combobox") {
+      expect(campoRestaurado).toHaveTextContent(valor === "producto-1" ? "PROD-1" : valor)
+    } else {
+      expect(campoRestaurado).toHaveValue(tipo === "produccion_lactea" ? Number(valor) : valor)
+    }
   })
 
   it("returns to scope with the visible action and restores the complete pesaje draft", async () => {
@@ -1068,26 +1117,28 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
         })}
       />,
     )
-    await user.type(screen.getByLabelText(/Veterinario/), "veterinario-1")
-    await user.type(screen.getByLabelText(/Diagnóstico/), "diagnostico-1")
+    await user.click(screen.getByRole("combobox", { name: "Veterinario" }))
+    await user.click(screen.getByRole("option", { name: /vet-1/ }))
+    await user.click(screen.getByRole("combobox", { name: "Diagnóstico" }))
+    await user.click(screen.getByRole("option", { name: /diag-1/ }))
     await user.selectOptions(screen.getByLabelText(/Tipo de diagnóstico/), "vitaminas")
     await user.selectOptions(screen.getByLabelText(/Celo presentado/), "si")
     await user.type(screen.getByLabelText(/Comentarios/), "revisión completa")
     await user.click(screen.getByRole("button", { name: /Guardar/ }))
     expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent("tipo sensible")
     expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
-      "veterinarioId: veterinario-1",
+      "veterinarioId: vet-1",
     )
     expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
-      "diagnosticoId: diagnostico-1",
+      "diagnosticoId: diag-1",
     )
     expect(onEnviar).not.toHaveBeenCalled()
     await user.click(screen.getByRole("button", { name: "Confirmar y registrar 1 evento" }))
     expect(onEnviar).toHaveBeenCalledTimes(1)
     expect(onEnviar.mock.calls[0][0].datos).toEqual(
       expect.objectContaining({
-        veterinarioId: "veterinario-1",
-        diagnosticoId: "diagnostico-1",
+        veterinarioId: "vet-1",
+        diagnosticoId: "diag-1",
         tipoDiagnostico: "vitaminas",
         celoPresentado: "si",
         comentarios: "revisión completa",

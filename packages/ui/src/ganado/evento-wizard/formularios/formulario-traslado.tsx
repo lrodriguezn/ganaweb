@@ -1,7 +1,8 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
+  CampoCatalogoEvento,
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
@@ -15,6 +16,7 @@ import {
  */
 export interface FormularioTrasladoProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -23,6 +25,7 @@ export interface FormularioTrasladoProps {
 
 export function FormularioTraslado({
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -89,37 +92,37 @@ export function FormularioTraslado({
         requerido
       />
       <div className="grid grid-cols-2 gap-3">
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="tra-potrero"
-          etiqueta="Potrero (ID)"
+          etiqueta="Potrero"
           valor={potreroId}
           onCambiar={setPotreroId}
+          opciones={catalogos.potreros}
           requerido
-          descripcion="Seleccionable desde catálogo"
         />
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="tra-sector"
-          etiqueta="Sector (ID)"
+          etiqueta="Sector"
           valor={sectorId}
           onCambiar={setSectorId}
+          opciones={catalogos.sectores ?? []}
           requerido
-          descripcion="Seleccionable desde catálogo"
         />
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="tra-lote"
-          etiqueta="Lote (ID)"
+          etiqueta="Lote"
           valor={loteId}
           onCambiar={setLoteId}
+          opciones={catalogos.lotes}
           requerido
-          descripcion="Seleccionable desde catálogo"
         />
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="tra-grupo"
-          etiqueta="Grupo (ID)"
+          etiqueta="Grupo"
           valor={grupoId}
           onCambiar={setGrupoId}
+          opciones={catalogos.grupos}
           requerido
-          descripcion="Seleccionable desde catálogo"
         />
       </div>
       <CampoTextoEvento
@@ -128,7 +131,6 @@ export function FormularioTraslado({
         valor={motivo}
         onCambiar={setMotivo}
         requerido
-        descripcion="Seleccionable desde catálogo"
       />
     </MarcoFormularioEvento>
   )

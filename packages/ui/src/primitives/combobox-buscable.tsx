@@ -33,6 +33,7 @@ export interface ComboboxBuscableProps {
   "aria-describedby"?: string
   className?: string
   disabled?: boolean
+  "aria-label"?: string
 }
 
 export function ComboboxBuscable({
@@ -48,6 +49,7 @@ export function ComboboxBuscable({
   "aria-describedby": ariaDescribedby,
   className,
   disabled = false,
+  "aria-label": ariaLabel,
 }: ComboboxBuscableProps) {
   const [open, setOpen] = React.useState(false)
   const listboxId = React.useId()
@@ -77,7 +79,7 @@ export function ComboboxBuscable({
             aria-expanded={open}
             aria-controls={listboxId}
             aria-haspopup="listbox"
-            aria-label={triggerText}
+            aria-label={ariaLabel ?? triggerText}
             disabled={disabled}
             aria-invalid={ariaInvalid}
             aria-describedby={ariaDescribedby}

@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react"
 
 import { cn } from "../../../lib/utils"
 import { Button } from "../../../primitives/button"
+import { ComboboxBuscable, type ComboboxOption } from "../../../primitives/combobox-buscable"
 import { Label } from "../../../primitives/label"
 
 export type DatosBorradorEvento = Readonly<Record<string, string | number | null>>
@@ -206,6 +207,60 @@ export function CampoSelectEvento<TValor extends string>({
           {error}
         </p>
       )}
+    </div>
+  )
+}
+
+export function CampoCatalogoEvento({
+  id,
+  etiqueta,
+  valor,
+  opciones,
+  onCambiar,
+  requerido = false,
+  descripcion,
+}: {
+  readonly id: string
+  readonly etiqueta: string
+  readonly valor: string
+  readonly opciones: readonly {
+    readonly id: string
+    readonly nombre: string
+    readonly codigo?: string
+  }[]
+  readonly onCambiar: (valor: string) => void
+  readonly requerido?: boolean
+  readonly descripcion?: string
+}) {
+  const opcionesConservadas =
+    valor && !opciones.some((opcion) => opcion.id === valor)
+      ? [
+          ...opciones,
+          { id: valor, nombre: "Valor guardado (catálogo no disponible)", codigo: valor },
+        ]
+      : opciones
+  const comboboxOptions: readonly ComboboxOption[] = opcionesConservadas.map((opcion) => ({
+    value: opcion.id,
+    codigo: opcion.codigo ?? opcion.id,
+    nombre: opcion.nombre,
+  }))
+  return (
+    <div className="flex flex-col gap-1">
+      <Label htmlFor={id}>
+        {etiqueta}
+        {requerido && <span aria-hidden="true"> *</span>}
+      </Label>
+      <ComboboxBuscable
+        id={id}
+        options={comboboxOptions}
+        value={valor}
+        onChange={onCambiar}
+        placeholder="Seleccionar"
+        searchPlaceholder={`Buscar ${etiqueta.toLowerCase()}…`}
+        aria-label={etiqueta}
+        aria-invalid={requerido && !valor ? "true" : "false"}
+      />
+      {descripcion && <p className="text-caption text-muted-foreground">{descripcion}</p>}
     </div>
   )
 }
