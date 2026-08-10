@@ -58,8 +58,12 @@ export type SeleccionGrupal = {
   readonly grupoId?: string | null
   /** IDs efectivos tras exclusiones (EV-CAP-002/004). */
   readonly animalIdsEfectivos: readonly string[]
+  /** Available members explicitly excluded from the current snapshot. */
+  readonly animalIdsExcluidos?: readonly string[]
   /** Total = animalIdsEfectivos.length (EV-CAP-005). */
   readonly totalAnimales: number
+  /** Reserved for the exception editor introduced by issue #273. */
+  readonly excepciones?: Readonly<Record<string, Readonly<Record<string, string | number | null>>>>
 }
 
 export type Seleccion = SeleccionIndividual | SeleccionGrupal
@@ -72,6 +76,15 @@ export interface CapturaEvento {
   /** ISO YYYY-MM-DD; si falta la hereda el formulario del dominio. */
   readonly fecha?: string
   readonly corrigeAId?: string
+}
+
+export interface BorradorEvento {
+  readonly tipo?: TipoEventoWizard
+  readonly modo?: Seleccion["tipo"]
+  readonly seleccion?: Seleccion
+  readonly datosComunes: Readonly<Record<string, string | number | null>>
+  /** Compatible state shape for #273; this wizard does not persist it remotely. */
+  readonly excepciones: Readonly<Record<string, Readonly<Record<string, string | number | null>>>>
 }
 
 export type CargaAnimalesPorOrigen = (

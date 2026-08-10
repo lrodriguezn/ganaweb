@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react"
 
 import { cn } from "../../lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../primitives/alert-dialog"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "../../primitives/drawer"
 import type { AnimalResumen } from "../types"
 import { metaDeTipo } from "./catalogo-tipos"
@@ -8,6 +18,7 @@ import { PasoAlcance } from "./paso-alcance"
 import { PasoDatos } from "./paso-datos"
 import { PasoTipo } from "./paso-tipo"
 import type {
+  BorradorEvento,
   BuscarAnimalPorCodigo,
   CapturaEvento,
   CargaAnimalesPorOrigen,
@@ -70,6 +81,7 @@ export interface ResultadoIds {
 
 type Paso = "tipo" | "alcance" | "datos"
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the shell owns the complete wizard transition state.
 export function EventoWizard({
   open,
   onOpenChange,
@@ -95,6 +107,8 @@ export function EventoWizard({
     categoriaInicial,
   )
   const [errorServidor, setErrorServidor] = useState<string | null>(null)
+  const [datosComunes, setDatosComunes] = useState<BorradorEvento["datosComunes"]>({})
+  const [confirmarCierre, setConfirmarCierre] = useState(false)
 
   useEffect(() => {
     if (open) setCategoriaContextual(categoriaInicial)
@@ -106,10 +120,18 @@ export function EventoWizard({
     setPasoActual(pasoInicial(tipoPreseleccionado, animalPreseleccionado))
     setCategoriaContextual(categoriaInicial)
     setErrorServidor(null)
+    setDatosComunes({})
+    setConfirmarCierre(false)
   }
 
   const handleOpenChange = (next: boolean) => {
-    if (!next) reset()
+    if (!next) {
+      if (tipo || seleccion || Object.keys(datosComunes).length > 0) {
+        setConfirmarCierre(true)
+        return
+      }
+      reset()
+    }
     onOpenChange(next)
   }
 
@@ -133,6 +155,11 @@ export function EventoWizard({
     setPasoActual("datos")
   }
 
+  const descartarBorrador = () => {
+    reset()
+    onOpenChange(false)
+  }
+
   const handleVolverATipo = () => {
     setPasoActual("tipo")
   }
@@ -140,19 +167,22 @@ export function EventoWizard({
     setPasoActual("alcance")
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: server result mapping is intentionally centralized at the UI boundary.
   const handleGuardar = async (datos: Readonly<Record<string, string | number | null>>) => {
     if (!tipo || !seleccion) return
     setErrorServidor(null)
     const captura: CapturaEvento = {
       tipo,
       seleccion,
-      datos,
+      datos: { ...datosComunes, ...datos },
       ...(corrigeAId ? { corrigeAId } : {}),
     }
     const resultado = await onEnviar(captura)
     if (resultado.tipo === "capturado") {
+      setDatosComunes({})
       onCapturado?.(resultado)
-      handleOpenChange(false)
+      reset()
+      onOpenChange(false)
       return
     }
     if (resultado.tipo === "permiso_denegado") {
@@ -194,6 +224,14 @@ export function EventoWizard({
               : "h-[50vh]",
         )}
       >
+        <button
+          type="button"
+          aria-label="Cerrar wizard"
+          onClick={() => handleOpenChange(false)}
+          className="absolute right-4 top-3 z-10 text-support text-muted-foreground"
+        >
+          Cerrar
+        </button>
         {pasoActual === "tipo" && (
           <>
             <DrawerHeader className="shrink-0 pb-2">
@@ -220,7 +258,7 @@ export function EventoWizard({
               tipo={meta}
               catalogos={catalogos}
               animalPreseleccionado={
-                animalPreseleccionado
+                animalPreseleccionado && !seleccion
                   ? {
                       id: animalPreseleccionado.id,
                       codigoAnimal: animalPreseleccionado.codigoAnimal,
@@ -231,6 +269,7 @@ export function EventoWizard({
               buscarAnimalPorCodigo={buscarAnimalPorCodigo}
               onSeleccion={handleSeleccionAlcance}
               onVolver={handleVolverATipo}
+              seleccionInicial={seleccion}
             />
           </>
         )}
@@ -246,6 +285,8 @@ export function EventoWizard({
                 numeroAnimales={numeroAnimales}
                 onVolver={handleVolverAAlcance}
                 onGuardar={handleGuardar}
+                datosIniciales={datosComunes}
+                onDatosChange={setDatosComunes}
               />
             </div>
             {errorServidor && (
@@ -269,6 +310,20 @@ export function EventoWizard({
           </>
         )}
       </DrawerContent>
+      <AlertDialog open={confirmarCierre} onOpenChange={setConfirmarCierre}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cerrar el wizard?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hay cambios pendientes. Puedes continuar editando o descartar el borrador completo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction onClick={descartarBorrador}>Descartar borrador</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Drawer>
   )
 }

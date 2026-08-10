@@ -444,6 +444,62 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
 })
 
 describe("EventoWizard — Paso 3: formulario del dominio", () => {
+  it("returns to scope with the visible action and restores the complete pesaje draft", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+        })}
+      />,
+    )
+
+    await user.clear(screen.getByLabelText(/Peso/))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Continuar con este animal" })).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Continuar con este animal" }))
+    expect(screen.getByLabelText(/Peso/)).toHaveValue(420)
+  })
+
+  it("keeps the draft after an expired session and allows retrying", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({ tipo: "no_autenticado" }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+          onEnviar,
+        })}
+      />,
+    )
+
+    await user.clear(screen.getByLabelText(/Peso/))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(await screen.findByTestId("evento-wizard-error")).toHaveTextContent(/sesión expiró/i)
+    expect(screen.getByLabelText(/Peso/)).toHaveValue(420)
+  })
+
+  it("offers edit or discard when closing with pending changes", async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    render(<EventoWizard {...props({ onOpenChange, tipoPreseleccionado: "pesaje" })} />)
+
+    await user.click(screen.getByRole("radio", { name: "Individual" }))
+    await user.click(screen.getByRole("button", { name: "Cerrar wizard" }))
+    expect(screen.getByText("¿Cerrar el wizard?")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Continuar editando" })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Descartar borrador" }))
+    expect(onOpenChange).toHaveBeenLastCalledWith(false)
+  })
+
   it("renderiza el form de pesaje cuando se selecciona el tipo", async () => {
     const user = userEvent.setup()
     render(<EventoWizard {...props({ tipoPreseleccionado: "pesaje" })} />)

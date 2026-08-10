@@ -33,10 +33,10 @@ export function MarcoFormularioEvento({
           <button
             type="button"
             onClick={onVolver}
-            aria-label="Volver al paso anterior"
+            aria-label="Volver a Alcance"
             className="text-muted-foreground text-section"
           >
-            ‹
+            Volver a Alcance
           </button>
         )}
         <h2 className="text-section font-semibold leading-none">{titulo}</h2>

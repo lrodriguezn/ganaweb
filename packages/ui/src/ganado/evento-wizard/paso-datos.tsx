@@ -9,7 +9,7 @@ import { FormularioRevisionVeterinaria } from "./formularios/formulario-revision
 import { FormularioServicio } from "./formularios/formulario-servicio"
 import { FormularioTraslado } from "./formularios/formulario-traslado"
 import { FormularioVenta } from "./formularios/formulario-venta"
-import type { TipoEventoWizard } from "./types"
+import type { BorradorEvento, TipoEventoWizard } from "./types"
 
 /**
  * Dispatcher del Paso 3 (EV-CAP-006/008).
@@ -26,9 +26,18 @@ export interface PasoDatosProps {
   readonly onGuardar: (
     datos: Readonly<Record<string, string | number | null>>,
   ) => Promise<void> | void
+  readonly datosIniciales?: BorradorEvento["datosComunes"]
+  readonly onDatosChange?: (datos: BorradorEvento["datosComunes"]) => void
 }
 
-export function PasoDatos({ tipo, numeroAnimales, onVolver, onGuardar }: PasoDatosProps) {
+export function PasoDatos({
+  tipo,
+  numeroAnimales,
+  onVolver,
+  onGuardar,
+  datosIniciales,
+  onDatosChange,
+}: PasoDatosProps) {
   switch (tipo) {
     case "pesaje":
       return (
@@ -36,6 +45,8 @@ export function PasoDatos({ tipo, numeroAnimales, onVolver, onGuardar }: PasoDat
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "servicio":
