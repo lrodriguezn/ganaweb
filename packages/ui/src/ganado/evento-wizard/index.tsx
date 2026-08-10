@@ -286,7 +286,7 @@ export function EventoWizard({
                 onVolver={handleVolverAAlcance}
                 onGuardar={handleGuardar}
                 datosIniciales={datosComunes}
-                onDatosChange={setDatosComunes}
+                onDatosChange={(datos) => setDatosComunes((actual) => ({ ...actual, ...datos }))}
               />
             </div>
             {errorServidor && (

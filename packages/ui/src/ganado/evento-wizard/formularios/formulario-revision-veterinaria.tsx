@@ -6,6 +6,7 @@ import {
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
+  useCampoBorrador,
 } from "./base"
 
 /**
@@ -17,22 +18,49 @@ export interface FormularioRevisionVeterinariaProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
 export function FormularioRevisionVeterinaria({
   numeroAnimales,
   onVolver,
   onGuardar,
+  datosIniciales,
+  onDatosChange,
 }: FormularioRevisionVeterinariaProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [veterinarioId, setVeterinarioId] = useState("")
-  const [diagnosticoId, setDiagnosticoId] = useState("")
-  const [tipoDiagnostico, setTipoDiagnostico] = useState<"reproductivo" | "general" | "otro">(
-    "general",
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [veterinarioId, setVeterinarioId] = useCampoBorrador(
+    datosIniciales,
+    "veterinarioId",
+    "",
+    onDatosChange,
   )
-  const [celoPresentado, setCeloPresentado] = useState<"si" | "no" | "no_aplica">("no_aplica")
-  const [comentarios, setComentarios] = useState("")
+  const [diagnosticoId, setDiagnosticoId] = useCampoBorrador(
+    datosIniciales,
+    "diagnosticoId",
+    "",
+    onDatosChange,
+  )
+  const [tipoDiagnostico, setTipoDiagnostico] = useCampoBorrador(
+    datosIniciales,
+    "tipoDiagnostico",
+    "general",
+    onDatosChange,
+  ) as ["reproductivo" | "general" | "otro", (valor: string) => void]
+  const [celoPresentado, setCeloPresentado] = useCampoBorrador(
+    datosIniciales,
+    "celoPresentado",
+    "no_aplica",
+    onDatosChange,
+  ) as ["si" | "no" | "no_aplica", (valor: string) => void]
+  const [comentarios, setComentarios] = useCampoBorrador(
+    datosIniciales,
+    "comentarios",
+    "",
+    onDatosChange,
+  )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

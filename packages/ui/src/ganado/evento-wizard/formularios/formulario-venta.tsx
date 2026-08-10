@@ -1,7 +1,12 @@
 import { useState } from "react"
 
 import type { CapturaEvento } from "../types"
-import { CampoTextoEvento, MarcoFormularioEvento, PieFormularioEvento } from "./base"
+import {
+  CampoTextoEvento,
+  MarcoFormularioEvento,
+  PieFormularioEvento,
+  useCampoBorrador,
+} from "./base"
 
 /**
  * FormularioVenta (matriz §2 — Movimientos / Venta).
@@ -12,17 +17,45 @@ export interface FormularioVentaProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
-export function FormularioVenta({ numeroAnimales, onVolver, onGuardar }: FormularioVentaProps) {
+export function FormularioVenta({
+  numeroAnimales,
+  onVolver,
+  onGuardar,
+  datosIniciales,
+  onDatosChange,
+}: FormularioVentaProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [motivoVentaId, setMotivoVentaId] = useState("")
-  const [lugarVentaId, setLugarVentaId] = useState("")
-  const [pesoVentaKg, setPesoVentaKg] = useState("")
-  const [precio, setPrecio] = useState("")
-  const [comprador, setComprador] = useState("")
-  const [comentarios, setComentarios] = useState("")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [motivoVentaId, setMotivoVentaId] = useCampoBorrador(
+    datosIniciales,
+    "motivoVentaId",
+    "",
+    onDatosChange,
+  )
+  const [lugarVentaId, setLugarVentaId] = useCampoBorrador(
+    datosIniciales,
+    "lugarVentaId",
+    "",
+    onDatosChange,
+  )
+  const [pesoVentaKg, setPesoVentaKg] = useCampoBorrador(
+    datosIniciales,
+    "pesoVentaKg",
+    "",
+    onDatosChange,
+  )
+  const [precio, setPrecio] = useCampoBorrador(datosIniciales, "precio", "", onDatosChange)
+  const [comprador, setComprador] = useCampoBorrador(datosIniciales, "comprador", "", onDatosChange)
+  const [comentarios, setComentarios] = useCampoBorrador(
+    datosIniciales,
+    "comentarios",
+    "",
+    onDatosChange,
+  )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

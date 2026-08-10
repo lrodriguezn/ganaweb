@@ -6,6 +6,7 @@ import {
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
+  useCampoBorrador,
 } from "./base"
 
 /**
@@ -17,20 +18,49 @@ export interface FormularioPalpacionProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
 export function FormularioPalpacion({
   numeroAnimales,
   onVolver,
   onGuardar,
+  datosIniciales,
+  onDatosChange,
 }: FormularioPalpacionProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [servicioId, setServicioId] = useState("")
-  const [diagnosticoId, setDiagnosticoId] = useState("")
-  const [resultado, setResultado] = useState<"vacia" | "prenada" | "no_aplica">("vacia")
-  const [diasGestion, setDiasGestion] = useState("")
-  const [comentarios, setComentarios] = useState("")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [servicioId, setServicioId] = useCampoBorrador(
+    datosIniciales,
+    "servicioId",
+    "",
+    onDatosChange,
+  )
+  const [diagnosticoId, setDiagnosticoId] = useCampoBorrador(
+    datosIniciales,
+    "diagnosticoId",
+    "",
+    onDatosChange,
+  )
+  const [resultado, setResultado] = useCampoBorrador(
+    datosIniciales,
+    "resultado",
+    "vacia",
+    onDatosChange,
+  )
+  const [diasGestion, setDiasGestion] = useCampoBorrador(
+    datosIniciales,
+    "diasGestion",
+    "",
+    onDatosChange,
+  )
+  const [comentarios, setComentarios] = useCampoBorrador(
+    datosIniciales,
+    "comentarios",
+    "",
+    onDatosChange,
+  )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

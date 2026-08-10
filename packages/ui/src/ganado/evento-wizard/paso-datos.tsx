@@ -27,7 +27,7 @@ export interface PasoDatosProps {
     datos: Readonly<Record<string, string | number | null>>,
   ) => Promise<void> | void
   readonly datosIniciales?: BorradorEvento["datosComunes"]
-  readonly onDatosChange?: (datos: BorradorEvento["datosComunes"]) => void
+  readonly onDatosChange?: ((datos: BorradorEvento["datosComunes"]) => void) | undefined
 }
 
 export function PasoDatos({
@@ -55,6 +55,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "palpacion":
@@ -63,6 +65,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "parto":
@@ -71,6 +75,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "aplicacion_sanitaria":
@@ -79,6 +85,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "revision_veterinaria":
@@ -87,6 +95,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "produccion_lactea":
@@ -95,6 +105,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "condicion_corporal":
@@ -103,6 +115,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "venta":
@@ -111,6 +125,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "muerte":
@@ -119,6 +135,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
     case "traslado":
@@ -127,6 +145,8 @@ export function PasoDatos({
           numeroAnimales={numeroAnimales}
           onVolver={onVolver}
           onGuardar={onGuardar}
+          datosIniciales={datosIniciales}
+          onDatosChange={onDatosChange}
         />
       )
   }

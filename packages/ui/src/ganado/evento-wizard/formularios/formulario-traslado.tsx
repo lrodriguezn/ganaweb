@@ -1,7 +1,12 @@
 import { useState } from "react"
 
 import type { CapturaEvento } from "../types"
-import { CampoTextoEvento, MarcoFormularioEvento, PieFormularioEvento } from "./base"
+import {
+  CampoTextoEvento,
+  MarcoFormularioEvento,
+  PieFormularioEvento,
+  useCampoBorrador,
+} from "./base"
 
 /**
  * FormularioTraslado (matriz §2 — Movimientos / Traslado).
@@ -12,20 +17,24 @@ export interface FormularioTrasladoProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
 export function FormularioTraslado({
   numeroAnimales,
   onVolver,
   onGuardar,
+  datosIniciales,
+  onDatosChange,
 }: FormularioTrasladoProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [potreroId, setPotreroId] = useState("")
-  const [sectorId, setSectorId] = useState("")
-  const [loteId, setLoteId] = useState("")
-  const [grupoId, setGrupoId] = useState("")
-  const [motivo, setMotivo] = useState("")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [potreroId, setPotreroId] = useCampoBorrador(datosIniciales, "potreroId", "", onDatosChange)
+  const [sectorId, setSectorId] = useCampoBorrador(datosIniciales, "sectorId", "", onDatosChange)
+  const [loteId, setLoteId] = useCampoBorrador(datosIniciales, "loteId", "", onDatosChange)
+  const [grupoId, setGrupoId] = useCampoBorrador(datosIniciales, "grupoId", "", onDatosChange)
+  const [motivo, setMotivo] = useCampoBorrador(datosIniciales, "motivo", "", onDatosChange)
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

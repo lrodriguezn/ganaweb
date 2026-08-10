@@ -1,7 +1,12 @@
 import { useState } from "react"
 
 import type { CapturaEvento } from "../types"
-import { CampoTextoEvento, MarcoFormularioEvento, PieFormularioEvento } from "./base"
+import {
+  CampoTextoEvento,
+  MarcoFormularioEvento,
+  PieFormularioEvento,
+  useCampoBorrador,
+} from "./base"
 
 /**
  * FormularioProduccionLactea (matriz §2 — Productivo / Producción láctea).
@@ -13,18 +18,32 @@ export interface FormularioProduccionLacteaProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
 export function FormularioProduccionLactea({
   numeroAnimales,
   onVolver,
   onGuardar,
+  datosIniciales,
+  onDatosChange,
 }: FormularioProduccionLacteaProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [cantidadAm, setCantidadAm] = useState("")
-  const [cantidadPm, setCantidadPm] = useState("")
-  const [loteId, setLoteId] = useState("")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [cantidadAm, setCantidadAm] = useCampoBorrador(
+    datosIniciales,
+    "cantidadAm",
+    "",
+    onDatosChange,
+  )
+  const [cantidadPm, setCantidadPm] = useCampoBorrador(
+    datosIniciales,
+    "cantidadPm",
+    "",
+    onDatosChange,
+  )
+  const [loteId, setLoteId] = useCampoBorrador(datosIniciales, "loteId", "", onDatosChange)
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
