@@ -1053,6 +1053,45 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
     expect(onEnviar).toHaveBeenCalledTimes(1)
   })
 
+  it("bloquea una membresía no verificable aunque no haya otro criterio de riesgo", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { cabeceraId: "rg-1", hijosIds: ["ev-1"] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: vi.fn(async () => [{ id: "a-1", codigoAnimal: "MT-100" }]),
+          onEnviar,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await screen.findByText("1 incluidos · 0 excluidos")
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
+      "membresía no verificable",
+    )
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo verificar")
+    expect(
+      screen.queryByRole("button", { name: "Mantener snapshot revisado" }),
+    ).not.toBeInTheDocument()
+    expect(onEnviar).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole("button", { name: "Actualizar alcance y verificar de nuevo" }),
+    )
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+  })
+
   it("actualiza el alcance conservando las excepciones de animales presentes", async () => {
     const user = userEvent.setup()
     render(

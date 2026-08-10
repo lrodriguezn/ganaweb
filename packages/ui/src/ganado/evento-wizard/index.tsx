@@ -222,7 +222,11 @@ export function EventoWizard({
       setMembresia(resultadoMembresia)
       setCargandoMembresia(false)
     }
-    if (criterios.length > 0 || resultadoMembresia.estado === "cambio") {
+    if (
+      criterios.length > 0 ||
+      resultadoMembresia.estado === "cambio" ||
+      resultadoMembresia.estado === "desconocido"
+    ) {
       setPasoActual("revision")
       return
     }
@@ -410,11 +414,22 @@ export function EventoWizard({
               excepciones,
               politicaRiesgo,
               corrigeAId,
-            ).concat(membresia?.estado === "cambio" ? ["cambio de membresía detectado"] : [])}
+            ).concat(
+              membresia?.estado === "cambio"
+                ? ["cambio de membresía detectado"]
+                : membresia?.estado === "desconocido"
+                  ? ["membresía no verificable"]
+                  : [],
+            )}
             membresia={membresia}
             cargandoMembresia={cargandoMembresia}
             onMantenerSnapshot={() => setMembresia({ estado: "coincide" })}
             onActualizarAlcance={() => {
+              if (membresia?.estado === "desconocido") {
+                setMembresia(null)
+                setPasoActual("alcance")
+                return
+              }
               if (
                 membresia?.estado !== "cambio" ||
                 seleccion.tipo !== "grupal" ||

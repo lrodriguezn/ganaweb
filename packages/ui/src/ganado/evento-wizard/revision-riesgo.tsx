@@ -67,13 +67,18 @@ export function RevisionRiesgo({
         <output className="text-support">Verificando la membresía actual…</output>
       )}
       {desconocida && (
-        <p
-          className="rounded-card border border-peligro-300 bg-peligro-50 p-3 text-support text-peligro-700"
+        <div
+          className="rounded-card border border-peligro-300 bg-peligro-50 p-3 text-support text-peligro-700 space-y-3"
           role="alert"
         >
-          No se pudo verificar la membresía actual. El envío queda bloqueado hasta poder
-          comprobarla.
-        </p>
+          <p>
+            No se pudo verificar la membresía actual. El envío queda bloqueado hasta poder
+            comprobarla.
+          </p>
+          <Button type="button" variant="outline" onClick={onActualizarAlcance}>
+            Actualizar alcance y verificar de nuevo
+          </Button>
+        </div>
       )}
       {hayConflicto && membresia && (
         <div
