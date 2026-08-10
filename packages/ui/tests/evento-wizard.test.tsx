@@ -20,12 +20,14 @@ import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
+import { metaDeTipo } from "../src/ganado/evento-wizard/catalogo-tipos.js"
 import { EditorExcepciones } from "../src/ganado/evento-wizard/editor-excepciones.js"
 import {
   EventoWizard,
   type ResultadoCapturaEvento,
   criteriosDeRiesgo,
 } from "../src/ganado/evento-wizard/index.js"
+import { RevisionRiesgo } from "../src/ganado/evento-wizard/revision-riesgo.js"
 
 vi.mock("@tanstack/react-start", () => ({
   // El server function real se mockea a nivel de red en otros tests; acá
@@ -1262,6 +1264,51 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
       screen.getByRole("button", { name: "Actualizar alcance y verificar de nuevo" }),
     )
     expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+  })
+
+  it.each([
+    ["servicio", { fecha: "2026-08-10", tipo: "0", padreId: "padre-1", dosis: 1 }],
+    [
+      "palpacion",
+      { fecha: "2026-08-10", diagnosticoId: "diag-1", resultado: "pp", diasGestion: 0 },
+    ],
+    ["parto", { fecha: "2026-08-10", tipoParto: "normal", machos: 1, hembras: 0, muertos: 0 }],
+    [
+      "revision_veterinaria",
+      {
+        fecha: "2026-08-10",
+        veterinarioId: "vet-1",
+        diagnosticoId: "diag-1",
+        tipoDiagnostico: "vitaminas",
+        celoPresentado: "si",
+      },
+    ],
+  ] as const)("resume y confirma sin reconstruir el payload de %s", (tipo, datos) => {
+    const onConfirmar = vi.fn()
+    render(
+      <RevisionRiesgo
+        tipo={metaDeTipo(tipo)}
+        seleccion={{ tipo: "individual", animalId: "a-1" }}
+        catalogos={CATALOGOS_VACIOS}
+        datosCapturados={datos}
+        excepciones={{}}
+        criterios={["tipo sensible según la política"]}
+        membresia={null}
+        cargandoMembresia={false}
+        onMantenerSnapshot={vi.fn()}
+        onActualizarAlcance={vi.fn()}
+        onConfirmar={onConfirmar}
+      />,
+    )
+
+    const resumen = screen.getByText(
+      Object.entries(datos)
+        .map(([key, value]) => `${key}: ${String(value)}`)
+        .join(" · "),
+    )
+    expect(resumen).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar y registrar 1 evento/ }))
+    expect(onConfirmar).toHaveBeenCalledTimes(1)
   })
 
   it("actualiza el alcance conservando las excepciones de animales presentes", async () => {
