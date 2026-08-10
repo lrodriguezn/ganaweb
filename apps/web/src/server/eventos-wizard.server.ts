@@ -68,6 +68,9 @@ export interface EventoWizardWebInput {
         readonly potreroId?: string
         readonly grupoId?: string
         readonly animalIdsEfectivos: readonly string[]
+        readonly excepciones?: Readonly<
+          Record<string, Readonly<Record<string, string | number | null>>>
+        >
       }
   readonly datos: Readonly<Record<string, string | number | null>>
   readonly corrigeAId?: string
@@ -227,6 +230,12 @@ export function createEventoWizardActionHarness(deps: EventoWizardDeps) {
           errores: [{ campo: "tipo", detalle: `Sin mapping RBAC para el tipo ${input.tipo}` }],
         }
       }
+      if (input.alcance.tipo === "grupal" && INDIVIDUAL_ONLY.has(input.tipo)) {
+        return {
+          tipo: "validacion",
+          errores: [{ campo: "alcance", detalle: `${input.tipo} solo admite alcance individual.` }],
+        }
+      }
       const tienePermiso = sesion.permisos.some(
         (p) => `${p.modulo}:${p.accion}` === permisoRequerido,
       )
@@ -310,6 +319,7 @@ async function capturarGrupal(
       ],
     }
   }
+  const alcance = input.alcance
   const cabeceraId = `rg-${randomUUID()}`
   const criterio =
     input.alcance.origen === "manual"
@@ -335,7 +345,7 @@ async function capturarGrupal(
     ...input.datos,
     fecha: input.datos.fecha ?? deps.reloj().toISOString().slice(0, 10),
   }
-  const hijos: EventoWriteCommand[] = input.alcance.animalIdsEfectivos.map((animalId) => ({
+  const hijos: EventoWriteCommand[] = alcance.animalIdsEfectivos.map((animalId) => ({
     tipo: "crear_hijo_grupal",
     id: `ev-${randomUUID()}`,
     fincaId: input.fincaId,
@@ -343,7 +353,7 @@ async function capturarGrupal(
     evento: input.tipo as EventoWriteCommand["evento"],
     animalId,
     registroGrupalId: cabeceraId,
-    datos: datosHijo,
+    datos: materializarDatos(datosHijo, alcance.excepciones?.[animalId]),
   }))
 
   try {
@@ -365,6 +375,19 @@ async function capturarGrupal(
   } catch (error) {
     return mapBoundaryErrorToResultado(error)
   }
+}
+
+const INDIVIDUAL_ONLY = new Set(["parto", "muerte", "condicion_corporal"])
+
+export function materializarDatos(
+  datosComunes: Readonly<Record<string, string | number | null>>,
+  excepcion: Readonly<Record<string, string | number | null>> | undefined,
+): Readonly<Record<string, string | number | null>> {
+  if (!excepcion) return datosComunes
+  const overrides = Object.fromEntries(
+    Object.entries(excepcion).filter(([campo, valor]) => !Object.is(datosComunes[campo], valor)),
+  )
+  return { ...datosComunes, ...overrides }
 }
 
 function mapBoundaryErrorToResultado(error: unknown): EventoWizardResultado {

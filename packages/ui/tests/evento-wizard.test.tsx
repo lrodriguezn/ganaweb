@@ -396,6 +396,45 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     expect(screen.getByText("MT-100")).toBeInTheDocument()
   })
 
+  it("captures sparse animal overrides, removes redundant values, and warns before removal", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { cabeceraId: "rg-1", hijosIds: ["ev-1", "ev-2"] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          cargarAnimalesPorOrigen: vi.fn(async () => [
+            { id: "a-1", codigoAnimal: "MT-100" },
+            { id: "a-2", codigoAnimal: "MT-101" },
+          ]),
+          onEnviar,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await screen.findByText("0 animales incluidos")
+    await user.click(screen.getByRole("button", { name: "Seleccionar todos" }))
+    await user.click(screen.getByRole("button", { name: "Continuar con 2 animales" }))
+    await user.clear(screen.getByLabelText(/Peso/))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    const override = screen.getByLabelText("a-2: pesoKg")
+    await user.clear(override)
+    await user.type(override, "435")
+    expect(screen.getByText("Campos diferentes: pesoKg")).toBeInTheDocument()
+    await user.clear(override)
+    await user.type(override, "420")
+    await user.clear(override)
+    await user.type(override, "435")
+    await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
+    await user.click(screen.getByRole("button", { name: /Excluir MT-101/ }))
+    expect(screen.getByRole("alert")).toHaveTextContent("tiene una excepción")
+  })
+
   it("marks structured members included and preserves the previous scope on load failure", async () => {
     const user = userEvent.setup()
     const cargarAnimales = vi
