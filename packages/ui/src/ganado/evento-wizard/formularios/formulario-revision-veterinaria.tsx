@@ -46,15 +46,15 @@ export function FormularioRevisionVeterinaria({
   const [tipoDiagnostico, setTipoDiagnostico] = useCampoBorrador(
     datosIniciales,
     "tipoDiagnostico",
-    "general",
+    "no_aplica",
     onDatosChange,
-  ) as ["reproductivo" | "general" | "otro", (valor: string) => void]
+  ) as ["no_aplica" | "vitaminas", (valor: string) => void]
   const [celoPresentado, setCeloPresentado] = useCampoBorrador(
     datosIniciales,
     "celoPresentado",
-    "no_aplica",
+    "no",
     onDatosChange,
-  ) as ["si" | "no" | "no_aplica", (valor: string) => void]
+  ) as ["si" | "no", (valor: string) => void]
   const [comentarios, setComentarios] = useCampoBorrador(
     datosIniciales,
     "comentarios",
@@ -64,7 +64,8 @@ export function FormularioRevisionVeterinaria({
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const puedeGuardar = fecha !== "" && !guardando
+  const puedeGuardar =
+    fecha !== "" && veterinarioId.trim() !== "" && diagnosticoId.trim() !== "" && !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) return
@@ -75,8 +76,8 @@ export function FormularioRevisionVeterinaria({
         fecha,
         tipoDiagnostico,
         celoPresentado,
-        ...(veterinarioId ? { veterinarioId } : {}),
-        ...(diagnosticoId ? { diagnosticoId } : {}),
+        veterinarioId,
+        diagnosticoId,
         ...(comentarios ? { comentarios } : {}),
       }
       await onGuardar(datos)
@@ -112,13 +113,14 @@ export function FormularioRevisionVeterinaria({
         etiqueta="Veterinario (ID)"
         valor={veterinarioId}
         onCambiar={setVeterinarioId}
-        descripcion="Opcional"
+        requerido
       />
       <CampoTextoEvento
         id="rev-diag"
         etiqueta="Diagnóstico (ID)"
         valor={diagnosticoId}
         onCambiar={setDiagnosticoId}
+        requerido
       />
       <CampoSelectEvento
         id="rev-tipo-diag"
@@ -126,9 +128,8 @@ export function FormularioRevisionVeterinaria({
         valor={tipoDiagnostico}
         onCambiar={setTipoDiagnostico}
         opciones={[
-          { value: "general", label: "General" },
-          { value: "reproductivo", label: "Reproductivo" },
-          { value: "otro", label: "Otro" },
+          { value: "no_aplica", label: "No aplica" },
+          { value: "vitaminas", label: "Vitaminas" },
         ]}
       />
       <CampoSelectEvento
@@ -137,7 +138,6 @@ export function FormularioRevisionVeterinaria({
         valor={celoPresentado}
         onCambiar={setCeloPresentado}
         opciones={[
-          { value: "no_aplica", label: "No aplica" },
           { value: "si", label: "Sí" },
           { value: "no", label: "No" },
         ]}

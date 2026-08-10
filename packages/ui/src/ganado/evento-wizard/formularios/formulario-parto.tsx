@@ -44,7 +44,7 @@ export function FormularioParto({
     "tipoParto",
     "normal",
     onDatosChange,
-  ) as ["normal" | "asistido" | "cesarea", (valor: string) => void]
+  ) as ["normal" | "distocico" | "aborto", (valor: string) => void]
   const [machos, setMachos] = useCampoBorrador(datosIniciales, "machos", "0", onDatosChange)
   const [hembras, setHembras] = useCampoBorrador(datosIniciales, "hembras", "0", onDatosChange)
   const [muertos, setMuertos] = useCampoBorrador(datosIniciales, "muertos", "0", onDatosChange)
@@ -61,7 +61,7 @@ export function FormularioParto({
     fecha !== "" &&
     numeroAnimales === 1 &&
     !guardando &&
-    Number(machos) + Number(hembras) + Number(muertos) >= 0
+    [machos, hembras, muertos].every((valor) => /^\d+$/.test(valor))
 
   const handleGuardar = async () => {
     if (numeroAnimales !== 1) {
@@ -117,7 +117,7 @@ export function FormularioParto({
         etiqueta="Servicio (ID)"
         valor={servicioId}
         onCambiar={setServicioId}
-        descripcion="Opcional — vincula con un servicio previo"
+        descripcion="Opcional — seleccionable desde servicios"
       />
       <CampoSelectEvento
         id="parto-tipo"
@@ -126,8 +126,8 @@ export function FormularioParto({
         onCambiar={setTipoParto}
         opciones={[
           { value: "normal", label: "Normal" },
-          { value: "asistido", label: "Asistido" },
-          { value: "cesarea", label: "Cesárea" },
+          { value: "distocico", label: "Distócico" },
+          { value: "aborto", label: "Aborto" },
         ]}
       />
       <div className="grid grid-cols-3 gap-3">
@@ -139,6 +139,7 @@ export function FormularioParto({
           valor={machos}
           onCambiar={setMachos}
           min={0}
+          step={1}
         />
         <CampoTextoEvento
           id="parto-hembras"
@@ -148,6 +149,7 @@ export function FormularioParto({
           valor={hembras}
           onCambiar={setHembras}
           min={0}
+          step={1}
         />
         <CampoTextoEvento
           id="parto-muertos"
@@ -157,6 +159,7 @@ export function FormularioParto({
           valor={muertos}
           onCambiar={setMuertos}
           min={0}
+          step={1}
         />
       </div>
       <CampoTextoEvento

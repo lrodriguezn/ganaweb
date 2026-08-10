@@ -37,12 +37,11 @@ describe("FormularioPesaje — matriz §2 Productivo / Pesaje", () => {
     expect(screen.getByLabelText(/Comentarios/)).toBeInTheDocument()
   })
 
-  it("muestra opciones de tipo de peso: Control, Destete, Preparto, Postparto", () => {
+  it("muestra opciones de tipo de peso: Control, Compra, Venta", () => {
     render(<FormularioPesaje {...defaultProps} />)
     expect(screen.getByRole("option", { name: "Control" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "Destete" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "Preparto" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "Postparto" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Compra" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Venta" })).toBeInTheDocument()
   })
 
   it("requiere peso > 0 para guardar", async () => {
@@ -78,7 +77,7 @@ describe("FormularioProduccionLactea — matriz §2 Productivo / Producción lá
     expect(screen.getByLabelText(/Lote/)).toBeInTheDocument()
   })
 
-  it("requiere al menos un turno con cantidad > 0 para guardar", async () => {
+  it("permite registrar cantidades AM y PM iguales a cero", async () => {
     const user = userEvent.setup()
     const onGuardar = vi.fn()
     render(<FormularioProduccionLactea {...defaultProps} onGuardar={onGuardar} />)
@@ -90,7 +89,9 @@ describe("FormularioProduccionLactea — matriz §2 Productivo / Producción lá
     await user.type(pm, "0")
     const guardar = screen.getByRole("button", { name: /Guardar/ })
     await user.click(guardar)
-    expect(onGuardar).not.toHaveBeenCalled()
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({ cantidadAm: 0, cantidadPm: 0 }),
+    )
   })
 })
 

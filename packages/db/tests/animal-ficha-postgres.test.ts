@@ -28,6 +28,7 @@ const animalFull = `${fixture}-animal-full`
 const animalEmpty = `${fixture}-animal-empty`
 const animalOther = `${fixture}-animal-other`
 const registroAnulado = `${fixture}-registro-anulado`
+const usuarioAuditoria = `${fixture}-usuario-auditoria`
 
 async function execute(statement: ReturnType<typeof sql>) {
   return db.execute(statement)
@@ -70,8 +71,14 @@ beforeAll(async () => {
     VALUES (${animalOther}, ${fincaB}, ${`${fixture}-F3`}, 'Otra Finca', 1, 1)
   `)
   await execute(sql`
-    INSERT INTO registros_grupales (id, finca_id, tipo_evento, total_animales, anulado_en)
-    VALUES (${registroAnulado}, ${fincaA}, 'pesaje', 1, now())
+    INSERT INTO usuarios (id, nombre, email)
+    VALUES (${usuarioAuditoria}, 'Ficha Audit', ${`${fixture}@ganaweb.test`})
+  `)
+  await execute(sql`
+    INSERT INTO registros_grupales (
+      id, finca_id, tipo_evento, total_animales, anulado_en, anulado_por, motivo_anulacion
+    )
+    VALUES (${registroAnulado}, ${fincaA}, 'pesaje', 1, now(), ${usuarioAuditoria}, 'Fixture anulado')
   `)
   await execute(sql`
     INSERT INTO pesos (id, animal_id, fecha, peso_kg)
@@ -117,6 +124,7 @@ afterAll(async () => {
   await execute(sql`DELETE FROM pesos WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM animales WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM registros_grupales WHERE id LIKE ${`${fixture}%`}`)
+  await execute(sql`DELETE FROM usuarios WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM potreros WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM sectores WHERE id LIKE ${`${fixture}%`}`)
   await execute(sql`DELETE FROM lotes WHERE id LIKE ${`${fixture}%`}`)

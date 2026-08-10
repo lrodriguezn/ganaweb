@@ -41,7 +41,13 @@ export function FormularioCondicionCorporal({
   const [guardando, setGuardando] = useState(false)
 
   const puntajeNum = Number(puntaje)
-  const puedeGuardar = fecha !== "" && puntajeNum >= 1 && puntajeNum <= 5 && !guardando
+  const puedeGuardar =
+    fecha !== "" &&
+    condicionId.trim() !== "" &&
+    Number.isInteger(puntajeNum) &&
+    puntajeNum >= 1 &&
+    puntajeNum <= 5 &&
+    !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) {
@@ -89,7 +95,8 @@ export function FormularioCondicionCorporal({
         etiqueta="Condición (ID)"
         valor={condicionId}
         onCambiar={setCondicionId}
-        descripcion="Catálogo de condición corporal"
+        requerido
+        descripcion="Seleccionable desde catálogo de condición corporal"
       />
       <CampoTextoEvento
         id="cc-puntaje"
@@ -101,7 +108,7 @@ export function FormularioCondicionCorporal({
         requerido
         min={1}
         max={5}
-        step={0.5}
+        step={1}
       />
     </MarcoFormularioEvento>
   )

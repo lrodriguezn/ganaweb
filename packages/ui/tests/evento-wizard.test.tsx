@@ -1070,7 +1070,7 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
     )
     await user.type(screen.getByLabelText(/Veterinario/), "veterinario-1")
     await user.type(screen.getByLabelText(/Diagnóstico/), "diagnostico-1")
-    await user.selectOptions(screen.getByLabelText(/Tipo de diagnóstico/), "reproductivo")
+    await user.selectOptions(screen.getByLabelText(/Tipo de diagnóstico/), "vitaminas")
     await user.selectOptions(screen.getByLabelText(/Celo presentado/), "si")
     await user.type(screen.getByLabelText(/Comentarios/), "revisión completa")
     await user.click(screen.getByRole("button", { name: /Guardar/ }))
@@ -1088,7 +1088,7 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
       expect.objectContaining({
         veterinarioId: "veterinario-1",
         diagnosticoId: "diagnostico-1",
-        tipoDiagnostico: "reproductivo",
+        tipoDiagnostico: "vitaminas",
         celoPresentado: "si",
         comentarios: "revisión completa",
       }),

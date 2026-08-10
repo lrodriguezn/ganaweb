@@ -38,7 +38,14 @@ export function FormularioTraslado({
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const puedeGuardar = fecha !== "" && !guardando
+  const puedeGuardar =
+    fecha !== "" &&
+    potreroId.trim() !== "" &&
+    sectorId.trim() !== "" &&
+    loteId.trim() !== "" &&
+    grupoId.trim() !== "" &&
+    motivo.trim() !== "" &&
+    !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) return
@@ -47,11 +54,11 @@ export function FormularioTraslado({
     try {
       const datos: CapturaEvento["datos"] = {
         fecha,
-        ...(potreroId ? { potreroId } : {}),
-        ...(sectorId ? { sectorId } : {}),
-        ...(loteId ? { loteId } : {}),
-        ...(grupoId ? { grupoId } : {}),
-        ...(motivo ? { motivo } : {}),
+        potreroId,
+        sectorId,
+        loteId,
+        grupoId,
+        motivo,
       }
       await onGuardar(datos)
     } finally {
@@ -87,19 +94,32 @@ export function FormularioTraslado({
           etiqueta="Potrero (ID)"
           valor={potreroId}
           onCambiar={setPotreroId}
+          requerido
+          descripcion="Seleccionable desde catálogo"
         />
         <CampoTextoEvento
           id="tra-sector"
           etiqueta="Sector (ID)"
           valor={sectorId}
           onCambiar={setSectorId}
+          requerido
+          descripcion="Seleccionable desde catálogo"
         />
-        <CampoTextoEvento id="tra-lote" etiqueta="Lote (ID)" valor={loteId} onCambiar={setLoteId} />
+        <CampoTextoEvento
+          id="tra-lote"
+          etiqueta="Lote (ID)"
+          valor={loteId}
+          onCambiar={setLoteId}
+          requerido
+          descripcion="Seleccionable desde catálogo"
+        />
         <CampoTextoEvento
           id="tra-grupo"
           etiqueta="Grupo (ID)"
           valor={grupoId}
           onCambiar={setGrupoId}
+          requerido
+          descripcion="Seleccionable desde catálogo"
         />
       </div>
       <CampoTextoEvento
@@ -107,7 +127,8 @@ export function FormularioTraslado({
         etiqueta="Motivo"
         valor={motivo}
         onCambiar={setMotivo}
-        descripcion="Opcional"
+        requerido
+        descripcion="Seleccionable desde catálogo"
       />
     </MarcoFormularioEvento>
   )

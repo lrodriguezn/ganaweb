@@ -32,8 +32,9 @@ describe("FormularioServicio — matriz §2 Reproductivo / Servicio", () => {
   it("renderiza campos compartidos: fecha, tipo, padre/pajuela, inseminador, dosis, observaciones", () => {
     render(<FormularioServicio {...defaultProps} />)
     expect(screen.getByLabelText(/Fecha/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Tipo/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Padre|Pajuela/)).toBeInTheDocument()
+    expect(screen.getByLabelText("Tipo")).toBeInTheDocument()
+    expect(screen.getByLabelText(/Padre/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Pajuela/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Inseminador/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Dosis/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Observaciones/)).toBeInTheDocument()
@@ -41,7 +42,7 @@ describe("FormularioServicio — matriz §2 Reproductivo / Servicio", () => {
 
   it("muestra opciones de tipo: Inseminación y Monta natural", () => {
     render(<FormularioServicio {...defaultProps} />)
-    const tipoSelect = screen.getByLabelText(/Tipo/)
+    const tipoSelect = screen.getByLabelText("Tipo")
     expect(tipoSelect).toBeInTheDocument()
     expect(screen.getByRole("option", { name: "Inseminación" })).toBeInTheDocument()
     expect(screen.getByRole("option", { name: "Monta natural" })).toBeInTheDocument()
@@ -53,8 +54,8 @@ describe("FormularioServicio — matriz §2 Reproductivo / Servicio", () => {
     // Por defecto es inseminación → pajuela
     expect(screen.getByLabelText(/Pajuela/)).toBeInTheDocument()
     // Cambiar a monta natural → padre
-    const tipoSelect = screen.getByLabelText(/Tipo/)
-    await user.selectOptions(tipoSelect, "monta")
+    const tipoSelect = screen.getByLabelText("Tipo")
+    await user.selectOptions(tipoSelect, "0")
     expect(screen.getByLabelText(/Padre/)).toBeInTheDocument()
   })
 
@@ -80,11 +81,12 @@ describe("FormularioPalpacion — matriz §2 Reproductivo / Palpación", () => {
     expect(screen.getByLabelText(/Comentarios/)).toBeInTheDocument()
   })
 
-  it("muestra opciones de resultado: Vacía, Preñada, No aplica", () => {
+  it("muestra las opciones funcionales de resultado", () => {
     render(<FormularioPalpacion {...defaultProps} />)
-    expect(screen.getByRole("option", { name: "Vacía" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "P.P" })).toBeInTheDocument()
     expect(screen.getByRole("option", { name: "Preñada" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "No aplica" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Ciclando" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Estática" })).toBeInTheDocument()
   })
 
   it("incluye campo servicioId para vincular con servicio previo", () => {
@@ -111,11 +113,11 @@ describe("FormularioParto — matriz §2 Reproductivo / Parto (individual-only)"
     expect(screen.getByLabelText(/Comentarios/)).toBeInTheDocument()
   })
 
-  it("muestra opciones de tipo de parto: Normal, Asistido, Cesárea", () => {
+  it("muestra opciones de tipo de parto: Normal, Distócico, Aborto", () => {
     render(<FormularioParto {...defaultProps} />)
     expect(screen.getByRole("option", { name: "Normal" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "Asistido" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "Cesárea" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Distócico" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Aborto" })).toBeInTheDocument()
   })
 
   it("deshabilita botón Guardar cuando numeroAnimales !== 1 (EV-CAP-007)", () => {

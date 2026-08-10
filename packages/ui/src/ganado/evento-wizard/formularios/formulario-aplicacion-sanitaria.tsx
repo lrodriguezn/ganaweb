@@ -64,7 +64,12 @@ export function FormularioAplicacionSanitaria({
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const puedeGuardar = fecha !== "" && productoId.trim() !== "" && Number(dosis) > 0 && !guardando
+  const puedeGuardar =
+    fecha !== "" &&
+    productoId.trim() !== "" &&
+    Number(dosis) > 0 &&
+    /^\d+(\.\d{1,4})?$/.test(dosis) &&
+    !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) {
@@ -128,7 +133,7 @@ export function FormularioAplicacionSanitaria({
           onCambiar={setDosis}
           requerido
           min={0}
-          step={0.1}
+          step={0.0001}
         />
         <CampoTextoEvento
           id="san-precio"

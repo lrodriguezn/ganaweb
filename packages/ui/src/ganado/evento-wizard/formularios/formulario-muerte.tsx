@@ -45,7 +45,7 @@ export function FormularioMuerte({
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const puedeGuardar = fecha !== "" && !guardando
+  const puedeGuardar = fecha !== "" && causaMuerteId.trim() !== "" && !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) return
@@ -54,7 +54,7 @@ export function FormularioMuerte({
     try {
       const datos: CapturaEvento["datos"] = {
         fecha,
-        ...(causaMuerteId ? { causaMuerteId } : {}),
+        causaMuerteId,
         ...(comentarios ? { comentarios } : {}),
       }
       await onGuardar(datos)
@@ -90,6 +90,7 @@ export function FormularioMuerte({
         etiqueta="Causa de muerte (ID)"
         valor={causaMuerteId}
         onCambiar={setCausaMuerteId}
+        requerido
         descripcion="Catálogo de causas"
       />
       <CampoTextoEvento
