@@ -10,7 +10,7 @@ export interface RevisionRiesgoProps {
   readonly tipo: TipoEventoMeta
   readonly seleccion: Seleccion
   readonly catalogos: CatalogosParaAlcance
-  readonly datosComunes: Readonly<Record<string, string | number | null>>
+  readonly datosCapturados: Readonly<Record<string, string | number | null>>
   readonly excepciones: Readonly<Record<string, Readonly<Record<string, string | number | null>>>>
   readonly criterios: readonly string[]
   readonly membresia: ResultadoMembresiaActual | null
@@ -24,7 +24,7 @@ export function RevisionRiesgo({
   tipo,
   seleccion,
   catalogos,
-  datosComunes,
+  datosCapturados,
   excepciones,
   criterios,
   membresia,
@@ -60,7 +60,7 @@ export function RevisionRiesgo({
           label="Exclusiones"
           value={grupal ? `${seleccion.animalIdsExcluidos?.length ?? 0}` : "0"}
         />
-        <Item label="Datos comunes" value={resumenDatos(datosComunes)} />
+        <Item label="Datos capturados" value={resumenDatos(datosCapturados)} />
         <Item label="Excepciones" value={resumenExcepciones(excepciones)} />
         <Item label="Atomicidad" value="Se guardan juntos; si uno falla, no se guarda ninguno." />
       </dl>

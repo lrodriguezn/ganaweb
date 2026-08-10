@@ -118,6 +118,7 @@ export function EventoWizard({
   const [errorServidor, setErrorServidor] = useState<string | null>(null)
   const [datosComunes, setDatosComunes] = useState<BorradorEvento["datosComunes"]>({})
   const [excepciones, setExcepciones] = useState<BorradorEvento["excepciones"]>({})
+  const [capturaPendiente, setCapturaPendiente] = useState<CapturaEvento | null>(null)
   const [hayCambiosPendientes, setHayCambiosPendientes] = useState(false)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
   const [membresia, setMembresia] = useState<ResultadoMembresiaActual | null>(null)
@@ -135,6 +136,7 @@ export function EventoWizard({
     setErrorServidor(null)
     setDatosComunes({})
     setExcepciones({})
+    setCapturaPendiente(null)
     setHayCambiosPendientes(false)
     setConfirmarCierre(false)
     setMembresia(null)
@@ -154,6 +156,7 @@ export function EventoWizard({
 
   const handleSeleccionTipo = (nuevo: TipoEventoWizard) => {
     setHayCambiosPendientes(true)
+    setCapturaPendiente(null)
     setTipo(nuevo)
     // Si ya hay selección previa (de un tipo anterior) Y el nuevo tipo
     // permite grupal/individual, mantenemos la selección; si no, limpiamos.
@@ -170,6 +173,7 @@ export function EventoWizard({
 
   const handleSeleccionAlcance = (next: Seleccion) => {
     setHayCambiosPendientes(true)
+    setCapturaPendiente(null)
     if (next.tipo === "grupal") {
       const ids = new Set(next.animalIdsEfectivos)
       setExcepciones(
@@ -191,6 +195,7 @@ export function EventoWizard({
     setPasoActual("tipo")
   }
   const handleVolverAAlcance = () => {
+    setCapturaPendiente(null)
     if (seleccion?.tipo === "grupal") setSeleccion({ ...seleccion, excepciones })
     setPasoActual("alcance")
   }
@@ -208,6 +213,7 @@ export function EventoWizard({
       datos: { ...datosComunes, ...datos },
       ...(corrigeAId ? { corrigeAId } : {}),
     }
+    setCapturaPendiente(captura)
     const criterios = criteriosDeRiesgo(tipo, seleccion, excepciones, politicaRiesgo, corrigeAId)
     let resultadoMembresia: ResultadoMembresiaActual = { estado: "coincide" }
     if (seleccion.tipo === "grupal" && seleccion.origen !== "manual") {
@@ -348,6 +354,7 @@ export function EventoWizard({
                 datosIniciales={datosComunes}
                 onDatosChange={(datos) => {
                   setHayCambiosPendientes(true)
+                  setCapturaPendiente(null)
                   setDatosComunes((actual) => {
                     const next = { ...actual, ...datos }
                     setExcepciones((current) => {
@@ -401,13 +408,17 @@ export function EventoWizard({
             )}
           </>
         )}
-        {pasoActual === "revision" && tipo && seleccion && (
+        {pasoActual === "revision" && tipo && seleccion && capturaPendiente && (
           <RevisionRiesgo
             tipo={metaDeTipo(tipo)}
-            seleccion={seleccion}
+            seleccion={capturaPendiente.seleccion}
             catalogos={catalogos}
-            datosComunes={datosComunes}
-            excepciones={excepciones}
+            datosCapturados={capturaPendiente.datos}
+            excepciones={
+              capturaPendiente.seleccion.tipo === "grupal"
+                ? (capturaPendiente.seleccion.excepciones ?? {})
+                : {}
+            }
             criterios={criteriosDeRiesgo(
               tipo,
               seleccion,
@@ -429,6 +440,7 @@ export function EventoWizard({
             }}
             onActualizarAlcance={() => {
               if (membresia?.estado === "desconocido") {
+                setCapturaPendiente(null)
                 setMembresia(null)
                 setPasoActual("alcance")
                 return
@@ -456,20 +468,13 @@ export function EventoWizard({
                 totalAnimales: ids.length,
                 animalIdsExcluidos: excluidos,
               })
+              setCapturaPendiente(null)
               setMembresia(null)
               setPasoActual("alcance")
             }}
             onConfirmar={() => {
-              if (!tipo || !seleccion) return
-              void enviarCaptura({
-                tipo,
-                seleccion:
-                  seleccion.tipo === "grupal" && Object.keys(excepciones).length > 0
-                    ? { ...seleccion, excepciones }
-                    : seleccion,
-                datos: datosComunes,
-                ...(corrigeAId ? { corrigeAId } : {}),
-              })
+              if (!capturaPendiente) return
+              void enviarCaptura(capturaPendiente)
             }}
           />
         )}
