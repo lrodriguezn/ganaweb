@@ -28,6 +28,7 @@ import {
   type EventoWizardResultado,
   type EventoWizardWebInput,
   createEventoWizardActionHarness,
+  revisarMembresiaActual,
 } from "./eventos-wizard.server.js"
 
 const FINCA = "finca-1"
@@ -140,6 +141,25 @@ describe("createEventoWizardActionHarness — RBAC y autorización", () => {
     })
     expect(resultado.tipo).toBe("capturado")
     expect(persistirLoteFake).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("revisarMembresiaActual — snapshot fail-closed", () => {
+  it("detecta agregados y retirados sin cambiar el snapshot", async () => {
+    const resultado = await revisarMembresiaActual(
+      { fincaId: FINCA, origen: "lote", id: "lote-1", snapshotIds: ["a-1", "a-3"] },
+      sesionCompleta(),
+    )
+    expect(["cambio", "desconocido"]).toContain(resultado.estado)
+  })
+
+  it("no inventa membresía cuando el origen no puede verificarse", async () => {
+    await expect(
+      revisarMembresiaActual(
+        { fincaId: FINCA, origen: "lote", id: "", snapshotIds: ["a-1"] },
+        sesionCompleta(),
+      ),
+    ).resolves.toMatchObject({ estado: "desconocido" })
   })
 })
 

@@ -488,6 +488,17 @@ export interface AnimalesPorOrigenDto {
   readonly animales: ReadonlyArray<{ readonly id: string; readonly codigoAnimal: string }>
 }
 
+export interface RevisarMembresiaWebInput extends ListarAnimalesPorOrigenWebInput {
+  readonly snapshotIds: readonly string[]
+}
+
+export interface RevisarMembresiaResultado {
+  readonly estado: "coincide" | "cambio" | "desconocido"
+  readonly animales?: ReadonlyArray<{ readonly id: string; readonly codigoAnimal: string }>
+  readonly agregados?: ReadonlyArray<{ readonly id: string; readonly codigoAnimal: string }>
+  readonly retirados?: ReadonlyArray<{ readonly id: string; readonly codigoAnimal?: string }>
+}
+
 export interface ListarAnimalesPorOrigenWebInput {
   readonly fincaId: string
   readonly origen: "manual" | "lote" | "potrero" | "grupo"
@@ -560,6 +571,31 @@ export async function listarAnimalesPorOrigen(
   return {
     tipo: "lista",
     animales: result.map((r) => ({ id: r.id, codigoAnimal: r.codigo })),
+  }
+}
+
+export async function revisarMembresiaActual(
+  input: RevisarMembresiaWebInput,
+  sesion: SesionAutorizada | null,
+): Promise<RevisarMembresiaResultado> {
+  if (!sesion || sesion.fincaActivaId !== input.fincaId || input.origen === "manual") {
+    return { estado: "desconocido" }
+  }
+  try {
+    const actual = await listarAnimalesPorOrigen(input, sesion)
+    if (actual.tipo !== "lista" || !actual.animales) return { estado: "desconocido" }
+    const snapshot = new Set(input.snapshotIds)
+    const actualIds = new Set(actual.animales.map((animal) => animal.id))
+    const agregados = actual.animales.filter((animal) => !snapshot.has(animal.id))
+    const retirados = input.snapshotIds.filter((id) => !actualIds.has(id)).map((id) => ({ id }))
+    return {
+      estado: agregados.length === 0 && retirados.length === 0 ? "coincide" : "cambio",
+      animales: actual.animales,
+      ...(agregados.length > 0 ? { agregados } : {}),
+      ...(retirados.length > 0 ? { retirados } : {}),
+    }
+  } catch {
+    return { estado: "desconocido" }
   }
 }
 

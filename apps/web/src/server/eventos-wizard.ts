@@ -40,6 +40,11 @@ export interface AnimalesPorOrigenDto {
   readonly animales: ReadonlyArray<{ readonly id: string; readonly codigoAnimal: string }>
 }
 
+export type {
+  RevisarMembresiaResultado,
+  RevisarMembresiaWebInput,
+} from "./eventos-wizard.server.js"
+
 /**
  * Server function POST: shell captura individual/grupal. Mapea errores a
  * 403 via `mapEventoBoundaryToHttp` y deja pasar el resto al cliente.
@@ -93,6 +98,15 @@ export const listarAnimalesPorOrigenFn = createServerFn({ method: "GET" })
     const { getAuthorizedSession } = await import("./eventos-wizard.server.js")
     const sesion = await getAuthorizedSession(data.fincaId)
     return listarAnimalesPorOrigen(data, sesion)
+  })
+
+export const revisarMembresiaActualFn = createServerFn({ method: "GET" })
+  .validator((data: import("./eventos-wizard.server.js").RevisarMembresiaWebInput) => data)
+  .handler(async ({ data }) => {
+    const { revisarMembresiaActual, getAuthorizedSession } = await import(
+      "./eventos-wizard.server.js"
+    )
+    return revisarMembresiaActual(data, await getAuthorizedSession(data.fincaId))
   })
 
 export const buscarAnimalPorCodigoFn = createServerFn({ method: "GET" })
