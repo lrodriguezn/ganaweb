@@ -6,6 +6,77 @@ export interface ErrorReglaEvento {
   readonly detalle: string
 }
 
+/** Runtime contract for the fields exposed by each EventoWizard type. */
+export const CAMPOS_DATOS_POR_TIPO: Readonly<Record<string, ReadonlySet<string>>> = {
+  servicio: new Set([
+    "fecha",
+    "tipo",
+    "padreId",
+    "pajuelaId",
+    "inseminadorId",
+    "tipoInseminacion",
+    "dosis",
+    "precio",
+    "efectivo",
+    "observaciones",
+  ]),
+  palpacion: new Set([
+    "servicioId",
+    "fecha",
+    "diagnosticoId",
+    "resultado",
+    "diasGestion",
+    "comentarios",
+  ]),
+  parto: new Set([
+    "servicioId",
+    "fecha",
+    "machos",
+    "hembras",
+    "muertos",
+    "tipoParto",
+    "comentarios",
+  ]),
+  aplicacion_sanitaria: new Set([
+    "productoId",
+    "fecha",
+    "dosis",
+    "precioDosis",
+    "proximaDosis",
+    "comentarios",
+  ]),
+  revision_veterinaria: new Set([
+    "fecha",
+    "diagnosticoId",
+    "tipoDiagnostico",
+    "celoPresentado",
+    "comentarios",
+    "veterinarioId",
+  ]),
+  pesaje: new Set(["fecha", "pesoKg", "tipoPeso", "comentarios"]),
+  produccion_lactea: new Set([
+    "fecha",
+    "cantidadAm",
+    "cantidadPm",
+    "potreroId",
+    "sectorId",
+    "loteId",
+    "grupoId",
+  ]),
+  condicion_corporal: new Set(["condicionId", "puntaje", "fecha"]),
+  venta: new Set([
+    "fecha",
+    "motivoVentaId",
+    "lugarVentaId",
+    "pesoVentaKg",
+    "precio",
+    "comprador",
+    "comentarios",
+  ]),
+  muerte: new Set(["fecha", "causaMuerteId", "comentarios"]),
+  traslado: new Set(["potreroId", "sectorId", "loteId", "grupoId", "fecha", "motivo"]),
+}
+
 const RESULTADOS_PALPACION = new Set(["prenada", "pp", "ciclando", "estatica"])
 const TIPOS_PARTO = new Set(["normal", "distocico", "aborto"])
 const TIPOS_PESO = new Set(["control", "compra", "venta"])
@@ -85,8 +156,25 @@ function validarFecha(datos: DatosEvento, errores: ErrorReglaEvento[]) {
   }
 }
 
+export function validarCamposDatosEvento(
+  tipo: string,
+  datos: DatosEvento,
+  prefijo = "",
+): readonly ErrorReglaEvento[] {
+  const camposPermitidos = CAMPOS_DATOS_POR_TIPO[tipo]
+  if (!camposPermitidos)
+    return [{ campo: prefijo ? `${prefijo}tipo` : "tipo", detalle: "Tipo de evento inválido." }]
+  return Object.keys(datos)
+    .filter((campo) => !camposPermitidos.has(campo))
+    .map((campo) => ({
+      campo: `${prefijo}${campo}`,
+      detalle: "El campo no pertenece al contrato de este tipo de evento.",
+    }))
+}
+
 export function validarDatosEvento(tipo: string, datos: DatosEvento): readonly ErrorReglaEvento[] {
-  const errores: ErrorReglaEvento[] = []
+  const errores: ErrorReglaEvento[] = [...validarCamposDatosEvento(tipo, datos)]
+  if (!CAMPOS_DATOS_POR_TIPO[tipo]) return errores
   validarFecha(datos, errores)
 
   switch (tipo) {
