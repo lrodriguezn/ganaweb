@@ -1069,11 +1069,30 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
       />,
     )
     await user.type(screen.getByLabelText(/Veterinario/), "veterinario-1")
+    await user.type(screen.getByLabelText(/Diagnóstico/), "diagnostico-1")
+    await user.selectOptions(screen.getByLabelText(/Tipo de diagnóstico/), "reproductivo")
+    await user.selectOptions(screen.getByLabelText(/Celo presentado/), "si")
+    await user.type(screen.getByLabelText(/Comentarios/), "revisión completa")
     await user.click(screen.getByRole("button", { name: /Guardar/ }))
     expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent("tipo sensible")
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
+      "veterinarioId: veterinario-1",
+    )
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
+      "diagnosticoId: diagnostico-1",
+    )
     expect(onEnviar).not.toHaveBeenCalled()
     await user.click(screen.getByRole("button", { name: "Confirmar y registrar 1 evento" }))
     expect(onEnviar).toHaveBeenCalledTimes(1)
+    expect(onEnviar.mock.calls[0][0].datos).toEqual(
+      expect.objectContaining({
+        veterinarioId: "veterinario-1",
+        diagnosticoId: "diagnostico-1",
+        tipoDiagnostico: "reproductivo",
+        celoPresentado: "si",
+        comentarios: "revisión completa",
+      }),
+    )
   })
 
   it("detiene el envío ante un conflicto y permite mantener o actualizar", async () => {
