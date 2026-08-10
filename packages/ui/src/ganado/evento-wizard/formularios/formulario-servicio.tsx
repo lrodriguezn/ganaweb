@@ -186,12 +186,16 @@ export function FormularioServicio({
           step={0.01}
           descripcion="Opcional"
         />
-        <CampoTextoEvento
+        <CampoSelectEvento
           id="srv-efectivo"
           etiqueta="Efectivo"
-          type="number"
           valor={efectivo}
           onCambiar={setEfectivo}
+          opciones={[
+            { value: "", label: "No especificado" },
+            { value: "1", label: "Sí" },
+            { value: "0", label: "No" },
+          ]}
           descripcion="Opcional"
         />
       </div>

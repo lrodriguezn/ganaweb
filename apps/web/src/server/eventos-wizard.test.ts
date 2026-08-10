@@ -78,7 +78,15 @@ const reloj = () => HOY
 describe("validarDatosEvento — reglas funcionales #282", () => {
   const base = { fecha: "2026-08-10" }
   const validos: Readonly<Record<string, Readonly<Record<string, string | number>>>> = {
-    servicio: { ...base, tipo: "0", padreId: "padre-1", tipoInseminacion: "natural", dosis: 1 },
+    servicio: {
+      ...base,
+      tipo: "0",
+      padreId: "padre-1",
+      tipoInseminacion: "natural",
+      dosis: 1,
+      precio: 125.5,
+      efectivo: 1,
+    },
     palpacion: { ...base, diagnosticoId: "diag-1", resultado: "prenada", diasGestion: 30 },
     parto: { ...base, tipoParto: "aborto", machos: 0, hembras: 0, muertos: 0 },
     aplicacion_sanitaria: { ...base, productoId: "producto-1", dosis: 0.125 },
@@ -89,7 +97,15 @@ describe("validarDatosEvento — reglas funcionales #282", () => {
       tipoDiagnostico: "vitaminas",
     },
     pesaje: { ...base, pesoKg: 420.25, tipoPeso: "control" },
-    produccion_lactea: { ...base, cantidadAm: 0, cantidadPm: 12.5 },
+    produccion_lactea: {
+      ...base,
+      cantidadAm: 0,
+      cantidadPm: 12.5,
+      loteId: "lote-1",
+      potreroId: "potrero-1",
+      sectorId: "sector-1",
+      grupoId: "grupo-1",
+    },
     condicion_corporal: { ...base, condicionId: "cond-1", puntaje: 5 },
     venta: {
       ...base,
@@ -147,6 +163,38 @@ describe("validarDatosEvento — reglas funcionales #282", () => {
       { campo: "pesoKg", detalle: "Debe ser mayor que cero y admitir hasta 2 decimales." },
       { campo: "tipoPeso", detalle: "Tiene un valor no permitido." },
     ])
+  })
+
+  it("mantiene opcionales precio, efectivo y ubicaciones lácteas", () => {
+    expect(
+      validarDatosEvento("servicio", {
+        ...base,
+        tipo: "0",
+        padreId: "padre-1",
+        tipoInseminacion: "natural",
+        dosis: 1,
+      }),
+    ).toEqual([])
+    expect(
+      validarDatosEvento("produccion_lactea", {
+        ...base,
+        cantidadAm: 0,
+        cantidadPm: 0,
+      }),
+    ).toEqual([])
+  })
+
+  it("valida efectivo solo cuando se informa", () => {
+    expect(
+      validarDatosEvento("servicio", {
+        ...base,
+        tipo: "0",
+        padreId: "padre-1",
+        tipoInseminacion: "natural",
+        dosis: 1,
+        efectivo: 2,
+      }),
+    ).toContainEqual({ campo: "efectivo", detalle: "Debe ser 0 o 1 cuando se informa." })
   })
 
   it.each(Object.keys(validos))("rechaza campos ajenos al contrato de %s", (tipo) => {
