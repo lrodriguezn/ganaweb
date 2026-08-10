@@ -16,7 +16,7 @@ import { sql } from "drizzle-orm"
 
 import { DrizzleAnimalRepository } from "@ganaweb/db/animal-infrastructure"
 import { DrizzleCatalogoFincaAdapter } from "@ganaweb/db/catalogo-finca-infrastructure"
-import { validarDatosEvento } from "./evento-rules.js"
+import { validarCamposDatosEvento, validarDatosEvento } from "./evento-rules.js"
 
 /**
  * Server functions del shell de captura de eventos (Issue #229, §4
@@ -244,10 +244,9 @@ export function createEventoWizardActionHarness(deps: EventoWizardDeps) {
         return { tipo: "permiso_denegado", permiso: permisoRequerido }
       }
 
-      const erroresDeDatos = validarDatosEvento(input.tipo, input.datos)
-      if (erroresDeDatos.length > 0) return { tipo: "validacion", errores: erroresDeDatos }
-
       if (input.alcance.tipo === "individual") {
+        const erroresDeDatos = validarDatosEvento(input.tipo, input.datos)
+        if (erroresDeDatos.length > 0) return { tipo: "validacion", errores: erroresDeDatos }
         return capturarIndividual(input, sesion, deps)
       }
       return capturarGrupal(input, sesion, deps)
@@ -324,6 +323,8 @@ async function capturarGrupal(
     }
   }
   const alcance = input.alcance
+  const validacionDatos = validarDatosGrupales(input.tipo, input.datos, alcance)
+  if (validacionDatos.length > 0) return { tipo: "validacion", errores: validacionDatos }
   const cabeceraId = `rg-${randomUUID()}`
   const criterio =
     input.alcance.origen === "manual"
@@ -379,6 +380,36 @@ async function capturarGrupal(
   } catch (error) {
     return mapBoundaryErrorToResultado(error)
   }
+}
+
+function validarDatosGrupales(
+  tipo: string,
+  datosComunes: Readonly<Record<string, string | number | null>>,
+  alcance: Extract<EventoWizardWebInput["alcance"], { tipo: "grupal" }>,
+): readonly { campo: string; detalle: string }[] {
+  const excepciones = alcance.excepciones
+  if (excepciones !== undefined && (typeof excepciones !== "object" || excepciones === null)) {
+    return [{ campo: "excepciones", detalle: "Debe ser un objeto de excepciones por animal." }]
+  }
+  const idsEfectivos = new Set(alcance.animalIdsEfectivos)
+  for (const [animalId, excepcion] of Object.entries(excepciones ?? {})) {
+    if (!idsEfectivos.has(animalId)) {
+      return [
+        {
+          campo: `excepciones[${animalId}]`,
+          detalle: "El animal no pertenece al alcance efectivo.",
+        },
+      ]
+    }
+    if (typeof excepcion !== "object" || excepcion === null || Array.isArray(excepcion)) {
+      return [{ campo: `excepciones[${animalId}]`, detalle: "Debe ser un objeto de datos." }]
+    }
+    const erroresDeContrato = validarCamposDatosEvento(tipo, excepcion, `excepciones[${animalId}].`)
+    if (erroresDeContrato.length > 0) return erroresDeContrato
+  }
+  return alcance.animalIdsEfectivos.flatMap((animalId) =>
+    validarDatosEvento(tipo, materializarDatos(datosComunes, excepciones?.[animalId])),
+  )
 }
 
 const INDIVIDUAL_ONLY = new Set(["parto", "muerte", "condicion_corporal"])

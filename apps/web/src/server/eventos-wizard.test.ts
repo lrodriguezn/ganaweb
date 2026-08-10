@@ -148,6 +148,15 @@ describe("validarDatosEvento — reglas funcionales #282", () => {
       { campo: "tipoPeso", detalle: "Tiene un valor no permitido." },
     ])
   })
+
+  it.each(Object.keys(validos))("rechaza campos ajenos al contrato de %s", (tipo) => {
+    expect(
+      validarDatosEvento(tipo, { ...(validos[tipo] ?? {}), campoInventado: "no" }),
+    ).toContainEqual({
+      campo: "campoInventado",
+      detalle: "El campo no pertenece al contrato de este tipo de evento.",
+    })
+  })
 })
 
 function harnessCon(sesion: ReturnType<typeof sesionCon> | null) {
@@ -449,6 +458,55 @@ describe("createEventoWizardActionHarness — parto sin grupal (defensa en profu
     }>
     expect(commands[1]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" })
     expect(commands[2]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 435, tipoPeso: "control" })
+  })
+
+  it("rechaza excepciones fuera del alcance o con campos ajenos al tipo", async () => {
+    for (const alcance of [
+      {
+        tipo: "grupal" as const,
+        origen: "manual" as const,
+        animalIdsEfectivos: ["a-1"],
+        excepciones: { "a-2": { pesoKg: 435 } },
+      },
+      {
+        tipo: "grupal" as const,
+        origen: "manual" as const,
+        animalIdsEfectivos: ["a-1"],
+        excepciones: { "a-1": { campoInventado: 435 } },
+      },
+    ]) {
+      persistirLoteFake.mockClear()
+      const resultado = await harnessCon(sesionCompleta()).capturar({
+        fincaId: FINCA,
+        tipo: "pesaje",
+        alcance,
+        datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
+      })
+      expect(resultado.tipo).toBe("validacion")
+      expect(persistirLoteFake).not.toHaveBeenCalled()
+    }
+  })
+
+  it("valida las excepciones después de materializarlas por animal", async () => {
+    persistirLoteFake.mockClear()
+    const resultado = await harnessCon(sesionCompleta()).capturar({
+      fincaId: FINCA,
+      tipo: "pesaje",
+      alcance: {
+        tipo: "grupal",
+        origen: "manual",
+        animalIdsEfectivos: ["a-1", "a-2"],
+        excepciones: { "a-2": { pesoKg: 0 } },
+      },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
+    })
+    expect(resultado).toEqual({
+      tipo: "validacion",
+      errores: [
+        { campo: "pesoKg", detalle: "Debe ser mayor que cero y admitir hasta 2 decimales." },
+      ],
+    })
+    expect(persistirLoteFake).not.toHaveBeenCalled()
   })
 
   it("propaga el fallo del lote sin devolver una captura parcial", async () => {
