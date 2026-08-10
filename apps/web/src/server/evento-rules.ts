@@ -77,6 +77,58 @@ export const CAMPOS_DATOS_POR_TIPO: Readonly<Record<string, ReadonlySet<string>>
   traslado: new Set(["potreroId", "sectorId", "loteId", "grupoId", "fecha", "motivo"]),
 }
 
+/** Fields that the grouped wizard may override for one animal. The event date
+ * remains common to keep one group header semantically coherent. */
+export const CAMPOS_EXCEPCIONABLES_POR_TIPO: Readonly<Record<string, ReadonlySet<string>>> = {
+  servicio: new Set([
+    "tipo",
+    "padreId",
+    "pajuelaId",
+    "inseminadorId",
+    "tipoInseminacion",
+    "dosis",
+    "precio",
+    "efectivo",
+    "observaciones",
+  ]),
+  palpacion: new Set(["servicioId", "diagnosticoId", "resultado", "diasGestion", "comentarios"]),
+  parto: new Set(),
+  aplicacion_sanitaria: new Set([
+    "productoId",
+    "dosis",
+    "precioDosis",
+    "proximaDosis",
+    "comentarios",
+  ]),
+  revision_veterinaria: new Set([
+    "veterinarioId",
+    "diagnosticoId",
+    "tipoDiagnostico",
+    "celoPresentado",
+    "comentarios",
+  ]),
+  pesaje: new Set(["pesoKg", "tipoPeso", "comentarios"]),
+  produccion_lactea: new Set([
+    "cantidadAm",
+    "cantidadPm",
+    "potreroId",
+    "sectorId",
+    "loteId",
+    "grupoId",
+  ]),
+  condicion_corporal: new Set(),
+  venta: new Set([
+    "motivoVentaId",
+    "lugarVentaId",
+    "pesoVentaKg",
+    "precio",
+    "comprador",
+    "comentarios",
+  ]),
+  muerte: new Set(),
+  traslado: new Set(["potreroId", "sectorId", "loteId", "grupoId", "motivo"]),
+}
+
 const RESULTADOS_PALPACION = new Set(["prenada", "pp", "ciclando", "estatica"])
 const TIPOS_PARTO = new Set(["normal", "distocico", "aborto"])
 const TIPOS_PESO = new Set(["control", "compra", "venta"])

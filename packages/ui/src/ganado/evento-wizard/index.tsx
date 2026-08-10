@@ -382,6 +382,8 @@ export function EventoWizard({
                   }
                   datosComunes={datosComunes}
                   excepciones={excepciones}
+                  tipo={tipo}
+                  catalogos={catalogos}
                   onChange={(next) => {
                     setHayCambiosPendientes(true)
                     setExcepciones(next)

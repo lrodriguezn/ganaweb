@@ -19,7 +19,11 @@ import { DrizzleCatalogoFincaAdapter } from "@ganaweb/db/catalogo-finca-infrastr
 import { DrizzleCatalogoPadresAdapter } from "@ganaweb/db/catalogo-padres-infrastructure"
 import { DrizzleCatalogoProductoSanitarioAdapter } from "@ganaweb/db/catalogo-producto-sanitario-infrastructure"
 import { DrizzleMaestroListadoAdapter } from "@ganaweb/db/maestro-listado-infrastructure"
-import { validarCamposDatosEvento, validarDatosEvento } from "./evento-rules.js"
+import {
+  CAMPOS_EXCEPCIONABLES_POR_TIPO,
+  validarCamposDatosEvento,
+  validarDatosEvento,
+} from "./evento-rules.js"
 
 /**
  * Server functions del shell de captura de eventos (Issue #229, §4
@@ -425,8 +429,35 @@ function validarDatosGrupales(
     if (typeof excepcion !== "object" || excepcion === null || Array.isArray(excepcion)) {
       return [{ campo: `excepciones[${animalId}]`, detalle: "Debe ser un objeto de datos." }]
     }
-    const erroresDeContrato = validarCamposDatosEvento(tipo, excepcion, `excepciones[${animalId}].`)
-    if (erroresDeContrato.length > 0) return erroresDeContrato
+    const camposExcepcionables = CAMPOS_EXCEPCIONABLES_POR_TIPO[tipo]
+    if (!camposExcepcionables) {
+      return [{ campo: "tipo", detalle: "Tipo de evento inválido." }]
+    }
+    const campoNoAutorizado = Object.keys(excepcion).find(
+      (campo) => !camposExcepcionables.has(campo),
+    )
+    if (campoNoAutorizado) {
+      return [
+        {
+          campo: `excepciones[${animalId}].${campoNoAutorizado}`,
+          detalle: "El campo no es excepcionable para este tipo de evento.",
+        },
+      ]
+    }
+    for (const [campo, valor] of Object.entries(excepcion)) {
+      if (
+        valor !== null &&
+        typeof valor !== "string" &&
+        (typeof valor !== "number" || !Number.isFinite(valor))
+      ) {
+        return [
+          {
+            campo: `excepciones[${animalId}].${campo}`,
+            detalle: "La excepción debe conservar un valor primitivo válido.",
+          },
+        ]
+      }
+    }
   }
   return alcance.animalIdsEfectivos.flatMap((animalId) =>
     validarDatosEvento(tipo, materializarDatos(datosComunes, excepciones?.[animalId])),

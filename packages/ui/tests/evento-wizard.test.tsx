@@ -15,11 +15,12 @@
  */
 
 import "@testing-library/jest-dom/vitest"
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
+import { EditorExcepciones } from "../src/ganado/evento-wizard/editor-excepciones.js"
 import {
   EventoWizard,
   type ResultadoCapturaEvento,
@@ -94,6 +95,35 @@ const POLITICA_RIESGO_ELEGIDA = {
 function regexParaNombre(nombre: string) {
   return new RegExp(nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
 }
+
+describe("EditorExcepciones — matriz tipada", () => {
+  it("renders only approved fields and keeps numeric/select values typed", () => {
+    const onChange = vi.fn()
+    render(
+      <EditorExcepciones
+        tipo="servicio"
+        animales={[{ id: "a-1", codigoAnimal: "MT-100" }]}
+        datosComunes={{ fecha: "2026-08-10", dosis: 1, tipo: "1", efectivo: 1 }}
+        excepciones={{}}
+        catalogos={{
+          lotes: [],
+          potreros: [],
+          grupos: [],
+          padres: [{ id: "padre-1", nombre: "Padre 1" }],
+          pajuelas: [{ id: "pajuela-1", nombre: "Pajuela 1" }],
+          inseminadores: [],
+        }}
+        onChange={onChange}
+      />,
+    )
+
+    expect(screen.queryByLabelText("MT-100: fecha")).not.toBeInTheDocument()
+    expect(screen.getByLabelText("MT-100: dosis")).toHaveAttribute("type", "number")
+    expect(screen.getByLabelText("MT-100: tipo")).toHaveValue("1")
+    fireEvent.change(screen.getByLabelText("MT-100: dosis"), { target: { value: "2.5" } })
+    expect(onChange).toHaveBeenLastCalledWith({ "a-1": { dosis: 2.5 } })
+  })
+})
 
 function props(overrides: Partial<React.ComponentProps<typeof EventoWizard>> = {}) {
   return {
@@ -471,7 +501,7 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     await user.click(screen.getByRole("button", { name: "Continuar con 2 animales" }))
     await user.clear(screen.getByLabelText(/Peso/))
     await user.type(screen.getByLabelText(/Peso/), "420")
-    const override = screen.getByLabelText("MT-101: pesoKg")
+    const override = screen.getByLabelText("MT-101: pesokg")
     await user.clear(override)
     await user.type(override, "435")
     expect(screen.getByText("Campos diferentes: pesoKg")).toBeInTheDocument()
@@ -486,7 +516,7 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
 
   it("confirms an individual removal and discards only that exception", async () => {
     const user = await prepararWizardGrupal()
-    const override = screen.getByLabelText("MT-100: pesoKg")
+    const override = screen.getByLabelText("MT-100: pesokg")
     await user.clear(override)
     await user.type(override, "435")
     await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
@@ -499,7 +529,7 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
 
   it("cancels an individual removal and preserves its exception", async () => {
     const user = await prepararWizardGrupal()
-    const override = screen.getByLabelText("MT-100: pesoKg")
+    const override = screen.getByLabelText("MT-100: pesokg")
     await user.clear(override)
     await user.type(override, "435")
     await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
@@ -512,7 +542,7 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
   it("confirms a mass removal and discards all affected exceptions", async () => {
     const user = await prepararWizardGrupal()
     for (const codigo of ["MT-100", "MT-101"]) {
-      const override = screen.getByLabelText(`${codigo}: pesoKg`)
+      const override = screen.getByLabelText(`${codigo}: pesokg`)
       await user.clear(override)
       await user.type(override, "435")
     }
@@ -526,7 +556,7 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
   it("cancels a mass removal and preserves every exception", async () => {
     const user = await prepararWizardGrupal()
     for (const codigo of ["MT-100", "MT-101"]) {
-      const override = screen.getByLabelText(`${codigo}: pesoKg`)
+      const override = screen.getByLabelText(`${codigo}: pesokg`)
       await user.clear(override)
       await user.type(override, "435")
     }
@@ -1090,7 +1120,7 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
 
   it("resume excepciones y requiere confirmación explícita", async () => {
     const user = await prepararWizardGrupal()
-    const override = screen.getByLabelText("MT-101: pesoKg")
+    const override = screen.getByLabelText("MT-101: pesokg")
     await user.clear(override)
     await user.type(override, "435")
     await user.click(screen.getByRole("button", { name: /Guardar/ }))

@@ -30,6 +30,7 @@ import {
   type EventoWizardResultado,
   type EventoWizardWebInput,
   createEventoWizardActionHarness,
+  materializarDatos,
   revisarMembresiaActual,
 } from "./eventos-wizard.server.js"
 
@@ -374,6 +375,15 @@ describe("createEventoWizardActionHarness — captura individual", () => {
 })
 
 describe("createEventoWizardActionHarness — captura grupal con exclusiones", () => {
+  it("materializa sin diferencias redundantes y conserva tipos primitivos", () => {
+    expect(
+      materializarDatos(
+        { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
+        { pesoKg: 420, tipoPeso: "venta" },
+      ),
+    ).toEqual({ fecha: "2026-08-07", pesoKg: 420, tipoPeso: "venta" })
+  })
+
   it("arma cabecera + N hijas en UN solo persistirLote (atomicidad EV-CAP-005)", async () => {
     persistirLoteFake.mockClear()
     const idsEfectivos = ["a-1", "a-2", "a-3"]
@@ -558,6 +568,31 @@ describe("createEventoWizardActionHarness — parto sin grupal (defensa en profu
       expect(resultado.tipo).toBe("validacion")
       expect(persistirLoteFake).not.toHaveBeenCalled()
     }
+  })
+
+  it("rechaza campos del contrato que no pertenecen a la matriz excepcionable", async () => {
+    persistirLoteFake.mockClear()
+    const resultado = await harnessCon(sesionCompleta()).capturar({
+      fincaId: FINCA,
+      tipo: "pesaje",
+      alcance: {
+        tipo: "grupal",
+        origen: "manual",
+        animalIdsEfectivos: ["a-1"],
+        excepciones: { "a-1": { fecha: "2026-08-08" } },
+      },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
+    })
+    expect(resultado).toEqual({
+      tipo: "validacion",
+      errores: [
+        {
+          campo: "excepciones[a-1].fecha",
+          detalle: "El campo no es excepcionable para este tipo de evento.",
+        },
+      ],
+    })
+    expect(persistirLoteFake).not.toHaveBeenCalled()
   })
 
   it("valida las excepciones después de materializarlas por animal", async () => {
