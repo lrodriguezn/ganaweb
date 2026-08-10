@@ -28,10 +28,12 @@ import {
   reactivateAnimalAction,
 } from "../../../../../server/animal-actions.js"
 import {
+  POLITICA_RIESGO_EVENTOS,
   buscarAnimalPorCodigoFn,
   capturarEventoFn,
   listarAnimalesPorOrigenFn,
   listarCatalogosAlcanceFn,
+  revisarMembresiaActualFn,
 } from "../../../../../server/eventos-wizard.js"
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/$animalId")({
@@ -213,6 +215,10 @@ export function AnimalFichaRouteView({
         cargarAnimalesPorOrigen={(origen, id) => cargarAnimalesPorOrigenEnRuta(fincaId, origen, id)}
         buscarAnimalPorCodigo={(codigo) => buscarAnimalPorCodigoEnRuta(fincaId, codigo)}
         onEnviar={(captura) => enviarCapturaEnRuta(fincaId, captura)}
+        politicaRiesgo={POLITICA_RIESGO_EVENTOS}
+        revisarMembresiaActual={(origen, id, snapshotIds) =>
+          revisarMembresiaEnRuta(fincaId, origen, id, snapshotIds)
+        }
         onCapturado={(resultado) => {
           // Issue #221: invalidar solo en la ruta de éxito para que la ficha
           // relea el timeline con la nueva fila.
@@ -310,6 +316,15 @@ async function buscarAnimalPorCodigoEnRuta(
     return { id: resultado.id, codigoAnimal: resultado.codigoAnimal }
   }
   return null
+}
+
+async function revisarMembresiaEnRuta(
+  fincaId: string,
+  origen: "lote" | "potrero" | "grupo",
+  id: string,
+  snapshotIds: readonly string[],
+) {
+  return revisarMembresiaActualFn({ data: { fincaId, origen, id, snapshotIds } })
 }
 
 async function cargarAnimalesPorOrigenEnRuta(

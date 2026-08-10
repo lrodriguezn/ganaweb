@@ -60,10 +60,12 @@ import {
   leerEventosFincaTableroFn,
 } from "../../../../server/eventos-finca-read.js"
 import {
+  POLITICA_RIESGO_EVENTOS,
   anularEventoFn,
   buscarAnimalPorCodigoFn,
   capturarEventoFn,
   listarAnimalesPorOrigenFn,
+  revisarMembresiaActualFn,
 } from "../../../../server/eventos-wizard.js"
 
 export type VistaEventos = "tablero" | "historial"
@@ -536,6 +538,10 @@ export function EventosRouteView({
         }
         buscarAnimalPorCodigo={(codigo) => buscarAnimalPorCodigoEnRuta(data.fincaId, codigo)}
         onEnviar={(captura) => enviarCapturaEnRuta(data.fincaId, captura)}
+        politicaRiesgo={POLITICA_RIESGO_EVENTOS}
+        revisarMembresiaActual={(origen, id, snapshotIds) =>
+          revisarMembresiaEnRuta(data.fincaId, origen, id, snapshotIds)
+        }
         onCapturado={() => {
           onInvalidarRouter()
         }}
@@ -674,6 +680,15 @@ async function buscarAnimalPorCodigoEnRuta(
     return { id: resultado.id, codigoAnimal: resultado.codigoAnimal }
   }
   return null
+}
+
+async function revisarMembresiaEnRuta(
+  fincaId: string,
+  origen: "lote" | "potrero" | "grupo",
+  id: string,
+  snapshotIds: readonly string[],
+) {
+  return revisarMembresiaActualFn({ data: { fincaId, origen, id, snapshotIds } })
 }
 
 async function enviarCapturaEnRuta(

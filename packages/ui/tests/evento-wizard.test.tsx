@@ -20,7 +20,11 @@ import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { EventoWizard, type ResultadoCapturaEvento } from "../src/ganado/evento-wizard/index.js"
+import {
+  EventoWizard,
+  type ResultadoCapturaEvento,
+  criteriosDeRiesgo,
+} from "../src/ganado/evento-wizard/index.js"
 
 vi.mock("@tanstack/react-start", () => ({
   // El server function real se mockea a nivel de red en otros tests; acá
@@ -69,6 +73,10 @@ const PERMISOS_SOLO_PRODUCTIVO = {
 
 const CATALOGOS_VACIOS = { lotes: [], potreros: [], grupos: [] }
 
+const POLITICA_RIESGO_ELEGIDA = {
+  tiposSensibles: ["revision_veterinaria", "parto", "servicio", "palpacion"],
+} as const
+
 function regexParaNombre(nombre: string) {
   return new RegExp(nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
 }
@@ -88,6 +96,7 @@ function props(overrides: Partial<React.ComponentProps<typeof EventoWizard>> = {
         ids: { individualId: "ev-1", hijosIds: [] },
       }),
     ),
+    politicaRiesgo: POLITICA_RIESGO_ELEGIDA,
     ...overrides,
   }
 }
@@ -884,5 +893,282 @@ describe("EventoWizard — mapeo de mensajes de error", () => {
     await waitFor(() =>
       expect(screen.getByTestId("evento-wizard-error")).toHaveTextContent(/pesoKg/),
     )
+  })
+})
+
+describe("EventoWizard — revisión condicional por riesgo", () => {
+  const seleccionGrupal = {
+    tipo: "grupal" as const,
+    origen: "lote" as const,
+    loteId: "lote-1",
+    animalIdsEfectivos: ["a-1", "a-2"],
+    totalAnimales: 2,
+  }
+
+  it("aplica exactamente la política sensible elegida", () => {
+    for (const tipo of ["revision_veterinaria", "parto", "servicio", "palpacion"] as const) {
+      expect(
+        criteriosDeRiesgo(
+          tipo,
+          { tipo: "individual", animalId: "a-1" },
+          {},
+          POLITICA_RIESGO_ELEGIDA,
+          undefined,
+        ),
+      ).toContain("tipo sensible según la política")
+    }
+    expect(
+      criteriosDeRiesgo(
+        "aplicacion_sanitaria",
+        { tipo: "individual", animalId: "a-1" },
+        {},
+        POLITICA_RIESGO_ELEGIDA,
+        undefined,
+      ),
+    ).toEqual([])
+  })
+
+  it("deja desactivado el riesgo de grupo grande sin umbral y lo activa al configurarlo", () => {
+    expect(
+      criteriosDeRiesgo("pesaje", seleccionGrupal, {}, POLITICA_RIESGO_ELEGIDA, undefined),
+    ).toEqual([])
+    expect(
+      criteriosDeRiesgo(
+        "pesaje",
+        seleccionGrupal,
+        {},
+        { ...POLITICA_RIESGO_ELEGIDA, umbralGrupoGrande: 1 },
+        undefined,
+      ),
+    ).toContain("grupo grande según configuración")
+  })
+
+  it("no muestra revisión ni cambia el flujo ordinario sin disparadores", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { individualId: "ev-1", hijosIds: [] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+          onEnviar,
+        })}
+      />,
+    )
+    await user.clear(screen.getByLabelText(/Peso/))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.queryByTestId("evento-wizard-risk-review")).not.toBeInTheDocument()
+    expect(onEnviar).toHaveBeenCalledTimes(1)
+  })
+
+  it("resume excepciones y requiere confirmación explícita", async () => {
+    const user = await prepararWizardGrupal()
+    const override = screen.getByLabelText("MT-101: pesoKg")
+    await user.clear(override)
+    await user.type(override, "435")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
+      "excepciones por animal",
+    )
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent("a-2")
+  })
+
+  it("muestra el criterio de tipo sensible y registra solo tras confirmar", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { individualId: "ev-1", hijosIds: [] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "revision_veterinaria",
+          animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+          onEnviar,
+        })}
+      />,
+    )
+    await user.type(screen.getByLabelText(/Veterinario/), "veterinario-1")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent("tipo sensible")
+    expect(onEnviar).not.toHaveBeenCalled()
+    await user.click(screen.getByRole("button", { name: "Confirmar y registrar 1 evento" }))
+    expect(onEnviar).toHaveBeenCalledTimes(1)
+  })
+
+  it("detiene el envío ante un conflicto y permite mantener o actualizar", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { cabeceraId: "rg-1", hijosIds: ["ev-1"] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          cargarAnimalesPorOrigen: vi
+            .fn()
+            .mockResolvedValueOnce([{ id: "a-1", codigoAnimal: "MT-100" }])
+            .mockResolvedValueOnce([{ id: "a-1", codigoAnimal: "MT-100" }])
+            .mockResolvedValueOnce([
+              { id: "a-1", codigoAnimal: "MT-100" },
+              { id: "a-2", codigoAnimal: "MT-101" },
+            ]),
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          revisarMembresiaActual: vi.fn(async () => ({
+            estado: "cambio",
+            animales: [
+              { id: "a-1", codigoAnimal: "MT-100" },
+              { id: "a-2", codigoAnimal: "MT-101" },
+            ],
+            agregados: [{ id: "a-2", codigoAnimal: "MT-101" }],
+          })),
+          onEnviar,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await screen.findByText("0 animales incluidos")
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await screen.findByText("1 incluidos · 0 excluidos")
+    await user.click(screen.getByRole("button", { name: "Seleccionar todos" }))
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByRole("alert")).toHaveTextContent("membresía del origen cambió")
+    expect(onEnviar).not.toHaveBeenCalled()
+    await user.click(screen.getByRole("button", { name: "Mantener snapshot revisado" }))
+    await user.click(screen.getByRole("button", { name: "Confirmar y registrar 1 evento" }))
+    expect(onEnviar).toHaveBeenCalledTimes(1)
+  })
+
+  it("bloquea una membresía no verificable aunque no haya otro criterio de riesgo", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { cabeceraId: "rg-1", hijosIds: ["ev-1"] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: vi.fn(async () => [{ id: "a-1", codigoAnimal: "MT-100" }]),
+          onEnviar,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await screen.findByText("1 incluidos · 0 excluidos")
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
+      "membresía no verificable",
+    )
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo verificar")
+    expect(
+      screen.queryByRole("button", { name: "Mantener snapshot revisado" }),
+    ).not.toBeInTheDocument()
+    expect(onEnviar).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole("button", { name: "Actualizar alcance y verificar de nuevo" }),
+    )
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+  })
+
+  it("actualiza el alcance conservando las excepciones de animales presentes", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: vi
+            .fn()
+            .mockResolvedValueOnce([{ id: "a-1", codigoAnimal: "MT-100" }])
+            .mockResolvedValueOnce([{ id: "a-1", codigoAnimal: "MT-100" }])
+            .mockResolvedValueOnce([
+              { id: "a-1", codigoAnimal: "MT-100" },
+              { id: "a-2", codigoAnimal: "MT-101" },
+            ]),
+          revisarMembresiaActual: vi.fn(async () => ({
+            estado: "cambio",
+            animales: [
+              { id: "a-1", codigoAnimal: "MT-100" },
+              { id: "a-2", codigoAnimal: "MT-101" },
+            ],
+            agregados: [{ id: "a-2", codigoAnimal: "MT-101" }],
+          })),
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await screen.findByText("1 incluidos · 0 excluidos")
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    await user.click(screen.getByRole("button", { name: "Actualizar alcance y volver" }))
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+    expect(screen.getByText("2 incluidos · 0 excluidos")).toBeInTheDocument()
+  })
+
+  it("bloquea mantener snapshot con retirados hasta actualizar al grupo actual", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { cabeceraId: "rg-1", hijosIds: ["ev-1"] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: vi.fn(async () => [{ id: "a-1", codigoAnimal: "MT-100" }]),
+          revisarMembresiaActual: vi.fn(async () => ({
+            estado: "cambio" as const,
+            animales: [{ id: "a-2", codigoAnimal: "MT-101" }],
+            retirados: [{ id: "a-1" }],
+          })),
+          onEnviar,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await screen.findByText("1 incluidos · 0 excluidos")
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
+      "No se puede mantener el snapshot",
+    )
+    expect(
+      screen.queryByRole("button", { name: "Mantener snapshot revisado" }),
+    ).not.toBeInTheDocument()
+    expect(onEnviar).not.toHaveBeenCalled()
+    await user.click(screen.getByRole("button", { name: "Actualizar alcance y volver" }))
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+    expect(onEnviar).not.toHaveBeenCalled()
   })
 })

@@ -76,6 +76,9 @@ vi.mock("../src/server/eventos-finca-read.js", () => ({
   },
 }))
 vi.mock("../src/server/eventos-wizard.js", () => ({
+  POLITICA_RIESGO_EVENTOS: {
+    tiposSensibles: ["revision_veterinaria", "parto", "servicio", "palpacion"],
+  },
   anularEventoFn: vi.fn(),
   capturarEventoFn: vi.fn(),
   listarAnimalesPorOrigenFn: vi.fn(),

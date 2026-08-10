@@ -89,10 +89,31 @@ export interface BorradorEvento {
   readonly excepciones: Readonly<Record<string, Readonly<Record<string, string | number | null>>>>
 }
 
+export interface EventoWizardPoliticaRiesgo {
+  /** Event types selected by product policy as requiring explicit review. */
+  readonly tiposSensibles: readonly TipoEventoWizard[]
+  /** Optional large-group threshold; omitted means this trigger is disabled. */
+  readonly umbralGrupoGrande?: number
+}
+
 export type CargaAnimalesPorOrigen = (
   origen: OrigenSeleccionGrupal,
   id: string,
 ) => Promise<readonly { readonly id: string; readonly codigoAnimal: string }[]>
+
+export interface ResultadoMembresiaActual {
+  readonly estado: "coincide" | "cambio" | "desconocido"
+  readonly animales?: readonly { readonly id: string; readonly codigoAnimal: string }[]
+  readonly agregados?: readonly { readonly id: string; readonly codigoAnimal: string }[]
+  /** Removed members are absent from the current query, so their code may be unavailable. */
+  readonly retirados?: readonly { readonly id: string; readonly codigoAnimal?: string }[]
+}
+
+export type RevisarMembresiaActual = (
+  origen: Exclude<OrigenSeleccionGrupal, "manual">,
+  id: string,
+  snapshotIds: readonly string[],
+) => Promise<ResultadoMembresiaActual>
 
 export type BuscarAnimalPorCodigo = (
   codigo: string,

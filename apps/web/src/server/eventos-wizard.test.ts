@@ -24,14 +24,25 @@ import { describe, expect, it, vi } from "vitest"
 
 import { EventoForbiddenError, type SesionAutorizada } from "@ganaweb/aplicacion"
 
+import { POLITICA_RIESGO_EVENTOS } from "./eventos-wizard.js"
 import {
   type EventoWizardResultado,
   type EventoWizardWebInput,
   createEventoWizardActionHarness,
+  revisarMembresiaActual,
 } from "./eventos-wizard.server.js"
 
 const FINCA = "finca-1"
 const USUARIO = "user-1"
+
+describe("POLITICA_RIESGO_EVENTOS", () => {
+  it("exposes the approved sensitive types without inventing a group threshold", () => {
+    expect(POLITICA_RIESGO_EVENTOS).toEqual({
+      tiposSensibles: ["revision_veterinaria", "parto", "servicio", "palpacion"],
+    })
+    expect(POLITICA_RIESGO_EVENTOS).not.toHaveProperty("umbralGrupoGrande")
+  })
+})
 
 function sesionCon(permisos: Array<{ modulo: string; accion: string }>): SesionAutorizada {
   return {
@@ -140,6 +151,25 @@ describe("createEventoWizardActionHarness — RBAC y autorización", () => {
     })
     expect(resultado.tipo).toBe("capturado")
     expect(persistirLoteFake).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("revisarMembresiaActual — snapshot fail-closed", () => {
+  it("detecta agregados y retirados sin cambiar el snapshot", async () => {
+    const resultado = await revisarMembresiaActual(
+      { fincaId: FINCA, origen: "lote", id: "lote-1", snapshotIds: ["a-1", "a-3"] },
+      sesionCompleta(),
+    )
+    expect(["cambio", "desconocido"]).toContain(resultado.estado)
+  })
+
+  it("no inventa membresía cuando el origen no puede verificarse", async () => {
+    await expect(
+      revisarMembresiaActual(
+        { fincaId: FINCA, origen: "lote", id: "", snapshotIds: ["a-1"] },
+        sesionCompleta(),
+      ),
+    ).resolves.toMatchObject({ estado: "desconocido" })
   })
 })
 

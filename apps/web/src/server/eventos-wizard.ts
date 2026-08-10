@@ -1,6 +1,16 @@
 import { createServerFn } from "@tanstack/react-start"
 
 /**
+ * Product-approved risk policy for the event wizard.
+ *
+ * The large-group threshold is intentionally omitted until finca-level
+ * configuration exists; omission disables that trigger and is not a default.
+ */
+export const POLITICA_RIESGO_EVENTOS = {
+  tiposSensibles: ["revision_veterinaria", "parto", "servicio", "palpacion"],
+} as const satisfies import("@ganaweb/ui").EventoWizardPoliticaRiesgo
+
+/**
  * Public API del shell de captura de eventos (Issue #229).
  *
  * Re-exporta los `createServerFn` actions del módulo `.server` y los tipos
@@ -39,6 +49,11 @@ export interface ListarAnimalesPorOrigenWebInput {
 export interface AnimalesPorOrigenDto {
   readonly animales: ReadonlyArray<{ readonly id: string; readonly codigoAnimal: string }>
 }
+
+export type {
+  RevisarMembresiaResultado,
+  RevisarMembresiaWebInput,
+} from "./eventos-wizard.server.js"
 
 /**
  * Server function POST: shell captura individual/grupal. Mapea errores a
@@ -93,6 +108,15 @@ export const listarAnimalesPorOrigenFn = createServerFn({ method: "GET" })
     const { getAuthorizedSession } = await import("./eventos-wizard.server.js")
     const sesion = await getAuthorizedSession(data.fincaId)
     return listarAnimalesPorOrigen(data, sesion)
+  })
+
+export const revisarMembresiaActualFn = createServerFn({ method: "GET" })
+  .validator((data: import("./eventos-wizard.server.js").RevisarMembresiaWebInput) => data)
+  .handler(async ({ data }) => {
+    const { revisarMembresiaActual, getAuthorizedSession } = await import(
+      "./eventos-wizard.server.js"
+    )
+    return revisarMembresiaActual(data, await getAuthorizedSession(data.fincaId))
   })
 
 export const buscarAnimalPorCodigoFn = createServerFn({ method: "GET" })
