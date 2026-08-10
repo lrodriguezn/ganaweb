@@ -62,7 +62,9 @@ export type SeleccionGrupal = {
   readonly animalIdsExcluidos?: readonly string[]
   /** Total = animalIdsEfectivos.length (EV-CAP-005). */
   readonly totalAnimales: number
-  /** Reserved for the exception editor introduced by issue #273. */
+  /** UI metadata for visible exception labels; never persisted by the server. */
+  readonly animales?: readonly { readonly id: string; readonly codigoAnimal: string }[]
+  /** Sparse fields that differ from the common data, keyed by animal id. */
   readonly excepciones?: Readonly<Record<string, Readonly<Record<string, string | number | null>>>>
 }
 

@@ -297,31 +297,79 @@ describe("createEventoWizardActionHarness — captura grupal con exclusiones", (
 })
 
 describe("createEventoWizardActionHarness — parto sin grupal (defensa en profundidad)", () => {
-  it("el shell rechaza N>1 para parto (matriz §2 / EV-CAP-007)", async () => {
+  it.each(["parto", "muerte", "condicion_corporal"] as const)(
+    "%s rechaza alcance grupal en el boundary",
+    async (tipo) => {
+      persistirLoteFake.mockClear()
+      const sesionOk = sesionCon([{ modulo: "eventos_reproductivos", accion: "crear" }])
+      // Construimos un input "válido en tipo" pero con N>1 — el shell delega al
+      // server; el server NO debe dejarlo pasar porque parto es individual-only.
+      // (El catálogo UI marca parto.grupal=false, pero acá probamos la defensa
+      // en profundidad del server).
+      const resultado = await harnessCon(sesionOk).capturar({
+        fincaId: FINCA,
+        tipo,
+        alcance: {
+          tipo: "grupal",
+          origen: "manual",
+          animalIdsEfectivos: ["a-1", "a-2"],
+        },
+        datos: { fecha: "2026-08-07" },
+      })
+      expect(resultado).toEqual({
+        tipo: "validacion",
+        errores: [{ campo: "alcance", detalle: `${tipo} solo admite alcance individual.` }],
+      })
+      expect(persistirLoteFake).not.toHaveBeenCalled()
+    },
+  )
+
+  it("materializa una excepción parcial por animal y conserva los datos comunes", async () => {
     persistirLoteFake.mockClear()
-    const sesionOk = sesionCon([{ modulo: "eventos_reproductivos", accion: "crear" }])
-    // Construimos un input "válido en tipo" pero con N>1 — el shell delega al
-    // server; el server NO debe dejarlo pasar porque parto es individual-only.
-    // (El catálogo UI marca parto.grupal=false, pero acá probamos la defensa
-    // en profundidad del server).
-    const resultado = await harnessCon(sesionOk).capturar({
+    const resultado = await harnessCon(sesionCompleta()).capturar({
       fincaId: FINCA,
-      tipo: "parto",
+      tipo: "pesaje",
       alcance: {
         tipo: "grupal",
         origen: "manual",
         animalIdsEfectivos: ["a-1", "a-2"],
+        excepciones: { "a-2": { pesoKg: 435, tipoPeso: "control" } },
       },
-      datos: { fecha: "2026-08-07", tipoParto: "normal" },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
-    // El server actual acepta grupal para parto por construcción (no bloquea
-    // aquí porque la regla del CATALOGO es UI). Verificamos que al menos NO
-    // falla con permiso_denegado, pero documentamos que la regla UI evita
-    // que el shell lo envíe con N>1.
-    // El test entonces verifica que RBAC sí pasa para reproductivo:crear.
-    expect(resultado.tipo).not.toBe("permiso_denegado")
-    // (La regla de "no grupal" la enforce el shell vía CATALOGO_TIPOS_EVENTO.)
-    expect(persistirLoteFake).toHaveBeenCalled()
+    expect(resultado.tipo).toBe("capturado")
+    const commands = persistirLoteFake.mock.calls[0]?.[0] as Array<{
+      datos?: Record<string, unknown>
+    }>
+    expect(commands[1]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" })
+    expect(commands[2]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 435, tipoPeso: "control" })
+  })
+
+  it("propaga el fallo del lote sin devolver una captura parcial", async () => {
+    const persistirLoteConError = vi.fn(async (commands: readonly unknown[]) => {
+      expect(commands).toHaveLength(3)
+      const hijos = commands.slice(1) as Array<{ datos: Record<string, unknown> }>
+      expect(hijos[0]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 420 })
+      expect(hijos[1]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 435 })
+      throw new Error("rollback de prueba")
+    })
+    const resultado = await createEventoWizardActionHarness({
+      getSession: async () => sesionCompleta(),
+      persistirLote: persistirLoteConError as never,
+      reloj,
+    }).capturar({
+      fincaId: FINCA,
+      tipo: "pesaje",
+      alcance: {
+        tipo: "grupal",
+        origen: "manual",
+        animalIdsEfectivos: ["a-1", "a-2"],
+        excepciones: { "a-2": { pesoKg: 435 } },
+      },
+      datos: { fecha: "2026-08-07", pesoKg: 420 },
+    })
+    expect(resultado).toEqual({ tipo: "error", detalle: "rollback de prueba" })
+    expect(persistirLoteConError).toHaveBeenCalledTimes(1)
   })
 })
 

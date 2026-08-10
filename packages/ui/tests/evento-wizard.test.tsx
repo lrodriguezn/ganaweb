@@ -92,6 +92,28 @@ function props(overrides: Partial<React.ComponentProps<typeof EventoWizard>> = {
   }
 }
 
+async function prepararWizardGrupal() {
+  const user = userEvent.setup()
+  render(
+    <EventoWizard
+      {...props({
+        tipoPreseleccionado: "pesaje",
+        cargarAnimalesPorOrigen: vi.fn(async () => [
+          { id: "a-1", codigoAnimal: "MT-100" },
+          { id: "a-2", codigoAnimal: "MT-101" },
+        ]),
+      })}
+    />,
+  )
+  await user.click(screen.getByRole("radio", { name: "Grupal" }))
+  await screen.findByText("0 animales incluidos")
+  await user.click(screen.getByRole("button", { name: "Seleccionar todos" }))
+  await user.click(screen.getByRole("button", { name: "Continuar con 2 animales" }))
+  await user.clear(screen.getByLabelText(/Peso/))
+  await user.type(screen.getByLabelText(/Peso/), "420")
+  return user
+}
+
 describe("EventoWizard — Paso 1: selector de tipo agrupado por categoría", () => {
   it("abre con el Paso 1 cuando no hay tipo preseleccionado", () => {
     render(<EventoWizard {...props()} />)
@@ -366,6 +388,10 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
       origen: "manual",
       animalIdsEfectivos: ["a-2", "a-3"],
       totalAnimales: 2,
+      animales: [
+        { id: "a-2", codigoAnimal: "MT-101" },
+        { id: "a-3", codigoAnimal: "MT-102" },
+      ],
     })
   })
 
@@ -394,6 +420,98 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     expect(screen.getByText("OT-200")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Ver excluidos (2)" }))
     expect(screen.getByText("MT-100")).toBeInTheDocument()
+  })
+
+  it("captures sparse animal overrides, removes redundant values, and warns before removal", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { cabeceraId: "rg-1", hijosIds: ["ev-1", "ev-2"] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          cargarAnimalesPorOrigen: vi.fn(async () => [
+            { id: "a-1", codigoAnimal: "MT-100" },
+            { id: "a-2", codigoAnimal: "MT-101" },
+          ]),
+          onEnviar,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await screen.findByText("0 animales incluidos")
+    await user.click(screen.getByRole("button", { name: "Seleccionar todos" }))
+    await user.click(screen.getByRole("button", { name: "Continuar con 2 animales" }))
+    await user.clear(screen.getByLabelText(/Peso/))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    const override = screen.getByLabelText("MT-101: pesoKg")
+    await user.clear(override)
+    await user.type(override, "435")
+    expect(screen.getByText("Campos diferentes: pesoKg")).toBeInTheDocument()
+    await user.clear(override)
+    await user.type(override, "420")
+    await user.clear(override)
+    await user.type(override, "435")
+    await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
+    await user.click(screen.getByRole("button", { name: /Excluir MT-101/ }))
+    expect(screen.getByRole("alert")).toHaveTextContent("tiene una excepción")
+  })
+
+  it("confirms an individual removal and discards only that exception", async () => {
+    const user = await prepararWizardGrupal()
+    const override = screen.getByLabelText("MT-100: pesoKg")
+    await user.clear(override)
+    await user.type(override, "435")
+    await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
+    await user.click(screen.getByRole("button", { name: /Excluir MT-100/ }))
+    await user.click(screen.getByRole("button", { name: "Retirar y descartar excepción" }))
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    expect(screen.queryByText("Campos diferentes: pesoKg")).not.toBeInTheDocument()
+  })
+
+  it("cancels an individual removal and preserves its exception", async () => {
+    const user = await prepararWizardGrupal()
+    const override = screen.getByLabelText("MT-100: pesoKg")
+    await user.clear(override)
+    await user.type(override, "435")
+    await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
+    await user.click(screen.getByRole("button", { name: /Excluir MT-100/ }))
+    await user.click(screen.getByRole("button", { name: "Conservar animal" }))
+    await user.click(screen.getByRole("button", { name: "Continuar con 2 animales" }))
+    expect(screen.getByText("Campos diferentes: pesoKg")).toBeInTheDocument()
+  })
+
+  it("confirms a mass removal and discards all affected exceptions", async () => {
+    const user = await prepararWizardGrupal()
+    for (const codigo of ["MT-100", "MT-101"]) {
+      const override = screen.getByLabelText(`${codigo}: pesoKg`)
+      await user.clear(override)
+      await user.type(override, "435")
+    }
+    await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
+    await user.click(screen.getByRole("button", { name: "Quitar todos" }))
+    await user.click(screen.getByRole("button", { name: "Retirar y descartar excepción" }))
+    const continuar = screen.getByRole("button", { name: "Continuar con 0 animales" })
+    expect(continuar).toBeDisabled()
+  })
+
+  it("cancels a mass removal and preserves every exception", async () => {
+    const user = await prepararWizardGrupal()
+    for (const codigo of ["MT-100", "MT-101"]) {
+      const override = screen.getByLabelText(`${codigo}: pesoKg`)
+      await user.clear(override)
+      await user.type(override, "435")
+    }
+    await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
+    await user.click(screen.getByRole("button", { name: "Quitar todos" }))
+    await user.click(screen.getByRole("button", { name: "Conservar animal" }))
+    await user.click(screen.getByRole("button", { name: "Continuar con 2 animales" }))
+    expect(screen.getAllByText("Campos diferentes: pesoKg")).toHaveLength(2)
   })
 
   it("marks structured members included and preserves the previous scope on load failure", async () => {

@@ -14,6 +14,7 @@ import {
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "../../primitives/drawer"
 import type { AnimalResumen } from "../types"
 import { metaDeTipo } from "./catalogo-tipos"
+import { EditorExcepciones } from "./editor-excepciones"
 import { PasoAlcance } from "./paso-alcance"
 import { PasoDatos } from "./paso-datos"
 import { PasoTipo } from "./paso-tipo"
@@ -108,6 +109,7 @@ export function EventoWizard({
   )
   const [errorServidor, setErrorServidor] = useState<string | null>(null)
   const [datosComunes, setDatosComunes] = useState<BorradorEvento["datosComunes"]>({})
+  const [excepciones, setExcepciones] = useState<BorradorEvento["excepciones"]>({})
   const [hayCambiosPendientes, setHayCambiosPendientes] = useState(false)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
 
@@ -122,6 +124,7 @@ export function EventoWizard({
     setCategoriaContextual(categoriaInicial)
     setErrorServidor(null)
     setDatosComunes({})
+    setExcepciones({})
     setHayCambiosPendientes(false)
     setConfirmarCierre(false)
   }
@@ -155,6 +158,14 @@ export function EventoWizard({
 
   const handleSeleccionAlcance = (next: Seleccion) => {
     setHayCambiosPendientes(true)
+    if (next.tipo === "grupal") {
+      const ids = new Set(next.animalIdsEfectivos)
+      setExcepciones(
+        Object.fromEntries(Object.entries(excepciones).filter(([animalId]) => ids.has(animalId))),
+      )
+    } else {
+      setExcepciones({})
+    }
     setSeleccion(next)
     setPasoActual("datos")
   }
@@ -168,6 +179,7 @@ export function EventoWizard({
     setPasoActual("tipo")
   }
   const handleVolverAAlcance = () => {
+    if (seleccion?.tipo === "grupal") setSeleccion({ ...seleccion, excepciones })
     setPasoActual("alcance")
   }
 
@@ -177,7 +189,10 @@ export function EventoWizard({
     setErrorServidor(null)
     const captura: CapturaEvento = {
       tipo,
-      seleccion,
+      seleccion:
+        seleccion.tipo === "grupal" && Object.keys(excepciones).length > 0
+          ? { ...seleccion, excepciones }
+          : seleccion,
       datos: { ...datosComunes, ...datos },
       ...(corrigeAId ? { corrigeAId } : {}),
     }
@@ -273,7 +288,10 @@ export function EventoWizard({
               buscarAnimalPorCodigo={buscarAnimalPorCodigo}
               onSeleccion={handleSeleccionAlcance}
               onVolver={handleVolverATipo}
-              seleccionInicial={seleccion}
+              seleccionInicial={
+                seleccion?.tipo === "grupal" ? { ...seleccion, excepciones } : seleccion
+              }
+              excepciones={excepciones}
             />
           </>
         )}
@@ -292,9 +310,38 @@ export function EventoWizard({
                 datosIniciales={datosComunes}
                 onDatosChange={(datos) => {
                   setHayCambiosPendientes(true)
-                  setDatosComunes((actual) => ({ ...actual, ...datos }))
+                  setDatosComunes((actual) => {
+                    const next = { ...actual, ...datos }
+                    setExcepciones((current) => {
+                      const cleaned: Record<string, Record<string, string | number | null>> = {}
+                      for (const [animalId, exception] of Object.entries(current)) {
+                        const remaining = Object.fromEntries(
+                          Object.entries(exception).filter(
+                            ([field, value]) => !Object.is(value, next[field]),
+                          ),
+                        )
+                        if (Object.keys(remaining).length > 0) cleaned[animalId] = remaining
+                      }
+                      return cleaned
+                    })
+                    return next
+                  })
                 }}
               />
+              {seleccion.tipo === "grupal" && (
+                <EditorExcepciones
+                  animales={
+                    seleccion.animales ??
+                    seleccion.animalIdsEfectivos.map((id) => ({ id, codigoAnimal: id }))
+                  }
+                  datosComunes={datosComunes}
+                  excepciones={excepciones}
+                  onChange={(next) => {
+                    setHayCambiosPendientes(true)
+                    setExcepciones(next)
+                  }}
+                />
+              )}
             </div>
             {errorServidor && (
               <p

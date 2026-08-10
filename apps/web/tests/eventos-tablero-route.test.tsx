@@ -45,6 +45,7 @@ import {
   EventosRouteView,
   type EventosRouteViewProps,
   type EventosSearch,
+  construirAlcanceCaptura,
 } from "../src/routes/_app/fincas/$fincaId/eventos.js"
 import {
   EventosFincaReadHttpError,
@@ -109,6 +110,33 @@ afterEach(() => {
 })
 
 const FINCA_ID = "finca-esperanza"
+
+describe("event capture route adapter — grouped exceptions", () => {
+  it("preserves sparse exceptions while keeping UI-only animal metadata out of the payload", () => {
+    const alcance = construirAlcanceCaptura({
+      tipo: "pesaje",
+      seleccion: {
+        tipo: "grupal",
+        origen: "manual",
+        animalIdsEfectivos: ["a-1", "a-2"],
+        totalAnimales: 2,
+        animales: [
+          { id: "a-1", codigoAnimal: "MT-100" },
+          { id: "a-2", codigoAnimal: "MT-101" },
+        ],
+        excepciones: { "a-2": { pesoKg: 435 } },
+      },
+      datos: { fecha: "2026-08-07", pesoKg: 420 },
+    })
+    expect(alcance).toEqual({
+      tipo: "grupal",
+      origen: "manual",
+      animalIdsEfectivos: ["a-1", "a-2"],
+      excepciones: { "a-2": { pesoKg: 435 } },
+    })
+    expect(alcance).not.toHaveProperty("animales")
+  })
+})
 
 const PERMISOS_COMPLETOS = [
   { modulo: "eventos_reproductivos", accion: "ver" },

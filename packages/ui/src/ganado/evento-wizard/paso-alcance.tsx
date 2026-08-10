@@ -36,6 +36,7 @@ export interface PasoAlcanceProps {
   readonly onSeleccion: (seleccion: Seleccion) => void
   readonly onVolver: () => void
   readonly seleccionInicial?: Seleccion | undefined
+  readonly excepciones?: NonNullable<Extract<Seleccion, { tipo: "grupal" }>["excepciones"]>
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the scope step keeps selection and recovery transitions together.
@@ -48,6 +49,7 @@ export function PasoAlcance({
   onSeleccion,
   onVolver,
   seleccionInicial,
+  excepciones = {},
 }: PasoAlcanceProps) {
   const permiteGrupal = tipo.grupal
 
@@ -83,6 +85,8 @@ export function PasoAlcance({
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [errorIndividual, setErrorIndividual] = useState<string | null>(null)
   const [origenPorConfirmar, setOrigenPorConfirmar] = useState<OrigenSeleccionGrupal | null>(null)
+  const [animalPorRetirar, setAnimalPorRetirar] = useState<string | null>(null)
+  const [idsPendientesRetiro, setIdsPendientesRetiro] = useState<readonly string[]>([])
   const idsRestaurados = seleccionGrupalInicial?.animalIdsEfectivos ?? []
   const idsExcluidosRestaurados = seleccionGrupalInicial?.animalIdsExcluidos ?? []
 
@@ -180,7 +184,7 @@ export function PasoAlcance({
     emitirSeleccion({ tipo: "individual", animalId: animal.id })
   }
 
-  const handleQuitarExcluido = (id: string) => {
+  const retirarAnimal = (id: string) => {
     if (origen === "manual") {
       setIncluidos((prev) => {
         const next = new Set(prev)
@@ -194,6 +198,14 @@ export function PasoAlcance({
       next.add(id)
       return next
     })
+  }
+
+  const handleQuitarExcluido = (id: string) => {
+    if (excepciones[id]) {
+      setAnimalPorRetirar(id)
+      return
+    }
+    retirarAnimal(id)
   }
 
   const handleRevertirExcluido = (id: string) => {
@@ -281,6 +293,7 @@ export function PasoAlcance({
       ...(origen === "grupo" ? { grupoId: criterioId } : {}),
       animalIdsEfectivos: idsEfectivos,
       totalAnimales: idsEfectivos.length,
+      animales: animalesEfectivos,
       ...(excluidos.size > 0 ? { animalIdsExcluidos: [...excluidos] } : {}),
       ...(seleccionGrupalInicial?.excepciones
         ? { excepciones: seleccionGrupalInicial.excepciones }
@@ -357,6 +370,12 @@ export function PasoAlcance({
               else setExcluidos((prev) => new Set([...prev].filter((id) => !ids.includes(id))))
             }}
             onQuitarTodos={(ids) => {
+              const excepcionesRetiradas = ids.filter((id) => excepciones[id])
+              if (excepcionesRetiradas.length > 0) {
+                setIdsPendientesRetiro(excepcionesRetiradas)
+                setAnimalPorRetirar(excepcionesRetiradas[0] ?? null)
+                return
+              }
               if (origen === "manual")
                 setIncluidos((prev) => new Set([...prev].filter((id) => !ids.includes(id))))
               else setExcluidos((prev) => new Set([...prev, ...ids]))
@@ -365,6 +384,22 @@ export function PasoAlcance({
             totalEfectivo={animalesEfectivos.length}
             totalCargado={animalesCargados.length}
             origenPorConfirmar={origenPorConfirmar}
+            animalPorRetirar={animalPorRetirar}
+            onConfirmarRetiro={() => {
+              for (const id of idsPendientesRetiro.length > 0
+                ? idsPendientesRetiro
+                : animalPorRetirar
+                  ? [animalPorRetirar]
+                  : []) {
+                retirarAnimal(id)
+              }
+              setIdsPendientesRetiro([])
+              setAnimalPorRetirar(null)
+            }}
+            onCancelarRetiro={() => {
+              setIdsPendientesRetiro([])
+              setAnimalPorRetirar(null)
+            }}
             onConfirmarCambioOrigen={() => {
               if (!origenPorConfirmar) return
               aplicarCambioOrigen(origenPorConfirmar)
@@ -499,6 +534,9 @@ function SeccionGrupal({
   totalEfectivo,
   totalCargado,
   origenPorConfirmar,
+  animalPorRetirar,
+  onConfirmarRetiro,
+  onCancelarRetiro,
   onConfirmarCambioOrigen,
   onCancelarCambioOrigen,
 }: {
@@ -519,6 +557,9 @@ function SeccionGrupal({
   readonly totalEfectivo: number
   readonly totalCargado: number
   readonly origenPorConfirmar: OrigenSeleccionGrupal | null
+  readonly animalPorRetirar: string | null
+  readonly onConfirmarRetiro: () => void
+  readonly onCancelarRetiro: () => void
   readonly onConfirmarCambioOrigen: () => void
   readonly onCancelarCambioOrigen: () => void
 }) {
@@ -608,6 +649,24 @@ function SeccionGrupal({
             </Button>
             <Button type="button" variant="outline" onClick={onCancelarCambioOrigen}>
               Conservar selección
+            </Button>
+          </div>
+        </div>
+      )}
+      {animalPorRetirar && (
+        <div
+          className="rounded-card border border-pasto-300 bg-pasto-50 p-3 space-y-2"
+          role="alert"
+        >
+          <p className="text-support">
+            Este animal tiene una excepción. Si lo retiras, se descartarán sus diferencias.
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" onClick={onConfirmarRetiro}>
+              Retirar y descartar excepción
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancelarRetiro}>
+              Conservar animal
             </Button>
           </div>
         </div>
