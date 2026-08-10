@@ -54,9 +54,12 @@ export function PasoAlcance({
   )
   const [origen, setOrigen] = useState<OrigenSeleccionGrupal>("manual")
   const [criterioId, setCriterioId] = useState<string>("")
+  const [origenPendiente, setOrigenPendiente] = useState<OrigenSeleccionGrupal>("manual")
+  const [criterioPendiente, setCriterioPendiente] = useState<string>("")
   const [animalesCargados, setAnimalesCargados] = useState<
     readonly { readonly id: string; readonly codigoAnimal: string }[]
   >([])
+  const [incluidos, setIncluidos] = useState<ReadonlySet<string>>(new Set())
   const [excluidos, setExcluidos] = useState<ReadonlySet<string>>(new Set())
   const [cargandoOrigen, setCargandoOrigen] = useState(false)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
@@ -69,37 +72,30 @@ export function PasoAlcance({
   const [animalIndividual, setAnimalIndividual] = useState<
     { readonly id: string; readonly codigoAnimal: string } | undefined
   >(animalPreseleccionado)
+  const [individualSeleccionado, setIndividualSeleccionado] = useState(
+    Boolean(animalPreseleccionado),
+  )
 
-  // Carga inicial para manual (lista todos los animales de la finca).
+  // Manual starts empty; the loader only provides the available universe.
   useEffect(() => {
     if (alcance !== "grupal" || origen !== "manual") return
-    if (animalesCargados.length > 0) return
+    if (animalesCargados.length > 0 || cargandoOrigen) return
     setCargandoOrigen(true)
     setErrorCarga(null)
     cargarAnimalesPorOrigen("manual", "")
-      .then((lista) => setAnimalesCargados(lista))
+      .then((lista) => {
+        setAnimalesCargados(lista)
+        setIncluidos(new Set())
+        setExcluidos(new Set())
+      })
       .catch(() => setErrorCarga("No se pudieron cargar los animales."))
       .finally(() => setCargandoOrigen(false))
-  }, [alcance, origen, animalesCargados.length, cargarAnimalesPorOrigen])
+  }, [alcance, cargandoOrigen, origen, animalesCargados.length, cargarAnimalesPorOrigen])
 
-  // Carga al cambiar origen con criterio
-  useEffect(() => {
-    if (alcance !== "grupal") return
-    if (origen === "manual") return
-    if (criterioId === "") return
-    setCargandoOrigen(true)
-    setErrorCarga(null)
-    setExcluidos(new Set())
-    cargarAnimalesPorOrigen(origen, criterioId)
-      .then((lista) => setAnimalesCargados(lista))
-      .catch(() => setErrorCarga(`No se pudieron cargar animales del ${origen}.`))
-      .finally(() => setCargandoOrigen(false))
-  }, [alcance, origen, criterioId, cargarAnimalesPorOrigen])
-
-  const animalesEfectivos = useMemo(
-    () => animalesCargados.filter((a) => !excluidos.has(a.id)),
-    [animalesCargados, excluidos],
-  )
+  const animalesEfectivos = useMemo(() => {
+    if (origen === "manual") return animalesCargados.filter((a) => incluidos.has(a.id))
+    return animalesCargados.filter((a) => !excluidos.has(a.id))
+  }, [animalesCargados, excluidos, incluidos, origen])
 
   const emitirSeleccion = (next: Seleccion) => onSeleccion(next)
 
@@ -116,7 +112,7 @@ export function PasoAlcance({
       return
     }
     setAnimalIndividual(encontrado)
-    emitirSeleccion({ tipo: "individual", animalId: encontrado.id })
+    setIndividualSeleccionado(false)
   }
 
   const handleSeleccionarIndividualExistente = (animal: {
@@ -124,10 +120,19 @@ export function PasoAlcance({
     readonly codigoAnimal: string
   }) => {
     setAnimalIndividual(animal)
+    setIndividualSeleccionado(true)
     emitirSeleccion({ tipo: "individual", animalId: animal.id })
   }
 
   const handleQuitarExcluido = (id: string) => {
+    if (origen === "manual") {
+      setIncluidos((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+      return
+    }
     setExcluidos((prev) => {
       const next = new Set(prev)
       next.add(id)
@@ -136,11 +141,53 @@ export function PasoAlcance({
   }
 
   const handleRevertirExcluido = (id: string) => {
+    if (origen === "manual") {
+      setIncluidos((prev) => new Set(prev).add(id))
+      return
+    }
     setExcluidos((prev) => {
       const next = new Set(prev)
       next.delete(id)
       return next
     })
+  }
+
+  const cargarNuevoOrigen = async (nuevoOrigen: OrigenSeleccionGrupal, nuevoCriterio: string) => {
+    setCargandoOrigen(true)
+    setErrorCarga(null)
+    try {
+      const lista = await cargarAnimalesPorOrigen(nuevoOrigen, nuevoCriterio)
+      setOrigen(nuevoOrigen)
+      setCriterioId(nuevoCriterio)
+      setOrigenPendiente(nuevoOrigen)
+      setCriterioPendiente(nuevoCriterio)
+      setAnimalesCargados(lista)
+      setIncluidos(new Set())
+      setExcluidos(new Set())
+    } catch {
+      setOrigenPendiente(origen)
+      setCriterioPendiente(criterioId)
+      setErrorCarga(`No se pudieron cargar animales del ${nuevoOrigen}.`)
+    } finally {
+      setCargandoOrigen(false)
+    }
+  }
+
+  const handleCambiarOrigen = (nuevoOrigen: OrigenSeleccionGrupal) => {
+    if (nuevoOrigen === origen) return
+    setOrigenPendiente(nuevoOrigen)
+    setCriterioPendiente("")
+    if (nuevoOrigen === "manual") void cargarNuevoOrigen("manual", "")
+  }
+
+  const handleCambiarCriterio = (nuevoCriterio: string) => {
+    setCriterioPendiente(nuevoCriterio)
+    if (nuevoCriterio !== "") void cargarNuevoOrigen(origenPendiente, nuevoCriterio)
+  }
+
+  const handleToggleIncluido = (id: string, incluido: boolean) => {
+    if (incluido) handleQuitarExcluido(id)
+    else handleRevertirExcluido(id)
   }
 
   const handleConfirmarGrupal = () => {
@@ -210,22 +257,33 @@ export function PasoAlcance({
             error={errorIndividual}
             animal={animalIndividual}
             onAceptarPreseleccion={handleSeleccionarIndividualExistente}
+            seleccionado={individualSeleccionado}
             animalPreseleccionado={animalPreseleccionado}
             buscarAnimalPorCodigo={buscarAnimalPorCodigo}
           />
         ) : (
           <SeccionGrupal
-            origen={origen}
-            onCambiarOrigen={setOrigen}
+            origen={origenPendiente}
+            onCambiarOrigen={handleCambiarOrigen}
             catalogos={catalogos}
-            criterioId={criterioId}
-            onCambiarCriterio={setCriterioId}
+            criterioId={criterioPendiente}
+            onCambiarCriterio={handleCambiarCriterio}
             animalesCargados={animalesCargados}
+            incluidos={incluidos}
             excluidos={excluidos}
             cargando={cargandoOrigen}
             error={errorCarga}
-            onQuitar={handleQuitarExcluido}
-            onRevertir={handleRevertirExcluido}
+            onToggle={handleToggleIncluido}
+            onSeleccionarTodos={(ids) => {
+              if (origen === "manual") setIncluidos((prev) => new Set([...prev, ...ids]))
+              else setExcluidos((prev) => new Set([...prev].filter((id) => !ids.includes(id))))
+            }}
+            onQuitarTodos={(ids) => {
+              if (origen === "manual")
+                setIncluidos((prev) => new Set([...prev].filter((id) => !ids.includes(id))))
+              else setExcluidos((prev) => new Set([...prev, ...ids]))
+            }}
+            origenActivo={origen}
             totalEfectivo={animalesEfectivos.length}
             totalCargado={animalesCargados.length}
           />
@@ -258,6 +316,7 @@ function SeccionIndividual({
   error,
   animal,
   onAceptarPreseleccion,
+  seleccionado,
   animalPreseleccionado,
   buscarAnimalPorCodigo,
 }: {
@@ -274,6 +333,7 @@ function SeccionIndividual({
     | { readonly id: string; readonly codigoAnimal: string }
     | undefined
   readonly buscarAnimalPorCodigo: BuscarAnimalPorCodigo
+  readonly seleccionado: boolean
 }) {
   if (animalPreseleccionado) {
     // Emite la selección al padre en cuanto se monte
@@ -311,6 +371,15 @@ function SeccionIndividual({
         <div className="rounded-card border bg-card p-3">
           <p className="text-support font-medium">{animal.codigoAnimal}</p>
           <p className="text-caption text-muted-foreground">{animal.id}</p>
+          {!seleccionado && (
+            <Button
+              type="button"
+              className="mt-2 h-10"
+              onClick={() => onAceptarPreseleccion(animal)}
+            >
+              Seleccionar {animal.codigoAnimal}
+            </Button>
+          )}
         </div>
       )}
       {/* searchAnimal is referenced to keep TS happy if a refactor inlines it */}
@@ -319,6 +388,7 @@ function SeccionIndividual({
   )
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this section keeps the complete keyboard-accessible selection workflow together.
 function SeccionGrupal({
   origen,
   onCambiarOrigen,
@@ -329,8 +399,11 @@ function SeccionGrupal({
   excluidos,
   cargando,
   error,
-  onQuitar,
-  onRevertir,
+  onToggle,
+  onSeleccionarTodos,
+  onQuitarTodos,
+  origenActivo,
+  incluidos,
   totalEfectivo,
   totalCargado,
 }: {
@@ -343,11 +416,21 @@ function SeccionGrupal({
   readonly excluidos: ReadonlySet<string>
   readonly cargando: boolean
   readonly error: string | null
-  readonly onQuitar: (id: string) => void
-  readonly onRevertir: (id: string) => void
+  readonly incluidos: ReadonlySet<string>
+  readonly onToggle: (id: string, incluido: boolean) => void
+  readonly onSeleccionarTodos: (ids: readonly string[]) => void
+  readonly onQuitarTodos: (ids: readonly string[]) => void
+  readonly origenActivo: OrigenSeleccionGrupal
   readonly totalEfectivo: number
   readonly totalCargado: number
 }) {
+  const [filtro, setFiltro] = useState("")
+  const filtroNormalizado = filtro.trim().toLocaleLowerCase()
+  const animalesVisibles = animalesCargados.filter((animal) =>
+    animal.codigoAnimal.toLocaleLowerCase().includes(filtroNormalizado),
+  )
+  const universoFiltrado = filtroNormalizado !== ""
+
   return (
     <div className="space-y-3">
       <fieldset className="space-y-2">
@@ -369,10 +452,7 @@ function SeccionGrupal({
                 // biome-ignore lint/a11y/useSemanticElements: pill radiogroup uses button-style radios (WAI-ARIA APG); same pattern as PillsSegmentadas.
                 role="radio"
                 aria-checked={activo}
-                onClick={() => {
-                  onCambiarOrigen(opt.value)
-                  onCambiarCriterio("")
-                }}
+                onClick={() => onCambiarOrigen(opt.value)}
                 className={cn(
                   "min-h-[--h-touch] rounded-card border px-2 py-1.5 text-support font-medium",
                   activo
@@ -414,46 +494,109 @@ function SeccionGrupal({
         </p>
       )}
 
-      {!cargando && animalesCargados.length > 0 && (
+      {origen === "manual" || criterioId !== "" ? (
         <div className="space-y-2">
-          <p className="text-support font-medium">
-            {totalEfectivo} de {totalCargado} animales efectivos
+          <label htmlFor="filtro-animales" className="text-support font-medium">
+            Buscar animales
+          </label>
+          <Input
+            id="filtro-animales"
+            value={filtro}
+            onChange={(event) => setFiltro(event.target.value)}
+            placeholder="Código del animal"
+            aria-describedby="filtro-animales-ayuda"
+          />
+          <p id="filtro-animales-ayuda" className="text-caption text-muted-foreground">
+            Buscar o limpiar no cambia la selección.
           </p>
-          <ul className="space-y-1.5 max-h-60 overflow-y-auto">
-            {animalesCargados.map((a) => {
-              const excluido = excluidos.has(a.id)
-              return (
-                <li
-                  key={a.id}
-                  className={cn(
-                    "flex items-center justify-between rounded-lg border px-3 py-2 text-support",
-                    excluido ? "opacity-60 line-through" : "",
-                  )}
-                >
-                  <span>{a.codigoAnimal}</span>
-                  {excluido ? (
-                    <button
-                      type="button"
-                      onClick={() => onRevertir(a.id)}
-                      className="text-caption text-primary font-medium"
-                    >
-                      Revertir
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onQuitar(a.id)}
-                      className="text-caption text-peligro-600 font-medium"
-                      aria-label={`Excluir ${a.codigoAnimal}`}
-                    >
-                      Excluir
-                    </button>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
+          <div className="flex flex-wrap gap-2" aria-label="Acciones de selección">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onSeleccionarTodos(animalesVisibles.map((a) => a.id))}
+            >
+              {universoFiltrado
+                ? `Seleccionar los ${animalesVisibles.length} resultados`
+                : "Seleccionar todos"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onQuitarTodos(animalesVisibles.map((a) => a.id))}
+            >
+              {universoFiltrado
+                ? `Quitar los ${animalesVisibles.length} resultados`
+                : "Quitar todos"}
+            </Button>
+          </div>
         </div>
+      ) : null}
+
+      {!cargando && animalesCargados.length > 0 && criterioId === "" && origen !== "manual" ? (
+        // biome-ignore lint/a11y/useSemanticElements: status announcements belong in a paragraph, not a form-associated <output>.
+        <p className="text-caption text-muted-foreground" role="status">
+          Selecciona un {origen} para cargar sus animales.
+        </p>
+      ) : (
+        !cargando &&
+        animalesCargados.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-support font-medium" aria-live="polite">
+              {origenActivo === "manual"
+                ? `${totalEfectivo} animales incluidos`
+                : `${totalEfectivo} incluidos · ${totalCargado - totalEfectivo} excluidos`}
+            </p>
+            <ul className="space-y-1.5 max-h-60 overflow-y-auto">
+              {animalesVisibles.map((a) => {
+                const incluido =
+                  origenActivo === "manual" ? incluidos.has(a.id) : !excluidos.has(a.id)
+                return (
+                  <li
+                    key={a.id}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border px-3 py-2 text-support",
+                      !incluido ? "opacity-60" : "",
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{a.codigoAnimal}</span>
+                      <span
+                        className="text-caption"
+                        aria-label={incluido ? "Incluido" : "Excluido"}
+                      >
+                        {incluido ? "Incluido" : "Excluido"}
+                      </span>
+                    </span>
+                    {!incluido ? (
+                      <button
+                        type="button"
+                        onClick={() => onToggle(a.id, false)}
+                        className="text-caption text-primary font-medium"
+                      >
+                        Incluir
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onToggle(a.id, true)}
+                        className="text-caption text-peligro-600 font-medium"
+                        aria-label={`Excluir ${a.codigoAnimal}`}
+                      >
+                        Excluir
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+            {animalesVisibles.length === 0 && (
+              // biome-ignore lint/a11y/useSemanticElements: status announcements belong in a paragraph, not a form-associated <output>.
+              <p className="text-caption text-muted-foreground" role="status">
+                No hay resultados para esta búsqueda.
+              </p>
+            )}
+          </div>
+        )
       )}
     </div>
   )
