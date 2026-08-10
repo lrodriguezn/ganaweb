@@ -886,3 +886,156 @@ describe("EventoWizard — mapeo de mensajes de error", () => {
     )
   })
 })
+
+describe("EventoWizard — revisión condicional por riesgo", () => {
+  it("no muestra revisión ni cambia el flujo ordinario sin disparadores", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { individualId: "ev-1", hijosIds: [] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+          onEnviar,
+        })}
+      />,
+    )
+    await user.clear(screen.getByLabelText(/Peso/))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.queryByTestId("evento-wizard-risk-review")).not.toBeInTheDocument()
+    expect(onEnviar).toHaveBeenCalledTimes(1)
+  })
+
+  it("resume excepciones y requiere confirmación explícita", async () => {
+    const user = await prepararWizardGrupal()
+    const override = screen.getByLabelText("MT-101: pesoKg")
+    await user.clear(override)
+    await user.type(override, "435")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
+      "excepciones por animal",
+    )
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent("a-2")
+  })
+
+  it("muestra el criterio de tipo sensible y registra solo tras confirmar", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { individualId: "ev-1", hijosIds: [] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "aplicacion_sanitaria",
+          animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+          tiposSensibles: ["aplicacion_sanitaria"],
+          onEnviar,
+        })}
+      />,
+    )
+    await user.type(screen.getByLabelText(/Producto/), "producto-1")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent("tipo sensible")
+    expect(onEnviar).not.toHaveBeenCalled()
+    await user.click(screen.getByRole("button", { name: "Confirmar y registrar 1 evento" }))
+    expect(onEnviar).toHaveBeenCalledTimes(1)
+  })
+
+  it("detiene el envío ante un conflicto y permite mantener o actualizar", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { cabeceraId: "rg-1", hijosIds: ["ev-1"] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          cargarAnimalesPorOrigen: vi
+            .fn()
+            .mockResolvedValueOnce([{ id: "a-1", codigoAnimal: "MT-100" }])
+            .mockResolvedValueOnce([{ id: "a-1", codigoAnimal: "MT-100" }])
+            .mockResolvedValueOnce([
+              { id: "a-1", codigoAnimal: "MT-100" },
+              { id: "a-2", codigoAnimal: "MT-101" },
+            ]),
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          revisarMembresiaActual: vi.fn(async () => ({
+            estado: "cambio",
+            animales: [
+              { id: "a-1", codigoAnimal: "MT-100" },
+              { id: "a-2", codigoAnimal: "MT-101" },
+            ],
+            agregados: [{ id: "a-2", codigoAnimal: "MT-101" }],
+          })),
+          umbralGrupoGrande: 0,
+          onEnviar,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await screen.findByText("0 animales incluidos")
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await screen.findByText("1 incluidos · 0 excluidos")
+    await user.click(screen.getByRole("button", { name: "Seleccionar todos" }))
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByRole("alert")).toHaveTextContent("membresía del origen cambió")
+    expect(onEnviar).not.toHaveBeenCalled()
+    await user.click(screen.getByRole("button", { name: "Mantener snapshot revisado" }))
+    await user.click(screen.getByRole("button", { name: "Confirmar y registrar 1 evento" }))
+    expect(onEnviar).toHaveBeenCalledTimes(1)
+  })
+
+  it("actualiza el alcance conservando las excepciones de animales presentes", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: vi
+            .fn()
+            .mockResolvedValueOnce([{ id: "a-1", codigoAnimal: "MT-100" }])
+            .mockResolvedValueOnce([{ id: "a-1", codigoAnimal: "MT-100" }])
+            .mockResolvedValueOnce([
+              { id: "a-1", codigoAnimal: "MT-100" },
+              { id: "a-2", codigoAnimal: "MT-101" },
+            ]),
+          revisarMembresiaActual: vi.fn(async () => ({
+            estado: "cambio",
+            animales: [
+              { id: "a-1", codigoAnimal: "MT-100" },
+              { id: "a-2", codigoAnimal: "MT-101" },
+            ],
+            agregados: [{ id: "a-2", codigoAnimal: "MT-101" }],
+          })),
+          umbralGrupoGrande: 0,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await screen.findByText("1 incluidos · 0 excluidos")
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    await user.click(screen.getByRole("button", { name: "Actualizar alcance y volver" }))
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+    expect(screen.getByText("2 incluidos · 0 excluidos")).toBeInTheDocument()
+  })
+})

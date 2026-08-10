@@ -18,6 +18,7 @@ import { EditorExcepciones } from "./editor-excepciones"
 import { PasoAlcance } from "./paso-alcance"
 import { PasoDatos } from "./paso-datos"
 import { PasoTipo } from "./paso-tipo"
+import { RevisionRiesgo } from "./revision-riesgo"
 import type {
   BorradorEvento,
   BuscarAnimalPorCodigo,
@@ -26,6 +27,8 @@ import type {
   CatalogosParaAlcance,
   DominioEventoWizard,
   PermisosEfectivosPorDominio,
+  ResultadoMembresiaActual,
+  RevisarMembresiaActual,
   Seleccion,
   TipoEventoWizard,
 } from "./types"
@@ -63,6 +66,9 @@ export interface EventoWizardProps {
   readonly onCapturado?: (resultado: ResultadoCapturaEvento) => void
   /** Server invocado al confirmar el paso 3. */
   readonly onEnviar: (captura: CapturaEvento) => Promise<ResultadoCapturaEvento>
+  readonly tiposSensibles?: readonly TipoEventoWizard[]
+  readonly umbralGrupoGrande?: number
+  readonly revisarMembresiaActual?: RevisarMembresiaActual
 }
 
 export type ResultadoCapturaEvento =
@@ -80,7 +86,7 @@ export interface ResultadoIds {
   readonly hijosIds: readonly string[]
 }
 
-type Paso = "tipo" | "alcance" | "datos"
+type Paso = "tipo" | "alcance" | "datos" | "revision"
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the shell owns the complete wizard transition state.
 export function EventoWizard({
@@ -96,6 +102,9 @@ export function EventoWizard({
   buscarAnimalPorCodigo,
   onCapturado,
   onEnviar,
+  tiposSensibles = [],
+  umbralGrupoGrande,
+  revisarMembresiaActual,
 }: EventoWizardProps) {
   const [tipo, setTipo] = useState<TipoEventoWizard | undefined>(tipoPreseleccionado)
   const [seleccion, setSeleccion] = useState<Seleccion | undefined>(
@@ -112,6 +121,8 @@ export function EventoWizard({
   const [excepciones, setExcepciones] = useState<BorradorEvento["excepciones"]>({})
   const [hayCambiosPendientes, setHayCambiosPendientes] = useState(false)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
+  const [membresia, setMembresia] = useState<ResultadoMembresiaActual | null>(null)
+  const [cargandoMembresia, setCargandoMembresia] = useState(false)
 
   useEffect(() => {
     if (open) setCategoriaContextual(categoriaInicial)
@@ -127,6 +138,8 @@ export function EventoWizard({
     setExcepciones({})
     setHayCambiosPendientes(false)
     setConfirmarCierre(false)
+    setMembresia(null)
+    setCargandoMembresia(false)
   }
 
   const handleOpenChange = (next: boolean) => {
@@ -196,6 +209,36 @@ export function EventoWizard({
       datos: { ...datosComunes, ...datos },
       ...(corrigeAId ? { corrigeAId } : {}),
     }
+    const criterios = criteriosDeRiesgo(
+      tipo,
+      seleccion,
+      excepciones,
+      tiposSensibles,
+      umbralGrupoGrande,
+      corrigeAId,
+    )
+    if (criterios.length > 0) {
+      if (seleccion.tipo === "grupal" && seleccion.origen !== "manual") {
+        setCargandoMembresia(true)
+        const resultado = revisarMembresiaActual
+          ? await revisarMembresiaActual(
+              seleccion.origen,
+              criterioIdDeSeleccion(seleccion),
+              seleccion.animalIdsEfectivos,
+            ).catch(() => ({ estado: "desconocido" as const }))
+          : { estado: "desconocido" as const }
+        setMembresia(resultado)
+        setCargandoMembresia(false)
+      } else {
+        setMembresia({ estado: "coincide" })
+      }
+      setPasoActual("revision")
+      return
+    }
+    await enviarCaptura(captura)
+  }
+
+  const enviarCaptura = async (captura: CapturaEvento) => {
     const resultado = await onEnviar(captura)
     if (resultado.tipo === "capturado") {
       setDatosComunes({})
@@ -363,6 +406,65 @@ export function EventoWizard({
             )}
           </>
         )}
+        {pasoActual === "revision" && tipo && seleccion && (
+          <RevisionRiesgo
+            tipo={metaDeTipo(tipo)}
+            seleccion={seleccion}
+            catalogos={catalogos}
+            datosComunes={datosComunes}
+            excepciones={excepciones}
+            criterios={criteriosDeRiesgo(
+              tipo,
+              seleccion,
+              excepciones,
+              tiposSensibles,
+              umbralGrupoGrande,
+              corrigeAId,
+            )}
+            membresia={membresia}
+            cargandoMembresia={cargandoMembresia}
+            onMantenerSnapshot={() => setMembresia({ estado: "coincide" })}
+            onActualizarAlcance={() => {
+              if (
+                membresia?.estado !== "cambio" ||
+                seleccion.tipo !== "grupal" ||
+                !membresia.animales
+              )
+                return
+              const retirados = new Set(membresia.retirados?.map((animal) => animal.id) ?? [])
+              const excluidos = (seleccion.animalIdsExcluidos ?? []).filter(
+                (id) => !retirados.has(id),
+              )
+              const ids = membresia.animales
+                .filter((animal) => !excluidos.includes(animal.id))
+                .map((animal) => animal.id)
+              setExcepciones((actual) =>
+                Object.fromEntries(Object.entries(actual).filter(([id]) => ids.includes(id))),
+              )
+              setSeleccion({
+                ...seleccion,
+                animales: membresia.animales,
+                animalIdsEfectivos: ids,
+                totalAnimales: ids.length,
+                animalIdsExcluidos: excluidos,
+              })
+              setMembresia(null)
+              setPasoActual("alcance")
+            }}
+            onConfirmar={() => {
+              if (!tipo || !seleccion) return
+              void enviarCaptura({
+                tipo,
+                seleccion:
+                  seleccion.tipo === "grupal" && Object.keys(excepciones).length > 0
+                    ? { ...seleccion, excepciones }
+                    : seleccion,
+                datos: datosComunes,
+                ...(corrigeAId ? { corrigeAId } : {}),
+              })
+            }}
+          />
+        )}
       </DrawerContent>
       <AlertDialog open={confirmarCierre} onOpenChange={setConfirmarCierre}>
         <AlertDialogContent>
@@ -416,4 +518,34 @@ function PasoIndicador({ pasoActual }: { readonly pasoActual: Paso }) {
       ))}
     </ol>
   )
+}
+
+function criterioIdDeSeleccion(seleccion: Extract<Seleccion, { tipo: "grupal" }>) {
+  return seleccion.origen === "lote"
+    ? (seleccion.loteId ?? "")
+    : seleccion.origen === "potrero"
+      ? (seleccion.potreroId ?? "")
+      : (seleccion.grupoId ?? "")
+}
+
+function criteriosDeRiesgo(
+  tipo: TipoEventoWizard,
+  seleccion: Seleccion,
+  excepciones: Readonly<Record<string, unknown>>,
+  tiposSensibles: readonly TipoEventoWizard[],
+  umbralGrupoGrande: number | undefined,
+  corrigeAId: string | undefined,
+) {
+  const criterios: string[] = []
+  if (tiposSensibles.includes(tipo)) criterios.push("tipo sensible según la política")
+  if (corrigeAId) criterios.push("corrección de un evento existente")
+  if (Object.keys(excepciones).length > 0) criterios.push("excepciones por animal")
+  if (
+    seleccion.tipo === "grupal" &&
+    umbralGrupoGrande !== undefined &&
+    seleccion.totalAnimales > umbralGrupoGrande
+  ) {
+    criterios.push("grupo grande según configuración")
+  }
+  return criterios
 }

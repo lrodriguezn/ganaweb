@@ -94,6 +94,19 @@ export type CargaAnimalesPorOrigen = (
   id: string,
 ) => Promise<readonly { readonly id: string; readonly codigoAnimal: string }[]>
 
+export interface ResultadoMembresiaActual {
+  readonly estado: "coincide" | "cambio" | "desconocido"
+  readonly animales?: readonly { readonly id: string; readonly codigoAnimal: string }[]
+  readonly agregados?: readonly { readonly id: string; readonly codigoAnimal: string }[]
+  readonly retirados?: readonly { readonly id: string; readonly codigoAnimal?: string }[]
+}
+
+export type RevisarMembresiaActual = (
+  origen: Exclude<OrigenSeleccionGrupal, "manual">,
+  id: string,
+  snapshotIds: readonly string[],
+) => Promise<ResultadoMembresiaActual>
+
 export type BuscarAnimalPorCodigo = (
   codigo: string,
 ) => Promise<{ readonly id: string; readonly codigoAnimal: string } | null>
