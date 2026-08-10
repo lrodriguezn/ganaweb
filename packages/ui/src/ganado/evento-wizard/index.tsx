@@ -275,7 +275,7 @@ export function EventoWizard({
         className={cn(
           "rounded-t-sheet",
           pasoActual === "tipo" || pasoActual === "alcance"
-            ? "h-[90dvh] max-h-[760px] sm:inset-x-auto sm:left-1/2 sm:bottom-auto sm:top-1/2 sm:w-[min(720px,calc(100vw-2rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-card sm:h-[85dvh]"
+            ? "h-[90dvh] max-h-[760px] sm:mt-0 sm:inset-x-auto sm:left-1/2 sm:bottom-auto sm:top-1/2 sm:w-[min(720px,calc(100vw-2rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-card sm:h-[min(760px,calc(100dvh-2rem))]"
             : pasoActual === "datos"
               ? "h-[90vh]"
               : "h-[50vh]",
