@@ -69,12 +69,56 @@ describe("FormularioProduccionLactea — matriz §2 Productivo / Producción lá
     onGuardar: vi.fn(),
   }
 
-  it("renderiza campos compartidos: fecha, cantidades AM/PM, lote", () => {
-    render(<FormularioProduccionLactea {...defaultProps} />)
+  it("renderiza los cuatro selectores opcionales de ubicación", () => {
+    render(
+      <FormularioProduccionLactea
+        {...defaultProps}
+        catalogos={{
+          lotes: [{ id: "lote-1", nombre: "Lote 1" }],
+          potreros: [{ id: "potrero-1", nombre: "Potrero 1" }],
+          sectores: [{ id: "sector-1", nombre: "Sector 1" }],
+          grupos: [{ id: "grupo-1", nombre: "Grupo 1" }],
+        }}
+      />,
+    )
     expect(screen.getByLabelText(/Fecha/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Cantidad AM/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Cantidad PM/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Lote/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Potrero/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Sector/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Grupo/)).toBeInTheDocument()
+  })
+
+  it("envía lote, potrero, sector y grupo cuando fueron seleccionados", async () => {
+    const user = userEvent.setup()
+    const onGuardar = vi.fn()
+    render(
+      <FormularioProduccionLactea
+        {...defaultProps}
+        onGuardar={onGuardar}
+        datosIniciales={{
+          fecha: "2026-08-10",
+          cantidadAm: 10,
+          cantidadPm: 12.5,
+          loteId: "lote-1",
+          potreroId: "potrero-1",
+          sectorId: "sector-1",
+          grupoId: "grupo-1",
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: /Guardar 1 registro/ }))
+
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        loteId: "lote-1",
+        potreroId: "potrero-1",
+        sectorId: "sector-1",
+        grupoId: "grupo-1",
+      }),
+    )
   })
 
   it("permite registrar cantidades AM y PM iguales a cero", async () => {

@@ -29,15 +29,56 @@ describe("FormularioServicio — matriz §2 Reproductivo / Servicio", () => {
     onGuardar: vi.fn(),
   }
 
-  it("renderiza campos compartidos: fecha, tipo, padre/pajuela, inseminador, dosis, observaciones", () => {
+  it("renderiza los campos completos de Servicio", () => {
     render(<FormularioServicio {...defaultProps} />)
     expect(screen.getByLabelText(/Fecha/)).toBeInTheDocument()
     expect(screen.getByLabelText("Tipo")).toBeInTheDocument()
     expect(screen.getByLabelText(/Padre/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Pajuela/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Inseminador/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Tipo de inseminación/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Dosis/)).toBeInTheDocument()
+    expect(screen.getByLabelText("Precio")).toBeInTheDocument()
+    expect(screen.getByLabelText("Efectivo")).toBeInTheDocument()
     expect(screen.getByLabelText(/Observaciones/)).toBeInTheDocument()
+  })
+
+  it("envía tipoInseminacion, precio y efectivo sin hacerlos obligatorios", async () => {
+    const user = userEvent.setup()
+    const onGuardar = vi.fn()
+    render(
+      <FormularioServicio
+        {...defaultProps}
+        onGuardar={onGuardar}
+        catalogos={{
+          lotes: [],
+          potreros: [],
+          grupos: [],
+          padres: [{ id: "padre-1", nombre: "Toro 1" }],
+          pajuelas: [],
+          inseminadores: [],
+        }}
+        datosIniciales={{
+          fecha: "2026-08-10",
+          tipo: "0",
+          padreId: "padre-1",
+          tipoInseminacion: "natural",
+          dosis: 1,
+          precio: 125.5,
+          efectivo: 1,
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: /Guardar 1 servicio/ }))
+
+    expect(onGuardar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tipoInseminacion: "natural",
+        precio: 125.5,
+        efectivo: 1,
+      }),
+    )
   })
 
   it("muestra opciones de tipo: Inseminación y Monta natural", () => {

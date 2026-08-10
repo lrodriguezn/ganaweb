@@ -114,6 +114,15 @@ function requeridoNumero(datos: DatosEvento, campo: string, errores: ErrorReglaE
   if (numero(datos, campo) === null) errores.push({ campo, detalle: "Debe ser un número válido." })
 }
 
+function binarioOpcional(datos: DatosEvento, campo: string, errores: ErrorReglaEvento[]) {
+  const value = datos[campo]
+  if (value === undefined || value === null) return
+  const numeric = numero(datos, campo)
+  if (numeric === null || !Number.isInteger(numeric) || (numeric !== 0 && numeric !== 1)) {
+    errores.push({ campo, detalle: "Debe ser 0 o 1 cuando se informa." })
+  }
+}
+
 function enumTexto(
   datos: DatosEvento,
   campo: string,
@@ -203,6 +212,7 @@ export function validarDatosEvento(tipo: string, datos: DatosEvento): readonly E
             errores,
           )
       }
+      binarioOpcional(datos, "efectivo", errores)
       break
     }
     case "palpacion": {
