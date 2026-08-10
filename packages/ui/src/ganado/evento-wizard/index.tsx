@@ -26,6 +26,7 @@ import type {
   CargaAnimalesPorOrigen,
   CatalogosParaAlcance,
   DominioEventoWizard,
+  EventoWizardPoliticaRiesgo,
   PermisosEfectivosPorDominio,
   ResultadoMembresiaActual,
   RevisarMembresiaActual,
@@ -66,8 +67,7 @@ export interface EventoWizardProps {
   readonly onCapturado?: (resultado: ResultadoCapturaEvento) => void
   /** Server invocado al confirmar el paso 3. */
   readonly onEnviar: (captura: CapturaEvento) => Promise<ResultadoCapturaEvento>
-  readonly tiposSensibles?: readonly TipoEventoWizard[]
-  readonly umbralGrupoGrande?: number
+  readonly politicaRiesgo: EventoWizardPoliticaRiesgo
   readonly revisarMembresiaActual?: RevisarMembresiaActual
 }
 
@@ -102,8 +102,7 @@ export function EventoWizard({
   buscarAnimalPorCodigo,
   onCapturado,
   onEnviar,
-  tiposSensibles = [],
-  umbralGrupoGrande,
+  politicaRiesgo,
   revisarMembresiaActual,
 }: EventoWizardProps) {
   const [tipo, setTipo] = useState<TipoEventoWizard | undefined>(tipoPreseleccionado)
@@ -209,29 +208,21 @@ export function EventoWizard({
       datos: { ...datosComunes, ...datos },
       ...(corrigeAId ? { corrigeAId } : {}),
     }
-    const criterios = criteriosDeRiesgo(
-      tipo,
-      seleccion,
-      excepciones,
-      tiposSensibles,
-      umbralGrupoGrande,
-      corrigeAId,
-    )
-    if (criterios.length > 0) {
-      if (seleccion.tipo === "grupal" && seleccion.origen !== "manual") {
-        setCargandoMembresia(true)
-        const resultado = revisarMembresiaActual
-          ? await revisarMembresiaActual(
-              seleccion.origen,
-              criterioIdDeSeleccion(seleccion),
-              seleccion.animalIdsEfectivos,
-            ).catch(() => ({ estado: "desconocido" as const }))
-          : { estado: "desconocido" as const }
-        setMembresia(resultado)
-        setCargandoMembresia(false)
-      } else {
-        setMembresia({ estado: "coincide" })
-      }
+    const criterios = criteriosDeRiesgo(tipo, seleccion, excepciones, politicaRiesgo, corrigeAId)
+    let resultadoMembresia: ResultadoMembresiaActual = { estado: "coincide" }
+    if (seleccion.tipo === "grupal" && seleccion.origen !== "manual") {
+      setCargandoMembresia(true)
+      resultadoMembresia = revisarMembresiaActual
+        ? await revisarMembresiaActual(
+            seleccion.origen,
+            criterioIdDeSeleccion(seleccion),
+            seleccion.animalIdsEfectivos,
+          ).catch(() => ({ estado: "desconocido" as const }))
+        : { estado: "desconocido" as const }
+      setMembresia(resultadoMembresia)
+      setCargandoMembresia(false)
+    }
+    if (criterios.length > 0 || resultadoMembresia.estado === "cambio") {
       setPasoActual("revision")
       return
     }
@@ -417,10 +408,9 @@ export function EventoWizard({
               tipo,
               seleccion,
               excepciones,
-              tiposSensibles,
-              umbralGrupoGrande,
+              politicaRiesgo,
               corrigeAId,
-            )}
+            ).concat(membresia?.estado === "cambio" ? ["cambio de membresía detectado"] : [])}
             membresia={membresia}
             cargandoMembresia={cargandoMembresia}
             onMantenerSnapshot={() => setMembresia({ estado: "coincide" })}
@@ -528,22 +518,22 @@ function criterioIdDeSeleccion(seleccion: Extract<Seleccion, { tipo: "grupal" }>
       : (seleccion.grupoId ?? "")
 }
 
-function criteriosDeRiesgo(
+export function criteriosDeRiesgo(
   tipo: TipoEventoWizard,
   seleccion: Seleccion,
   excepciones: Readonly<Record<string, unknown>>,
-  tiposSensibles: readonly TipoEventoWizard[],
-  umbralGrupoGrande: number | undefined,
+  politicaRiesgo: EventoWizardPoliticaRiesgo,
   corrigeAId: string | undefined,
 ) {
   const criterios: string[] = []
-  if (tiposSensibles.includes(tipo)) criterios.push("tipo sensible según la política")
+  if (politicaRiesgo.tiposSensibles.includes(tipo))
+    criterios.push("tipo sensible según la política")
   if (corrigeAId) criterios.push("corrección de un evento existente")
   if (Object.keys(excepciones).length > 0) criterios.push("excepciones por animal")
   if (
     seleccion.tipo === "grupal" &&
-    umbralGrupoGrande !== undefined &&
-    seleccion.totalAnimales > umbralGrupoGrande
+    politicaRiesgo.umbralGrupoGrande !== undefined &&
+    seleccion.totalAnimales > politicaRiesgo.umbralGrupoGrande
   ) {
     criterios.push("grupo grande según configuración")
   }

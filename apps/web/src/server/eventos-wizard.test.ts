@@ -24,6 +24,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { EventoForbiddenError, type SesionAutorizada } from "@ganaweb/aplicacion"
 
+import { POLITICA_RIESGO_EVENTOS } from "./eventos-wizard.js"
 import {
   type EventoWizardResultado,
   type EventoWizardWebInput,
@@ -33,6 +34,15 @@ import {
 
 const FINCA = "finca-1"
 const USUARIO = "user-1"
+
+describe("POLITICA_RIESGO_EVENTOS", () => {
+  it("exposes the approved sensitive types without inventing a group threshold", () => {
+    expect(POLITICA_RIESGO_EVENTOS).toEqual({
+      tiposSensibles: ["revision_veterinaria", "parto", "servicio", "palpacion"],
+    })
+    expect(POLITICA_RIESGO_EVENTOS).not.toHaveProperty("umbralGrupoGrande")
+  })
+})
 
 function sesionCon(permisos: Array<{ modulo: string; accion: string }>): SesionAutorizada {
   return {

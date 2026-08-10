@@ -60,6 +60,7 @@ import {
   leerEventosFincaTableroFn,
 } from "../../../../server/eventos-finca-read.js"
 import {
+  POLITICA_RIESGO_EVENTOS,
   anularEventoFn,
   buscarAnimalPorCodigoFn,
   capturarEventoFn,
@@ -300,9 +301,6 @@ type EstadoHistorial =
 
 const CATALOGOS_VACIOS = { lotes: [], potreros: [], grupos: [] } as const
 
-/** Política vigente para revisión; no representa un límite de grupo. */
-const TIPOS_SENSIBLES_POLITICA = ["aplicacion_sanitaria", "venta", "traslado"] as const
-
 /* -------------------------------------------------------------------------- */
 /* Componente presentacional puro (testable con loader data pineada).          */
 /* -------------------------------------------------------------------------- */
@@ -540,7 +538,7 @@ export function EventosRouteView({
         }
         buscarAnimalPorCodigo={(codigo) => buscarAnimalPorCodigoEnRuta(data.fincaId, codigo)}
         onEnviar={(captura) => enviarCapturaEnRuta(data.fincaId, captura)}
-        tiposSensibles={TIPOS_SENSIBLES_POLITICA}
+        politicaRiesgo={POLITICA_RIESGO_EVENTOS}
         revisarMembresiaActual={(origen, id, snapshotIds) =>
           revisarMembresiaEnRuta(data.fincaId, origen, id, snapshotIds)
         }

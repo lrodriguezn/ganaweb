@@ -1,6 +1,16 @@
 import { createServerFn } from "@tanstack/react-start"
 
 /**
+ * Product-approved risk policy for the event wizard.
+ *
+ * The large-group threshold is intentionally omitted until finca-level
+ * configuration exists; omission disables that trigger and is not a default.
+ */
+export const POLITICA_RIESGO_EVENTOS = {
+  tiposSensibles: ["revision_veterinaria", "parto", "servicio", "palpacion"],
+} as const satisfies import("@ganaweb/ui").EventoWizardPoliticaRiesgo
+
+/**
  * Public API del shell de captura de eventos (Issue #229).
  *
  * Re-exporta los `createServerFn` actions del módulo `.server` y los tipos

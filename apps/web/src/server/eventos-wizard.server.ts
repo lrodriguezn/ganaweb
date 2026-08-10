@@ -496,6 +496,7 @@ export interface RevisarMembresiaResultado {
   readonly estado: "coincide" | "cambio" | "desconocido"
   readonly animales?: ReadonlyArray<{ readonly id: string; readonly codigoAnimal: string }>
   readonly agregados?: ReadonlyArray<{ readonly id: string; readonly codigoAnimal: string }>
+  /** Removed members are absent from the current query, so their code may be unavailable. */
   readonly retirados?: ReadonlyArray<{ readonly id: string; readonly codigoAnimal?: string }>
 }
 

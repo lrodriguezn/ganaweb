@@ -20,7 +20,11 @@ import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { EventoWizard, type ResultadoCapturaEvento } from "../src/ganado/evento-wizard/index.js"
+import {
+  EventoWizard,
+  type ResultadoCapturaEvento,
+  criteriosDeRiesgo,
+} from "../src/ganado/evento-wizard/index.js"
 
 vi.mock("@tanstack/react-start", () => ({
   // El server function real se mockea a nivel de red en otros tests; acá
@@ -69,6 +73,10 @@ const PERMISOS_SOLO_PRODUCTIVO = {
 
 const CATALOGOS_VACIOS = { lotes: [], potreros: [], grupos: [] }
 
+const POLITICA_RIESGO_ELEGIDA = {
+  tiposSensibles: ["revision_veterinaria", "parto", "servicio", "palpacion"],
+} as const
+
 function regexParaNombre(nombre: string) {
   return new RegExp(nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
 }
@@ -88,6 +96,7 @@ function props(overrides: Partial<React.ComponentProps<typeof EventoWizard>> = {
         ids: { individualId: "ev-1", hijosIds: [] },
       }),
     ),
+    politicaRiesgo: POLITICA_RIESGO_ELEGIDA,
     ...overrides,
   }
 }
@@ -888,6 +897,52 @@ describe("EventoWizard — mapeo de mensajes de error", () => {
 })
 
 describe("EventoWizard — revisión condicional por riesgo", () => {
+  const seleccionGrupal = {
+    tipo: "grupal" as const,
+    origen: "lote" as const,
+    loteId: "lote-1",
+    animalIdsEfectivos: ["a-1", "a-2"],
+    totalAnimales: 2,
+  }
+
+  it("aplica exactamente la política sensible elegida", () => {
+    for (const tipo of ["revision_veterinaria", "parto", "servicio", "palpacion"] as const) {
+      expect(
+        criteriosDeRiesgo(
+          tipo,
+          { tipo: "individual", animalId: "a-1" },
+          {},
+          POLITICA_RIESGO_ELEGIDA,
+          undefined,
+        ),
+      ).toContain("tipo sensible según la política")
+    }
+    expect(
+      criteriosDeRiesgo(
+        "aplicacion_sanitaria",
+        { tipo: "individual", animalId: "a-1" },
+        {},
+        POLITICA_RIESGO_ELEGIDA,
+        undefined,
+      ),
+    ).toEqual([])
+  })
+
+  it("deja desactivado el riesgo de grupo grande sin umbral y lo activa al configurarlo", () => {
+    expect(
+      criteriosDeRiesgo("pesaje", seleccionGrupal, {}, POLITICA_RIESGO_ELEGIDA, undefined),
+    ).toEqual([])
+    expect(
+      criteriosDeRiesgo(
+        "pesaje",
+        seleccionGrupal,
+        {},
+        { ...POLITICA_RIESGO_ELEGIDA, umbralGrupoGrande: 1 },
+        undefined,
+      ),
+    ).toContain("grupo grande según configuración")
+  })
+
   it("no muestra revisión ni cambia el flujo ordinario sin disparadores", async () => {
     const user = userEvent.setup()
     const onEnviar = vi.fn(
@@ -935,14 +990,13 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
     render(
       <EventoWizard
         {...props({
-          tipoPreseleccionado: "aplicacion_sanitaria",
+          tipoPreseleccionado: "revision_veterinaria",
           animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
-          tiposSensibles: ["aplicacion_sanitaria"],
           onEnviar,
         })}
       />,
     )
-    await user.type(screen.getByLabelText(/Producto/), "producto-1")
+    await user.type(screen.getByLabelText(/Veterinario/), "veterinario-1")
     await user.click(screen.getByRole("button", { name: /Guardar/ }))
     expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent("tipo sensible")
     expect(onEnviar).not.toHaveBeenCalled()
@@ -979,7 +1033,6 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
             ],
             agregados: [{ id: "a-2", codigoAnimal: "MT-101" }],
           })),
-          umbralGrupoGrande: 0,
           onEnviar,
         })}
       />,
@@ -1023,7 +1076,6 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
             ],
             agregados: [{ id: "a-2", codigoAnimal: "MT-101" }],
           })),
-          umbralGrupoGrande: 0,
         })}
       />,
     )

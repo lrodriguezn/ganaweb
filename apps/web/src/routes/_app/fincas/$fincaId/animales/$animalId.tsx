@@ -28,6 +28,7 @@ import {
   reactivateAnimalAction,
 } from "../../../../../server/animal-actions.js"
 import {
+  POLITICA_RIESGO_EVENTOS,
   buscarAnimalPorCodigoFn,
   capturarEventoFn,
   listarAnimalesPorOrigenFn,
@@ -214,7 +215,7 @@ export function AnimalFichaRouteView({
         cargarAnimalesPorOrigen={(origen, id) => cargarAnimalesPorOrigenEnRuta(fincaId, origen, id)}
         buscarAnimalPorCodigo={(codigo) => buscarAnimalPorCodigoEnRuta(fincaId, codigo)}
         onEnviar={(captura) => enviarCapturaEnRuta(fincaId, captura)}
-        tiposSensibles={["aplicacion_sanitaria", "venta", "traslado"]}
+        politicaRiesgo={POLITICA_RIESGO_EVENTOS}
         revisarMembresiaActual={(origen, id, snapshotIds) =>
           revisarMembresiaEnRuta(fincaId, origen, id, snapshotIds)
         }

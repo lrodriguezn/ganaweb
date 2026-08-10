@@ -125,6 +125,7 @@ export type {
   CargaAnimalesPorOrigen,
   CatalogosParaAlcance,
   DominioEventoWizard,
+  EventoWizardPoliticaRiesgo,
   OrigenSeleccionGrupal,
   PermisosEfectivosPorDominio,
   Seleccion,
