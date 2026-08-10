@@ -81,6 +81,8 @@ export default defineConfig({
       // #229 — wizard de eventos: harness con RBAC, exclusiones, transacción y
       // 403 desde el boundary.
       "src/server/eventos-wizard.test.ts",
+      // #287 — matriz transversal de payloads válidos para los 11 tipos.
+      "src/server/eventos-wizard-payload-matrix.test.ts",
       // #228 — Tablero e Historial de Eventos: 4 tarjetas por categoría, feed
       // reciente, permisos parciales, vacíos, "Ver todo", paginación, atajos
       // de "+ Registrar" hacia el wizard de #229.
