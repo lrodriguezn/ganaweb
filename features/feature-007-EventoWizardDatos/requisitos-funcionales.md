@@ -2,7 +2,7 @@
 
 > **Propósito:** definir el comportamiento funcional esperado del paso **Datos** para los 11 tipos de evento, dejando una base verificable para su posterior descomposición en issues.
 >
-> **Estado del documento:** inventario funcional y técnico basado en la implementación vigente y en la observación de Engram `eventos/paso-datos-inventario` (`#1207`). Las reglas no aprobadas se identifican expresamente como **propuestas/por confirmar**.
+> **Estado del documento:** matriz funcional aprobada para #282, basada en la implementación vigente y en la respuesta funcional del issue. Las reglas aún no implementables por falta de infraestructura se identifican expresamente como **pendientes técnicos**.
 >
 > **Convención de IDs:** `EWD-DAT-xxx` para requisitos confirmados, `EWD-PROP-xxx` para propuestas pendientes y `EWD-CA-xxx` para criterios de aceptación.
 
@@ -77,6 +77,26 @@ Esta matriz documenta lo observado. **No convierte defaults, opcionalidad ni lí
 
 La ausencia de estos campos es una brecha de cobertura, no una orden automática para agregarlos. Su necesidad, etiqueta, obligatoriedad y origen deben confirmarse con negocio.
 
+### 4.2 Matriz funcional aprobada para #282
+
+La siguiente matriz sustituye la ambigüedad de los defaults actuales. Los valores entre paréntesis son los valores canónicos enviados por el formulario. Las fechas futuras se aceptan para los 11 tipos; no se implementa una regla de captura tardía ni relaciones temporales adicionales en este issue.
+
+| Tipo | Campos obligatorios | Reglas de valores | Opcionales y límites explícitos |
+|---|---|---|---|
+| Servicio | `fecha`, `tipo`, `dosis`, `tipoInseminacion`; `padreId` si `tipo=0`; `pajuelaId` si `tipo=1` | `tipo`: `0` monta natural, `1` inseminación; `dosis > 0`, hasta 4 decimales | `inseminadorId` de veterinarios con `es_inseminador`; `precio >= 0`, hasta 2 decimales; `efectivo`; `tipoInseminacion` permanece texto |
+| Palpación | `fecha`, `diagnosticoId`, `resultado`, `diasGestion` | `resultado`: `prenada`, `pp`, `ciclando`, `estatica`; `diasGestion` entero >= 0 y > 0 solo para `prenada` | `servicioId` seleccionable desde servicios; `comentarios` |
+| Parto | `fecha`, `tipoParto`, `machos`, `hembras`, `muertos` | `tipoParto`: `normal`, `distocico`, `aborto`; conteos enteros >= 0; la suma puede ser 0 | `servicioId` seleccionable desde servicios; `comentarios` |
+| Aplicación sanitaria | `fecha`, `productoId`, `dosis` | `dosis > 0`, hasta 4 decimales | `precioDosis >= 0`, hasta 2 decimales; `proximaDosis`; `comentarios`; solo registra y no descuenta inventario |
+| Revisión veterinaria | `fecha`, `veterinarioId`, `diagnosticoId`, `tipoDiagnostico` | `tipoDiagnostico`: `no_aplica`, `vitaminas` | `celoPresentado`: `si`/`no`; `comentarios` |
+| Pesaje | `fecha`, `pesoKg`, `tipoPeso` | `pesoKg > 0`, sin máximo, hasta 2 decimales; `tipoPeso`: `control`, `compra`, `venta` | `comentarios` |
+| Producción láctea | `fecha`, `cantidadAm`, `cantidadPm` | Ambas cantidades >= 0, hasta 2 decimales | `loteId`, `potreroId`, `sectorId`, `grupoId` desde catálogos |
+| Condición corporal | `fecha`, `condicionId`, `puntaje` | `puntaje` entero de 1 a 5 | `condicionId` desde catálogo |
+| Venta | `fecha`, `motivoVentaId`, `lugarVentaId`, `pesoVentaKg`, `precio`, `comprador` | IDs desde catálogos; `pesoVentaKg > 0` sin máximo, 2 decimales; `precio >= 0`, 2 decimales | `comentarios`; al registrar, el animal pasa a inactivo |
+| Muerte | `fecha`, `causaMuerteId` | Causa desde catálogo | `comentarios`; al registrar, el animal pasa a inactivo |
+| Traslado | `fecha`, `potreroId`, `sectorId`, `loteId`, `grupoId`, `motivo` | Los cuatro destinos y el motivo son obligatorios y seleccionables | Al registrar, se actualizan las cuatro ubicaciones del animal |
+
+La validación autoritativa implementada en este issue comprueba obligatoriedad, formato de fecha, enums, rangos, enteros y precisión. La pertenencia real de IDs a catálogos y los controles de selección visual quedan para el issue de catálogos. La persistencia vigente ya reproyecta los efectos de Venta, Muerte y Traslado dentro de la transacción de escritura; Servicio, Palpación y Aplicación sanitaria no ejecutan efectos adicionales.
+
 ## 5. Revisión y preservación del payload
 
 | ID | Requisito confirmado |
@@ -99,15 +119,15 @@ La ausencia de estos campos es una brecha de cobertura, no una orden automática
 | EWD-DAT-033 | Los identificadores de catálogo recibidos deben pertenecer a la finca activa o a un catálogo global aplicable. Un ID inexistente, inactivo o ajeno debe rechazarse según la política que se confirme para históricos. |
 | EWD-DAT-034 | Los errores de autorización o alcance no deben revelar datos de otras fincas. |
 
-### 6.2 Reglas propuestas/por confirmar
+### 6.2 Reglas resueltas y pendientes técnicos
 
 | ID | Propuesta pendiente | Decisión requerida |
 |---|---|---|
 | EWD-PROP-001 | Definir un schema runtime discriminado por tipo y reutilizarlo en el boundary para individuales, datos comunes y datos materializados por animal. | Biblioteca/capa responsable y contrato de errores. |
-| EWD-PROP-002 | Definir por tipo la obligatoriedad, nulabilidad, formato, precisión, rango y longitud de cada campo. | Aprobación funcional de la matriz definitiva. |
-| EWD-PROP-003 | Rechazar fechas futuras salvo tipos o escenarios explícitamente autorizados, y validar relaciones como próxima dosis no anterior a la aplicación. | Política de fechas y captura tardía por dominio. |
-| EWD-PROP-004 | Validar reglas cruzadas: padre frente a pajuela, resultado frente a días de gestación, conteos de parto, turnos de leche, destino de traslado y demás combinaciones dependientes. | Regla exacta para cada combinación. |
-| EWD-PROP-005 | Definir enums canónicos en servidor para tipo de servicio, resultado de palpación, tipo de parto, tipo de diagnóstico, celo y tipo de peso. | Valores permitidos y estrategia para históricos. |
+| EWD-PROP-002 | **Resuelta para #282.** La matriz §4.2 define obligatoriedad, nulabilidad, formato, precisión y rango. | Aplicar validación autoritativa por tipo; catálogos reales quedan pendientes. |
+| EWD-PROP-003 | **Resuelta para #282.** Se permiten fechas futuras en todos los tipos. | No se inventan reglas de captura tardía ni relaciones temporales. |
+| EWD-PROP-004 | **Resuelta para #282.** Se cierran las condiciones de Servicio, Palpación, conteos de Parto y obligatoriedad de destinos de Traslado. | Los efectos laterales aprobados usan la persistencia existente; no se agregan otros. |
+| EWD-PROP-005 | **Resuelta para #282.** Se fijan los enums de la matriz §4.2; `tipoInseminacion` continúa siendo texto. | La estrategia de históricos y futuros enums queda pendiente. |
 | EWD-PROP-006 | Definir qué campos pueden variar por animal para cada tipo grupal; el editor no debería ofrecer automáticamente todas las claves comunes. | Matriz de campos excepcionables. |
 | EWD-PROP-007 | Mostrar validaciones inline y un resumen accesible de errores, enfocando el primer campo inválido sin borrar valores. | Patrón UX definitivo. |
 | EWD-PROP-008 | Ejecutar pruebas de integración contra PostgreSQL real para restricciones, claves foráneas y rollback. | Infraestructura de pruebas y alcance mínimo. |
@@ -206,18 +226,20 @@ Los criterios asociados a `EWD-PROP-*` solo serán exigibles cuando la regla pro
 
 ## 12. Preguntas abiertas
 
-1. ¿Cuáles campos son obligatorios, opcionales o nulos para cada tipo, más allá del bloqueo actual de la UI?
-2. ¿Qué reglas de fechas aplican por dominio: eventos futuros, captura tardía y relación con eventos previos o siguientes?
-3. ¿Cuáles son los rangos, precisiones y unidades válidos para dosis, peso, producción, puntaje, precios y conteos?
-4. ¿Qué combinaciones son válidas para padre/pajuela, resultado/días de gestación, crías del parto y destinos de traslado?
+1. **Resuelta en #282:** ¿Cuáles campos son obligatorios, opcionales o nulos para cada tipo, más allá del bloqueo actual de la UI?
+2. **Resuelta en #282:** ¿Qué reglas de fechas aplican por dominio: eventos futuros, captura tardía y relación con eventos previos o siguientes?
+3. **Resuelta en #282:** ¿Cuáles son los rangos, precisiones y unidades válidos para dosis, peso, producción, puntaje, precios y conteos?
+4. **Resuelta en #282:** ¿Qué combinaciones son válidas para padre/pajuela, resultado/días de gestación, crías del parto y destinos de traslado?
 5. ¿Los campos admitidos pero no expuestos de Servicio y Producción láctea deben incorporarse, permanecer derivados o eliminarse del contrato?
 6. ¿Qué catálogos son obligatorios y cómo se tratan opciones inactivas en borradores, correcciones e históricos?
 7. ¿Qué campos pueden variar por animal en cada uno de los ocho tipos grupales?
-8. ¿Causa de muerte, motivo/lugar de venta, diagnóstico y veterinario deben ser obligatorios en sus respectivos eventos?
+8. **Resuelta en #282:** ¿Causa de muerte, motivo/lugar de venta, diagnóstico y veterinario deben ser obligatorios en sus respectivos eventos?
 9. ¿Cuál es la política de tipos sensibles y cuál es el umbral de grupo grande, si existe?
 10. ¿Parto debe exigir al menos una cría registrada y qué flujo debe crear o vincular sus datos individuales?
-11. ¿Traslado exige exactamente un destino, permite varios ejes simultáneos o conserva dimensiones no informadas?
-12. ¿Qué efectos laterales deben validarse y ejecutarse para Venta, Muerte, Traslado, Servicio, Palpación y Aplicación sanitaria?
+11. **Resuelta en #282:** ¿Traslado exige exactamente un destino, permite varios ejes simultáneos o conserva dimensiones no informadas?
+12. **Resuelta en #282:** ¿Qué efectos laterales deben validarse y ejecutarse para Venta, Muerte, Traslado, Servicio, Palpación y Aplicación sanitaria?
+
+Las preguntas 5, 6, 7, 9 y 10 permanecen pendientes y pertenecen a los issues posteriores de campos faltantes, catálogos, excepciones tipadas, política de riesgo y flujo de crías. #282 no las inventa ni las implementa.
 
 ## 13. Fuera de alcance
 

@@ -75,11 +75,10 @@ describe("FormularioRevisionVeterinaria — matriz §2 Sanidad / Revisión", () 
     expect(screen.getByLabelText(/Comentarios/)).toBeInTheDocument()
   })
 
-  it("muestra opciones de tipo de diagnóstico: General, Reproductivo, Otro", () => {
+  it("muestra opciones de tipo de diagnóstico: No aplica y Vitaminas", () => {
     render(<FormularioRevisionVeterinaria {...defaultProps} />)
-    expect(screen.getByRole("option", { name: "General" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "Reproductivo" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "Otro" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "No aplica" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Vitaminas" })).toBeInTheDocument()
   })
 
   it("muestra opciones de celo: No aplica, Sí, No", () => {

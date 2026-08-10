@@ -33,15 +33,20 @@ export function FormularioPesaje({
   const hoy = new Date().toISOString().slice(0, 10)
   const [fecha, setFecha] = useState(String(datosIniciales?.fecha ?? hoy))
   const [pesoKg, setPesoKg] = useState(String(datosIniciales?.pesoKg ?? ""))
-  const [tipoPeso, setTipoPeso] = useState<"control" | "destete" | "preparto" | "postparto">(
-    (datosIniciales?.tipoPeso as "control" | "destete" | "preparto" | "postparto") ?? "control",
+  const [tipoPeso, setTipoPeso] = useState<"control" | "compra" | "venta">(
+    (datosIniciales?.tipoPeso as "control" | "compra" | "venta") ?? "control",
   )
   const [comentarios, setComentarios] = useState(String(datosIniciales?.comentarios ?? ""))
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
   const pesoNum = Number(pesoKg)
-  const puedeGuardar = fecha !== "" && Number.isFinite(pesoNum) && pesoNum > 0 && !guardando
+  const puedeGuardar =
+    fecha !== "" &&
+    Number.isFinite(pesoNum) &&
+    pesoNum > 0 &&
+    /^\d+(\.\d{1,2})?$/.test(pesoKg) &&
+    !guardando
 
   const actualizar = (datos: CapturaEvento["datos"]) => onDatosChange?.(datos)
   const cambiarFecha = (valor: string) => {
@@ -57,7 +62,7 @@ export function FormularioPesaje({
     setPesoKg(valor)
     actualizar({ fecha, pesoKg: Number(valor) || null, tipoPeso, comentarios: comentarios || null })
   }
-  const cambiarTipoPeso = (valor: "control" | "destete" | "preparto" | "postparto") => {
+  const cambiarTipoPeso = (valor: "control" | "compra" | "venta") => {
     setTipoPeso(valor)
     actualizar({
       fecha,
@@ -131,9 +136,8 @@ export function FormularioPesaje({
         onCambiar={cambiarTipoPeso}
         opciones={[
           { value: "control", label: "Control" },
-          { value: "destete", label: "Destete" },
-          { value: "preparto", label: "Preparto" },
-          { value: "postparto", label: "Postparto" },
+          { value: "compra", label: "Compra" },
+          { value: "venta", label: "Venta" },
         ]}
       />
       <CampoTextoEvento

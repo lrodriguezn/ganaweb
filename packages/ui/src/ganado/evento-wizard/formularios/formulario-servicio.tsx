@@ -34,18 +34,12 @@ export function FormularioServicio({
 }: FormularioServicioProps) {
   const hoy = new Date().toISOString().slice(0, 10)
   const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
-  const [tipo, setTipo] = useCampoBorrador(
-    datosIniciales,
-    "tipo",
-    "inseminacion",
-    onDatosChange,
-  ) as ["monta" | "inseminacion", (valor: string) => void]
-  const [padrePajuelaId, setPadrePajuelaId] = useCampoBorrador(
-    datosIniciales,
-    "padreId",
-    "",
-    onDatosChange,
-  )
+  const [tipo, setTipo] = useCampoBorrador(datosIniciales, "tipo", "1", onDatosChange) as [
+    "0" | "1",
+    (valor: string) => void,
+  ]
+  const [padreId, setPadreId] = useCampoBorrador(datosIniciales, "padreId", "", onDatosChange)
+  const [pajuelaId, setPajuelaId] = useCampoBorrador(datosIniciales, "pajuelaId", "", onDatosChange)
   const [inseminadorId, setInseminadorId] = useCampoBorrador(
     datosIniciales,
     "inseminadorId",
@@ -53,6 +47,14 @@ export function FormularioServicio({
     onDatosChange,
   )
   const [dosis, setDosis] = useCampoBorrador(datosIniciales, "dosis", "1", onDatosChange)
+  const [tipoInseminacion, setTipoInseminacion] = useCampoBorrador(
+    datosIniciales,
+    "tipoInseminacion",
+    "",
+    onDatosChange,
+  )
+  const [precio, setPrecio] = useCampoBorrador(datosIniciales, "precio", "", onDatosChange)
+  const [efectivo, setEfectivo] = useCampoBorrador(datosIniciales, "efectivo", "", onDatosChange)
   const [observaciones, setObservaciones] = useCampoBorrador(
     datosIniciales,
     "observaciones",
@@ -62,7 +64,13 @@ export function FormularioServicio({
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const puedeGuardar = fecha !== "" && !guardando
+  const referencia = tipo === "0" ? padreId : pajuelaId
+  const puedeGuardar =
+    fecha !== "" &&
+    tipoInseminacion.trim() !== "" &&
+    referencia.trim() !== "" &&
+    Number(dosis) > 0 &&
+    !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) return
@@ -72,9 +80,13 @@ export function FormularioServicio({
       const datos: CapturaEvento["datos"] = {
         fecha,
         tipo,
-        dosis: Number(dosis) || 1,
-        ...(padrePajuelaId ? { [tipo === "monta" ? "padreId" : "pajuelaId"]: padrePajuelaId } : {}),
+        dosis: Number(dosis),
+        ...(padreId ? { padreId } : {}),
+        ...(pajuelaId ? { pajuelaId } : {}),
         ...(inseminadorId ? { inseminadorId } : {}),
+        tipoInseminacion,
+        ...(precio ? { precio: Number(precio) } : {}),
+        ...(efectivo ? { efectivo: Number(efectivo) } : {}),
         ...(observaciones ? { observaciones } : {}),
       }
       await onGuardar(datos)
@@ -111,23 +123,40 @@ export function FormularioServicio({
         valor={tipo}
         onCambiar={setTipo}
         opciones={[
-          { value: "inseminacion", label: "Inseminación" },
-          { value: "monta", label: "Monta natural" },
+          { value: "0", label: "Monta natural" },
+          { value: "1", label: "Inseminación" },
         ]}
       />
       <CampoTextoEvento
         id="srv-padre"
-        etiqueta={tipo === "monta" ? "Padre (ID)" : "Pajuela (ID)"}
-        valor={padrePajuelaId}
-        onCambiar={setPadrePajuelaId}
-        descripcion="Opcional — el server valida pertenencia a la finca"
+        etiqueta="Padre (ID)"
+        valor={padreId}
+        onCambiar={setPadreId}
+        requerido={tipo === "0"}
+        descripcion="Obligatorio para monta natural; seleccionable desde catálogo"
+      />
+      <CampoTextoEvento
+        id="srv-pajuela"
+        etiqueta="Pajuela (ID)"
+        valor={pajuelaId}
+        onCambiar={setPajuelaId}
+        requerido={tipo === "1"}
+        descripcion="Obligatorio para inseminación; seleccionable desde catálogo"
       />
       <CampoTextoEvento
         id="srv-inseminador"
         etiqueta="Inseminador (ID)"
         valor={inseminadorId}
         onCambiar={setInseminadorId}
-        descripcion="Opcional"
+        descripcion="Seleccionable desde veterinarios con es_inseminador"
+      />
+      <CampoTextoEvento
+        id="srv-tipo-inseminacion"
+        etiqueta="Tipo de inseminación"
+        valor={tipoInseminacion}
+        onCambiar={setTipoInseminacion}
+        requerido
+        descripcion="Temporalmente texto"
       />
       <CampoTextoEvento
         id="srv-dosis"
@@ -137,8 +166,29 @@ export function FormularioServicio({
         valor={dosis}
         onCambiar={setDosis}
         min={0}
-        step={0.1}
+        step={0.0001}
       />
+      <div className="grid grid-cols-2 gap-3">
+        <CampoTextoEvento
+          id="srv-precio"
+          etiqueta="Precio"
+          type="number"
+          inputMode="decimal"
+          valor={precio}
+          onCambiar={setPrecio}
+          min={0}
+          step={0.01}
+          descripcion="Opcional"
+        />
+        <CampoTextoEvento
+          id="srv-efectivo"
+          etiqueta="Efectivo"
+          type="number"
+          valor={efectivo}
+          onCambiar={setEfectivo}
+          descripcion="Opcional"
+        />
+      </div>
       <CampoTextoEvento
         id="srv-obs"
         etiqueta="Observaciones"

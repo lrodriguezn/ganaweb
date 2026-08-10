@@ -46,7 +46,7 @@ export function FormularioPalpacion({
   const [resultado, setResultado] = useCampoBorrador(
     datosIniciales,
     "resultado",
-    "vacia",
+    "pp",
     onDatosChange,
   )
   const [diasGestion, setDiasGestion] = useCampoBorrador(
@@ -64,7 +64,16 @@ export function FormularioPalpacion({
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const puedeGuardar = fecha !== "" && !guardando
+  const dias = Number(diasGestion)
+  const puedeGuardar =
+    fecha !== "" &&
+    diagnosticoId.trim() !== "" &&
+    resultado !== "" &&
+    diasGestion.trim() !== "" &&
+    Number.isInteger(dias) &&
+    dias >= 0 &&
+    (resultado !== "prenada" || dias > 0) &&
+    !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) return
@@ -75,8 +84,8 @@ export function FormularioPalpacion({
         fecha,
         resultado,
         ...(servicioId ? { servicioId } : {}),
-        ...(diagnosticoId ? { diagnosticoId } : {}),
-        ...(diasGestion ? { diasGestion: Number(diasGestion) } : {}),
+        diagnosticoId,
+        diasGestion: dias,
         ...(comentarios ? { comentarios } : {}),
       }
       await onGuardar(datos)
@@ -112,13 +121,14 @@ export function FormularioPalpacion({
         etiqueta="Servicio (ID)"
         valor={servicioId}
         onCambiar={setServicioId}
-        descripcion="Opcional — vincula con un servicio previo"
+        descripcion="Opcional — seleccionable desde servicios"
       />
       <CampoTextoEvento
         id="palp-diag"
         etiqueta="Diagnóstico (ID)"
         valor={diagnosticoId}
         onCambiar={setDiagnosticoId}
+        requerido
       />
       <CampoSelectEvento
         id="palp-resultado"
@@ -126,9 +136,10 @@ export function FormularioPalpacion({
         valor={resultado}
         onCambiar={setResultado}
         opciones={[
-          { value: "vacia", label: "Vacía" },
+          { value: "pp", label: "P.P" },
           { value: "prenada", label: "Preñada" },
-          { value: "no_aplica", label: "No aplica" },
+          { value: "ciclando", label: "Ciclando" },
+          { value: "estatica", label: "Estática" },
         ]}
       />
       <CampoTextoEvento
@@ -138,7 +149,10 @@ export function FormularioPalpacion({
         inputMode="numeric"
         valor={diasGestion}
         onCambiar={setDiasGestion}
-        descripcion="Si aplica (variable por animal)"
+        requerido
+        min={0}
+        step={1}
+        descripcion="Mayor que cero únicamente para resultado Preñada"
       />
       <CampoTextoEvento
         id="palp-comentarios"

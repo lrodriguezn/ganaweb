@@ -44,16 +44,29 @@ export function FormularioProduccionLactea({
     onDatosChange,
   )
   const [loteId, setLoteId] = useCampoBorrador(datosIniciales, "loteId", "", onDatosChange)
+  const [potreroId, setPotreroId] = useCampoBorrador(datosIniciales, "potreroId", "", onDatosChange)
+  const [sectorId, setSectorId] = useCampoBorrador(datosIniciales, "sectorId", "", onDatosChange)
+  const [grupoId, setGrupoId] = useCampoBorrador(datosIniciales, "grupoId", "", onDatosChange)
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const am = Number(cantidadAm) || 0
-  const pm = Number(cantidadPm) || 0
-  const puedeGuardar = fecha !== "" && (am > 0 || pm > 0) && !guardando
+  const am = Number(cantidadAm)
+  const pm = Number(cantidadPm)
+  const puedeGuardar =
+    fecha !== "" &&
+    cantidadAm.trim() !== "" &&
+    cantidadPm.trim() !== "" &&
+    Number.isFinite(am) &&
+    Number.isFinite(pm) &&
+    am >= 0 &&
+    pm >= 0 &&
+    /^\d+(\.\d{1,2})?$/.test(cantidadAm) &&
+    /^\d+(\.\d{1,2})?$/.test(cantidadPm) &&
+    !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) {
-      setError("Fecha y al menos un turno con cantidad > 0 son obligatorios.")
+      setError("Fecha y cantidades AM y PM (mayores o iguales a cero) son obligatorias.")
       return
     }
     setError(null)
@@ -64,6 +77,9 @@ export function FormularioProduccionLactea({
         cantidadAm: am,
         cantidadPm: pm,
         ...(loteId ? { loteId } : {}),
+        ...(potreroId ? { potreroId } : {}),
+        ...(sectorId ? { sectorId } : {}),
+        ...(grupoId ? { grupoId } : {}),
       }
       await onGuardar(datos)
     } finally {
@@ -122,6 +138,29 @@ export function FormularioProduccionLactea({
         onCambiar={setLoteId}
         descripcion="Opcional"
       />
+      <div className="grid grid-cols-2 gap-3">
+        <CampoTextoEvento
+          id="pl-potrero"
+          etiqueta="Potrero (ID)"
+          valor={potreroId}
+          onCambiar={setPotreroId}
+          descripcion="Opcional; seleccionable desde catálogo"
+        />
+        <CampoTextoEvento
+          id="pl-sector"
+          etiqueta="Sector (ID)"
+          valor={sectorId}
+          onCambiar={setSectorId}
+          descripcion="Opcional; seleccionable desde catálogo"
+        />
+        <CampoTextoEvento
+          id="pl-grupo"
+          etiqueta="Grupo (ID)"
+          valor={grupoId}
+          onCambiar={setGrupoId}
+          descripcion="Opcional; seleccionable desde catálogo"
+        />
+      </div>
     </MarcoFormularioEvento>
   )
 }

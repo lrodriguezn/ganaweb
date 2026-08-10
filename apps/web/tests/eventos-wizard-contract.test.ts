@@ -69,7 +69,7 @@ async function testCapturaIndividualFeliz() {
     fincaId: "finca-1",
     tipo: "pesaje",
     alcance: { tipo: "individual", animalId: "animal-1" },
-    datos: { fecha: "2026-08-07", pesoKg: 420 },
+    datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
   })) as EventoWizardResultado
   assert.equal(resultado.tipo, "capturado")
   if (resultado.tipo === "capturado") {
@@ -91,7 +91,7 @@ async function testCapturaGrupalFeliz() {
       loteId: "lote-1",
       animalIdsEfectivos: ["a-1", "a-2", "a-3"],
     },
-    datos: { fecha: "2026-08-07", pesoKg: 420 },
+    datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
   })) as EventoWizardResultado
   assert.equal(resultado.tipo, "capturado")
   if (resultado.tipo === "capturado") {

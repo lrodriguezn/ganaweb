@@ -24,6 +24,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { EventoForbiddenError, type SesionAutorizada } from "@ganaweb/aplicacion"
 
+import { validarDatosEvento } from "./evento-rules.js"
 import { POLITICA_RIESGO_EVENTOS } from "./eventos-wizard.js"
 import {
   type EventoWizardResultado,
@@ -74,6 +75,81 @@ const persistirLoteFake = vi.fn(
 const HOY = new Date("2026-08-07T12:00:00Z")
 const reloj = () => HOY
 
+describe("validarDatosEvento — reglas funcionales #282", () => {
+  const base = { fecha: "2026-08-10" }
+  const validos: Readonly<Record<string, Readonly<Record<string, string | number>>>> = {
+    servicio: { ...base, tipo: "0", padreId: "padre-1", tipoInseminacion: "natural", dosis: 1 },
+    palpacion: { ...base, diagnosticoId: "diag-1", resultado: "prenada", diasGestion: 30 },
+    parto: { ...base, tipoParto: "aborto", machos: 0, hembras: 0, muertos: 0 },
+    aplicacion_sanitaria: { ...base, productoId: "producto-1", dosis: 0.125 },
+    revision_veterinaria: {
+      ...base,
+      veterinarioId: "vet-1",
+      diagnosticoId: "diag-1",
+      tipoDiagnostico: "vitaminas",
+    },
+    pesaje: { ...base, pesoKg: 420.25, tipoPeso: "control" },
+    produccion_lactea: { ...base, cantidadAm: 0, cantidadPm: 12.5 },
+    condicion_corporal: { ...base, condicionId: "cond-1", puntaje: 5 },
+    venta: {
+      ...base,
+      motivoVentaId: "motivo-1",
+      lugarVentaId: "lugar-1",
+      pesoVentaKg: 500,
+      precio: 0,
+      comprador: "Comprador",
+    },
+    muerte: { ...base, causaMuerteId: "causa-1" },
+    traslado: {
+      ...base,
+      potreroId: "potrero-1",
+      sectorId: "sector-1",
+      loteId: "lote-1",
+      grupoId: "grupo-1",
+      motivo: "Rotación",
+    },
+  }
+
+  it.each(Object.keys(validos))("acepta el payload aprobado de %s", (tipo) => {
+    expect(validarDatosEvento(tipo, validos[tipo] ?? {})).toEqual([])
+  })
+
+  it("aplica padre/pajuela condicional y resultado/días de palpación", () => {
+    expect(
+      validarDatosEvento("servicio", {
+        ...base,
+        tipo: "1",
+        padreId: "padre-1",
+        tipoInseminacion: "artificial",
+        dosis: 1,
+      }),
+    ).toContainEqual({ campo: "pajuelaId", detalle: "Es obligatorio." })
+    expect(
+      validarDatosEvento("palpacion", {
+        ...base,
+        diagnosticoId: "diag-1",
+        resultado: "prenada",
+        diasGestion: 0,
+      }),
+    ).toContainEqual(expect.objectContaining({ campo: "diasGestion" }))
+    expect(
+      validarDatosEvento("palpacion", {
+        ...base,
+        diagnosticoId: "diag-1",
+        resultado: "pp",
+        diasGestion: 0,
+      }),
+    ).toEqual([])
+  })
+
+  it("rechaza precisión y enums fuera de la decisión", () => {
+    expect(validarDatosEvento("pesaje", { ...base, pesoKg: 1.234, tipoPeso: "destete" })).toEqual([
+      { campo: "pesoKg", detalle: "Debe ser mayor que cero y admitir hasta 2 decimales." },
+      { campo: "tipoPeso", detalle: "Tiene un valor no permitido." },
+    ])
+  })
+})
+
 function harnessCon(sesion: ReturnType<typeof sesionCon> | null) {
   return createEventoWizardActionHarness({
     getSession: async () => sesion,
@@ -88,7 +164,7 @@ describe("createEventoWizardActionHarness — RBAC y autorización", () => {
       fincaId: FINCA,
       tipo: "pesaje",
       alcance: { tipo: "individual", animalId: "a-1" },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado).toEqual({ tipo: "no_autenticado" })
     expect(persistirLoteFake).not.toHaveBeenCalled()
@@ -101,7 +177,7 @@ describe("createEventoWizardActionHarness — RBAC y autorización", () => {
       fincaId: "finca-2",
       tipo: "pesaje",
       alcance: { tipo: "individual", animalId: "a-1" },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado).toEqual({ tipo: "finca_no_autorizada" })
     expect(persistirLoteFake).not.toHaveBeenCalled()
@@ -131,7 +207,7 @@ describe("createEventoWizardActionHarness — RBAC y autorización", () => {
       fincaId: FINCA,
       tipo: "pesaje",
       alcance: { tipo: "individual", animalId: "a-1" },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado).toEqual({
       tipo: "permiso_denegado",
@@ -147,7 +223,7 @@ describe("createEventoWizardActionHarness — RBAC y autorización", () => {
       fincaId: FINCA,
       tipo: "pesaje",
       alcance: { tipo: "individual", animalId: "a-1" },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado.tipo).toBe("capturado")
     expect(persistirLoteFake).toHaveBeenCalledTimes(1)
@@ -180,7 +256,7 @@ describe("createEventoWizardActionHarness — captura individual", () => {
       fincaId: FINCA,
       tipo: "pesaje",
       alcance: { tipo: "individual", animalId: "animal-123" },
-      datos: { fecha: "2026-08-07", pesoKg: 405, tipoPeso: "常规" },
+      datos: { fecha: "2026-08-07", pesoKg: 405, tipoPeso: "control" },
     })
     expect(resultado).toEqual({
       tipo: "capturado",
@@ -195,7 +271,7 @@ describe("createEventoWizardActionHarness — captura individual", () => {
     expect(commands[0]?.datos).toMatchObject({
       fecha: "2026-08-07",
       pesoKg: 405,
-      tipoPeso: "常规",
+      tipoPeso: "control",
     })
   })
 
@@ -205,7 +281,7 @@ describe("createEventoWizardActionHarness — captura individual", () => {
       fincaId: FINCA,
       tipo: "pesaje",
       alcance: { tipo: "individual", animalId: "" },
-      datos: { fecha: "2026-08-07", pesoKg: 405 },
+      datos: { fecha: "2026-08-07", pesoKg: 405, tipoPeso: "control" },
     })
     expect(resultado.tipo).toBe("validacion")
     if (resultado.tipo === "validacion") {
@@ -228,7 +304,7 @@ describe("createEventoWizardActionHarness — captura grupal con exclusiones", (
         loteId: "lote-1",
         animalIdsEfectivos: idsEfectivos,
       },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado.tipo).toBe("capturado")
     if (resultado.tipo === "capturado") {
@@ -273,7 +349,7 @@ describe("createEventoWizardActionHarness — captura grupal con exclusiones", (
         origen: "manual",
         animalIdsEfectivos: [],
       },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado.tipo).toBe("validacion")
     if (resultado.tipo === "validacion") {
@@ -292,7 +368,7 @@ describe("createEventoWizardActionHarness — captura grupal con exclusiones", (
         origen: "lote",
         animalIdsEfectivos: ["a-1"],
       },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado.tipo).toBe("validacion")
     if (resultado.tipo === "validacion") {
@@ -311,7 +387,7 @@ describe("createEventoWizardActionHarness — captura grupal con exclusiones", (
         origen: "manual",
         animalIdsEfectivos: ["a-1", "a-2"],
       },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado.tipo).toBe("capturado")
     if (resultado.tipo === "capturado") {
@@ -379,8 +455,8 @@ describe("createEventoWizardActionHarness — parto sin grupal (defensa en profu
     const persistirLoteConError = vi.fn(async (commands: readonly unknown[]) => {
       expect(commands).toHaveLength(3)
       const hijos = commands.slice(1) as Array<{ datos: Record<string, unknown> }>
-      expect(hijos[0]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 420 })
-      expect(hijos[1]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 435 })
+      expect(hijos[0]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" })
+      expect(hijos[1]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 435, tipoPeso: "control" })
       throw new Error("rollback de prueba")
     })
     const resultado = await createEventoWizardActionHarness({
@@ -396,7 +472,7 @@ describe("createEventoWizardActionHarness — parto sin grupal (defensa en profu
         animalIdsEfectivos: ["a-1", "a-2"],
         excepciones: { "a-2": { pesoKg: 435 } },
       },
-      datos: { fecha: "2026-08-07", pesoKg: 420 },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
     })
     expect(resultado).toEqual({ tipo: "error", detalle: "rollback de prueba" })
     expect(persistirLoteConError).toHaveBeenCalledTimes(1)
@@ -437,7 +513,7 @@ describe("createEventoWizardActionHarness — mapeo de errores del boundary", ()
       fincaId: FINCA,
       tipo: "pesaje",
       alcance: { tipo: "individual", animalId: "a-1" },
-      datos: { fecha: "2026-08-07", pesoKg: 400 },
+      datos: { fecha: "2026-08-07", pesoKg: 400, tipoPeso: "control" },
     })
     expect(resultado.tipo).toBe("alcance_invalido")
   })
@@ -455,7 +531,7 @@ describe("createEventoWizardActionHarness — mapeo de errores del boundary", ()
       fincaId: FINCA,
       tipo: "pesaje",
       alcance: { tipo: "individual", animalId: "a-1" },
-      datos: { fecha: "2026-08-07", pesoKg: 400 },
+      datos: { fecha: "2026-08-07", pesoKg: 400, tipoPeso: "control" },
     })
     expect(resultado).toEqual({ tipo: "error", detalle: "DB timeout" })
   })

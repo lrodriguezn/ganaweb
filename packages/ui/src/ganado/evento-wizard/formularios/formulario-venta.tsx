@@ -59,7 +59,16 @@ export function FormularioVenta({
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const puedeGuardar = fecha !== "" && !guardando
+  const puedeGuardar =
+    fecha !== "" &&
+    motivoVentaId.trim() !== "" &&
+    lugarVentaId.trim() !== "" &&
+    comprador.trim() !== "" &&
+    Number(pesoVentaKg) > 0 &&
+    /^\d+(\.\d{1,2})?$/.test(pesoVentaKg) &&
+    Number(precio) >= 0 &&
+    /^\d+(\.\d{1,2})?$/.test(precio) &&
+    !guardando
 
   const handleGuardar = async () => {
     if (!puedeGuardar) return
@@ -68,11 +77,11 @@ export function FormularioVenta({
     try {
       const datos: CapturaEvento["datos"] = {
         fecha,
-        ...(motivoVentaId ? { motivoVentaId } : {}),
-        ...(lugarVentaId ? { lugarVentaId } : {}),
-        ...(pesoVentaKg ? { pesoVentaKg: Number(pesoVentaKg) } : {}),
-        ...(precio ? { precio: Number(precio) } : {}),
-        ...(comprador ? { comprador } : {}),
+        motivoVentaId,
+        lugarVentaId,
+        pesoVentaKg: Number(pesoVentaKg),
+        precio: Number(precio),
+        comprador,
         ...(comentarios ? { comentarios } : {}),
       }
       await onGuardar(datos)
@@ -109,12 +118,16 @@ export function FormularioVenta({
           etiqueta="Motivo (ID)"
           valor={motivoVentaId}
           onCambiar={setMotivoVentaId}
+          requerido
+          descripcion="Seleccionable desde catálogo"
         />
         <CampoTextoEvento
           id="ven-lugar"
           etiqueta="Lugar (ID)"
           valor={lugarVentaId}
           onCambiar={setLugarVentaId}
+          requerido
+          descripcion="Seleccionable desde catálogo"
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -125,8 +138,9 @@ export function FormularioVenta({
           inputMode="decimal"
           valor={pesoVentaKg}
           onCambiar={setPesoVentaKg}
+          requerido
           min={0}
-          step={0.1}
+          step={0.01}
         />
         <CampoTextoEvento
           id="ven-precio"
@@ -135,6 +149,7 @@ export function FormularioVenta({
           inputMode="decimal"
           valor={precio}
           onCambiar={setPrecio}
+          requerido
           min={0}
           step={0.01}
         />
@@ -144,6 +159,7 @@ export function FormularioVenta({
         etiqueta="Comprador"
         valor={comprador}
         onCambiar={setComprador}
+        requerido
       />
       <CampoTextoEvento
         id="ven-comentarios"

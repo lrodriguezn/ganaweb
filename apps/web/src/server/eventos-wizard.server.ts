@@ -16,6 +16,7 @@ import { sql } from "drizzle-orm"
 
 import { DrizzleAnimalRepository } from "@ganaweb/db/animal-infrastructure"
 import { DrizzleCatalogoFincaAdapter } from "@ganaweb/db/catalogo-finca-infrastructure"
+import { validarDatosEvento } from "./evento-rules.js"
 
 /**
  * Server functions del shell de captura de eventos (Issue #229, §4
@@ -242,6 +243,9 @@ export function createEventoWizardActionHarness(deps: EventoWizardDeps) {
       if (!tienePermiso) {
         return { tipo: "permiso_denegado", permiso: permisoRequerido }
       }
+
+      const erroresDeDatos = validarDatosEvento(input.tipo, input.datos)
+      if (erroresDeDatos.length > 0) return { tipo: "validacion", errores: erroresDeDatos }
 
       if (input.alcance.tipo === "individual") {
         return capturarIndividual(input, sesion, deps)
