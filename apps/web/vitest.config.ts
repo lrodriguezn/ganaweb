@@ -83,6 +83,8 @@ export default defineConfig({
       "src/server/eventos-wizard.test.ts",
       // #287 — matriz transversal de payloads válidos para los 11 tipos.
       "src/server/eventos-wizard-payload-matrix.test.ts",
+      // #288 — boundary real, FKs, restricciones y atomicidad contra PostgreSQL.
+      "src/server/eventos-wizard-postgres.test.ts",
       // #228 — Tablero e Historial de Eventos: 4 tarjetas por categoría, feed
       // reciente, permisos parciales, vacíos, "Ver todo", paginación, atajos
       // de "+ Registrar" hacia el wizard de #229.
