@@ -26,6 +26,39 @@ Sistema web para administrar fincas, animales y eventos productivos, diseñado p
    ```
 5. **Verificar**: abre `http://localhost:3000` y el endpoint `GET /api/health` debe responder `ok`.
 
+## Visual testing in an isolated worktree
+
+Use the versioned helper to create a new branch and worktree with the local environment ready for the TanStack Start app:
+
+```bash
+scripts/create-worktree.sh <new-branch> <worktree-path> [base-ref]
+```
+
+For example:
+
+```bash
+scripts/create-worktree.sh feat/ui-review ../ganaweb-worktrees/ui-review origin/master
+cd ../ganaweb-worktrees/ui-review
+pnpm install
+pnpm --filter @ganaweb/web dev
+```
+
+The helper requires the root `.env` to exist, creates `apps/web/.env` as the relative symlink `../../.env`, and never copies or prints environment values. The `.env` file remains local and is not versioned.
+
+When the visual review is complete, stop the dev server and remove the worktree from the main checkout:
+
+```bash
+cd <repository-root>
+git worktree remove <worktree-path>
+git branch -d <new-branch>
+```
+
+Run the helper smoke check without creating a project worktree:
+
+```bash
+bash scripts/test-create-worktree.sh
+```
+
 ## Comandos útiles desde la raíz
 
 | Comando | Para qué sirve |
