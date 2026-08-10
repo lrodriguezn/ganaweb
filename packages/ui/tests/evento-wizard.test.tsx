@@ -1129,4 +1129,46 @@ describe("EventoWizard — revisión condicional por riesgo", () => {
     expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
     expect(screen.getByText("2 incluidos · 0 excluidos")).toBeInTheDocument()
   })
+
+  it("bloquea mantener snapshot con retirados hasta actualizar al grupo actual", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { cabeceraId: "rg-1", hijosIds: ["ev-1"] },
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: vi.fn(async () => [{ id: "a-1", codigoAnimal: "MT-100" }]),
+          revisarMembresiaActual: vi.fn(async () => ({
+            estado: "cambio" as const,
+            animales: [{ id: "a-2", codigoAnimal: "MT-101" }],
+            retirados: [{ id: "a-1" }],
+          })),
+          onEnviar,
+        })}
+      />,
+    )
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await screen.findByText("1 incluidos · 0 excluidos")
+    await user.click(screen.getByRole("button", { name: "Continuar con 1 animal" }))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(screen.getByTestId("evento-wizard-risk-review")).toHaveTextContent(
+      "No se puede mantener el snapshot",
+    )
+    expect(
+      screen.queryByRole("button", { name: "Mantener snapshot revisado" }),
+    ).not.toBeInTheDocument()
+    expect(onEnviar).not.toHaveBeenCalled()
+    await user.click(screen.getByRole("button", { name: "Actualizar alcance y volver" }))
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+    expect(onEnviar).not.toHaveBeenCalled()
+  })
 })

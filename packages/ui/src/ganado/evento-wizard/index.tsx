@@ -423,7 +423,10 @@ export function EventoWizard({
             )}
             membresia={membresia}
             cargandoMembresia={cargandoMembresia}
-            onMantenerSnapshot={() => setMembresia({ estado: "coincide" })}
+            onMantenerSnapshot={() => {
+              if (membresia?.estado !== "cambio" || (membresia.retirados?.length ?? 0) > 0) return
+              setMembresia({ estado: "coincide" })
+            }}
             onActualizarAlcance={() => {
               if (membresia?.estado === "desconocido") {
                 setMembresia(null)

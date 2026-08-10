@@ -39,6 +39,7 @@ export function RevisionRiesgo({
     : "Animal individual"
   const hayConflicto = membresia?.estado === "cambio"
   const desconocida = membresia?.estado === "desconocido"
+  const hayRetirados = (membresia?.retirados?.length ?? 0) > 0
   return (
     <div
       className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 space-y-4"
@@ -93,10 +94,18 @@ export function RevisionRiesgo({
             {membresia.retirados?.length ?? 0}. El envío está detenido para no cambiar IDs
             silenciosamente.
           </p>
+          {hayRetirados && (
+            <p className="text-caption font-medium">
+              No se puede mantener el snapshot porque hay miembros retirados. Actualiza el alcance
+              para verificar los participantes actuales.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={onMantenerSnapshot}>
-              Mantener snapshot revisado
-            </Button>
+            {!hayRetirados && (
+              <Button type="button" onClick={onMantenerSnapshot}>
+                Mantener snapshot revisado
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={onActualizarAlcance}>
               Actualizar alcance y volver
             </Button>
