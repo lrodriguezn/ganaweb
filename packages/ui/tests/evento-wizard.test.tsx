@@ -585,6 +585,45 @@ describe("EventoWizard — Paso 3: formulario del dominio", () => {
     expect(onEnviar).toHaveBeenCalledTimes(1)
   })
 
+  it("clears the draft after success and does not restore it on reopen", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { individualId: "ev-1", hijosIds: [] },
+      }),
+    )
+    function ControlledWizard() {
+      const [open, setOpen] = useState(true)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Reabrir wizard
+          </button>
+          <EventoWizard
+            {...props({
+              open,
+              onOpenChange: setOpen,
+              tipoPreseleccionado: "pesaje",
+              animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+              onEnviar,
+            })}
+          />
+        </>
+      )
+    }
+    render(<ControlledWizard />)
+
+    await user.clear(screen.getByLabelText(/Peso/))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    await waitFor(() => expect(onEnviar).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText("¿Cerrar el wizard?")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Reabrir wizard" }))
+    expect(screen.getByLabelText(/Peso/)).toHaveValue(null)
+  })
+
   it("renderiza el form de pesaje cuando se selecciona el tipo", async () => {
     const user = userEvent.setup()
     render(<EventoWizard {...props({ tipoPreseleccionado: "pesaje" })} />)
