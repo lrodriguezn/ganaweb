@@ -17,6 +17,7 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { useState } from "react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 import { EventoWizard, type ResultadoCapturaEvento } from "../src/ganado/evento-wizard/index.js"
@@ -67,6 +68,10 @@ const PERMISOS_SOLO_PRODUCTIVO = {
 } as const
 
 const CATALOGOS_VACIOS = { lotes: [], potreros: [], grupos: [] }
+
+function regexParaNombre(nombre: string) {
+  return new RegExp(nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+}
 
 function props(overrides: Partial<React.ComponentProps<typeof EventoWizard>> = {}) {
   return {
@@ -444,6 +449,43 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
 })
 
 describe("EventoWizard — Paso 3: formulario del dominio", () => {
+  it.each([
+    ["servicio", "Observaciones", "inseminación de control"],
+    ["palpacion", "Diagnóstico (ID)", "diag-1"],
+    ["parto", "Servicio (ID)", "srv-1"],
+    ["aplicacion_sanitaria", "Producto (ID)", "producto-1"],
+    ["revision_veterinaria", "Veterinario (ID)", "vet-1"],
+    ["produccion_lactea", "Cantidad AM (L)", "12.5"],
+    ["condicion_corporal", "Condición (ID)", "cond-1"],
+    ["venta", "Comprador", "Comprador 1"],
+    ["muerte", "Causa de muerte (ID)", "causa-1"],
+    ["traslado", "Motivo", "movimiento preventivo"],
+    ["pesaje", "Comentarios", "control de recepción"],
+  ] as const)("rehydrates the representative draft field for %s", async (tipo, etiqueta, valor) => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: tipo,
+          animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+        })}
+      />,
+    )
+
+    const campo =
+      tipo === "produccion_lactea"
+        ? await screen.findByRole("spinbutton", { name: /Cantidad AM/ })
+        : await screen.findByRole("textbox", { name: regexParaNombre(etiqueta) })
+    await user.type(campo, valor)
+    await user.click(screen.getByRole("button", { name: "Volver a Alcance" }))
+    await user.click(screen.getByRole("button", { name: "Continuar con este animal" }))
+    const campoRestaurado =
+      tipo === "produccion_lactea"
+        ? screen.getByRole("spinbutton", { name: /Cantidad AM/ })
+        : screen.getByRole("textbox", { name: regexParaNombre(etiqueta) })
+    expect(campoRestaurado).toHaveValue(tipo === "produccion_lactea" ? Number(valor) : valor)
+  })
+
   it("returns to scope with the visible action and restores the complete pesaje draft", async () => {
     const user = userEvent.setup()
     render(
@@ -489,15 +531,58 @@ describe("EventoWizard — Paso 3: formulario del dominio", () => {
 
   it("offers edit or discard when closing with pending changes", async () => {
     const user = userEvent.setup()
-    const onOpenChange = vi.fn()
-    render(<EventoWizard {...props({ onOpenChange, tipoPreseleccionado: "pesaje" })} />)
+    function ControlledWizard() {
+      const [open, setOpen] = useState(true)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Reabrir wizard
+          </button>
+          <EventoWizard {...props({ open, onOpenChange: setOpen })} />
+        </>
+      )
+    }
+    render(<ControlledWizard />)
 
-    await user.click(screen.getByRole("radio", { name: "Individual" }))
+    await user.click(screen.getByRole("button", { name: /Pesaje/ }))
     await user.click(screen.getByRole("button", { name: "Cerrar wizard" }))
     expect(screen.getByText("¿Cerrar el wizard?")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Continuar editando" })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Continuar editando" }))
+    expect(screen.getByText("¿A quiénes?")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Cerrar wizard" }))
     await user.click(screen.getByRole("button", { name: "Descartar borrador" }))
-    expect(onOpenChange).toHaveBeenLastCalledWith(false)
+    expect(screen.queryByText("¿Qué registrar?")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Reabrir wizard" }))
+    expect(screen.getByText("¿Qué registrar?")).toBeInTheDocument()
+  })
+
+  it("preserves the draft after a generic atomic failure", async () => {
+    const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "error",
+        detalle: "No se registró ningún evento del conjunto.",
+      }),
+    )
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          animalPreseleccionado: { id: "a-1", codigoAnimal: "MT-122" },
+          onEnviar,
+        })}
+      />,
+    )
+
+    await user.clear(screen.getByLabelText(/Peso/))
+    await user.type(screen.getByLabelText(/Peso/), "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    expect(await screen.findByTestId("evento-wizard-error")).toHaveTextContent(
+      "No se registró ningún evento",
+    )
+    expect(screen.getByLabelText(/Peso/)).toHaveValue(420)
+    expect(onEnviar).toHaveBeenCalledTimes(1)
   })
 
   it("renderiza el form de pesaje cuando se selecciona el tipo", async () => {
