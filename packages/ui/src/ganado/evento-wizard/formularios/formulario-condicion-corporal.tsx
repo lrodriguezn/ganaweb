@@ -1,7 +1,12 @@
 import { useState } from "react"
 
 import type { CapturaEvento } from "../types"
-import { CampoTextoEvento, MarcoFormularioEvento, PieFormularioEvento } from "./base"
+import {
+  CampoTextoEvento,
+  MarcoFormularioEvento,
+  PieFormularioEvento,
+  useCampoBorrador,
+} from "./base"
 
 /**
  * FormularioCondicionCorporal (matriz §2 — Productivo / Condición corporal).
@@ -12,17 +17,26 @@ export interface FormularioCondicionCorporalProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
 export function FormularioCondicionCorporal({
   numeroAnimales,
   onVolver,
   onGuardar,
+  datosIniciales,
+  onDatosChange,
 }: FormularioCondicionCorporalProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [condicionId, setCondicionId] = useState("")
-  const [puntaje, setPuntaje] = useState("3")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [condicionId, setCondicionId] = useCampoBorrador(
+    datosIniciales,
+    "condicionId",
+    "",
+    onDatosChange,
+  )
+  const [puntaje, setPuntaje] = useCampoBorrador(datosIniciales, "puntaje", "3", onDatosChange)
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

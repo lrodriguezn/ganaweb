@@ -6,6 +6,7 @@ import {
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
+  useCampoBorrador,
 } from "./base"
 
 /**
@@ -20,20 +21,44 @@ export interface FormularioServicioProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
 export function FormularioServicio({
   numeroAnimales,
   onVolver,
   onGuardar,
+  datosIniciales,
+  onDatosChange,
 }: FormularioServicioProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [tipo, setTipo] = useState<"monta" | "inseminacion">("inseminacion")
-  const [padrePajuelaId, setPadrePajuelaId] = useState("")
-  const [inseminadorId, setInseminadorId] = useState("")
-  const [dosis, setDosis] = useState("1")
-  const [observaciones, setObservaciones] = useState("")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [tipo, setTipo] = useCampoBorrador(
+    datosIniciales,
+    "tipo",
+    "inseminacion",
+    onDatosChange,
+  ) as ["monta" | "inseminacion", (valor: string) => void]
+  const [padrePajuelaId, setPadrePajuelaId] = useCampoBorrador(
+    datosIniciales,
+    "padreId",
+    "",
+    onDatosChange,
+  )
+  const [inseminadorId, setInseminadorId] = useCampoBorrador(
+    datosIniciales,
+    "inseminadorId",
+    "",
+    onDatosChange,
+  )
+  const [dosis, setDosis] = useCampoBorrador(datosIniciales, "dosis", "1", onDatosChange)
+  const [observaciones, setObservaciones] = useCampoBorrador(
+    datosIniciales,
+    "observaciones",
+    "",
+    onDatosChange,
+  )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

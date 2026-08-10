@@ -6,6 +6,7 @@ import {
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
+  useCampoBorrador,
 } from "./base"
 
 /**
@@ -22,20 +23,44 @@ export interface FormularioAplicacionSanitariaProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
 export function FormularioAplicacionSanitaria({
   numeroAnimales,
   onVolver,
   onGuardar,
+  datosIniciales,
+  onDatosChange,
 }: FormularioAplicacionSanitariaProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [productoId, setProductoId] = useState("")
-  const [dosis, setDosis] = useState("1")
-  const [precioDosis, setPrecioDosis] = useState("")
-  const [proximaDosis, setProximaDosis] = useState("")
-  const [comentarios, setComentarios] = useState("")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [productoId, setProductoId] = useCampoBorrador(
+    datosIniciales,
+    "productoId",
+    "",
+    onDatosChange,
+  )
+  const [dosis, setDosis] = useCampoBorrador(datosIniciales, "dosis", "1", onDatosChange)
+  const [precioDosis, setPrecioDosis] = useCampoBorrador(
+    datosIniciales,
+    "precioDosis",
+    "",
+    onDatosChange,
+  )
+  const [proximaDosis, setProximaDosis] = useCampoBorrador(
+    datosIniciales,
+    "proximaDosis",
+    "",
+    onDatosChange,
+  )
+  const [comentarios, setComentarios] = useCampoBorrador(
+    datosIniciales,
+    "comentarios",
+    "",
+    onDatosChange,
+  )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

@@ -19,21 +19,57 @@ export interface FormularioPesajeProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
-export function FormularioPesaje({ numeroAnimales, onVolver, onGuardar }: FormularioPesajeProps) {
+export function FormularioPesaje({
+  numeroAnimales,
+  onVolver,
+  onGuardar,
+  datosIniciales,
+  onDatosChange,
+}: FormularioPesajeProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [pesoKg, setPesoKg] = useState("")
+  const [fecha, setFecha] = useState(String(datosIniciales?.fecha ?? hoy))
+  const [pesoKg, setPesoKg] = useState(String(datosIniciales?.pesoKg ?? ""))
   const [tipoPeso, setTipoPeso] = useState<"control" | "destete" | "preparto" | "postparto">(
-    "control",
+    (datosIniciales?.tipoPeso as "control" | "destete" | "preparto" | "postparto") ?? "control",
   )
-  const [comentarios, setComentarios] = useState("")
+  const [comentarios, setComentarios] = useState(String(datosIniciales?.comentarios ?? ""))
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
   const pesoNum = Number(pesoKg)
   const puedeGuardar = fecha !== "" && Number.isFinite(pesoNum) && pesoNum > 0 && !guardando
+
+  const actualizar = (datos: CapturaEvento["datos"]) => onDatosChange?.(datos)
+  const cambiarFecha = (valor: string) => {
+    setFecha(valor)
+    actualizar({
+      fecha: valor,
+      pesoKg: Number(pesoKg) || null,
+      tipoPeso,
+      comentarios: comentarios || null,
+    })
+  }
+  const cambiarPeso = (valor: string) => {
+    setPesoKg(valor)
+    actualizar({ fecha, pesoKg: Number(valor) || null, tipoPeso, comentarios: comentarios || null })
+  }
+  const cambiarTipoPeso = (valor: "control" | "destete" | "preparto" | "postparto") => {
+    setTipoPeso(valor)
+    actualizar({
+      fecha,
+      pesoKg: Number(pesoKg) || null,
+      tipoPeso: valor,
+      comentarios: comentarios || null,
+    })
+  }
+  const cambiarComentarios = (valor: string) => {
+    setComentarios(valor)
+    actualizar({ fecha, pesoKg: Number(pesoKg) || null, tipoPeso, comentarios: valor || null })
+  }
 
   const handleGuardar = async () => {
     if (!puedeGuardar) {
@@ -73,7 +109,7 @@ export function FormularioPesaje({ numeroAnimales, onVolver, onGuardar }: Formul
         etiqueta="Fecha"
         type="date"
         valor={fecha}
-        onCambiar={setFecha}
+        onCambiar={cambiarFecha}
         requerido
       />
       <CampoTextoEvento
@@ -82,7 +118,7 @@ export function FormularioPesaje({ numeroAnimales, onVolver, onGuardar }: Formul
         type="number"
         inputMode="decimal"
         valor={pesoKg}
-        onCambiar={setPesoKg}
+        onCambiar={cambiarPeso}
         requerido
         min={0}
         step={0.01}
@@ -92,7 +128,7 @@ export function FormularioPesaje({ numeroAnimales, onVolver, onGuardar }: Formul
         id="pesaje-tipo"
         etiqueta="Tipo de peso"
         valor={tipoPeso}
-        onCambiar={setTipoPeso}
+        onCambiar={cambiarTipoPeso}
         opciones={[
           { value: "control", label: "Control" },
           { value: "destete", label: "Destete" },
@@ -104,7 +140,7 @@ export function FormularioPesaje({ numeroAnimales, onVolver, onGuardar }: Formul
         id="pesaje-comentarios"
         etiqueta="Comentarios"
         valor={comentarios}
-        onCambiar={setComentarios}
+        onCambiar={cambiarComentarios}
         descripcion="Opcional"
       />
     </MarcoFormularioEvento>

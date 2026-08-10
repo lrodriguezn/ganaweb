@@ -1,8 +1,24 @@
-import type { ReactNode } from "react"
+import { type ReactNode, useState } from "react"
 
 import { cn } from "../../../lib/utils"
 import { Button } from "../../../primitives/button"
 import { Label } from "../../../primitives/label"
+
+export type DatosBorradorEvento = Readonly<Record<string, string | number | null>>
+
+export function useCampoBorrador(
+  datosIniciales: DatosBorradorEvento | undefined,
+  clave: string,
+  valorInicial: string,
+  onDatosChange?: ((datos: DatosBorradorEvento) => void) | undefined,
+) {
+  const [valor, setValor] = useState(() => String(datosIniciales?.[clave] ?? valorInicial))
+  const cambiar = (nuevoValor: string) => {
+    setValor(nuevoValor)
+    onDatosChange?.({ [clave]: nuevoValor })
+  }
+  return [valor, cambiar] as const
+}
 
 /**
  * Primitivas compartidas por los 11 formularios del Paso 3 (EV-CAP-006/008).
@@ -33,10 +49,10 @@ export function MarcoFormularioEvento({
           <button
             type="button"
             onClick={onVolver}
-            aria-label="Volver al paso anterior"
+            aria-label="Volver a Alcance"
             className="text-muted-foreground text-section"
           >
-            ‹
+            Volver a Alcance
           </button>
         )}
         <h2 className="text-section font-semibold leading-none">{titulo}</h2>

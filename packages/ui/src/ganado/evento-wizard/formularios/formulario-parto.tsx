@@ -6,6 +6,7 @@ import {
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
+  useCampoBorrador,
 } from "./base"
 
 /**
@@ -19,17 +20,40 @@ export interface FormularioPartoProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
-export function FormularioParto({ numeroAnimales, onVolver, onGuardar }: FormularioPartoProps) {
+export function FormularioParto({
+  numeroAnimales,
+  onVolver,
+  onGuardar,
+  datosIniciales,
+  onDatosChange,
+}: FormularioPartoProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [servicioId, setServicioId] = useState("")
-  const [tipoParto, setTipoParto] = useState<"normal" | "asistido" | "cesarea">("normal")
-  const [machos, setMachos] = useState("0")
-  const [hembras, setHembras] = useState("0")
-  const [muertos, setMuertos] = useState("0")
-  const [comentarios, setComentarios] = useState("")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [servicioId, setServicioId] = useCampoBorrador(
+    datosIniciales,
+    "servicioId",
+    "",
+    onDatosChange,
+  )
+  const [tipoParto, setTipoParto] = useCampoBorrador(
+    datosIniciales,
+    "tipoParto",
+    "normal",
+    onDatosChange,
+  ) as ["normal" | "asistido" | "cesarea", (valor: string) => void]
+  const [machos, setMachos] = useCampoBorrador(datosIniciales, "machos", "0", onDatosChange)
+  const [hembras, setHembras] = useCampoBorrador(datosIniciales, "hembras", "0", onDatosChange)
+  const [muertos, setMuertos] = useCampoBorrador(datosIniciales, "muertos", "0", onDatosChange)
+  const [comentarios, setComentarios] = useCampoBorrador(
+    datosIniciales,
+    "comentarios",
+    "",
+    onDatosChange,
+  )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 

@@ -35,8 +35,10 @@ export interface PasoAlcanceProps {
   readonly buscarAnimalPorCodigo: BuscarAnimalPorCodigo
   readonly onSeleccion: (seleccion: Seleccion) => void
   readonly onVolver: () => void
+  readonly seleccionInicial?: Seleccion | undefined
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the scope step keeps selection and recovery transitions together.
 export function PasoAlcance({
   tipo,
   catalogos,
@@ -45,26 +47,44 @@ export function PasoAlcance({
   buscarAnimalPorCodigo,
   onSeleccion,
   onVolver,
+  seleccionInicial,
 }: PasoAlcanceProps) {
   const permiteGrupal = tipo.grupal
 
   // Estado base
+  const seleccionGrupalInicial = seleccionInicial?.tipo === "grupal" ? seleccionInicial : undefined
   const [alcance, setAlcance] = useState<"individual" | "grupal">(
-    animalPreseleccionado ? "individual" : permiteGrupal ? "individual" : "individual",
+    seleccionInicial?.tipo ?? "individual",
   )
-  const [origen, setOrigen] = useState<OrigenSeleccionGrupal>("manual")
-  const [criterioId, setCriterioId] = useState<string>("")
-  const [origenPendiente, setOrigenPendiente] = useState<OrigenSeleccionGrupal>("manual")
-  const [criterioPendiente, setCriterioPendiente] = useState<string>("")
+  const [origen, setOrigen] = useState<OrigenSeleccionGrupal>(
+    seleccionGrupalInicial?.origen ?? "manual",
+  )
+  const criterioInicial = seleccionGrupalInicial
+    ? (seleccionGrupalInicial.loteId ??
+      seleccionGrupalInicial.potreroId ??
+      seleccionGrupalInicial.grupoId ??
+      "")
+    : ""
+  const [criterioId, setCriterioId] = useState<string>(criterioInicial)
+  const [origenPendiente, setOrigenPendiente] = useState<OrigenSeleccionGrupal>(
+    seleccionGrupalInicial?.origen ?? "manual",
+  )
+  const [criterioPendiente, setCriterioPendiente] = useState<string>(criterioInicial)
   const [animalesCargados, setAnimalesCargados] = useState<
     readonly { readonly id: string; readonly codigoAnimal: string }[]
   >([])
-  const [incluidos, setIncluidos] = useState<ReadonlySet<string>>(new Set())
-  const [excluidos, setExcluidos] = useState<ReadonlySet<string>>(new Set())
+  const [incluidos, setIncluidos] = useState<ReadonlySet<string>>(
+    new Set(seleccionGrupalInicial?.animalIdsEfectivos ?? []),
+  )
+  const [excluidos, setExcluidos] = useState<ReadonlySet<string>>(
+    new Set(seleccionGrupalInicial?.animalIdsExcluidos ?? []),
+  )
   const [cargandoOrigen, setCargandoOrigen] = useState(false)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [errorIndividual, setErrorIndividual] = useState<string | null>(null)
   const [origenPorConfirmar, setOrigenPorConfirmar] = useState<OrigenSeleccionGrupal | null>(null)
+  const idsRestaurados = seleccionGrupalInicial?.animalIdsEfectivos ?? []
+  const idsExcluidosRestaurados = seleccionGrupalInicial?.animalIdsExcluidos ?? []
 
   // Individual
   const [codigoIndividual, setCodigoIndividual] = useState(
@@ -72,9 +92,14 @@ export function PasoAlcance({
   )
   const [animalIndividual, setAnimalIndividual] = useState<
     { readonly id: string; readonly codigoAnimal: string } | undefined
-  >(animalPreseleccionado)
+  >(
+    animalPreseleccionado ??
+      (seleccionInicial?.tipo === "individual"
+        ? { id: seleccionInicial.animalId, codigoAnimal: "" }
+        : undefined),
+  )
   const [individualSeleccionado, setIndividualSeleccionado] = useState(
-    Boolean(animalPreseleccionado),
+    Boolean(animalPreseleccionado) || seleccionInicial?.tipo === "individual",
   )
 
   // Manual starts empty; the loader only provides the available universe.
@@ -86,12 +111,42 @@ export function PasoAlcance({
     cargarAnimalesPorOrigen("manual", "")
       .then((lista) => {
         setAnimalesCargados(lista)
-        setIncluidos(new Set())
-        setExcluidos(new Set())
+        setIncluidos(new Set(idsRestaurados))
+        setExcluidos(new Set(idsExcluidosRestaurados))
       })
       .catch(() => setErrorCarga("No se pudieron cargar los animales."))
       .finally(() => setCargandoOrigen(false))
-  }, [alcance, cargandoOrigen, origen, animalesCargados.length, cargarAnimalesPorOrigen])
+  }, [
+    alcance,
+    cargandoOrigen,
+    origen,
+    animalesCargados.length,
+    cargarAnimalesPorOrigen,
+    idsRestaurados,
+    idsExcluidosRestaurados,
+  ])
+
+  useEffect(() => {
+    if (alcance !== "grupal" || origen === "manual" || criterioId === "") return
+    if (animalesCargados.length > 0 || cargandoOrigen) return
+    setCargandoOrigen(true)
+    setErrorCarga(null)
+    cargarAnimalesPorOrigen(origen, criterioId)
+      .then((lista) => {
+        setAnimalesCargados(lista)
+        setExcluidos(new Set(seleccionGrupalInicial?.animalIdsExcluidos ?? []))
+      })
+      .catch(() => setErrorCarga(`No se pudieron cargar animales del ${origen}.`))
+      .finally(() => setCargandoOrigen(false))
+  }, [
+    alcance,
+    animalesCargados.length,
+    cargarAnimalesPorOrigen,
+    cargandoOrigen,
+    criterioId,
+    origen,
+    seleccionGrupalInicial?.animalIdsExcluidos,
+  ])
 
   const animalesEfectivos = useMemo(() => {
     if (origen === "manual") return animalesCargados.filter((a) => incluidos.has(a.id))
@@ -163,7 +218,11 @@ export function PasoAlcance({
       setOrigenPendiente(nuevoOrigen)
       setCriterioPendiente(nuevoCriterio)
       setAnimalesCargados(lista)
-      setIncluidos(new Set())
+      setIncluidos(
+        nuevoOrigen === "manual"
+          ? new Set(seleccionInicial?.tipo === "grupal" ? seleccionInicial.animalIdsEfectivos : [])
+          : new Set(),
+      )
       setExcluidos(new Set())
     } catch {
       setOrigenPendiente(origen)
@@ -199,6 +258,7 @@ export function PasoAlcance({
     else handleRevertirExcluido(id)
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: validation and snapshot creation belong to one transition.
   const handleConfirmarGrupal = () => {
     if (origen === "manual" && animalesCargados.length === 0) {
       setErrorCarga("No hay animales disponibles para selección manual.")
@@ -221,6 +281,10 @@ export function PasoAlcance({
       ...(origen === "grupo" ? { grupoId: criterioId } : {}),
       animalIdsEfectivos: idsEfectivos,
       totalAnimales: idsEfectivos.length,
+      ...(excluidos.size > 0 ? { animalIdsExcluidos: [...excluidos] } : {}),
+      ...(seleccionGrupalInicial?.excepciones
+        ? { excepciones: seleccionGrupalInicial.excepciones }
+        : {}),
     })
   }
 
@@ -267,6 +331,11 @@ export function PasoAlcance({
             animal={animalIndividual}
             onAceptarPreseleccion={handleSeleccionarIndividualExistente}
             seleccionado={individualSeleccionado}
+            onContinuar={() => {
+              if (animalIndividual) {
+                emitirSeleccion({ tipo: "individual", animalId: animalIndividual.id })
+              }
+            }}
             animalPreseleccionado={animalPreseleccionado}
             buscarAnimalPorCodigo={buscarAnimalPorCodigo}
           />
@@ -333,6 +402,7 @@ function SeccionIndividual({
   animal,
   onAceptarPreseleccion,
   seleccionado,
+  onContinuar,
   animalPreseleccionado,
   buscarAnimalPorCodigo,
 }: {
@@ -350,6 +420,7 @@ function SeccionIndividual({
     | undefined
   readonly buscarAnimalPorCodigo: BuscarAnimalPorCodigo
   readonly seleccionado: boolean
+  readonly onContinuar: () => void
 }) {
   if (animalPreseleccionado) {
     // Emite la selección al padre en cuanto se monte
@@ -397,6 +468,11 @@ function SeccionIndividual({
             </Button>
           )}
         </div>
+      )}
+      {animal && seleccionado && (
+        <Button type="button" className="w-full h-12" onClick={onContinuar}>
+          Continuar con este animal
+        </Button>
       )}
       {/* searchAnimal is referenced to keep TS happy if a refactor inlines it */}
       <span className="sr-only" data-buscar-fn={buscarAnimalPorCodigo.name} />

@@ -1,7 +1,12 @@
 import { useState } from "react"
 
 import type { CapturaEvento } from "../types"
-import { CampoTextoEvento, MarcoFormularioEvento, PieFormularioEvento } from "./base"
+import {
+  CampoTextoEvento,
+  MarcoFormularioEvento,
+  PieFormularioEvento,
+  useCampoBorrador,
+} from "./base"
 
 /**
  * FormularioMuerte (matriz §2 — Movimientos / Muerte).
@@ -12,13 +17,31 @@ export interface FormularioMuerteProps {
   readonly numeroAnimales: number
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
+  readonly datosIniciales?: CapturaEvento["datos"] | undefined
+  readonly onDatosChange?: ((datos: CapturaEvento["datos"]) => void) | undefined
 }
 
-export function FormularioMuerte({ numeroAnimales, onVolver, onGuardar }: FormularioMuerteProps) {
+export function FormularioMuerte({
+  numeroAnimales,
+  onVolver,
+  onGuardar,
+  datosIniciales,
+  onDatosChange,
+}: FormularioMuerteProps) {
   const hoy = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(hoy)
-  const [causaMuerteId, setCausaMuerteId] = useState("")
-  const [comentarios, setComentarios] = useState("")
+  const [fecha, setFecha] = useCampoBorrador(datosIniciales, "fecha", hoy, onDatosChange)
+  const [causaMuerteId, setCausaMuerteId] = useCampoBorrador(
+    datosIniciales,
+    "causaMuerteId",
+    "",
+    onDatosChange,
+  )
+  const [comentarios, setComentarios] = useCampoBorrador(
+    datosIniciales,
+    "comentarios",
+    "",
+    onDatosChange,
+  )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
