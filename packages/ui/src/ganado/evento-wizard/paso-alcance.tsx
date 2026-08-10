@@ -109,7 +109,7 @@ export function PasoAlcance({
   // Manual starts empty; the loader only provides the available universe.
   useEffect(() => {
     if (alcance !== "grupal" || origen !== "manual") return
-    if (animalesCargados.length > 0 || cargandoOrigen) return
+    if (animalesCargados.length > 0 || cargandoOrigen || errorCarga) return
     setCargandoOrigen(true)
     setErrorCarga(null)
     cargarAnimalesPorOrigen("manual", "")
@@ -126,6 +126,7 @@ export function PasoAlcance({
     origen,
     animalesCargados.length,
     cargarAnimalesPorOrigen,
+    errorCarga,
     idsRestaurados,
     idsExcluidosRestaurados,
   ])
@@ -220,7 +221,20 @@ export function PasoAlcance({
     })
   }
 
-  const cargarNuevoOrigen = async (nuevoOrigen: OrigenSeleccionGrupal, nuevoCriterio: string) => {
+  const cargarNuevoOrigen = async (
+    nuevoOrigen: OrigenSeleccionGrupal,
+    nuevoCriterio: string,
+    activarInmediatamente = false,
+  ) => {
+    if (activarInmediatamente) {
+      setOrigen(nuevoOrigen)
+      setCriterioId(nuevoCriterio)
+      setOrigenPendiente(nuevoOrigen)
+      setCriterioPendiente(nuevoCriterio)
+      setAnimalesCargados([])
+      setIncluidos(new Set())
+      setExcluidos(new Set())
+    }
     setCargandoOrigen(true)
     setErrorCarga(null)
     try {
@@ -237,8 +251,10 @@ export function PasoAlcance({
       )
       setExcluidos(new Set())
     } catch {
-      setOrigenPendiente(origen)
-      setCriterioPendiente(criterioId)
+      if (!activarInmediatamente) {
+        setOrigenPendiente(origen)
+        setCriterioPendiente(criterioId)
+      }
       setErrorCarga(`No se pudieron cargar animales del ${nuevoOrigen}.`)
     } finally {
       setCargandoOrigen(false)
@@ -246,18 +262,21 @@ export function PasoAlcance({
   }
 
   const handleCambiarOrigen = (nuevoOrigen: OrigenSeleccionGrupal) => {
-    if (nuevoOrigen === origen) return
+    if (nuevoOrigen === origenPendiente) return
     if (animalesEfectivos.length > 0) {
       setOrigenPorConfirmar(nuevoOrigen)
       return
     }
-    aplicarCambioOrigen(nuevoOrigen)
+    aplicarCambioOrigen(nuevoOrigen, true)
   }
 
-  const aplicarCambioOrigen = (nuevoOrigen: OrigenSeleccionGrupal) => {
+  const aplicarCambioOrigen = (
+    nuevoOrigen: OrigenSeleccionGrupal,
+    activarInmediatamente = false,
+  ) => {
     setOrigenPendiente(nuevoOrigen)
     setCriterioPendiente("")
-    if (nuevoOrigen === "manual") void cargarNuevoOrigen("manual", "")
+    if (nuevoOrigen === "manual") void cargarNuevoOrigen("manual", "", activarInmediatamente)
   }
 
   const handleCambiarCriterio = (nuevoCriterio: string) => {

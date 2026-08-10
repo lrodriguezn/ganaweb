@@ -555,6 +555,78 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     expect(screen.getByText("MT-100")).toBeInTheDocument()
   })
 
+  it("returns to Manual from a structured origin with no criterion", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: vi.fn(async () => []),
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    expect(screen.getByRole("radio", { name: "Lote" })).toHaveAttribute("aria-checked", "true")
+    await user.click(screen.getByRole("radio", { name: "Manual" }))
+    expect(screen.getByRole("radio", { name: "Manual" })).toHaveAttribute("aria-checked", "true")
+  })
+
+  it("returns to Manual from an empty structured origin", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: vi.fn(async () => []),
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await user.click(screen.getByRole("radio", { name: "Manual" }))
+    expect(screen.getByRole("radio", { name: "Manual" })).toHaveAttribute("aria-checked", "true")
+  })
+
+  it("keeps Manual active and allows retry after a manual load failure", async () => {
+    const user = userEvent.setup()
+    const initialManualLoad = new Promise<readonly { id: string; codigoAnimal: string }[]>(() => {})
+    let manualLoads = 0
+    const cargarAnimales = vi.fn().mockImplementation(async (origen: string) => {
+      if (origen === "lote") return []
+      manualLoads += 1
+      if (manualLoads === 1) return initialManualLoad
+      if (manualLoads === 2) throw new Error("offline")
+      return [{ id: "a-1", codigoAnimal: "MT-100" }]
+    })
+    render(
+      <EventoWizard
+        {...props({
+          tipoPreseleccionado: "pesaje",
+          catalogos: { lotes: [{ id: "lote-1", nombre: "Lote Norte" }], potreros: [], grupos: [] },
+          cargarAnimalesPorOrigen: cargarAnimales,
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole("radio", { name: "Grupal" }))
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
+    await user.click(screen.getByRole("radio", { name: "Manual" }))
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudieron cargar")
+    expect(screen.getByRole("radio", { name: "Manual" })).toHaveAttribute("aria-checked", "true")
+    await user.click(screen.getByRole("radio", { name: "Lote" }))
+    await user.click(screen.getByRole("radio", { name: "Manual" }))
+    await screen.findByText("0 animales incluidos")
+    await user.click(screen.getByRole("button", { name: "Seleccionar todos" }))
+    expect(await screen.findByText("MT-100")).toBeInTheDocument()
+  })
+
   it("mantiene el footer grupal persistente y deshabilitado sin animales efectivos", async () => {
     const user = userEvent.setup()
     render(
