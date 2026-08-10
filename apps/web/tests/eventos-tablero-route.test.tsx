@@ -58,6 +58,7 @@ import {
   buscarAnimalPorCodigoFn,
   capturarEventoFn,
   listarAnimalesPorOrigenFn,
+  listarCatalogosEventoFn,
 } from "../src/server/eventos-wizard.js"
 
 vi.mock("../src/server/eventos-finca-read.js", () => ({
@@ -84,6 +85,7 @@ vi.mock("../src/server/eventos-wizard.js", () => ({
   listarAnimalesPorOrigenFn: vi.fn(),
   buscarAnimalPorCodigoFn: vi.fn(),
   listarCatalogosAlcanceFn: vi.fn(),
+  listarCatalogosEventoFn: vi.fn(async () => ({ tipo: "finca_no_autorizada" })),
 }))
 
 beforeAll(() => {
@@ -110,6 +112,7 @@ afterEach(() => {
   vi.mocked(anularEventoFn).mockReset()
   vi.mocked(listarAnimalesPorOrigenFn).mockReset()
   vi.mocked(buscarAnimalPorCodigoFn).mockReset()
+  vi.mocked(listarCatalogosEventoFn).mockReset()
 })
 
 const FINCA_ID = "finca-esperanza"

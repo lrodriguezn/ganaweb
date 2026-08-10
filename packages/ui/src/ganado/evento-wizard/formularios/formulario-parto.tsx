@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
   CampoSelectEvento,
   CampoTextoEvento,
@@ -18,6 +18,7 @@ import {
  */
 export interface FormularioPartoProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -26,6 +27,7 @@ export interface FormularioPartoProps {
 
 export function FormularioParto({
   numeroAnimales,
+  catalogos: _catalogos,
   onVolver,
   onGuardar,
   datosIniciales,

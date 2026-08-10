@@ -7,6 +7,7 @@ import {
   type AnimalFichaResumen,
   type AnimalListItem,
   type AnimalTimelineItem,
+  type CatalogosParaAlcance,
   type DominioEvento,
   EventoWizard,
   type PermisosEfectivosPorDominio,
@@ -33,12 +34,23 @@ import {
   capturarEventoFn,
   listarAnimalesPorOrigenFn,
   listarCatalogosAlcanceFn,
+  listarCatalogosEventoFn,
   revisarMembresiaActualFn,
 } from "../../../../../server/eventos-wizard.js"
 
 export const Route = createFileRoute("/_app/fincas/$fincaId/animales/$animalId")({
   loader: async ({ params }) => {
-    return getAnimalFichaAction({ data: { fincaId: params.fincaId, animalId: params.animalId } })
+    const ficha = await getAnimalFichaAction({
+      data: { fincaId: params.fincaId, animalId: params.animalId },
+    })
+    if (ficha?.tipo !== "ficha") return ficha
+    const catalogos = await listarCatalogosEventoFn({ data: { fincaId: params.fincaId } }).catch(
+      () => null,
+    )
+    return {
+      ...ficha,
+      catalogos: catalogos?.tipo === "lista" ? catalogos.catalogos : CATALOGOS_PARA_ALCANCE_VACIOS,
+    }
   },
   component: AnimalFichaRoute,
 })
@@ -77,6 +89,7 @@ export interface AnimalFichaRouteViewData {
     readonly canInactivate: boolean
     readonly eventos: PermisosEfectivosPorDominio
   }
+  readonly catalogos?: CatalogosParaAlcance
 }
 
 export interface AnimalFichaRouteViewProps {
@@ -211,7 +224,7 @@ export function AnimalFichaRouteView({
         fincaId={fincaId}
         animalPreseleccionado={data.animal}
         permisosEfectivos={data.permissions.eventos}
-        catalogos={CATALOGOS_PARA_ALCANCE_VACIOS}
+        catalogos={data.catalogos ?? CATALOGOS_PARA_ALCANCE_VACIOS}
         cargarAnimalesPorOrigen={(origen, id) => cargarAnimalesPorOrigenEnRuta(fincaId, origen, id)}
         buscarAnimalPorCodigo={(codigo) => buscarAnimalPorCodigoEnRuta(fincaId, codigo)}
         onEnviar={(captura) => enviarCapturaEnRuta(fincaId, captura)}

@@ -237,6 +237,31 @@ describe("createEventoWizardActionHarness — RBAC y autorización", () => {
     expect(resultado.tipo).toBe("capturado")
     expect(persistirLoteFake).toHaveBeenCalledTimes(1)
   })
+
+  it("rechaza referencias de catálogo antes de persistir", async () => {
+    persistirLoteFake.mockClear()
+    const harness = createEventoWizardActionHarness({
+      getSession: async () => sesionCompleta(),
+      persistirLote: persistirLoteFake as never,
+      reloj,
+      validarReferencias: async () => [
+        {
+          campo: "productoId",
+          detalle: "La referencia debe existir, estar activa y pertenecer a la finca.",
+        },
+      ],
+    })
+
+    const resultado = await harness.capturar({
+      fincaId: FINCA,
+      tipo: "pesaje",
+      alcance: { tipo: "individual", animalId: "a-1" },
+      datos: { fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" },
+    })
+
+    expect(resultado.tipo).toBe("validacion")
+    expect(persistirLoteFake).not.toHaveBeenCalled()
+  })
 })
 
 describe("revisarMembresiaActual — snapshot fail-closed", () => {

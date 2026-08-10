@@ -42,9 +42,7 @@ describe("FormularioAplicacionSanitaria — matriz §2 Sanidad / Aplicación", (
     const user = userEvent.setup()
     const onGuardar = vi.fn()
     render(<FormularioAplicacionSanitaria {...defaultProps} onGuardar={onGuardar} />)
-    const producto = screen.getByLabelText(/Producto/) as HTMLInputElement
     const dosis = screen.getByLabelText(/Dosis/) as HTMLInputElement
-    await user.clear(producto)
     await user.clear(dosis)
     await user.type(dosis, "0")
     const guardar = screen.getByRole("button", { name: /Guardar/ })

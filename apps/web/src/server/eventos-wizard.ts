@@ -34,6 +34,28 @@ export interface CatalogosAlcanceDto {
   readonly lotes: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
   readonly potreros: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
   readonly grupos: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly sectores?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly padres?: ReadonlyArray<{
+    readonly id: string
+    readonly nombre: string
+    readonly codigo?: string
+  }>
+  readonly pajuelas?: ReadonlyArray<{
+    readonly id: string
+    readonly nombre: string
+    readonly codigo?: string
+  }>
+  readonly inseminadores?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly veterinarios?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly diagnosticos?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly productosSanitarios?: ReadonlyArray<{
+    readonly id: string
+    readonly nombre: string
+    readonly codigo?: string
+  }>
+  readonly motivosVenta?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly lugaresVenta?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly causasMuerte?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
 }
 
 export type ListarCatalogosAlcanceResultado =
@@ -99,6 +121,15 @@ export const listarCatalogosAlcanceFn = createServerFn({ method: "GET" })
     const { getAuthorizedSession } = await import("./eventos-wizard.server.js")
     const sesion = await getAuthorizedSession(data.fincaId)
     return listarCatalogosAlcance(data.fincaId, sesion)
+  })
+
+export const listarCatalogosEventoFn = createServerFn({ method: "GET" })
+  .validator((data: { fincaId: string }) => data)
+  .handler(async ({ data }) => {
+    const { listarCatalogosEvento, getAuthorizedSession } = await import(
+      "./eventos-wizard.server.js"
+    )
+    return listarCatalogosEvento(data.fincaId, await getAuthorizedSession(data.fincaId))
   })
 
 export const listarAnimalesPorOrigenFn = createServerFn({ method: "GET" })

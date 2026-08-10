@@ -1,7 +1,8 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
+  CampoCatalogoEvento,
   CampoSelectEvento,
   CampoTextoEvento,
   MarcoFormularioEvento,
@@ -19,6 +20,7 @@ import {
  */
 export interface FormularioServicioProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -27,6 +29,7 @@ export interface FormularioServicioProps {
 
 export function FormularioServicio({
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -127,28 +130,31 @@ export function FormularioServicio({
           { value: "1", label: "Inseminación" },
         ]}
       />
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="srv-padre"
-        etiqueta="Padre (ID)"
+        etiqueta="Padre"
         valor={padreId}
         onCambiar={setPadreId}
+        opciones={catalogos.padres ?? []}
         requerido={tipo === "0"}
-        descripcion="Obligatorio para monta natural; seleccionable desde catálogo"
+        descripcion="Obligatorio para monta natural"
       />
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="srv-pajuela"
-        etiqueta="Pajuela (ID)"
+        etiqueta="Pajuela"
         valor={pajuelaId}
         onCambiar={setPajuelaId}
+        opciones={catalogos.pajuelas ?? []}
         requerido={tipo === "1"}
-        descripcion="Obligatorio para inseminación; seleccionable desde catálogo"
+        descripcion="Obligatorio para inseminación"
       />
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="srv-inseminador"
-        etiqueta="Inseminador (ID)"
+        etiqueta="Inseminador"
         valor={inseminadorId}
         onCambiar={setInseminadorId}
-        descripcion="Seleccionable desde veterinarios con es_inseminador"
+        opciones={catalogos.inseminadores ?? []}
+        descripcion="Personal activo de la finca"
       />
       <CampoTextoEvento
         id="srv-tipo-inseminacion"

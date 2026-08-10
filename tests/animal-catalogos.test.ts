@@ -183,6 +183,11 @@ function createPadresPort(options?: {
       if (options?.padresError) throw new Error("DB connection lost")
       return [...machos, ...pajuelas].filter((p) => !excludedIds.includes(p.id))
     },
+    async listarPajuelas(requestedFincaId, excludedIds) {
+      if (requestedFincaId !== fincaId) return []
+      if (options?.padresError) throw new Error("DB connection lost")
+      return pajuelas.filter((p) => !excludedIds.includes(p.id))
+    },
   }
 }
 
@@ -345,6 +350,9 @@ describe("loadAnimalCatalogs server loader composition", () => {
         throw new Error("DB offline")
       },
       async listarPadres() {
+        throw new Error("DB offline")
+      },
+      async listarPajuelas() {
         throw new Error("DB offline")
       },
     }

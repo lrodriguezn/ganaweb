@@ -1,7 +1,8 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
+  CampoCatalogoEvento,
   CampoSelectEvento,
   CampoTextoEvento,
   MarcoFormularioEvento,
@@ -16,6 +17,7 @@ import {
  */
 export interface FormularioPalpacionProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -24,6 +26,7 @@ export interface FormularioPalpacionProps {
 
 export function FormularioPalpacion({
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -123,11 +126,12 @@ export function FormularioPalpacion({
         onCambiar={setServicioId}
         descripcion="Opcional — seleccionable desde servicios"
       />
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="palp-diag"
-        etiqueta="Diagnóstico (ID)"
+        etiqueta="Diagnóstico"
         valor={diagnosticoId}
         onCambiar={setDiagnosticoId}
+        opciones={catalogos.diagnosticos ?? []}
         requerido
       />
       <CampoSelectEvento

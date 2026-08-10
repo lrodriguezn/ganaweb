@@ -832,5 +832,9 @@ export function createAnimalE2eCatalogoPadresPort(): CatalogoPadresPort {
       if (requestedFincaId !== fincaId) return []
       return [...machos, ...pajuelas].filter((p) => !excludedIds.includes(p.id))
     },
+    async listarPajuelas(requestedFincaId, excludedIds) {
+      if (requestedFincaId !== fincaId) return []
+      return pajuelas.filter((p) => !excludedIds.includes(p.id))
+    },
   }
 }

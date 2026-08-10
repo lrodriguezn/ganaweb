@@ -1,7 +1,8 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
+  CampoCatalogoEvento,
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
@@ -15,6 +16,7 @@ import {
  */
 export interface FormularioVentaProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -23,6 +25,7 @@ export interface FormularioVentaProps {
 
 export function FormularioVenta({
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -113,21 +116,21 @@ export function FormularioVenta({
         requerido
       />
       <div className="grid grid-cols-2 gap-3">
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="ven-motivo"
-          etiqueta="Motivo (ID)"
+          etiqueta="Motivo de venta"
           valor={motivoVentaId}
           onCambiar={setMotivoVentaId}
+          opciones={catalogos.motivosVenta ?? []}
           requerido
-          descripcion="Seleccionable desde catálogo"
         />
-        <CampoTextoEvento
+        <CampoCatalogoEvento
           id="ven-lugar"
-          etiqueta="Lugar (ID)"
+          etiqueta="Lugar de venta"
           valor={lugarVentaId}
           onCambiar={setLugarVentaId}
+          opciones={catalogos.lugaresVenta ?? []}
           requerido
-          descripcion="Seleccionable desde catálogo"
         />
       </div>
       <div className="grid grid-cols-2 gap-3">

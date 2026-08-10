@@ -1,7 +1,8 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
+  CampoCatalogoEvento,
   CampoTextoEvento,
   MarcoFormularioEvento,
   PieFormularioEvento,
@@ -15,6 +16,7 @@ import {
  */
 export interface FormularioMuerteProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -23,6 +25,7 @@ export interface FormularioMuerteProps {
 
 export function FormularioMuerte({
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -85,13 +88,13 @@ export function FormularioMuerte({
         onCambiar={setFecha}
         requerido
       />
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="mue-causa"
-        etiqueta="Causa de muerte (ID)"
+        etiqueta="Causa de muerte"
         valor={causaMuerteId}
         onCambiar={setCausaMuerteId}
+        opciones={catalogos.causasMuerte ?? []}
         requerido
-        descripcion="Catálogo de causas"
       />
       <CampoTextoEvento
         id="mue-comentarios"

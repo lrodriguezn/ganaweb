@@ -1,7 +1,8 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
+  CampoCatalogoEvento,
   CampoSelectEvento,
   CampoTextoEvento,
   MarcoFormularioEvento,
@@ -21,6 +22,7 @@ import {
  */
 export interface FormularioAplicacionSanitariaProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -29,6 +31,7 @@ export interface FormularioAplicacionSanitariaProps {
 
 export function FormularioAplicacionSanitaria({
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -115,13 +118,14 @@ export function FormularioAplicacionSanitaria({
         onCambiar={setFecha}
         requerido
       />
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="san-producto"
-        etiqueta="Producto (ID)"
+        etiqueta="Producto sanitario"
         valor={productoId}
         onCambiar={setProductoId}
+        opciones={catalogos.productosSanitarios ?? []}
         requerido
-        descripcion="Validado contra el catálogo de la finca"
+        descripcion="Producto activo disponible en la finca"
       />
       <div className="grid grid-cols-2 gap-3">
         <CampoTextoEvento

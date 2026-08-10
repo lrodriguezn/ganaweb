@@ -9,7 +9,7 @@ import { FormularioRevisionVeterinaria } from "./formularios/formulario-revision
 import { FormularioServicio } from "./formularios/formulario-servicio"
 import { FormularioTraslado } from "./formularios/formulario-traslado"
 import { FormularioVenta } from "./formularios/formulario-venta"
-import type { BorradorEvento, TipoEventoWizard } from "./types"
+import type { BorradorEvento, CatalogosParaAlcance, TipoEventoWizard } from "./types"
 
 /**
  * Dispatcher del Paso 3 (EV-CAP-006/008).
@@ -22,6 +22,7 @@ import type { BorradorEvento, TipoEventoWizard } from "./types"
 export interface PasoDatosProps {
   readonly tipo: TipoEventoWizard
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (
     datos: Readonly<Record<string, string | number | null>>,
@@ -33,6 +34,7 @@ export interface PasoDatosProps {
 export function PasoDatos({
   tipo,
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -43,6 +45,7 @@ export function PasoDatos({
       return (
         <FormularioPesaje
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -53,6 +56,7 @@ export function PasoDatos({
       return (
         <FormularioServicio
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -63,6 +67,7 @@ export function PasoDatos({
       return (
         <FormularioPalpacion
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -73,6 +78,7 @@ export function PasoDatos({
       return (
         <FormularioParto
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -83,6 +89,7 @@ export function PasoDatos({
       return (
         <FormularioAplicacionSanitaria
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -93,6 +100,7 @@ export function PasoDatos({
       return (
         <FormularioRevisionVeterinaria
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -103,6 +111,7 @@ export function PasoDatos({
       return (
         <FormularioProduccionLactea
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -113,6 +122,7 @@ export function PasoDatos({
       return (
         <FormularioCondicionCorporal
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -123,6 +133,7 @@ export function PasoDatos({
       return (
         <FormularioVenta
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -133,6 +144,7 @@ export function PasoDatos({
       return (
         <FormularioMuerte
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}
@@ -143,6 +155,7 @@ export function PasoDatos({
       return (
         <FormularioTraslado
           numeroAnimales={numeroAnimales}
+          catalogos={catalogos}
           onVolver={onVolver}
           onGuardar={onGuardar}
           datosIniciales={datosIniciales}

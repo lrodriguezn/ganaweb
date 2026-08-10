@@ -16,6 +16,9 @@ import { sql } from "drizzle-orm"
 
 import { DrizzleAnimalRepository } from "@ganaweb/db/animal-infrastructure"
 import { DrizzleCatalogoFincaAdapter } from "@ganaweb/db/catalogo-finca-infrastructure"
+import { DrizzleCatalogoPadresAdapter } from "@ganaweb/db/catalogo-padres-infrastructure"
+import { DrizzleCatalogoProductoSanitarioAdapter } from "@ganaweb/db/catalogo-producto-sanitario-infrastructure"
+import { DrizzleMaestroListadoAdapter } from "@ganaweb/db/maestro-listado-infrastructure"
 import { validarCamposDatosEvento, validarDatosEvento } from "./evento-rules.js"
 
 /**
@@ -121,6 +124,11 @@ export type EventoWizardDeps = {
   ) => Promise<readonly { readonly id: string }[]>
   readonly getSession: (fincaId?: string) => Promise<SesionAutorizada | null>
   readonly reloj: () => Date
+  readonly validarReferencias?: (
+    fincaId: string,
+    tipo: string,
+    datos: Readonly<Record<string, string | number | null>>,
+  ) => Promise<readonly { campo: string; detalle: string }[]>
 }
 
 export interface EventoAnulacionInput {
@@ -207,6 +215,7 @@ export function createEventosWizardDeps(): EventoWizardDeps {
     persistirLote: (commands, contexto) => persistirEventosInternos(db, commands, contexto),
     getSession: getAuthorizedSession,
     reloj: () => new Date(),
+    validarReferencias: validarReferenciasCatalogo,
   }
 }
 
@@ -243,6 +252,11 @@ export function createEventoWizardActionHarness(deps: EventoWizardDeps) {
       if (!tienePermiso) {
         return { tipo: "permiso_denegado", permiso: permisoRequerido }
       }
+
+      const erroresDeCatalogo = deps.validarReferencias
+        ? await deps.validarReferencias(input.fincaId, input.tipo, input.datos)
+        : []
+      if (erroresDeCatalogo.length > 0) return { tipo: "validacion", errores: erroresDeCatalogo }
 
       if (input.alcance.tipo === "individual") {
         const erroresDeDatos = validarDatosEvento(input.tipo, input.datos)
@@ -325,6 +339,13 @@ async function capturarGrupal(
   const alcance = input.alcance
   const validacionDatos = validarDatosGrupales(input.tipo, input.datos, alcance)
   if (validacionDatos.length > 0) return { tipo: "validacion", errores: validacionDatos }
+  if (deps.validarReferencias) {
+    for (const animalId of alcance.animalIdsEfectivos) {
+      const datosAnimal = materializarDatos(input.datos, alcance.excepciones?.[animalId])
+      const errores = await deps.validarReferencias(input.fincaId, input.tipo, datosAnimal)
+      if (errores.length > 0) return { tipo: "validacion", errores }
+    }
+  }
   const cabeceraId = `rg-${randomUUID()}`
   const criterio =
     input.alcance.origen === "manual"
@@ -413,6 +434,67 @@ function validarDatosGrupales(
 }
 
 const INDIVIDUAL_ONLY = new Set(["parto", "muerte", "condicion_corporal"])
+
+const CATALOG_TABLE_BY_FIELD: Readonly<Record<string, string>> = {
+  veterinarioId: "veterinarios",
+  diagnosticoId: "diagnosticos_veterinarios",
+  productoId: "productos_sanitarios",
+  motivoVentaId: "motivos_ventas",
+  lugarVentaId: "lugares_compras",
+  causaMuerteId: "causas_muerte",
+  potreroId: "potreros",
+  sectorId: "sectores",
+  loteId: "lotes",
+  grupoId: "grupos",
+}
+
+const CATALOG_FIELDS_BY_TYPE: Readonly<Record<string, readonly string[]>> = {
+  servicio: ["padreId", "pajuelaId", "inseminadorId"],
+  palpacion: ["diagnosticoId"],
+  aplicacion_sanitaria: ["productoId"],
+  revision_veterinaria: ["veterinarioId", "diagnosticoId"],
+  venta: ["motivoVentaId", "lugarVentaId"],
+  muerte: ["causaMuerteId"],
+  traslado: ["potreroId", "sectorId", "loteId", "grupoId"],
+  produccion_lactea: ["potreroId", "sectorId", "loteId", "grupoId"],
+}
+
+function condicionReferenciaCatalogo(campo: string) {
+  if (campo === "inseminadorId") return sql` AND es_inseminador = 1`
+  if (campo === "padreId") return sql` AND sexo_key = 0`
+  if (campo === "pajuelaId") return sql` AND sexo_key = 2`
+  return sql``
+}
+
+export async function validarReferenciasCatalogo(
+  fincaId: string,
+  tipo: string,
+  datos: Readonly<Record<string, string | number | null>>,
+): Promise<readonly { campo: string; detalle: string }[]> {
+  const errores: { campo: string; detalle: string }[] = []
+  for (const campo of CATALOG_FIELDS_BY_TYPE[tipo] ?? []) {
+    const valor = datos[campo]
+    if (typeof valor !== "string" || valor.trim() === "") continue
+    const tabla =
+      campo === "padreId" || campo === "pajuelaId"
+        ? "animales"
+        : (CATALOG_TABLE_BY_FIELD[campo] ?? "")
+    const extra = condicionReferenciaCatalogo(campo)
+    const result = (await db.execute(
+      sql`SELECT EXISTS (
+        SELECT 1 FROM ${sql.identifier(tabla)}
+        WHERE id = ${valor} AND finca_id = ${fincaId} AND activo = 1${extra}
+      ) AS ok`,
+    )) as unknown as readonly { ok: boolean }[]
+    if (result[0]?.ok !== true) {
+      errores.push({
+        campo,
+        detalle: "La referencia debe existir, estar activa y pertenecer a la finca.",
+      })
+    }
+  }
+  return errores
+}
 
 export function materializarDatos(
   datosComunes: Readonly<Record<string, string | number | null>>,
@@ -512,6 +594,28 @@ export interface CatalogosAlcanceDto {
   readonly lotes: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
   readonly potreros: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
   readonly grupos: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly sectores?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly padres?: ReadonlyArray<{
+    readonly id: string
+    readonly nombre: string
+    readonly codigo?: string
+  }>
+  readonly pajuelas?: ReadonlyArray<{
+    readonly id: string
+    readonly nombre: string
+    readonly codigo?: string
+  }>
+  readonly inseminadores?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly veterinarios?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly diagnosticos?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly productosSanitarios?: ReadonlyArray<{
+    readonly id: string
+    readonly nombre: string
+    readonly codigo?: string
+  }>
+  readonly motivosVenta?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly lugaresVenta?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
+  readonly causasMuerte?: ReadonlyArray<{ readonly id: string; readonly nombre: string }>
 }
 
 export interface ListarCatalogosAlcanceResultado {
@@ -545,6 +649,87 @@ function crearAdaptadores() {
   return {
     catalogos: new DrizzleCatalogoFincaAdapter(db),
     animales: new DrizzleAnimalRepository(db),
+  }
+}
+
+export async function listarCatalogosEvento(
+  fincaId: string,
+  sesion: SesionAutorizada | null,
+): Promise<ListarCatalogosAlcanceResultado> {
+  if (!sesion || sesion.fincaActivaId !== fincaId) return { tipo: "finca_no_autorizada" }
+  const maestros = new DrizzleMaestroListadoAdapter(db)
+  const padres = new DrizzleCatalogoPadresAdapter(db)
+  const productos = new DrizzleCatalogoProductoSanitarioAdapter(db)
+  const listar = (maestro: Parameters<DrizzleMaestroListadoAdapter["listar"]>[0]) =>
+    maestros.listar(maestro, fincaId, { pagina: 1, pageSize: 100 })
+  const [
+    lotes,
+    potreros,
+    grupos,
+    padresRows,
+    pajuelasRows,
+    sectores,
+    veterinarios,
+    inseminadores,
+    diagnosticos,
+    motivosVenta,
+    lugaresVenta,
+    causasMuerte,
+    productosSanitarios,
+  ] = await Promise.all([
+    listar("lotes"),
+    listar("potreros"),
+    listar("grupos"),
+    padres.listarPadres(fincaId, []),
+    padres.listarPajuelas(fincaId, []),
+    listar("sectores"),
+    listar("veterinarios"),
+    listar("inseminadores"),
+    listar("diagnosticos"),
+    listar("motivos_ventas"),
+    listar("lugares_compras"),
+    listar("causas_muerte"),
+    productos.listar(fincaId, { soloActivos: true }),
+  ])
+  const opcion = (fila: { id: string; nombre: string }) => ({ id: fila.id, nombre: fila.nombre })
+  const opcionMaestro = (fila: { id: string; nombre: string; codigo?: string | null }) => ({
+    id: fila.id,
+    nombre: fila.nombre,
+    ...(fila.codigo ? { codigo: fila.codigo } : {}),
+  })
+  return {
+    tipo: "lista",
+    catalogos: {
+      lotes: lotes.filas.map(opcionMaestro),
+      potreros: potreros.filas.map(opcionMaestro),
+      grupos: grupos.filas.map(opcionMaestro),
+      sectores: sectores.filas.map(opcionMaestro),
+      padres: padresRows
+        .filter((row) => row.nombre !== null)
+        .map((row) => ({
+          id: row.id,
+          nombre: row.nombre ?? "Sin nombre",
+          codigo: row.codigo,
+        })),
+      pajuelas: pajuelasRows
+        .filter((row) => row.nombre !== null)
+        .map((row) => ({
+          id: row.id,
+          nombre: row.nombre ?? "Sin nombre",
+          codigo: row.codigo,
+        })),
+      veterinarios: veterinarios.filas.map(opcion),
+      inseminadores: inseminadores.filas.map(opcion),
+      diagnosticos: diagnosticos.filas.map(opcion),
+      motivosVenta: motivosVenta.filas.map(opcion),
+      lugaresVenta: lugaresVenta.filas.map(opcion),
+      causasMuerte: causasMuerte.filas.map(opcion),
+      productosSanitarios: productosSanitarios.map((row) => ({
+        id: row.id,
+        nombre: row.descripcion,
+        codigo: row.codigo,
+      })),
+    },
   }
 }
 

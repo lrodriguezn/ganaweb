@@ -1,7 +1,8 @@
 import { useState } from "react"
 
-import type { CapturaEvento } from "../types"
+import type { CapturaEvento, CatalogosParaAlcance } from "../types"
 import {
+  CampoCatalogoEvento,
   CampoSelectEvento,
   CampoTextoEvento,
   MarcoFormularioEvento,
@@ -16,6 +17,7 @@ import {
  */
 export interface FormularioRevisionVeterinariaProps {
   readonly numeroAnimales: number
+  readonly catalogos?: CatalogosParaAlcance
   readonly onVolver: () => void
   readonly onGuardar: (datos: CapturaEvento["datos"]) => Promise<void> | void
   readonly datosIniciales?: CapturaEvento["datos"] | undefined
@@ -24,6 +26,7 @@ export interface FormularioRevisionVeterinariaProps {
 
 export function FormularioRevisionVeterinaria({
   numeroAnimales,
+  catalogos = { lotes: [], potreros: [], grupos: [] },
   onVolver,
   onGuardar,
   datosIniciales,
@@ -108,18 +111,20 @@ export function FormularioRevisionVeterinaria({
         onCambiar={setFecha}
         requerido
       />
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="rev-vet"
-        etiqueta="Veterinario (ID)"
+        etiqueta="Veterinario"
         valor={veterinarioId}
         onCambiar={setVeterinarioId}
+        opciones={catalogos.veterinarios ?? []}
         requerido
       />
-      <CampoTextoEvento
+      <CampoCatalogoEvento
         id="rev-diag"
-        etiqueta="Diagnóstico (ID)"
+        etiqueta="Diagnóstico"
         valor={diagnosticoId}
         onCambiar={setDiagnosticoId}
+        opciones={catalogos.diagnosticos ?? []}
         requerido
       />
       <CampoSelectEvento

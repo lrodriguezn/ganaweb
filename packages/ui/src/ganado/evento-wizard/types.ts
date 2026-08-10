@@ -131,4 +131,20 @@ export interface CatalogosParaAlcance {
   readonly lotes: readonly OpcionCatalogoFinca[]
   readonly potreros: readonly OpcionCatalogoFinca[]
   readonly grupos: readonly OpcionCatalogoFinca[]
+  readonly sectores?: readonly OpcionCatalogoFinca[]
+  readonly padres?: readonly OpcionCatalogoEvento[]
+  readonly pajuelas?: readonly OpcionCatalogoEvento[]
+  readonly inseminadores?: readonly OpcionCatalogoEvento[]
+  readonly veterinarios?: readonly OpcionCatalogoEvento[]
+  readonly diagnosticos?: readonly OpcionCatalogoEvento[]
+  readonly productosSanitarios?: readonly OpcionCatalogoEvento[]
+  readonly motivosVenta?: readonly OpcionCatalogoEvento[]
+  readonly lugaresVenta?: readonly OpcionCatalogoEvento[]
+  readonly causasMuerte?: readonly OpcionCatalogoEvento[]
+}
+
+export interface OpcionCatalogoEvento {
+  readonly id: string
+  readonly nombre: string
+  readonly codigo?: string
 }
