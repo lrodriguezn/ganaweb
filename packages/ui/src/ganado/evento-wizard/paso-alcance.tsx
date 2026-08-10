@@ -64,6 +64,7 @@ export function PasoAlcance({
   const [cargandoOrigen, setCargandoOrigen] = useState(false)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
   const [errorIndividual, setErrorIndividual] = useState<string | null>(null)
+  const [origenPorConfirmar, setOrigenPorConfirmar] = useState<OrigenSeleccionGrupal | null>(null)
 
   // Individual
   const [codigoIndividual, setCodigoIndividual] = useState(
@@ -175,6 +176,14 @@ export function PasoAlcance({
 
   const handleCambiarOrigen = (nuevoOrigen: OrigenSeleccionGrupal) => {
     if (nuevoOrigen === origen) return
+    if (animalesEfectivos.length > 0) {
+      setOrigenPorConfirmar(nuevoOrigen)
+      return
+    }
+    aplicarCambioOrigen(nuevoOrigen)
+  }
+
+  const aplicarCambioOrigen = (nuevoOrigen: OrigenSeleccionGrupal) => {
     setOrigenPendiente(nuevoOrigen)
     setCriterioPendiente("")
     if (nuevoOrigen === "manual") void cargarNuevoOrigen("manual", "")
@@ -286,6 +295,13 @@ export function PasoAlcance({
             origenActivo={origen}
             totalEfectivo={animalesEfectivos.length}
             totalCargado={animalesCargados.length}
+            origenPorConfirmar={origenPorConfirmar}
+            onConfirmarCambioOrigen={() => {
+              if (!origenPorConfirmar) return
+              aplicarCambioOrigen(origenPorConfirmar)
+              setOrigenPorConfirmar(null)
+            }}
+            onCancelarCambioOrigen={() => setOrigenPorConfirmar(null)}
           />
         )}
       </div>
@@ -300,7 +316,7 @@ export function PasoAlcance({
             onClick={handleConfirmarGrupal}
             disabled={animalesEfectivos.length === 0}
           >
-            Confirmar {animalesEfectivos.length}{" "}
+            Continuar con {animalesEfectivos.length}{" "}
             {animalesEfectivos.length === 1 ? "animal" : "animales"}
           </Button>
         </div>
@@ -406,6 +422,9 @@ function SeccionGrupal({
   incluidos,
   totalEfectivo,
   totalCargado,
+  origenPorConfirmar,
+  onConfirmarCambioOrigen,
+  onCancelarCambioOrigen,
 }: {
   readonly origen: OrigenSeleccionGrupal
   readonly onCambiarOrigen: (o: OrigenSeleccionGrupal) => void
@@ -423,13 +442,23 @@ function SeccionGrupal({
   readonly origenActivo: OrigenSeleccionGrupal
   readonly totalEfectivo: number
   readonly totalCargado: number
+  readonly origenPorConfirmar: OrigenSeleccionGrupal | null
+  readonly onConfirmarCambioOrigen: () => void
+  readonly onCancelarCambioOrigen: () => void
 }) {
   const [filtro, setFiltro] = useState("")
+  const [mostrarExcluidos, setMostrarExcluidos] = useState(false)
   const filtroNormalizado = filtro.trim().toLocaleLowerCase()
   const animalesVisibles = animalesCargados.filter((animal) =>
     animal.codigoAnimal.toLocaleLowerCase().includes(filtroNormalizado),
   )
   const universoFiltrado = filtroNormalizado !== ""
+  const numeroExcluidos = totalCargado - totalEfectivo
+  const animalesVisiblesPorEstado = animalesVisibles.filter((animal) => {
+    const incluido =
+      origenActivo === "manual" ? incluidos.has(animal.id) : !excluidos.has(animal.id)
+    return mostrarExcluidos ? !incluido : incluido
+  })
 
   return (
     <div className="space-y-3">
@@ -487,6 +516,25 @@ function SeccionGrupal({
         <p className="text-caption text-muted-foreground" role="status">
           Cargando animales…
         </p>
+      )}
+      {origenPorConfirmar && (
+        <div
+          className="rounded-card border border-pasto-300 bg-pasto-50 p-3 space-y-2"
+          role="alert"
+        >
+          <p className="text-support">
+            Cambiar el origen reemplazará la selección actual cuando el nuevo origen cargue
+            correctamente.
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" onClick={onConfirmarCambioOrigen}>
+              Cambiar origen
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancelarCambioOrigen}>
+              Conservar selección
+            </Button>
+          </div>
+        </div>
       )}
       {error && (
         <p className="text-caption text-peligro-600" role="alert">
@@ -546,8 +594,17 @@ function SeccionGrupal({
                 ? `${totalEfectivo} animales incluidos`
                 : `${totalEfectivo} incluidos · ${totalCargado - totalEfectivo} excluidos`}
             </p>
+            {numeroExcluidos > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMostrarExcluidos((visible) => !visible)}
+              >
+                {mostrarExcluidos ? "Ocultar excluidos" : `Ver excluidos (${numeroExcluidos})`}
+              </Button>
+            )}
             <ul className="space-y-1.5 max-h-60 overflow-y-auto">
-              {animalesVisibles.map((a) => {
+              {animalesVisiblesPorEstado.map((a) => {
                 const incluido =
                   origenActivo === "manual" ? incluidos.has(a.id) : !excluidos.has(a.id)
                 return (
@@ -589,7 +646,7 @@ function SeccionGrupal({
                 )
               })}
             </ul>
-            {animalesVisibles.length === 0 && (
+            {animalesVisiblesPorEstado.length === 0 && (
               // biome-ignore lint/a11y/useSemanticElements: status announcements belong in a paragraph, not a form-associated <output>.
               <p className="text-caption text-muted-foreground" role="status">
                 No hay resultados para esta búsqueda.

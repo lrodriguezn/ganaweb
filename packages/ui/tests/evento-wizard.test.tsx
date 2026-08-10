@@ -266,11 +266,18 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
 
   it("requiere seleccionar explícitamente el resultado individual", async () => {
     const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { individualId: "ev-1", hijosIds: [] },
+      }),
+    )
     render(
       <EventoWizard
         {...props({
           tipoPreseleccionado: "pesaje",
           buscarAnimalPorCodigo: vi.fn(async () => ({ id: "a-1", codigoAnimal: "MT-122" })),
+          onEnviar,
         })}
       />,
     )
@@ -284,6 +291,15 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     await user.click(screen.getByRole("button", { name: "Seleccionar MT-122" }))
     expect(screen.getByText("Registrar pesaje")).toBeInTheDocument()
     expect(screen.getByTestId("evento-wizard-step-indicator")).toHaveTextContent("3. Datos")
+    const fecha = screen.getByLabelText(/Fecha/)
+    const peso = screen.getByLabelText(/Peso/)
+    await user.clear(fecha)
+    await user.type(fecha, "2026-08-07")
+    await user.clear(peso)
+    await user.type(peso, "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    await waitFor(() => expect(onEnviar).toHaveBeenCalledTimes(1))
+    expect(onEnviar.mock.calls[0][0].seleccion).toEqual({ tipo: "individual", animalId: "a-1" })
   })
 
   it("ofrece alcance grupal para tipos que lo permiten", () => {
@@ -297,6 +313,12 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
 
   it("renderiza exclusiones con el origen manual y animales cargados", async () => {
     const user = userEvent.setup()
+    const onEnviar = vi.fn(
+      async (): Promise<ResultadoCapturaEvento> => ({
+        tipo: "capturado",
+        ids: { individualId: "ev-1", hijosIds: [] },
+      }),
+    )
     const cargarAnimales = vi.fn(async () => [
       { id: "a-1", codigoAnimal: "MT-100" },
       { id: "a-2", codigoAnimal: "MT-101" },
@@ -307,6 +329,7 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
         {...props({
           tipoPreseleccionado: "pesaje",
           cargarAnimalesPorOrigen: cargarAnimales,
+          onEnviar,
         })}
       />,
     )
@@ -319,11 +342,26 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     expect(screen.getByText("3 animales incluidos")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: /Excluir MT-100/ }))
     expect(screen.getByText("2 animales incluidos")).toBeInTheDocument()
-    // Confirm: emits a snapshot with 2 included IDs.
-    const confirmar = screen.getByRole("button", { name: /Confirmar 2 animales/ })
+    // The CTA exposes the exact snapshot size.
+    const confirmar = screen.getByRole("button", { name: "Continuar con 2 animales" })
     await user.click(confirmar)
     expect(screen.getByText("Registrar pesaje")).toBeInTheDocument()
     expect(screen.getByTestId("evento-wizard-step-indicator")).toHaveTextContent("3. Datos")
+
+    const fecha = screen.getByLabelText(/Fecha/)
+    const peso = screen.getByLabelText(/Peso/)
+    await user.clear(fecha)
+    await user.type(fecha, "2026-08-07")
+    await user.clear(peso)
+    await user.type(peso, "420")
+    await user.click(screen.getByRole("button", { name: /Guardar/ }))
+    await waitFor(() => expect(onEnviar).toHaveBeenCalledTimes(1))
+    expect(onEnviar.mock.calls[0][0].seleccion).toEqual({
+      tipo: "grupal",
+      origen: "manual",
+      animalIdsEfectivos: ["a-2", "a-3"],
+      totalAnimales: 2,
+    })
   })
 
   it("keeps selection stable while filtering and applies bulk actions to visible results", async () => {
@@ -349,6 +387,8 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     await user.clear(screen.getByLabelText("Buscar animales"))
     expect(screen.getByText("1 animales incluidos")).toBeInTheDocument()
     expect(screen.getByText("OT-200")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Ver excluidos (2)" }))
+    expect(screen.getByText("MT-100")).toBeInTheDocument()
   })
 
   it("marks structured members included and preserves the previous scope on load failure", async () => {
@@ -372,6 +412,12 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
     await user.selectOptions(screen.getByLabelText("Lote"), "lote-1")
     expect(await screen.findByText("1 incluidos · 0 excluidos")).toBeInTheDocument()
     await user.click(screen.getByRole("radio", { name: "Manual" }))
+    expect(screen.getByText(/reemplazará la selección actual/)).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Conservar selección" }))
+    expect(screen.getByText("1 incluidos · 0 excluidos")).toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: "Lote" })).toHaveAttribute("aria-checked", "true")
+    await user.click(screen.getByRole("radio", { name: "Manual" }))
+    await user.click(screen.getByRole("button", { name: "Cambiar origen" }))
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudieron cargar")
     expect(screen.getByText("1 incluidos · 0 excluidos")).toBeInTheDocument()
     expect(screen.getByText("MT-100")).toBeInTheDocument()
@@ -390,7 +436,7 @@ describe("EventoWizard — Paso 2: alcance individual/grupal con exclusiones", (
 
     await user.click(screen.getByRole("radio", { name: "Grupal" }))
     const footer = await screen.findByTestId("evento-wizard-scope-footer")
-    const confirmar = within(footer).getByRole("button", { name: "Confirmar 0 animales" })
+    const confirmar = within(footer).getByRole("button", { name: "Continuar con 0 animales" })
     expect(footer).toHaveClass("shrink-0", "border-t")
     expect(confirmar).toBeDisabled()
     expect(screen.getByTestId("evento-wizard-scope-scroll")).toHaveClass("overflow-y-auto")
