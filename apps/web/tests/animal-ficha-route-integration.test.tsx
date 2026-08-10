@@ -20,6 +20,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import {
   AnimalFichaRouteView,
   type AnimalFichaRouteViewProps,
+  construirAlcanceCaptura,
 } from "../src/routes/_app/fincas/$fincaId/animales/$animalId.js"
 import { getAnimalFichaAction } from "../src/server/animal-actions.js"
 
@@ -52,6 +53,29 @@ beforeAll(() => {
 afterEach(() => {
   cleanup()
   vi.mocked(getAnimalFichaAction).mockReset()
+})
+
+describe("animal ficha event adapter — grouped exceptions", () => {
+  it("propagates exceptions without leaking UI-only animal metadata", () => {
+    const alcance = construirAlcanceCaptura({
+      tipo: "pesaje",
+      seleccion: {
+        tipo: "grupal",
+        origen: "manual",
+        animalIdsEfectivos: ["a-1", "a-2"],
+        totalAnimales: 2,
+        animales: [{ id: "a-1", codigoAnimal: "MT-100" }],
+        excepciones: { "a-2": { pesoKg: 435 } },
+      },
+      datos: { pesoKg: 420 },
+    })
+    expect(alcance).toMatchObject({
+      tipo: "grupal",
+      animalIdsEfectivos: ["a-1", "a-2"],
+      excepciones: { "a-2": { pesoKg: 435 } },
+    })
+    expect(alcance).not.toHaveProperty("animales")
+  })
 })
 
 function fichaProps(overrides: Partial<AnimalFichaRouteViewProps> = {}): AnimalFichaRouteViewProps {

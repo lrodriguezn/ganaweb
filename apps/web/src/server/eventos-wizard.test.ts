@@ -344,6 +344,33 @@ describe("createEventoWizardActionHarness — parto sin grupal (defensa en profu
     expect(commands[1]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 420, tipoPeso: "control" })
     expect(commands[2]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 435, tipoPeso: "control" })
   })
+
+  it("propaga el fallo del lote sin devolver una captura parcial", async () => {
+    const persistirLoteConError = vi.fn(async (commands: readonly unknown[]) => {
+      expect(commands).toHaveLength(3)
+      const hijos = commands.slice(1) as Array<{ datos: Record<string, unknown> }>
+      expect(hijos[0]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 420 })
+      expect(hijos[1]?.datos).toEqual({ fecha: "2026-08-07", pesoKg: 435 })
+      throw new Error("rollback de prueba")
+    })
+    const resultado = await createEventoWizardActionHarness({
+      getSession: async () => sesionCompleta(),
+      persistirLote: persistirLoteConError as never,
+      reloj,
+    }).capturar({
+      fincaId: FINCA,
+      tipo: "pesaje",
+      alcance: {
+        tipo: "grupal",
+        origen: "manual",
+        animalIdsEfectivos: ["a-1", "a-2"],
+        excepciones: { "a-2": { pesoKg: 435 } },
+      },
+      datos: { fecha: "2026-08-07", pesoKg: 420 },
+    })
+    expect(resultado).toEqual({ tipo: "error", detalle: "rollback de prueba" })
+    expect(persistirLoteConError).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe("createEventoWizardActionHarness — mapeo de errores del boundary", () => {

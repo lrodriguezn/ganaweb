@@ -293,6 +293,7 @@ export function PasoAlcance({
       ...(origen === "grupo" ? { grupoId: criterioId } : {}),
       animalIdsEfectivos: idsEfectivos,
       totalAnimales: idsEfectivos.length,
+      animales: animalesEfectivos,
       ...(excluidos.size > 0 ? { animalIdsExcluidos: [...excluidos] } : {}),
       ...(seleccionGrupalInicial?.excepciones
         ? { excepciones: seleccionGrupalInicial.excepciones }

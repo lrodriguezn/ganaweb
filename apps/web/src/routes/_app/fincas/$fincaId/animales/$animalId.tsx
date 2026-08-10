@@ -326,17 +326,7 @@ async function enviarCapturaEnRuta(
   fincaId: string,
   captura: import("@ganaweb/ui").CapturaEvento,
 ): Promise<ResultadoCapturaEvento> {
-  const alcance =
-    captura.seleccion.tipo === "individual"
-      ? { tipo: "individual" as const, animalId: captura.seleccion.animalId }
-      : {
-          tipo: "grupal" as const,
-          origen: captura.seleccion.origen,
-          ...(captura.seleccion.loteId ? { loteId: captura.seleccion.loteId } : {}),
-          ...(captura.seleccion.potreroId ? { potreroId: captura.seleccion.potreroId } : {}),
-          ...(captura.seleccion.grupoId ? { grupoId: captura.seleccion.grupoId } : {}),
-          animalIdsEfectivos: captura.seleccion.animalIdsEfectivos,
-        }
+  const alcance = construirAlcanceCaptura(captura)
   try {
     const response = await capturarEventoFn({
       data: {
@@ -354,4 +344,18 @@ async function enviarCapturaEnRuta(
       detalle: error instanceof Error ? error.message : "Fallo desconocido",
     }
   }
+}
+
+export function construirAlcanceCaptura(captura: import("@ganaweb/ui").CapturaEvento) {
+  return captura.seleccion.tipo === "individual"
+    ? { tipo: "individual" as const, animalId: captura.seleccion.animalId }
+    : {
+        tipo: "grupal" as const,
+        origen: captura.seleccion.origen,
+        ...(captura.seleccion.loteId ? { loteId: captura.seleccion.loteId } : {}),
+        ...(captura.seleccion.potreroId ? { potreroId: captura.seleccion.potreroId } : {}),
+        ...(captura.seleccion.grupoId ? { grupoId: captura.seleccion.grupoId } : {}),
+        animalIdsEfectivos: captura.seleccion.animalIdsEfectivos,
+        ...(captura.seleccion.excepciones ? { excepciones: captura.seleccion.excepciones } : {}),
+      }
 }

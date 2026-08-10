@@ -330,7 +330,10 @@ export function EventoWizard({
               />
               {seleccion.tipo === "grupal" && (
                 <EditorExcepciones
-                  animales={seleccion.animalIdsEfectivos.map((id) => ({ id, codigoAnimal: id }))}
+                  animales={
+                    seleccion.animales ??
+                    seleccion.animalIdsEfectivos.map((id) => ({ id, codigoAnimal: id }))
+                  }
                   datosComunes={datosComunes}
                   excepciones={excepciones}
                   onChange={(next) => {
